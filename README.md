@@ -8,13 +8,12 @@
 
 ## Project status
 
-**Current phase:** `v0.1.0 — Foundation complete`
+**Current phase:** `v0.2.0 — Local Dashboard MVP in progress`
 
-The repository contains the verified Vite and Vanilla JavaScript foundation,
-project guidelines, architecture and security documentation, Version 1 data
-contracts, accepted Architecture Decision Records, and repository-wide editor
-conventions. Development of the local dashboard MVP is the next milestone.
-Features marked as planned are not implemented yet.
+The responsive Command Center shell is implemented on top of the verified Vite
+and Vanilla JavaScript foundation. It provides the static local overview,
+navigation, project status, and module status. PromptVault is the next MVP
+module; features marked as planned are not implemented yet.
 
 ## Vision
 
@@ -57,12 +56,12 @@ Request, response, error, and agent payload formats are defined in
 Accepted architecture decisions and their rationale are indexed in
 [`docs/decisions/README.md`](docs/decisions/README.md).
 
-## Planned modules
+## Modules
 
 | Module | Purpose | Status |
 | --- | --- | --- |
-| Command Center | Central overview, navigation, and system status | Planned |
-| PromptVault | Versioned prompt library with search and favorites | First MVP module |
+| Command Center | Central overview, navigation, and system status | Shell implemented |
+| PromptVault | Versioned prompt library with search and favorites | Next MVP module |
 | Learning Core | Learning progress, notes, and Arisa Tests | Planned |
 | Agent Hub | Agent overview, capabilities, and execution status | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Planned |

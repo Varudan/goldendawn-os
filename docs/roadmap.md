@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.1.0 – Foundation abgeschlossen` |
+| Projektphase | `v0.2.0 – Local Dashboard MVP in Arbeit` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, TestAgent und DatenAgent |
 | Letzte Aktualisierung | 2026-07-11 |
@@ -41,7 +41,7 @@ nicht starre Kalendertermine.
 | Version | Schwerpunkt | Ergebnis | Status |
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
-| `v0.2.0` | Lokales MVP | Command Center und PromptVault mit lokalen Daten | ⬜ |
+| `v0.2.0` | Lokales MVP | Command Center und PromptVault mit lokalen Daten | 🟡 |
 | `v0.3.0` | SyncAgent | Standardisierter Webhook- und Routingfluss | ⬜ |
 | `v0.4.0` | DatenAgent | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent | Lerntests erstellen, bewerten und speichern | ⬜ |
@@ -95,8 +95,8 @@ bereitstellen. Externe Systeme sind für diese Version nicht erforderlich.
 
 ### Umfang des lokalen MVP
 
-- ⬜ Vite-Demooberfläche durch das GoldenDawn-OS-Grundlayout ersetzen.
-- ⬜ Command Center mit Navigation, Projektstatus und Modulübersicht erstellen.
+- ✅ Vite-Demooberfläche durch das GoldenDawn-OS-Grundlayout ersetzen.
+- ✅ Command Center mit Navigation, Projektstatus und Modulübersicht erstellen.
 - ⬜ Benötigte Ordnerstruktur schrittweise anlegen.
 - ⬜ Gemeinsamen Storage-Adapter für robuste lokale Speicherung vorbereiten.
 - ⬜ PromptVault als erstes nutzbares MVP-Modul implementieren.
@@ -342,10 +342,9 @@ Diese Punkte werden erst nach dem Portfolio Release bewertet und priorisiert.
 
 ## Nächster konkreter Schritt
 
-Mit `v0.2.0 – Lokales Dashboard-MVP` beginnt die erste Produktphase:
+Der responsive Command-Center-Shell ist umgesetzt. In
+`v0.2.0 – Lokales Dashboard-MVP` folgen als nächste Schritte:
 
-1. Vite-Demooberfläche durch das GoldenDawn-OS-Grundlayout ersetzen;
-2. Command Center mit Navigation und Projektstatus erstellen;
-3. benötigte Modul-, Service- und Storage-Struktur schrittweise anlegen;
-4. robuste lokale Speicherung hinter einem Storage-Adapter vorbereiten;
-5. PromptVault als erstes lokal nutzbares MVP-Modul beginnen.
+1. benötigte Modul-, Service- und Storage-Struktur schrittweise anlegen;
+2. robuste lokale Speicherung hinter einem Storage-Adapter vorbereiten;
+3. PromptVault als erstes lokal nutzbares MVP-Modul beginnen.
