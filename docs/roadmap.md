@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.1.0 – Foundation` |
+| Projektphase | `v0.1.0 – Foundation abgeschlossen` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, TestAgent und DatenAgent |
 | Letzte Aktualisierung | 2026-07-11 |
@@ -40,7 +40,7 @@ nicht starre Kalendertermine.
 
 | Version | Schwerpunkt | Ergebnis | Status |
 | --- | --- | --- | --- |
-| `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | 🟡 |
+| `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Lokales MVP | Command Center und PromptVault mit lokalen Daten | ⬜ |
 | `v0.3.0` | SyncAgent | Standardisierter Webhook- und Routingfluss | ⬜ |
 | `v0.4.0` | DatenAgent | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
@@ -68,6 +68,8 @@ bevor neue Produktfunktionen implementiert werden.
 - ✅ Sync-Verträge in `docs/data-contracts.md` definieren.
 - ✅ Erste Architecture Decision Records anlegen.
 - ✅ Einheitliche Zeilenenden und Editor-Grundeinstellungen festlegen.
+- ✅ Produktions-Build erfolgreich ausführen.
+- ✅ Dokumentation, Git-Status und Zeilenenden abschließend prüfen.
 
 ### Abnahmekriterien für v0.1.0
 
@@ -340,6 +342,10 @@ Diese Punkte werden erst nach dem Portfolio Release bewertet und priorisiert.
 
 ## Nächster konkreter Schritt
 
-Die Foundation-Phase wird mit folgenden Dokumenten abgeschlossen:
+Mit `v0.2.0 – Lokales Dashboard-MVP` beginnt die erste Produktphase:
 
-1. abschließender Build- und Dokumentationscheck für `v0.1.0`.
+1. Vite-Demooberfläche durch das GoldenDawn-OS-Grundlayout ersetzen;
+2. Command Center mit Navigation und Projektstatus erstellen;
+3. benötigte Modul-, Service- und Storage-Struktur schrittweise anlegen;
+4. robuste lokale Speicherung hinter einem Storage-Adapter vorbereiten;
+5. PromptVault als erstes lokal nutzbares MVP-Modul beginnen.
