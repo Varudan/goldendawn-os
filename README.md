@@ -8,12 +8,13 @@
 
 ## Project status
 
-**Current phase:** `v0.1.0 — Foundation`
+**Current phase:** `v0.1.0 — Foundation complete`
 
-The repository currently contains the initial Vite and Vanilla JavaScript
-scaffold, project guidelines, and the first architecture documentation.
-A final Foundation verification and the first local module are the next
-milestones. Features marked as planned are not implemented yet.
+The repository contains the verified Vite and Vanilla JavaScript foundation,
+project guidelines, architecture and security documentation, Version 1 data
+contracts, accepted Architecture Decision Records, and repository-wide editor
+conventions. Development of the local dashboard MVP is the next milestone.
+Features marked as planned are not implemented yet.
 
 ## Vision
 
