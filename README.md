@@ -12,8 +12,8 @@
 
 The repository currently contains the initial Vite and Vanilla JavaScript
 scaffold, project guidelines, and the first architecture documentation.
-Editor conventions and the first local module are the next milestones.
-Features marked as planned are not implemented yet.
+A final Foundation verification and the first local module are the next
+milestones. Features marked as planned are not implemented yet.
 
 ## Vision
 
