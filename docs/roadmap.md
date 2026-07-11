@@ -65,7 +65,7 @@ bevor neue Produktfunktionen implementiert werden.
 - ✅ Zielarchitektur in `docs/architecture.md` dokumentieren.
 - ✅ Detaillierte Roadmap in `docs/roadmap.md` festhalten.
 - ✅ Sicherheitsmodell in `docs/security.md` konkretisieren.
-- ⬜ Sync-Verträge in `docs/data-contracts.md` definieren.
+- ✅ Sync-Verträge in `docs/data-contracts.md` definieren.
 - ⬜ Erste Architecture Decision Records anlegen.
 - ⬜ Einheitliche Zeilenenden und Editor-Grundeinstellungen festlegen.
 
@@ -342,7 +342,6 @@ Diese Punkte werden erst nach dem Portfolio Release bewertet und priorisiert.
 
 Die Foundation-Phase wird mit folgenden Dokumenten abgeschlossen:
 
-1. `docs/data-contracts.md`;
-2. erste ADRs unter `docs/decisions/`;
-3. `.editorconfig` und `.gitattributes`;
-4. abschließender Build- und Dokumentationscheck für `v0.1.0`.
+1. erste ADRs unter `docs/decisions/`;
+2. `.editorconfig` und `.gitattributes`;
+3. abschließender Build- und Dokumentationscheck für `v0.1.0`.
