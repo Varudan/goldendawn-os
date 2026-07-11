@@ -36,12 +36,18 @@ flowchart TD
     Services --> Local["Local storage adapter"]
     Services --> Sync["Sync service"]
     Sync --> Agent["SyncAgent in n8n"]
-    Agent --> Data["Airtable or database"]
-    Agent --> Specialists["Specialized agents"]
+    Agent --> Test["TestAgent"]
+    Agent --> Data["DatenAgent"]
+    Test --> Agent
+    Data --> Airtable["Airtable"]
 ```
 
 The dashboard will communicate with external systems through the SyncAgent
 instead of accessing Airtable, APIs, or specialized agents directly.
+Only the DatenAgent communicates with Airtable in Version 1.
+
+See [`docs/architecture.md`](docs/architecture.md) for responsibilities,
+boundaries, and end-to-end data flows.
 
 ## Planned modules
 
@@ -92,9 +98,9 @@ instead of accessing Airtable, APIs, or specialized agents directly.
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Local dashboard MVP | Command Center and PromptVault using local mock data |
 | v0.3.0 | SyncAgent connection | Validated webhook communication with n8n |
-| v0.4.0 | Structured persistence | First controlled Airtable read and write flow |
-| v0.5.0 | First specialized agent | A bounded agent routed through the SyncAgent |
-| v1.0.0 | Portfolio release | Secure demo mode, documentation, deployment, and PWA readiness |
+| v0.4.0 | Structured persistence | DatenAgent with a controlled Airtable read and write flow |
+| v0.5.0 | Learning tests | TestAgent routed through the SyncAgent |
+| v1.0.0 | Portfolio release | Integrated three-agent flow, secure demo mode, documentation, and deployment |
 
 ## Getting started
 
