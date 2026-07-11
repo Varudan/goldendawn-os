@@ -12,8 +12,8 @@
 
 The repository currently contains the initial Vite and Vanilla JavaScript
 scaffold, project guidelines, and the first architecture documentation.
-Architecture decisions, editor conventions, and the first local module are the
-next milestones. Features marked as planned are not implemented yet.
+Editor conventions and the first local module are the next milestones.
+Features marked as planned are not implemented yet.
 
 ## Vision
 
@@ -52,6 +52,9 @@ boundaries, and end-to-end data flows.
 
 Request, response, error, and agent payload formats are defined in
 [`docs/data-contracts.md`](docs/data-contracts.md).
+
+Accepted architecture decisions and their rationale are indexed in
+[`docs/decisions/README.md`](docs/decisions/README.md).
 
 ## Planned modules
 

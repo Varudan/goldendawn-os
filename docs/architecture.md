@@ -380,14 +380,18 @@ begonnen wird.
 ## Architekturentscheidungen
 
 Wesentliche Entscheidungen werden als Architecture Decision Records unter
-`docs/decisions/` festgehalten. Mindestens folgende Entscheidungen sind
-vorgesehen:
+`docs/decisions/` festgehalten:
 
-1. Vite und Vanilla JavaScript als Frontend-Grundlage;
-2. SyncAgent als einziges Gateway des Dashboards;
-3. DatenAgent als einzige Airtable-Schnittstelle;
-4. Trennung von privaten und öffentlichen Daten;
-5. Begrenzung von Version 1 auf drei Agenten.
+| ADR | Entscheidung | Status |
+| --- | --- | --- |
+| [0001](decisions/0001-vite-vanilla-js.md) | Vite und Vanilla JavaScript als Frontend-Grundlage | Angenommen |
+| [0002](decisions/0002-syncagent-gateway.md) | SyncAgent als einziges Gateway des Dashboards | Angenommen |
+| [0003](decisions/0003-datenagent-airtable-boundary.md) | DatenAgent als einzige Airtable-Schnittstelle | Angenommen |
+| [0004](decisions/0004-private-demo-separation.md) | Trennung von privaten und öffentlichen Daten | Angenommen |
+| [0005](decisions/0005-v1-three-agent-scope.md) | Begrenzung von Version 1 auf drei Agenten | Angenommen |
+
+Der vollständige Index und die Regeln für neue Entscheidungen stehen in
+[`docs/decisions/README.md`](decisions/README.md).
 
 ## Änderungsregel
 
