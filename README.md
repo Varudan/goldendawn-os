@@ -11,7 +11,8 @@
 **Current phase:** `v0.1.0 — Foundation`
 
 The repository currently contains the initial Vite and Vanilla JavaScript
-scaffold. The architecture, documentation, and first local module are the next
+scaffold, project guidelines, and the first architecture documentation.
+Security rules, data contracts, and the first local module are the next
 milestones. Features marked as planned are not implemented yet.
 
 ## Vision
@@ -92,6 +93,9 @@ boundaries, and end-to-end data flows.
 - PWA support and server deployment after the core architecture is stable
 
 ## Roadmap
+
+Detailed milestones and acceptance criteria are maintained in
+[`docs/roadmap.md`](docs/roadmap.md).
 
 | Version | Milestone | Outcome |
 | --- | --- | --- |
