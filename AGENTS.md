@@ -19,20 +19,21 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.1.0 – Foundation`
+Aktueller Stand: `v0.2.0 – Local Dashboard MVP in Arbeit`
 
 In dieser Phase liegt der Fokus auf:
 
-- sauberer Projekt- und Dokumentationsstruktur;
-- stabiler lokaler Entwicklung mit Vite und Vanilla JavaScript;
-- klaren Architekturgrenzen;
-- Mock-Daten und lokaler Speicherung;
-- Vorbereitung des ersten MVP-Moduls PromptVault.
+- dem bereits umgesetzten responsiven Command-Center-Shell;
+- dem schrittweisen Aufbau der benötigten Modulstruktur;
+- der Vorbereitung eines gemeinsamen Storage-Adapters für robuste lokale
+  Speicherung;
+- PromptVault als erstem lokal nutzbaren MVP-Modul.
 
 Noch nicht Teil dieser Phase sind:
 
-- direkte Airtable-Integration;
-- echte LLM- oder Agentenaufrufe;
+- Airtable-Integrationen;
+- Webhooks oder die Anbindung des SyncAgent;
+- echte LLM- oder Agentenlogik;
 - Authentifizierung und Benutzerverwaltung;
 - ein eigenes Backend;
 - produktives Deployment;
