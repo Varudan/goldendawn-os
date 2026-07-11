@@ -1,6 +1,6 @@
 # GoldenDawn OS
 
-### The Jan & Arisa Lichtwaldzentrale
+## The Jan & Arisa Lichtwaldzentrale
 
 > A personal AI Operations System for learning, projects, prompt engineering,
 > automation, reflection, and measurable progress — developed step by step into
