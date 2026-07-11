@@ -12,8 +12,8 @@
 
 The repository currently contains the initial Vite and Vanilla JavaScript
 scaffold, project guidelines, and the first architecture documentation.
-Data contracts, architecture decisions, and the first local module are the next
-milestones. Features marked as planned are not implemented yet.
+Architecture decisions, editor conventions, and the first local module are the
+next milestones. Features marked as planned are not implemented yet.
 
 ## Vision
 
@@ -49,6 +49,9 @@ Only the DatenAgent communicates with Airtable in Version 1.
 
 See [`docs/architecture.md`](docs/architecture.md) for responsibilities,
 boundaries, and end-to-end data flows.
+
+Request, response, error, and agent payload formats are defined in
+[`docs/data-contracts.md`](docs/data-contracts.md).
 
 ## Planned modules
 
