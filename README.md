@@ -12,7 +12,7 @@
 
 The repository currently contains the initial Vite and Vanilla JavaScript
 scaffold, project guidelines, and the first architecture documentation.
-Security rules, data contracts, and the first local module are the next
+Data contracts, architecture decisions, and the first local module are the next
 milestones. Features marked as planned are not implemented yet.
 
 ## Vision
@@ -136,7 +136,8 @@ committed to Git or exposed through frontend environment variables. The later
 portfolio version will use dedicated demo data and a separate configuration
 from the private system.
 
-Detailed security rules will be maintained in `docs/security.md`.
+Detailed security rules are maintained in
+[`docs/security.md`](docs/security.md).
 
 ## Project history
 
