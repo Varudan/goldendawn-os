@@ -7,7 +7,7 @@
 | Projektphase | `v0.2.0 – Local Dashboard MVP in Arbeit` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, TestAgent und DatenAgent |
-| Letzte Aktualisierung | 2026-07-11 |
+| Letzte Aktualisierung | 2026-07-12 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -97,15 +97,19 @@ bereitstellen. Externe Systeme sind für diese Version nicht erforderlich.
 
 - ✅ Vite-Demooberfläche durch das GoldenDawn-OS-Grundlayout ersetzen.
 - ✅ Command Center mit Navigation, Projektstatus und Modulübersicht erstellen.
-- ⬜ Benötigte Ordnerstruktur schrittweise anlegen.
-- ⬜ Gemeinsamen Storage-Adapter für robuste lokale Speicherung vorbereiten.
-- ⬜ PromptVault als erstes nutzbares MVP-Modul implementieren.
-- ⬜ Prompt-Suche, Kategorien und Favoriten bereitstellen.
-- ⬜ Prompt-Detailansicht mit vollständigem Prompt-Text erstellen.
-- ⬜ Prompts lokal erstellen und bearbeiten.
+- ✅ Erste benötigte Modul-, Service- und Storage-Struktur für PromptVault
+  anlegen.
+- ✅ Gemeinsamen Storage-Adapter für robuste lokale Speicherung implementieren.
+- ✅ PromptVault als erstes lokal nutzbares MVP-Modul mit Anzeigen, Erstellen
+  und Löschen implementieren.
+- ⬜ Prompt-Suche, Kategorie-Filter und Favoriten bereitstellen.
+- ✅ Prompt-Detailansicht mit vollständigem Prompt-Text erstellen.
+- ✅ Prompts nach zugänglicher Inline-Bestätigung dauerhaft lokal löschen.
+- ✅ Prompts lokal erstellen, validieren und dauerhaft speichern.
+- ⬜ Vorhandene Prompts bearbeiten.
 - ⬜ Neue unveränderliche Prompt-Versionen hinzufügen.
-- ⬜ Leere, erfolgreiche und fehlerhafte Zustände gestalten.
-- ⬜ Responsive Darstellung und Tastaturbedienung prüfen.
+- ✅ Lade-, Leer-, Validierungs-, Erfolgs- und Speicherfehlerzustände gestalten.
+- ✅ Responsive Darstellung und Tastaturbedienung prüfen.
 
 ### Abnahmekriterien für v0.2.0
 
@@ -342,9 +346,12 @@ Diese Punkte werden erst nach dem Portfolio Release bewertet und priorisiert.
 
 ## Nächster konkreter Schritt
 
-Der responsive Command-Center-Shell ist umgesetzt. In
-`v0.2.0 – Lokales Dashboard-MVP` folgen als nächste Schritte:
+Der responsive Command-Center-Shell, die erste PromptVault-Modulstruktur, der
+gemeinsame Storage-Adapter und das lokale PromptVault-MVP zum Anzeigen,
+Erstellen und Löschen sind umgesetzt. `v0.2.0 – Lokales Dashboard-MVP` bleibt
+in Arbeit.
 
-1. benötigte Modul-, Service- und Storage-Struktur schrittweise anlegen;
-2. robuste lokale Speicherung hinter einem Storage-Adapter vorbereiten;
-3. PromptVault als erstes lokal nutzbares MVP-Modul beginnen.
+Als nächste PromptVault-Funktion folgt die lokale Prompt-Suche. Kategorie-Filter,
+Favoriten, Bearbeiten und Versionierung bleiben weitere geplante
+Ausbauschritte. Webhooks, Synchronisierung, Airtable und Agentenlogik beginnen
+erst in den dafür vorgesehenen späteren Versionen.

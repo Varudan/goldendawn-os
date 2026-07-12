@@ -1,69 +1,108 @@
 import './style.css'
+import './modules/prompt-vault/promptVault.css'
+
+import { createPromptVaultController } from './modules/prompt-vault/promptVaultController.js'
+import { createPromptVaultView } from './modules/prompt-vault/promptVaultView.js'
+import { createPromptService } from './services/promptService.js'
+import { createPromptStorage } from './storage/promptStorage.js'
+import { createStorageAdapter } from './storage/storageAdapter.js'
+
+const VIEW_COMMAND_CENTER = 'command-center'
+const VIEW_PROMPT_VAULT = 'prompt-vault'
 
 const modules = [
-  ['Command Center', 'Übersicht und Projektstatus', 'Aktiv', 'active'],
-  [
-    'PromptVault',
-    'Prompts sammeln, ordnen und weiterentwickeln',
-    'Als Nächstes',
-    'next'
-  ],
-  [
-    'Learning Core',
-    'Lernziele und Fortschritt bündeln',
-    'Geplant',
-    'planned'
-  ],
-  [
-    'Agent Hub',
-    'Agentenrollen und Abläufe überblicken',
-    'Geplant',
-    'planned'
-  ],
-  [
-    'Automation Hub',
-    'Automatisierungen zentral koordinieren',
-    'Geplant',
-    'planned'
-  ],
-  [
-    'Lichtwald Log',
-    'Erkenntnisse und Reflexionen festhalten',
-    'Geplant',
-    'planned'
-  ],
-  [
-    'Weekly Review',
-    'Die Woche bewusst auswerten',
-    'Geplant',
-    'planned'
-  ],
+  {
+    id: VIEW_COMMAND_CENTER,
+    name: 'Command Center',
+    description: 'Übersicht und Projektstatus',
+    status: 'Aktiv',
+    statusClass: 'active',
+    isNavigable: true,
+  },
+  {
+    id: VIEW_PROMPT_VAULT,
+    name: 'PromptVault',
+    description: 'Eigene Prompts lokal anzeigen, erstellen und löschen',
+    status: 'Lokales MVP',
+    statusClass: 'local',
+    navigationState: 'Lokales MVP',
+    isNavigable: true,
+  },
+  {
+    id: 'learning-core',
+    name: 'Learning Core',
+    description: 'Lernziele und Fortschritt bündeln',
+    status: 'Geplant',
+    statusClass: 'planned',
+  },
+  {
+    id: 'agent-hub',
+    name: 'Agent Hub',
+    description: 'Agentenrollen und Abläufe überblicken',
+    status: 'Geplant',
+    statusClass: 'planned',
+  },
+  {
+    id: 'automation-hub',
+    name: 'Automation Hub',
+    description: 'Automatisierungen zentral koordinieren',
+    status: 'Geplant',
+    statusClass: 'planned',
+  },
+  {
+    id: 'lichtwald-log',
+    name: 'Lichtwald Log',
+    description: 'Erkenntnisse und Reflexionen festhalten',
+    status: 'Geplant',
+    statusClass: 'planned',
+  },
+  {
+    id: 'weekly-review',
+    name: 'Weekly Review',
+    description: 'Die Woche bewusst auswerten',
+    status: 'Geplant',
+    statusClass: 'planned',
+  },
 ]
 
-const navigation = modules
-  .map(
-    ([name], index) => `
+function createNavigationItem(module) {
+  const state = module.navigationState
+    ? `<span class="nav-state">${module.navigationState}</span>`
+    : ''
+  const content = `
+    <span class="nav-marker" aria-hidden="true"></span>
+    <span>${module.name}</span>
+    ${state}
+  `
+
+  if (module.isNavigable) {
+    return `
       <li>
-        <span
-          class="nav-item${index === 0 ? ' is-active' : ''}"
-          ${index === 0 ? ' aria-current="page"' : ''}
+        <button
+          type="button"
+          class="nav-item nav-button"
+          data-view="${module.id}"
         >
-          <span class="nav-marker" aria-hidden="true"></span>
-          ${name}
-          ${
-            index > 0
-              ? `<span class="nav-state">${index === 1 ? 'Als Nächstes' : 'Geplant'}</span>`
-              : ''
-          }
-        </span>
+          ${content}
+        </button>
       </li>
     `
-  )
-  .join('')
+  }
+
+  return `
+    <li>
+      <span class="nav-item" aria-disabled="true">
+        ${content}
+      </span>
+    </li>
+  `
+}
+
+const navigation = modules.map(createNavigationItem).join('')
 
 const moduleCards = modules
   .map(
-    ([name, description, status, statusClass]) => `
+    ({ name, description, status, statusClass }) => `
       <article class="module-card module-card--${statusClass}">
         <div class="module-card__heading">
           <h3>${name}</h3>
@@ -75,7 +114,9 @@ const moduleCards = modules
   )
   .join('')
 
-document.querySelector('#app').innerHTML = `
+const appRoot = document.querySelector('#app')
+
+appRoot.innerHTML = `
   <div class="app-shell">
     <aside class="sidebar">
       <header class="brand">
@@ -108,64 +149,141 @@ document.querySelector('#app').innerHTML = `
       </footer>
     </aside>
 
-    <main class="main-content">
-      <header class="topbar">
-        <div>
-          <span class="eyebrow">Command Center</span>
-          <h1>Willkommen zurück, Jan</h1>
-        </div>
-        <span class="system-state">
-          <span aria-hidden="true"></span>
-          Lokaler Modus
-        </span>
-      </header>
+    <main class="main-content" id="view-outlet"></main>
+  </div>
+`
 
-      <section class="focus-panel" aria-labelledby="focus-title">
-        <div>
-          <span class="eyebrow">Aktueller Fokus</span>
-          <h2 id="focus-title">v0.2.0 – Local Dashboard MVP</h2>
-          <p>Das Command Center steht. Als nächster Schritt entsteht mit PromptVault das erste lokal nutzbare Modul.</p>
-        </div>
-        <div class="phase-progress">
-          <div class="progress-meta">
-            <span>Fortschritt der Phase</span>
-            <strong>1 von 2 Kernbereichen</strong>
-          </div>
-          <div
-            class="progress-track"
-            role="progressbar"
-            aria-label="Fortschritt der aktuellen Phase"
-            aria-valuemin="0"
-            aria-valuemax="2"
-            aria-valuenow="1"
-          >
-            <span></span>
-          </div>
-          <small>Command Center aktiv · PromptVault als Nächstes</small>
-        </div>
-      </section>
+const viewOutlet = document.querySelector('#view-outlet')
 
-      <section class="modules-section" aria-labelledby="modules-title">
-        <div class="section-heading">
-          <div>
-            <span class="eyebrow">Systemübersicht</span>
-            <h2 id="modules-title">Module</h2>
-          </div>
-          <p>Ein klarer Blick auf den aktuellen Ausbau.</p>
-        </div>
-        <div class="module-grid">
-          ${moduleCards}
-        </div>
-      </section>
+let storageImplementation = null
 
-      <aside class="milestone" aria-labelledby="milestone-title">
-        <span class="milestone-icon" aria-hidden="true">→</span>
-        <div>
-          <span class="eyebrow">Nächster Meilenstein</span>
-          <h2 id="milestone-title">PromptVault</h2>
-          <p>Eine lokale Bibliothek zum Erfassen, Strukturieren und Weiterentwickeln von Prompts.</p>
+try {
+  storageImplementation = window.localStorage
+} catch {
+  storageImplementation = null
+}
+
+const storageAdapter = createStorageAdapter(storageImplementation)
+const promptStorage = createPromptStorage(storageAdapter)
+const promptService = createPromptService({ promptStorage })
+const promptVaultView = createPromptVaultView(viewOutlet)
+const promptVaultController = createPromptVaultController({
+  promptService,
+  promptVaultView,
+})
+
+function renderCommandCenter() {
+  viewOutlet.innerHTML = `
+    <header class="topbar">
+      <div>
+        <span class="eyebrow">Command Center</span>
+        <h1 tabindex="-1">Willkommen zurück, Jan</h1>
+      </div>
+      <span class="system-state">
+        <span aria-hidden="true"></span>
+        Lokaler Modus
+      </span>
+    </header>
+
+    <section class="focus-panel" aria-labelledby="focus-title">
+      <div>
+        <span class="eyebrow">Aktueller Fokus</span>
+        <h2 id="focus-title">v0.2.0 – Local Dashboard MVP</h2>
+        <p>Das Command Center und das erste lokale PromptVault-MVP sind nutzbar. Der Funktionsausbau von PromptVault bleibt in Arbeit.</p>
+      </div>
+      <div class="phase-progress">
+        <div class="progress-meta">
+          <span>Fortschritt der Phase</span>
+          <strong>2 von 5 Ausbauschritten</strong>
         </div>
-        <span class="status status--next">Als Nächstes</span>
-      </aside>
-    </main>
-  </div>`
+        <div
+          class="progress-track"
+          role="progressbar"
+          aria-label="Fortschritt der aktuellen Phase"
+          aria-valuemin="0"
+          aria-valuemax="5"
+          aria-valuenow="2"
+        >
+          <span></span>
+        </div>
+        <small>Command Center aktiv · PromptVault lokal nutzbar · Ausbau läuft</small>
+      </div>
+    </section>
+
+    <section class="modules-section" aria-labelledby="modules-title">
+      <div class="section-heading">
+        <div>
+          <span class="eyebrow">Systemübersicht</span>
+          <h2 id="modules-title">Module</h2>
+        </div>
+        <p>Ein klarer Blick auf den aktuellen Ausbau.</p>
+      </div>
+      <div class="module-grid">
+        ${moduleCards}
+      </div>
+    </section>
+
+    <aside class="milestone" aria-labelledby="milestone-title">
+      <span class="milestone-icon" aria-hidden="true">→</span>
+      <div>
+        <span class="eyebrow">Nächster Meilenstein</span>
+        <h2 id="milestone-title">Prompt-Suche</h2>
+        <p>Als nächster PromptVault-Ausbauschritt ist eine lokale Suche geplant. Sie ist noch nicht implementiert.</p>
+      </div>
+      <span class="status status--planned">Geplant</span>
+    </aside>
+  `
+}
+
+function updateNavigation(activeView) {
+  document.querySelectorAll('.nav-button[data-view]').forEach((button) => {
+    const isActive = button.dataset.view === activeView
+    button.classList.toggle('is-active', isActive)
+
+    if (isActive) {
+      button.setAttribute('aria-current', 'page')
+    } else {
+      button.removeAttribute('aria-current')
+    }
+  })
+}
+
+function focusViewHeading() {
+  const heading = viewOutlet.querySelector('h1')
+
+  if (typeof heading?.focus === 'function') {
+    heading.focus({ preventScroll: true })
+  }
+}
+
+let activeView = null
+
+function showView(viewName, { moveFocus = false } = {}) {
+  if (viewName === activeView) {
+    return
+  }
+
+  promptVaultController.close()
+  activeView = viewName
+  updateNavigation(activeView)
+
+  if (activeView === VIEW_PROMPT_VAULT) {
+    document.title = 'GoldenDawn OS – PromptVault'
+    promptVaultController.open()
+  } else {
+    document.title = 'GoldenDawn OS – Command Center'
+    renderCommandCenter()
+  }
+
+  if (moveFocus && activeView !== VIEW_PROMPT_VAULT) {
+    focusViewHeading()
+  }
+}
+
+document.querySelectorAll('.nav-button[data-view]').forEach((button) => {
+  button.addEventListener('click', () => {
+    showView(button.dataset.view, { moveFocus: true })
+  })
+})
+
+showView(VIEW_COMMAND_CENTER)

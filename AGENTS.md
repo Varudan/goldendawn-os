@@ -24,10 +24,13 @@ Aktueller Stand: `v0.2.0 – Local Dashboard MVP in Arbeit`
 In dieser Phase liegt der Fokus auf:
 
 - dem bereits umgesetzten responsiven Command-Center-Shell;
-- dem schrittweisen Aufbau der benötigten Modulstruktur;
-- der Vorbereitung eines gemeinsamen Storage-Adapters für robuste lokale
+- der bereits umgesetzten ersten PromptVault-Modulstruktur;
+- dem bereits umgesetzten gemeinsamen Storage-Adapter für robuste lokale
   Speicherung;
-- PromptVault als erstem lokal nutzbaren MVP-Modul.
+- PromptVault als erstem lokal nutzbaren MVP-Modul mit Anzeigen, Erstellen und
+  dauerhaftem Löschen;
+- dem weiteren PromptVault-Ausbau um Suche, Kategorie-Filter, Favoriten,
+  Bearbeiten und Versionierung.
 
 Noch nicht Teil dieser Phase sind:
 
