@@ -1,4 +1,9 @@
 const CREATE_FORM_ID = 'prompt-create-form'
+const CREATE_FORM_HEADING_ID = 'prompt-create-heading'
+const SEARCH_INPUT_ID = 'prompt-search'
+const CATEGORY_FILTER_ID = 'prompt-category-filter'
+const FAVORITES_FILTER_ID = 'prompt-favorites-only'
+const FILTER_HEADING_ID = 'prompt-filter-title'
 
 const CREATE_FIELD_CONFIG = Object.freeze([
   Object.freeze({
@@ -66,6 +71,25 @@ function focusElement(element, { preventScroll = true } = {}) {
   element.focus({ preventScroll })
 }
 
+function restoreTextSelection(element, selectionStart, selectionEnd) {
+  if (
+    typeof element?.setSelectionRange !== 'function' ||
+    !Number.isInteger(selectionStart) ||
+    !Number.isInteger(selectionEnd)
+  ) {
+    return
+  }
+
+  const valueLength = element.value.length
+  const safeStart = Math.min(Math.max(selectionStart, 0), valueLength)
+  const safeEnd = Math.min(
+    Math.max(selectionEnd, safeStart),
+    valueLength
+  )
+
+  element.setSelectionRange(safeStart, safeEnd)
+}
+
 function createHeader(viewState, actions) {
   const header = createElement('header', 'topbar prompt-vault-header')
   const titleGroup = createElement('div')
@@ -102,13 +126,14 @@ function createHeader(viewState, actions) {
   const description = createElement(
     'p',
     '',
-    'Dieses lokale MVP zeigt gespeicherte Prompts vollständig an, erstellt eigene Prompts und ermöglicht dauerhaftes Löschen. Weitere Verwaltungsfunktionen sind noch geplant.'
+    'Dieses lokale MVP durchsucht und filtert gespeicherte Prompts, verwaltet Favoriten und unterstützt Erstellen sowie dauerhaftes Löschen. Bearbeiten ist als nächster Schritt geplant.'
   )
   const promptCount = createElement('p', 'prompt-count')
-  promptCount.setAttribute('aria-live', 'polite')
 
   if (viewState.phase === 'ready') {
-    const count = viewState.prompts.length
+    const count = Array.isArray(viewState.prompts)
+      ? viewState.prompts.length
+      : 0
     const countValue = createElement('strong', '', String(count))
     const countLabel = createElement(
       'span',
@@ -225,6 +250,229 @@ function createEmptyState(viewState, actions) {
   }
 }
 
+function getPromptResultLabel(viewState) {
+  const totalCount = Array.isArray(viewState.prompts)
+    ? viewState.prompts.length
+    : 0
+  const visibleCount = Array.isArray(viewState.visiblePrompts)
+    ? viewState.visiblePrompts.length
+    : 0
+
+  if (viewState.hasActiveFilters === true) {
+    return `${visibleCount} von ${totalCount} Prompts`
+  }
+
+  return totalCount === 1 ? '1 Prompt' : `${totalCount} Prompts`
+}
+
+function createFilterField(labelText, control) {
+  const field = createElement('div', 'prompt-filter-field')
+  const label = createElement('label', 'prompt-filter-label', labelText)
+  label.htmlFor = control.id
+  field.append(label, control)
+
+  return field
+}
+
+function createPromptFilters(viewState, actions) {
+  const filterPanel = createElement('section', 'prompt-filter-panel')
+  filterPanel.setAttribute('aria-labelledby', FILTER_HEADING_ID)
+
+  if (viewState.hasActiveFilters === true) {
+    filterPanel.classList.add('has-active-filters')
+  }
+
+  const panelHeader = createElement(
+    'div',
+    'prompt-filter-panel__header'
+  )
+  const headingGroup = createElement('div')
+  const eyebrow = createElement('span', 'eyebrow', 'Lokale Suche')
+  const heading = createElement(
+    'h2',
+    '',
+    'Prompts durchsuchen und filtern'
+  )
+  heading.id = FILTER_HEADING_ID
+  heading.tabIndex = -1
+  headingGroup.append(eyebrow, heading)
+
+  const resultCount = createElement(
+    'p',
+    'prompt-filter-results',
+    getPromptResultLabel(viewState)
+  )
+  resultCount.setAttribute('role', 'status')
+  resultCount.setAttribute('aria-live', 'polite')
+  resultCount.setAttribute('aria-atomic', 'true')
+  panelHeader.append(headingGroup, resultCount)
+
+  const controls = createElement('div', 'prompt-filter-controls')
+  const searchInput = createElement(
+    'input',
+    'form-control prompt-filter-control'
+  )
+  searchInput.id = SEARCH_INPUT_ID
+  searchInput.type = 'search'
+  searchInput.name = 'promptSearch'
+  searchInput.value =
+    typeof viewState.searchQuery === 'string'
+      ? viewState.searchQuery
+      : ''
+  searchInput.autocomplete = 'off'
+  searchInput.addEventListener('input', () => {
+    actions.onChangeSearchQuery?.(
+      searchInput.value,
+      searchInput.selectionStart,
+      searchInput.selectionEnd
+    )
+  })
+  const searchField = createFilterField(
+    'Prompts durchsuchen',
+    searchInput
+  )
+  searchField.classList.add('prompt-filter-field--search')
+
+  const categoryFilter = createElement(
+    'select',
+    'form-control prompt-filter-control'
+  )
+  categoryFilter.id = CATEGORY_FILTER_ID
+  categoryFilter.name = 'promptCategory'
+  const allCategoriesOption = createElement(
+    'option',
+    '',
+    'Alle Kategorien'
+  )
+  allCategoriesOption.value = ''
+  categoryFilter.append(allCategoriesOption)
+
+  if (Array.isArray(viewState.categories)) {
+    viewState.categories.forEach((category) => {
+      if (
+        typeof category !== 'string' ||
+        category.trim().length === 0
+      ) {
+        return
+      }
+
+      const option = createElement('option', '', category)
+      option.value = category
+      categoryFilter.append(option)
+    })
+  }
+
+  categoryFilter.value =
+    typeof viewState.selectedCategory === 'string'
+      ? viewState.selectedCategory
+      : ''
+  categoryFilter.addEventListener('change', () => {
+    actions.onChangeCategory?.(categoryFilter.value)
+  })
+  const categoryField = createFilterField(
+    'Kategorie',
+    categoryFilter
+  )
+
+  const favoritesField = createElement(
+    'div',
+    'prompt-filter-field prompt-filter-field--favorites'
+  )
+  const favoritesLabel = createElement(
+    'label',
+    'prompt-filter-toggle'
+  )
+  favoritesLabel.htmlFor = FAVORITES_FILTER_ID
+  const favoritesFilter = createElement('input')
+  favoritesFilter.id = FAVORITES_FILTER_ID
+  favoritesFilter.name = 'promptFavoritesOnly'
+  favoritesFilter.type = 'checkbox'
+  favoritesFilter.checked = viewState.favoritesOnly === true
+  favoritesFilter.addEventListener('change', () => {
+    actions.onChangeFavoritesOnly?.(favoritesFilter.checked)
+  })
+  favoritesLabel.append(
+    favoritesFilter,
+    createElement('span', '', 'Nur Favoriten')
+  )
+  favoritesField.append(favoritesLabel)
+  controls.append(searchField, categoryField, favoritesField)
+
+  filterPanel.append(panelHeader, controls)
+
+  let resetButton = null
+
+  if (viewState.hasActiveFilters === true) {
+    const filterActions = createElement(
+      'div',
+      'prompt-filter-panel__actions'
+    )
+    resetButton = createButton(
+      'Filter zurücksetzen',
+      'button button--secondary prompt-filter-reset',
+      actions.onResetFilters
+    )
+    filterActions.append(resetButton)
+    filterPanel.append(filterActions)
+  }
+
+  return {
+    element: filterPanel,
+    heading,
+    searchInput,
+    categoryFilter,
+    favoritesFilter,
+    resetButton,
+  }
+}
+
+function createFilteredEmptyState(viewState, actions) {
+  const hasNoFavorites =
+    viewState.filteredEmptyState === 'noFavorites' ||
+    viewState.filteredEmptyState === 'favoritesOnly'
+  const emptyState = createElement(
+    'section',
+    'ui-state-panel ui-state-panel--filtered-empty'
+  )
+  const headingId = 'prompt-filter-empty-title'
+  emptyState.setAttribute('aria-labelledby', headingId)
+
+  const stateIcon = createElement(
+    'span',
+    'state-icon',
+    hasNoFavorites ? '☆' : '○'
+  )
+  stateIcon.setAttribute('aria-hidden', 'true')
+  const heading = createElement(
+    'h2',
+    '',
+    hasNoFavorites
+      ? 'Noch keine Favoriten vorhanden'
+      : 'Keine passenden Prompts gefunden'
+  )
+  heading.id = headingId
+  heading.tabIndex = -1
+  const description = createElement(
+    'p',
+    '',
+    hasNoFavorites
+      ? 'Für die aktuelle Auswahl sind keine Favoriten vorhanden. Deine gespeicherten Prompts bleiben unverändert.'
+      : 'Passe den Suchbegriff oder die Filter an, um andere gespeicherte Prompts anzuzeigen.'
+  )
+  const resetButton = createButton(
+    'Filter zurücksetzen',
+    'button button--secondary',
+    actions.onResetFilters
+  )
+  emptyState.append(stateIcon, heading, description, resetButton)
+
+  return {
+    element: emptyState,
+    heading,
+    resetButton,
+  }
+}
+
 function createFormField(fieldConfig, createForm, actions, fieldReferences) {
   const field = createElement('div', 'form-field')
   const fieldId = 'prompt-create-' + fieldConfig.name
@@ -282,14 +530,14 @@ function createPromptForm(viewState, actions) {
   const form = createElement('form', 'prompt-create-form')
   form.id = CREATE_FORM_ID
   form.noValidate = true
-  form.setAttribute('aria-labelledby', 'prompt-create-title')
+  form.setAttribute('aria-labelledby', CREATE_FORM_HEADING_ID)
   form.setAttribute('aria-describedby', 'prompt-create-local-hint')
 
   const formHeader = createElement('div', 'prompt-create-form__header')
   const headingGroup = createElement('div')
   const eyebrow = createElement('span', 'eyebrow', 'Eigener Prompt')
   const heading = createElement('h2', '', 'Prompt erstellen')
-  heading.id = 'prompt-create-title'
+  heading.id = CREATE_FORM_HEADING_ID
   headingGroup.append(eyebrow, heading)
   const localHint = createElement(
     'p',
@@ -463,21 +711,64 @@ function createPromptCard(prompt, index, viewState, actions, focusReferences) {
   details.append(summary, promptContent)
 
   const cardActions = createElement('div', 'prompt-card__actions')
+  const accessibleTitle =
+    typeof prompt.title === 'string' && prompt.title
+      ? prompt.title
+      : 'Prompt'
+  const isFavorite = prompt.isFavorite === true
+  const favoriteAction = isFavorite
+    ? 'Aus Favoriten entfernen'
+    : 'Zu Favoriten hinzufügen'
+  const favoriteButton = createButton(
+    '',
+    'button favorite-button',
+    () => actions.onSetPromptFavorite?.(prompt.id, !isFavorite)
+  )
+  favoriteButton.setAttribute('aria-pressed', String(isFavorite))
+  favoriteButton.setAttribute(
+    'aria-label',
+    `${favoriteAction}: ${accessibleTitle}`
+  )
+  const favoriteIcon = createElement(
+    'span',
+    'favorite-button__icon',
+    isFavorite ? '★' : '☆'
+  )
+  favoriteIcon.setAttribute('aria-hidden', 'true')
+  favoriteButton.append(
+    favoriteIcon,
+    createElement('span', 'favorite-button__label', favoriteAction)
+  )
+
+  if (viewState.favoriteSavingId === prompt.id) {
+    favoriteButton.disabled = true
+    favoriteButton.setAttribute('aria-busy', 'true')
+  }
+
   const deleteButton = createButton(
     'Löschen',
     'button button--delete',
     () => actions.onRequestDelete(prompt.id)
   )
-  const accessibleTitle =
-    typeof prompt.title === 'string' && prompt.title
-      ? prompt.title
-      : 'Prompt'
   deleteButton.setAttribute(
     'aria-label',
     accessibleTitle + ' löschen'
   )
-  cardActions.append(deleteButton)
+  cardActions.append(favoriteButton, deleteButton)
   card.append(...cardContent, details, cardActions)
+
+  if (
+    viewState.favoriteErrorId === prompt.id &&
+    viewState.favoriteErrorMessage
+  ) {
+    const favoriteError = createElement(
+      'p',
+      'prompt-card__favorite-error',
+      viewState.favoriteErrorMessage
+    )
+    favoriteError.setAttribute('role', 'alert')
+    card.append(favoriteError)
+  }
 
   if (viewState.pendingDeleteId === prompt.id) {
     card.append(
@@ -490,6 +781,13 @@ function createPromptCard(prompt, index, viewState, actions, focusReferences) {
     viewState.focusTarget.id === prompt.id
   ) {
     focusReferences.requestedElement = deleteButton
+  }
+
+  if (
+    viewState.focusTarget?.type === 'favoriteButton' &&
+    viewState.focusTarget.id === prompt.id
+  ) {
+    focusReferences.favoriteButton = favoriteButton
   }
 
   if (
@@ -520,7 +818,7 @@ function createPromptList(viewState, actions) {
     createElement(
       'p',
       '',
-      'Kategorien werden als Metadatum angezeigt; Suche und Filter sind noch nicht umgesetzt.'
+      'Suche und Filter arbeiten ausschließlich lokal. Favoriten bleiben in diesem Browser gespeichert.'
     )
   )
 
@@ -528,7 +826,11 @@ function createPromptList(viewState, actions) {
   list.setAttribute('aria-label', 'Gespeicherte Prompts')
   const focusReferences = {}
 
-  viewState.prompts.forEach((prompt, index) => {
+  const visiblePrompts = Array.isArray(viewState.visiblePrompts)
+    ? viewState.visiblePrompts
+    : []
+
+  visiblePrompts.forEach((prompt, index) => {
     list.append(
       createPromptCard(prompt, index, viewState, actions, focusReferences)
     )
@@ -562,6 +864,12 @@ export function createPromptVaultView(rootElement) {
     const fragment = document.createDocumentFragment()
     const header = createHeader(viewState, actions)
     fragment.append(...header.elements)
+    const prompts = Array.isArray(viewState.prompts)
+      ? viewState.prompts
+      : []
+    const visiblePrompts = Array.isArray(viewState.visiblePrompts)
+      ? viewState.visiblePrompts
+      : []
     let requestedFocusElement = null
     let shouldRevealFocus = false
 
@@ -570,6 +878,10 @@ export function createPromptVaultView(rootElement) {
     }
 
     let promptForm = null
+    let emptyState = null
+    let promptFilters = null
+    let filteredEmptyState = null
+    let promptList = null
 
     if (viewState.phase === 'ready' && viewState.createForm?.isOpen) {
       promptForm = createPromptForm(viewState, actions)
@@ -581,64 +893,77 @@ export function createPromptVaultView(rootElement) {
     } else if (viewState.phase === 'loadError') {
       const loadError = createLoadErrorState(viewState, actions)
       fragment.append(loadError)
-      requestedFocusElement =
-        viewState.focusTarget?.type === 'heading' ? header.heading : null
-    } else if (viewState.prompts.length === 0) {
-      const emptyState = createEmptyState(viewState, actions)
+    } else if (prompts.length === 0) {
+      emptyState = createEmptyState(viewState, actions)
       fragment.append(emptyState.element)
-
-      if (viewState.focusTarget?.type === 'contentHeading') {
-        requestedFocusElement = emptyState.heading
-        shouldRevealFocus = true
-      } else if (viewState.focusTarget?.type === 'emptyCreateButton') {
-        requestedFocusElement = emptyState.createFirstPromptButton
-        shouldRevealFocus = true
-      }
     } else {
-      const promptList = createPromptList(viewState, actions)
-      fragment.append(promptList.element)
+      promptFilters = createPromptFilters(viewState, actions)
+      fragment.append(promptFilters.element)
 
-      if (viewState.focusTarget?.type === 'heading') {
-        requestedFocusElement = header.heading
-      } else if (viewState.focusTarget?.type === 'contentHeading') {
-        requestedFocusElement = promptList.heading
-        shouldRevealFocus = true
-      } else if (viewState.focusTarget?.type === 'cancelButton') {
-        requestedFocusElement = promptList.focusReferences.cancelButton
-      } else if (viewState.focusTarget?.type === 'deleteAlert') {
-        requestedFocusElement = promptList.focusReferences.deleteAlert
-      } else if (viewState.focusTarget?.type === 'promptTitle') {
-        requestedFocusElement = promptList.focusReferences.promptTitle
-        shouldRevealFocus = true
+      if (visiblePrompts.length === 0) {
+        filteredEmptyState = createFilteredEmptyState(
+          viewState,
+          actions
+        )
+        fragment.append(filteredEmptyState.element)
       } else {
-        requestedFocusElement = promptList.focusReferences.requestedElement
+        promptList = createPromptList(viewState, actions)
+        fragment.append(promptList.element)
       }
     }
 
-    if (
-      viewState.focusTarget?.type === 'headerCreateButton'
-    ) {
+    const focusTarget = viewState.focusTarget
+    const contentHeading =
+      emptyState?.heading ??
+      filteredEmptyState?.heading ??
+      promptList?.heading ??
+      promptFilters?.heading
+
+    if (focusTarget?.type === 'heading') {
+      requestedFocusElement = header.heading
+    } else if (focusTarget?.type === 'contentHeading') {
+      requestedFocusElement = contentHeading
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'emptyCreateButton') {
+      requestedFocusElement = emptyState?.createFirstPromptButton
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'headerCreateButton') {
       requestedFocusElement = header.createPromptButton
       shouldRevealFocus = true
-    } else if (
-      promptForm &&
-      viewState.focusTarget?.type === 'createTitle'
-    ) {
-      requestedFocusElement = promptForm.fields.get('title')
+    } else if (focusTarget?.type === 'createTitle') {
+      requestedFocusElement = promptForm?.fields.get('title')
       shouldRevealFocus = true
-    } else if (
-      promptForm &&
-      viewState.focusTarget?.type === 'createField'
-    ) {
-      requestedFocusElement = promptForm.fields.get(
-        viewState.focusTarget.fieldName
+    } else if (focusTarget?.type === 'createField') {
+      requestedFocusElement = promptForm?.fields.get(
+        focusTarget.fieldName
       )
       shouldRevealFocus = true
-    } else if (
-      promptForm &&
-      viewState.focusTarget?.type === 'createAlert'
-    ) {
-      requestedFocusElement = promptForm.alert
+    } else if (focusTarget?.type === 'createAlert') {
+      requestedFocusElement = promptForm?.alert
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'searchInput') {
+      requestedFocusElement = promptFilters?.searchInput
+    } else if (focusTarget?.type === 'categoryFilter') {
+      requestedFocusElement = promptFilters?.categoryFilter
+    } else if (focusTarget?.type === 'favoritesFilter') {
+      requestedFocusElement = promptFilters?.favoritesFilter
+    } else if (focusTarget?.type === 'cancelButton') {
+      requestedFocusElement =
+        promptList?.focusReferences.cancelButton
+    } else if (focusTarget?.type === 'deleteAlert') {
+      requestedFocusElement =
+        promptList?.focusReferences.deleteAlert
+    } else if (focusTarget?.type === 'deleteButton') {
+      requestedFocusElement =
+        promptList?.focusReferences.requestedElement
+    } else if (focusTarget?.type === 'favoriteButton') {
+      requestedFocusElement =
+        promptList?.focusReferences.favoriteButton ??
+        promptFilters?.favoritesFilter ??
+        contentHeading
+    } else if (focusTarget?.type === 'promptTitle') {
+      requestedFocusElement =
+        promptList?.focusReferences.promptTitle ?? contentHeading
       shouldRevealFocus = true
     }
 
@@ -646,6 +971,14 @@ export function createPromptVaultView(rootElement) {
     focusElement(requestedFocusElement, {
       preventScroll: !shouldRevealFocus,
     })
+
+    if (focusTarget?.type === 'searchInput') {
+      restoreTextSelection(
+        requestedFocusElement,
+        focusTarget.selectionStart,
+        focusTarget.selectionEnd
+      )
+    }
   }
 
   return Object.freeze({ render })

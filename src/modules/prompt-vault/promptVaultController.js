@@ -1,3 +1,9 @@
+import {
+  ALL_CATEGORIES,
+  filterPrompts,
+  getPromptCategories,
+} from './promptSearch.js'
+
 const LOAD_ERROR_MESSAGES = Object.freeze({
   invalidJson:
     'Die lokal gespeicherten PromptVault-Daten sind beschädigt. Sie wurden nicht überschrieben.',
@@ -41,6 +47,23 @@ const CREATE_ERROR_MESSAGES = Object.freeze({
     'Der Prompt konnte nicht lokal gespeichert werden. Deine Eingaben bleiben erhalten.',
   generationFailed:
     'Der Prompt konnte nicht für die lokale Speicherung vorbereitet werden. Deine Eingaben bleiben erhalten.',
+})
+
+const FAVORITE_ERROR_MESSAGES = Object.freeze({
+  notFound:
+    'Der Prompt wurde nicht gefunden. Lade PromptVault erneut und versuche es noch einmal.',
+  quotaExceeded:
+    'Der Favoritenstatus konnte nicht gespeichert werden, weil der lokale Speicher keinen freien Platz hat.',
+  unavailable:
+    'Der lokale Speicher ist nicht verfügbar. Der Favoritenstatus blieb unverändert.',
+  readFailed:
+    'Die gespeicherten Prompts konnten vor der Favoritenänderung nicht gelesen werden.',
+  writeFailed:
+    'Der Favoritenstatus konnte nicht lokal gespeichert werden und blieb unverändert.',
+  validationFailed:
+    'Der Favoritenstatus konnte wegen ungültiger Angaben nicht geändert werden.',
+  generationFailed:
+    'Die Favoritenänderung konnte nicht für die lokale Speicherung vorbereitet werden.',
 })
 
 const CREATE_FORM_FIELDS = [
@@ -94,6 +117,13 @@ function getCreateErrorMessage(result) {
   )
 }
 
+function getFavoriteErrorMessage(result) {
+  return (
+    FAVORITE_ERROR_MESSAGES[result?.status] ??
+    'Der Favoritenstatus konnte nicht gespeichert werden und blieb unverändert.'
+  )
+}
+
 function createFormValues() {
   return {
     title: '',
@@ -118,9 +148,19 @@ function createInitialState() {
   return {
     phase: 'loading',
     prompts: [],
+    visiblePrompts: [],
+    categories: [],
+    searchQuery: '',
+    selectedCategory: ALL_CATEGORIES,
+    favoritesOnly: false,
+    hasActiveFilters: false,
+    filteredEmptyState: null,
     pendingDeleteId: null,
     deletingId: null,
     deleteErrorId: null,
+    favoriteSavingId: null,
+    favoriteErrorId: null,
+    favoriteErrorMessage: '',
     statusMessage: '',
     errorMessage: '',
     createForm: createFormState(),
@@ -173,6 +213,55 @@ function getFirstInvalidField(fieldErrors) {
   return CREATE_FORM_FIELDS.find((fieldName) => fieldErrors[fieldName]) ?? null
 }
 
+function clonePrompts(prompts) {
+  return prompts.map((prompt) => ({ ...prompt }))
+}
+
+function derivePromptPresentation(state, servicePrompts = state.prompts) {
+  const prompts = Array.isArray(servicePrompts)
+    ? clonePrompts(servicePrompts)
+    : []
+  const categories = getPromptCategories(prompts)
+  const selectedCategory =
+    state.selectedCategory === ALL_CATEGORIES ||
+    categories.includes(state.selectedCategory)
+      ? state.selectedCategory
+      : ALL_CATEGORIES
+  const searchQuery =
+    typeof state.searchQuery === 'string' ? state.searchQuery : ''
+  const favoritesOnly = state.favoritesOnly === true
+  const visiblePrompts = filterPrompts(prompts, {
+    query: searchQuery,
+    category: selectedCategory,
+    favoritesOnly,
+  })
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    selectedCategory !== ALL_CATEGORIES ||
+    favoritesOnly
+  let filteredEmptyState = null
+
+  if (prompts.length > 0 && visiblePrompts.length === 0) {
+    const hasFavoritePrompt = prompts.some(
+      (prompt) => prompt.isFavorite === true
+    )
+    filteredEmptyState =
+      favoritesOnly && !hasFavoritePrompt ? 'noFavorites' : 'noMatches'
+  }
+
+  return {
+    ...state,
+    prompts,
+    visiblePrompts,
+    categories,
+    searchQuery,
+    selectedCategory,
+    favoritesOnly,
+    hasActiveFilters,
+    filteredEmptyState,
+  }
+}
+
 export function createPromptVaultController({
   promptService,
   promptVaultView,
@@ -191,6 +280,11 @@ export function createPromptVaultController({
     onRequestDelete: requestDelete,
     onCancelDelete: cancelDelete,
     onConfirmDelete: confirmDelete,
+    onChangeSearchQuery: changeSearchQuery,
+    onChangeCategory: changeCategory,
+    onChangeFavoritesOnly: changeFavoritesOnly,
+    onResetFilters: resetFilters,
+    onSetPromptFavorite: setPromptFavorite,
   })
 
   function render(focusTarget = null) {
@@ -201,7 +295,9 @@ export function createPromptVaultController({
     promptVaultView.render(
       {
         ...viewState,
-        prompts: viewState.prompts.map((prompt) => ({ ...prompt })),
+        prompts: clonePrompts(viewState.prompts),
+        visiblePrompts: clonePrompts(viewState.visiblePrompts),
+        categories: [...viewState.categories],
         createForm: cloneCreateForm(viewState.createForm),
         focusTarget,
       },
@@ -233,11 +329,13 @@ export function createPromptVaultController({
     }
 
     if (result?.ok === true && Array.isArray(result.prompts)) {
-      viewState = {
-        ...createInitialState(),
-        phase: 'ready',
-        prompts: result.prompts.map((prompt) => ({ ...prompt })),
-      }
+      viewState = derivePromptPresentation(
+        {
+          ...createInitialState(),
+          phase: 'ready',
+        },
+        result.prompts
+      )
       render({ type: 'heading' })
       return
     }
@@ -259,6 +357,159 @@ export function createPromptVaultController({
     viewState = createInitialState()
     render()
     cancelScheduledLoad = scheduleTask(finishLoading)
+  }
+
+  function changeSearchQuery(searchQuery, selectionStart, selectionEnd) {
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      typeof searchQuery !== 'string'
+    ) {
+      return
+    }
+
+    const fallbackPosition = searchQuery.length
+    const normalizedSelectionStart = Number.isInteger(selectionStart)
+      ? Math.min(Math.max(selectionStart, 0), searchQuery.length)
+      : fallbackPosition
+    const normalizedSelectionEnd = Number.isInteger(selectionEnd)
+      ? Math.min(Math.max(selectionEnd, 0), searchQuery.length)
+      : normalizedSelectionStart
+    viewState = derivePromptPresentation({
+      ...viewState,
+      searchQuery,
+      statusMessage: '',
+    })
+    render({
+      type: 'searchInput',
+      selectionStart: normalizedSelectionStart,
+      selectionEnd: normalizedSelectionEnd,
+    })
+  }
+
+  function changeCategory(category) {
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      typeof category !== 'string' ||
+      (category !== ALL_CATEGORIES &&
+        !viewState.categories.includes(category))
+    ) {
+      return
+    }
+
+    viewState = derivePromptPresentation({
+      ...viewState,
+      selectedCategory: category,
+      statusMessage: '',
+    })
+    render({ type: 'categoryFilter' })
+  }
+
+  function changeFavoritesOnly(favoritesOnly) {
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      typeof favoritesOnly !== 'boolean'
+    ) {
+      return
+    }
+
+    viewState = derivePromptPresentation({
+      ...viewState,
+      favoritesOnly,
+      statusMessage: '',
+    })
+    render({ type: 'favoritesFilter' })
+  }
+
+  function resetFilters() {
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      !viewState.hasActiveFilters
+    ) {
+      return
+    }
+
+    viewState = derivePromptPresentation({
+      ...viewState,
+      searchQuery: '',
+      selectedCategory: ALL_CATEGORIES,
+      favoritesOnly: false,
+      statusMessage: '',
+    })
+    render({
+      type: 'searchInput',
+      selectionStart: 0,
+      selectionEnd: 0,
+    })
+  }
+
+  function setPromptFavorite(promptId, isFavorite) {
+    const promptExists = viewState.prompts.some(
+      (prompt) => prompt.id === promptId
+    )
+
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      viewState.favoriteSavingId ||
+      !promptExists ||
+      typeof isFavorite !== 'boolean'
+    ) {
+      return
+    }
+
+    viewState = {
+      ...viewState,
+      favoriteSavingId: promptId,
+      favoriteErrorId: null,
+      favoriteErrorMessage: '',
+      statusMessage: '',
+    }
+    render()
+
+    let result
+
+    try {
+      result = promptService?.setPromptFavorite?.(promptId, isFavorite)
+    } catch {
+      result = null
+    }
+
+    if (result?.ok === true && Array.isArray(result.prompts)) {
+      viewState = derivePromptPresentation(
+        {
+          ...viewState,
+          favoriteSavingId: null,
+          favoriteErrorId: null,
+          favoriteErrorMessage: '',
+          statusMessage: isFavorite
+            ? 'Zu Favoriten hinzugefügt'
+            : 'Aus Favoriten entfernt',
+        },
+        result.prompts
+      )
+      const promptRemainsVisible = viewState.visiblePrompts.some(
+        (prompt) => prompt.id === promptId
+      )
+      render(
+        promptRemainsVisible
+          ? { type: 'favoriteButton', id: promptId }
+          : { type: 'favoritesFilter' }
+      )
+      return
+    }
+
+    viewState = {
+      ...viewState,
+      favoriteSavingId: null,
+      favoriteErrorId: promptId,
+      favoriteErrorMessage: getFavoriteErrorMessage(result),
+      statusMessage: '',
+    }
+    render({ type: 'favoriteButton', id: promptId })
   }
 
   function openCreateForm(openedFrom = 'header') {
@@ -362,18 +613,25 @@ export function createPromptVaultController({
         typeof result.createdPrompt?.id === 'string'
           ? result.createdPrompt.id
           : null
-      viewState = {
-        ...viewState,
-        prompts: result.prompts.map((prompt) => ({ ...prompt })),
-        pendingDeleteId: null,
-        deletingId: null,
-        deleteErrorId: null,
-        statusMessage: 'Prompt erstellt',
-        errorMessage: '',
-        createForm: createFormState(),
-      }
+      viewState = derivePromptPresentation(
+        {
+          ...viewState,
+          pendingDeleteId: null,
+          deletingId: null,
+          deleteErrorId: null,
+          statusMessage: 'Prompt erstellt',
+          errorMessage: '',
+          createForm: createFormState(),
+        },
+        result.prompts
+      )
+      const createdPromptIsVisible =
+        createdPromptId !== null &&
+        viewState.visiblePrompts.some(
+          (prompt) => prompt.id === createdPromptId
+        )
       render(
-        createdPromptId
+        createdPromptIsVisible
           ? { type: 'promptTitle', id: createdPromptId }
           : { type: 'contentHeading' }
       )
@@ -483,15 +741,25 @@ export function createPromptVaultController({
     }
 
     if (result?.ok === true && Array.isArray(result.prompts)) {
-      viewState = {
-        ...viewState,
-        prompts: result.prompts.map((prompt) => ({ ...prompt })),
-        pendingDeleteId: null,
-        deletingId: null,
-        deleteErrorId: null,
-        statusMessage: 'Prompt gelöscht',
-        errorMessage: '',
-      }
+      const removedFavoriteError =
+        viewState.favoriteErrorId === promptId
+      viewState = derivePromptPresentation(
+        {
+          ...viewState,
+          pendingDeleteId: null,
+          deletingId: null,
+          deleteErrorId: null,
+          favoriteErrorId: removedFavoriteError
+            ? null
+            : viewState.favoriteErrorId,
+          favoriteErrorMessage: removedFavoriteError
+            ? ''
+            : viewState.favoriteErrorMessage,
+          statusMessage: 'Prompt gelöscht',
+          errorMessage: '',
+        },
+        result.prompts
+      )
       render({ type: 'contentHeading' })
       return
     }

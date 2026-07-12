@@ -22,7 +22,8 @@ const modules = [
   {
     id: VIEW_PROMPT_VAULT,
     name: 'PromptVault',
-    description: 'Eigene Prompts lokal anzeigen, erstellen und löschen',
+    description:
+      'Prompts lokal durchsuchen, nach Kategorie filtern und favorisieren',
     status: 'Lokales MVP',
     statusClass: 'local',
     navigationState: 'Lokales MVP',
@@ -189,12 +190,12 @@ function renderCommandCenter() {
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
         <h2 id="focus-title">v0.2.0 – Local Dashboard MVP</h2>
-        <p>Das Command Center und das erste lokale PromptVault-MVP sind nutzbar. Der Funktionsausbau von PromptVault bleibt in Arbeit.</p>
+        <p>Das Command Center und PromptVault mit lokaler Suche, Kategorie-Filtern und persistenten Favoriten sind nutzbar. Bearbeiten und Versionierung bleiben geplant.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
           <span>Fortschritt der Phase</span>
-          <strong>2 von 5 Ausbauschritten</strong>
+          <strong>3 von 5 Ausbauschritten</strong>
         </div>
         <div
           class="progress-track"
@@ -202,11 +203,11 @@ function renderCommandCenter() {
           aria-label="Fortschritt der aktuellen Phase"
           aria-valuemin="0"
           aria-valuemax="5"
-          aria-valuenow="2"
+          aria-valuenow="3"
         >
           <span></span>
         </div>
-        <small>Command Center aktiv · PromptVault lokal nutzbar · Ausbau läuft</small>
+        <small>Command Center aktiv · Suche und Favoriten lokal nutzbar · Bearbeiten geplant</small>
       </div>
     </section>
 
@@ -227,8 +228,8 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Meilenstein</span>
-        <h2 id="milestone-title">Prompt-Suche</h2>
-        <p>Als nächster PromptVault-Ausbauschritt ist eine lokale Suche geplant. Sie ist noch nicht implementiert.</p>
+        <h2 id="milestone-title">Prompts bearbeiten</h2>
+        <p>Als nächster PromptVault-Ausbauschritt ist das Bearbeiten vorhandener Prompts geplant. Versionierung folgt erst danach.</p>
       </div>
       <span class="status status--planned">Geplant</span>
     </aside>

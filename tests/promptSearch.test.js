@@ -4,6 +4,7 @@ import test from 'node:test'
 import {
   ALL_CATEGORIES,
   filterPrompts,
+  getPromptCategories,
 } from '../src/modules/prompt-vault/promptSearch.js'
 
 const prompts = Object.freeze([
@@ -146,4 +147,35 @@ test('verändert weder Eingabearray noch Prompt-Objekte', () => {
     )
   )
   assert.ok(result.every((prompt) => prompts.includes(prompt)))
+})
+
+test('leitet eindeutige nicht leere Kategorien in Listenreihenfolge ab', () => {
+  const categorizedPrompts = [
+    ...prompts,
+    {
+      ...prompts[0],
+      id: 'prompt-learning-002',
+      category: ' Lernen ',
+    },
+    {
+      ...prompts[0],
+      id: 'prompt-empty-category',
+      category: '   ',
+    },
+  ]
+  const snapshot = structuredClone(categorizedPrompts)
+
+  assert.deepEqual(getPromptCategories(categorizedPrompts), [
+    'Lernen',
+    'Automatisierung',
+    'Reflexion',
+  ])
+  assert.deepEqual(
+    getPromptIds(
+      filterPrompts(categorizedPrompts, { category: 'Lernen' })
+    ),
+    ['prompt-learning-001', 'prompt-learning-002']
+  )
+  assert.deepEqual(categorizedPrompts, snapshot)
+  assert.deepEqual(getPromptCategories(null), [])
 })

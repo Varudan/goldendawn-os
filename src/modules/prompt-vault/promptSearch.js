@@ -22,10 +22,34 @@ function matchesQuery(prompt, normalizedQuery) {
 }
 
 function matchesCategory(prompt, selectedCategory) {
+  const promptCategory =
+    typeof prompt?.category === 'string' ? prompt.category.trim() : ''
+
   return (
     selectedCategory === ALL_CATEGORIES ||
-    prompt?.category === selectedCategory
+    promptCategory === selectedCategory
   )
+}
+
+export function getPromptCategories(prompts) {
+  if (!Array.isArray(prompts)) {
+    return []
+  }
+
+  const categories = []
+  const knownCategories = new Set()
+
+  prompts.forEach((prompt) => {
+    const category =
+      typeof prompt?.category === 'string' ? prompt.category.trim() : ''
+
+    if (category && !knownCategories.has(category)) {
+      knownCategories.add(category)
+      categories.push(category)
+    }
+  })
+
+  return categories
 }
 
 export function filterPrompts(
