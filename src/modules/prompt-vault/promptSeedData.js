@@ -9,6 +9,7 @@ export const PROMPT_SEED_DATA = Object.freeze([
       'Erkläre [THEMA] verständlich für eine Person mit [VORWISSEN]. Gliedere die Erklärung in zentrale Begriffe, ein anschauliches Beispiel und drei kurze Kontrollfragen. Weise auf typische Missverständnisse hin und fasse die wichtigsten Punkte am Ende kompakt zusammen.',
     createdAt: '2026-07-11T08:00:00.000Z',
     updatedAt: '2026-07-11T08:00:00.000Z',
+    isFavorite: false,
     isDemo: true,
   }),
   Object.freeze({
@@ -21,6 +22,7 @@ export const PROMPT_SEED_DATA = Object.freeze([
       'Entwirf einen umsetzbaren Plan, um [PROZESS] mit KI-Unterstützung zu automatisieren und dabei [ZIEL] zu erreichen. Beschreibe Auslöser, Eingaben, Verarbeitungsschritte, erwartete Ausgaben, Validierungen und kontrollierte Fehlerpfade. Kennzeichne manuelle Freigaben, Datenschutzrisiken und messbare Erfolgskriterien.',
     createdAt: '2026-07-11T08:05:00.000Z',
     updatedAt: '2026-07-11T08:05:00.000Z',
+    isFavorite: false,
     isDemo: true,
   }),
   Object.freeze({
@@ -33,6 +35,7 @@ export const PROMPT_SEED_DATA = Object.freeze([
       'Begleite mich durch eine sachliche Reflexion über [ZEITRAUM]. Frage nacheinander nach Fortschritten bei [ZIEL], wichtigen Erkenntnissen, Hindernissen, hilfreichen Gewohnheiten und offenen Entscheidungen. Leite daraus höchstens drei konkrete nächste Schritte ab und trenne Beobachtungen klar von Bewertungen.',
     createdAt: '2026-07-11T08:10:00.000Z',
     updatedAt: '2026-07-11T08:10:00.000Z',
+    isFavorite: false,
     isDemo: true,
   }),
 ])

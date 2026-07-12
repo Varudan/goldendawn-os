@@ -53,8 +53,20 @@ function isUtcIsoTimestamp(value) {
   )
 }
 
-function isValidPrompt(prompt) {
+function isValidPrompt(prompt, { allowMissingFavorite = false } = {}) {
   if (!isObjectRecord(prompt)) {
+    return false
+  }
+
+  const hasFavorite = Object.prototype.hasOwnProperty.call(
+    prompt,
+    'isFavorite'
+  )
+
+  if (
+    (!allowMissingFavorite || hasFavorite) &&
+    typeof prompt.isFavorite !== 'boolean'
+  ) {
     return false
   }
 
@@ -88,7 +100,7 @@ function isValidPrompt(prompt) {
   return Date.parse(prompt.updatedAt) >= Date.parse(prompt.createdAt)
 }
 
-function isValidPromptCollection(prompts) {
+function isValidPromptCollection(prompts, validationOptions) {
   if (!Array.isArray(prompts)) {
     return false
   }
@@ -96,7 +108,10 @@ function isValidPromptCollection(prompts) {
   const promptIds = new Set()
 
   for (const prompt of prompts) {
-    if (!isValidPrompt(prompt) || promptIds.has(prompt.id)) {
+    if (
+      !isValidPrompt(prompt, validationOptions) ||
+      promptIds.has(prompt.id)
+    ) {
       return false
     }
 
@@ -108,6 +123,13 @@ function isValidPromptCollection(prompts) {
 
 function clonePrompts(prompts) {
   return prompts.map((prompt) => ({ ...prompt }))
+}
+
+function normalizeStoredPrompts(prompts) {
+  return prompts.map((prompt) => ({
+    ...prompt,
+    isFavorite: prompt.isFavorite === true,
+  }))
 }
 
 function createAdapterUnavailableResult() {
@@ -164,7 +186,11 @@ export function createPromptStorage(storageAdapter) {
       )
     }
 
-    if (!isValidPromptCollection(storedCollection.prompts)) {
+    if (
+      !isValidPromptCollection(storedCollection.prompts, {
+        allowMissingFavorite: true,
+      })
+    ) {
       return createFailure(
         'invalidStoredData',
         'invalidPromptData',
@@ -175,7 +201,7 @@ export function createPromptStorage(storageAdapter) {
     return {
       ok: true,
       status: 'found',
-      prompts: clonePrompts(storedCollection.prompts),
+      prompts: normalizeStoredPrompts(storedCollection.prompts),
     }
   }
 

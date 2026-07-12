@@ -13,8 +13,9 @@
 The responsive Command Center shell is implemented on top of the verified Vite
 and Vanilla JavaScript foundation. The first PromptVault module structure and
 the shared local storage adapter are implemented. PromptVault is locally usable
-for viewing, creating, and permanently deleting prompts. `v0.2.0` remains in
-progress; features marked as planned are not implemented yet.
+for viewing, creating, permanently deleting, searching, filtering by category,
+and persisting favorite prompts. `v0.2.0` remains in progress; features marked
+as planned are not implemented yet.
 
 ## Vision
 
@@ -62,7 +63,7 @@ Accepted architecture decisions and their rationale are indexed in
 | Module | Purpose | Status |
 | --- | --- | --- |
 | Command Center | Central overview, navigation, and system status | Shell implemented |
-| PromptVault | Local prompt library; further management features remain planned | Local MVP usable: view, create, and delete |
+| PromptVault | Local prompt library with search, category filters, and favorites; editing and versioning remain planned | Local MVP usable: view, create, delete, search, filter, and favorite |
 | Learning Core | Learning progress, notes, and Arisa Tests | Planned |
 | Agent Hub | Agent overview, capabilities, and execution status | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Planned |
@@ -76,8 +77,9 @@ PromptVault currently uses the local storage key
 initializes exactly three clearly marked synthetic example prompts. The local
 MVP displays category metadata and the complete prompt text, lets users create
 validated custom prompts with persistent local storage, and permanently deletes
-prompts only after an accessible inline confirmation. A deliberately stored
-empty list remains empty after a reload.
+prompts only after an accessible inline confirmation. It also provides local
+full-text search, category filters, and persistent favorites. A deliberately
+stored empty list remains empty after a reload.
 
 The implemented local data flow is:
 
@@ -90,9 +92,15 @@ PromptVault view
   → localStorage
 ```
 
-The UI does not access `localStorage` directly. Editing, search, category
-filters, favorites, and prompt versioning remain planned. Webhooks,
-synchronization, Airtable, and agent logic are outside this step.
+The UI does not access `localStorage` directly. Search text, category selection,
+and the favorites-only filter remain transient controller and UI state and are
+not stored. Favorite changes use the existing service and storage flow shown
+above and persist within `goldendawn.promptVault.v1`; no second storage key is
+used.
+
+Editing existing prompts is the next planned PromptVault step. Immutable prompt
+versioning follows only after editing. Webhooks, synchronization, Airtable, a
+backend, and agent logic remain outside this step.
 
 ## Development principles
 
