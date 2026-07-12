@@ -27,10 +27,11 @@ In dieser Phase liegt der Fokus auf:
 - der bereits umgesetzten ersten PromptVault-Modulstruktur;
 - dem bereits umgesetzten gemeinsamen Storage-Adapter für robuste lokale
   Speicherung;
-- PromptVault als erstem lokal nutzbaren MVP-Modul mit Anzeigen, Erstellen und
-  dauerhaftem Löschen;
-- dem weiteren PromptVault-Ausbau um Suche, Kategorie-Filter, Favoriten,
-  Bearbeiten und Versionierung.
+- PromptVault als erstem lokal nutzbaren MVP-Modul mit Anzeigen, Erstellen,
+  dauerhaftem Löschen, lokaler Textsuche, Kategorie-Filtern und persistenten
+  Favoriten;
+- dem weiteren PromptVault-Ausbau mit Bearbeiten als nächstem Schritt und
+  Versionierung als anschließendem Schritt.
 
 Noch nicht Teil dieser Phase sind:
 
@@ -177,6 +178,10 @@ Regeln:
 - Verwende sichere Fallback-Werte und melde relevante Fehler nachvollziehbar.
 - Vermische Daten verschiedener Module nicht in einem unstrukturierten
   Sammelobjekt.
+- Speichere PromptVault-Suchbegriffe und -Filterzustände nicht. Persistente
+  Favoriten verwenden ausschließlich den bestehenden Datenfluss über
+  `PromptService`, `PromptStorage` und `StorageAdapter` sowie den Storage-Key
+  `goldendawn.promptVault.v1`.
 - Plane Migrationen ein, bevor ein bestehendes Datenformat geändert wird.
 - Mock-Daten müssen klar als Mock- oder Demo-Daten erkennbar sein.
 

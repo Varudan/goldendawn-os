@@ -102,7 +102,9 @@ bereitstellen. Externe Systeme sind für diese Version nicht erforderlich.
 - ✅ Gemeinsamen Storage-Adapter für robuste lokale Speicherung implementieren.
 - ✅ PromptVault als erstes lokal nutzbares MVP-Modul mit Anzeigen, Erstellen
   und Löschen implementieren.
-- ⬜ Prompt-Suche, Kategorie-Filter und Favoriten bereitstellen.
+- ✅ Prompt-Suche, Kategorie-Filter und persistente Favoriten bereitstellen;
+  Such- und Filterzustände bleiben flüchtig, Favoriten verwenden den bestehenden
+  Service- und Storage-Datenfluss sowie `goldendawn.promptVault.v1`.
 - ✅ Prompt-Detailansicht mit vollständigem Prompt-Text erstellen.
 - ✅ Prompts nach zugänglicher Inline-Bestätigung dauerhaft lokal löschen.
 - ✅ Prompts lokal erstellen, validieren und dauerhaft speichern.
@@ -346,12 +348,13 @@ Diese Punkte werden erst nach dem Portfolio Release bewertet und priorisiert.
 
 ## Nächster konkreter Schritt
 
-Der responsive Command-Center-Shell, die erste PromptVault-Modulstruktur, der
-gemeinsame Storage-Adapter und das lokale PromptVault-MVP zum Anzeigen,
-Erstellen und Löschen sind umgesetzt. `v0.2.0 – Lokales Dashboard-MVP` bleibt
-in Arbeit.
+Der responsive Command-Center-Shell, die erste PromptVault-Modulstruktur und der
+gemeinsame Storage-Adapter sind umgesetzt. Das lokale PromptVault-MVP unterstützt
+Anzeigen, Erstellen, Löschen und Durchsuchen sowie Kategorie-Filter und
+persistent gespeicherte Favoriten. Suchbegriffe und Filterzustände werden nicht
+gespeichert. `v0.2.0 – Lokales Dashboard-MVP` bleibt in Arbeit.
 
-Als nächste PromptVault-Funktion folgt die lokale Prompt-Suche. Kategorie-Filter,
-Favoriten, Bearbeiten und Versionierung bleiben weitere geplante
-Ausbauschritte. Webhooks, Synchronisierung, Airtable und Agentenlogik beginnen
-erst in den dafür vorgesehenen späteren Versionen.
+Als nächste PromptVault-Funktion folgt das Bearbeiten vorhandener Prompts.
+Versionierung wird erst danach umgesetzt. Webhooks, Synchronisierung, Airtable,
+ein Backend und Agentenlogik beginnen erst in den dafür vorgesehenen späteren
+Versionen.
