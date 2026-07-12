@@ -1,5 +1,14 @@
 import { PROMPT_SEED_DATA } from '../modules/prompt-vault/promptSeedData.js'
 
+const PROMPT_INPUT_LIMITS = Object.freeze({
+  title: 120,
+  category: 60,
+  description: 240,
+  content: 10000,
+})
+
+const MAX_ID_GENERATION_ATTEMPTS = 5
+
 function clonePrompts(prompts) {
   return prompts.map((prompt) => ({ ...prompt }))
 }
@@ -12,6 +21,19 @@ function createFailure(status, code, message, prompts = []) {
     error: {
       code,
       message,
+    },
+  }
+}
+
+function createInputFailure(fieldErrors) {
+  return {
+    ok: false,
+    status: 'validationFailed',
+    prompts: [],
+    error: {
+      code: 'invalidPromptInput',
+      message: 'Bitte korrigiere die markierten Felder.',
+      fieldErrors: { ...fieldErrors },
     },
   }
 }
@@ -42,8 +64,128 @@ function isValidPromptId(promptId) {
   )
 }
 
+function isObjectRecord(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function validatePromptInput(input) {
+  const promptInput = isObjectRecord(input) ? input : {}
+  const fieldErrors = {}
+  const title =
+    typeof promptInput.title === 'string' ? promptInput.title.trim() : ''
+  const content =
+    typeof promptInput.content === 'string' ? promptInput.content.trim() : ''
+  let category = ''
+  let description = ''
+
+  if (!title) {
+    fieldErrors.title = 'Bitte gib einen Titel ein.'
+  } else if (title.length > PROMPT_INPUT_LIMITS.title) {
+    fieldErrors.title =
+      'Der Titel darf höchstens 120 Zeichen lang sein.'
+  }
+
+  if (promptInput.category != null) {
+    if (typeof promptInput.category !== 'string') {
+      fieldErrors.category = 'Die Kategorie muss als Text angegeben werden.'
+    } else {
+      category = promptInput.category.trim()
+
+      if (category.length > PROMPT_INPUT_LIMITS.category) {
+        fieldErrors.category =
+          'Die Kategorie darf höchstens 60 Zeichen lang sein.'
+      }
+    }
+  }
+
+  if (promptInput.description != null) {
+    if (typeof promptInput.description !== 'string') {
+      fieldErrors.description =
+        'Die Beschreibung muss als Text angegeben werden.'
+    } else {
+      description = promptInput.description.trim()
+
+      if (description.length > PROMPT_INPUT_LIMITS.description) {
+        fieldErrors.description =
+          'Die Beschreibung darf höchstens 240 Zeichen lang sein.'
+      }
+    }
+  }
+
+  if (!content) {
+    fieldErrors.content = 'Bitte gib einen Prompt-Text ein.'
+  } else if (content.length > PROMPT_INPUT_LIMITS.content) {
+    fieldErrors.content =
+      'Der Prompt-Text darf höchstens 10.000 Zeichen lang sein.'
+  }
+
+  return {
+    values: {
+      title,
+      category,
+      description,
+      content,
+    },
+    fieldErrors,
+  }
+}
+
+function generateDefaultPromptId() {
+  if (typeof globalThis.crypto?.randomUUID !== 'function') {
+    throw new Error('randomUUID unavailable')
+  }
+
+  return `prompt-${globalThis.crypto.randomUUID()}`
+}
+
+function getDefaultCurrentDate() {
+  return new Date()
+}
+
+function generateUniquePromptId(generatePromptId, prompts) {
+  const promptIds = new Set(prompts.map((prompt) => prompt.id))
+
+  for (
+    let attempt = 0;
+    attempt < MAX_ID_GENERATION_ATTEMPTS;
+    attempt += 1
+  ) {
+    let promptId
+
+    try {
+      promptId = generatePromptId()
+    } catch {
+      continue
+    }
+
+    if (isValidPromptId(promptId) && !promptIds.has(promptId)) {
+      return promptId
+    }
+  }
+
+  return null
+}
+
+function createUtcTimestamp(getCurrentDate) {
+  try {
+    const currentDate = getCurrentDate()
+    const date =
+      currentDate instanceof Date ? currentDate : new Date(currentDate)
+
+    if (Number.isNaN(date.getTime())) {
+      return null
+    }
+
+    return date.toISOString()
+  } catch {
+    return null
+  }
+}
+
 export function createPromptService({
   promptStorage,
+  generatePromptId = generateDefaultPromptId,
+  getCurrentDate = getDefaultCurrentDate,
 } = {}) {
   function loadPrompts() {
     if (typeof promptStorage?.loadPromptCollection !== 'function') {
@@ -108,6 +250,75 @@ export function createPromptService({
     }
   }
 
+  function createPrompt(input) {
+    const validationResult = validatePromptInput(input)
+
+    if (Object.keys(validationResult.fieldErrors).length > 0) {
+      return createInputFailure(validationResult.fieldErrors)
+    }
+
+    const loadResult = loadPrompts()
+
+    if (!loadResult.ok) {
+      return loadResult
+    }
+
+    if (typeof promptStorage?.savePromptCollection !== 'function') {
+      return createFailure(
+        'unavailable',
+        'promptStorageUnavailable',
+        'Der Prompt-Speicher ist nicht verfügbar.',
+        loadResult.prompts
+      )
+    }
+
+    const promptId = generateUniquePromptId(
+      generatePromptId,
+      loadResult.prompts
+    )
+
+    if (!promptId) {
+      return createFailure(
+        'generationFailed',
+        'promptIdGenerationFailed',
+        'Der Prompt konnte nicht für die lokale Speicherung vorbereitet werden.',
+        loadResult.prompts
+      )
+    }
+
+    const timestamp = createUtcTimestamp(getCurrentDate)
+
+    if (!timestamp) {
+      return createFailure(
+        'generationFailed',
+        'promptTimestampGenerationFailed',
+        'Der Prompt konnte nicht für die lokale Speicherung vorbereitet werden.',
+        loadResult.prompts
+      )
+    }
+
+    const newPrompt = {
+      id: promptId,
+      ...validationResult.values,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      isDemo: false,
+    }
+    const updatedPrompts = [newPrompt, ...loadResult.prompts]
+    const saveResult = promptStorage.savePromptCollection(updatedPrompts)
+
+    if (!saveResult.ok) {
+      return forwardFailure(saveResult, loadResult.prompts)
+    }
+
+    return {
+      ok: true,
+      status: 'created',
+      createdPrompt: { ...newPrompt },
+      prompts: clonePrompts(updatedPrompts),
+    }
+  }
+
   function deletePrompt(promptId) {
     if (!isValidPromptId(promptId)) {
       return createFailure(
@@ -155,6 +366,7 @@ export function createPromptService({
 
   return Object.freeze({
     loadPrompts,
+    createPrompt,
     deletePrompt,
   })
 }

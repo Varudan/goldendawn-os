@@ -1,15 +1,15 @@
 export const PROMPT_STORAGE_KEY = 'goldendawn.promptVault.v1'
 export const PROMPT_SCHEMA_VERSION = 1
 
-const REQUIRED_PROMPT_FIELDS = [
+const REQUIRED_NON_EMPTY_PROMPT_FIELDS = [
   'id',
   'title',
-  'description',
-  'category',
   'content',
   'createdAt',
   'updatedAt',
 ]
+
+const REQUIRED_STRING_PROMPT_FIELDS = ['description', 'category']
 
 function createFailure(status, code, message) {
   return {
@@ -58,7 +58,19 @@ function isValidPrompt(prompt) {
     return false
   }
 
-  if (!REQUIRED_PROMPT_FIELDS.every((field) => isNonEmptyString(prompt[field]))) {
+  if (
+    !REQUIRED_NON_EMPTY_PROMPT_FIELDS.every((field) =>
+      isNonEmptyString(prompt[field])
+    )
+  ) {
+    return false
+  }
+
+  if (
+    !REQUIRED_STRING_PROMPT_FIELDS.every(
+      (field) => typeof prompt[field] === 'string'
+    )
+  ) {
     return false
   }
 
@@ -66,7 +78,10 @@ function isValidPrompt(prompt) {
     return false
   }
 
-  if (!isUtcIsoTimestamp(prompt.createdAt) || !isUtcIsoTimestamp(prompt.updatedAt)) {
+  if (
+    !isUtcIsoTimestamp(prompt.createdAt) ||
+    !isUtcIsoTimestamp(prompt.updatedAt)
+  ) {
     return false
   }
 
@@ -115,7 +130,10 @@ export function createPromptStorage(storageAdapter) {
       return storageResult
     }
 
-    if (storageResult.status !== 'found' || !isObjectRecord(storageResult.value)) {
+    if (
+      storageResult.status !== 'found' ||
+      !isObjectRecord(storageResult.value)
+    ) {
       return createFailure(
         'invalidStoredData',
         'invalidPromptData',
@@ -125,7 +143,12 @@ export function createPromptStorage(storageAdapter) {
 
     const storedCollection = storageResult.value
 
-    if (!Object.prototype.hasOwnProperty.call(storedCollection, 'schemaVersion')) {
+    if (
+      !Object.prototype.hasOwnProperty.call(
+        storedCollection,
+        'schemaVersion'
+      )
+    ) {
       return createFailure(
         'invalidStoredData',
         'invalidPromptData',
