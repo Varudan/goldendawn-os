@@ -302,6 +302,7 @@ export function createPromptService({
       ...validationResult.values,
       createdAt: timestamp,
       updatedAt: timestamp,
+      isFavorite: false,
       isDemo: false,
     }
     const updatedPrompts = [newPrompt, ...loadResult.prompts]
@@ -364,9 +365,105 @@ export function createPromptService({
     }
   }
 
+  function setPromptFavorite(promptId, isFavorite) {
+    if (!isValidPromptId(promptId)) {
+      return createFailure(
+        'validationFailed',
+        'invalidPromptId',
+        'Für die Favoritenmarkierung wird eine gültige Prompt-ID benötigt.'
+      )
+    }
+
+    if (typeof isFavorite !== 'boolean') {
+      return createFailure(
+        'validationFailed',
+        'invalidPromptFavoriteValue',
+        'Der Favoritenstatus muss als Wahrheitswert angegeben werden.'
+      )
+    }
+
+    const loadResult = loadPrompts()
+
+    if (!loadResult.ok) {
+      return loadResult
+    }
+
+    const promptIndex = loadResult.prompts.findIndex(
+      (prompt) => prompt.id === promptId
+    )
+
+    if (promptIndex === -1) {
+      return createFailure(
+        'notFound',
+        'promptNotFound',
+        'Der angeforderte Prompt wurde nicht gefunden.',
+        loadResult.prompts
+      )
+    }
+
+    const currentPrompt = loadResult.prompts[promptIndex]
+
+    if (currentPrompt.isFavorite === isFavorite) {
+      return {
+        ok: true,
+        status: 'favoriteUpdated',
+        favoriteChanged: false,
+        updatedPrompt: { ...currentPrompt },
+        prompts: clonePrompts(loadResult.prompts),
+      }
+    }
+
+    if (typeof promptStorage?.savePromptCollection !== 'function') {
+      return createFailure(
+        'unavailable',
+        'promptStorageUnavailable',
+        'Der Prompt-Speicher ist nicht verfügbar.',
+        loadResult.prompts
+      )
+    }
+
+    const timestamp = createUtcTimestamp(getCurrentDate)
+
+    if (
+      !timestamp ||
+      Date.parse(timestamp) < Date.parse(currentPrompt.createdAt) ||
+      Date.parse(timestamp) < Date.parse(currentPrompt.updatedAt)
+    ) {
+      return createFailure(
+        'generationFailed',
+        'promptTimestampGenerationFailed',
+        'Der Prompt konnte nicht für die lokale Speicherung vorbereitet werden.',
+        loadResult.prompts
+      )
+    }
+
+    const updatedPrompt = {
+      ...currentPrompt,
+      isFavorite,
+      updatedAt: timestamp,
+    }
+    const updatedPrompts = loadResult.prompts.map((prompt, index) =>
+      index === promptIndex ? updatedPrompt : prompt
+    )
+    const saveResult = promptStorage.savePromptCollection(updatedPrompts)
+
+    if (!saveResult.ok) {
+      return forwardFailure(saveResult, loadResult.prompts)
+    }
+
+    return {
+      ok: true,
+      status: 'favoriteUpdated',
+      favoriteChanged: true,
+      updatedPrompt: { ...updatedPrompt },
+      prompts: clonePrompts(updatedPrompts),
+    }
+  }
+
   return Object.freeze({
     loadPrompts,
     createPrompt,
     deletePrompt,
+    setPromptFavorite,
   })
 }

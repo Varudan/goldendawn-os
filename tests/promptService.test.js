@@ -47,6 +47,7 @@ test('initialisiert bei fehlendem Key genau drei Seed-Prompts', () => {
 
   const result = promptService.loadPrompts()
 
+  assert.equal(PROMPT_STORAGE_KEY, 'goldendawn.promptVault.v1')
   assert.equal(result.ok, true)
   assert.equal(result.status, 'initialized')
   assert.equal(result.initialized, true)
@@ -64,11 +65,19 @@ test('initialisiert bei fehlendem Key genau drei Seed-Prompts', () => {
   )
   assert.equal(new Set(result.prompts.map(({ id }) => id)).size, 3)
   assert.ok(result.prompts.every(({ isDemo }) => isDemo === true))
+  assert.ok(
+    result.prompts.every(({ isFavorite }) => isFavorite === false)
+  )
   assert.equal(fakeStorage.setItemCalls, 1)
 
   const storedEnvelope = JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY))
   assert.equal(storedEnvelope.schemaVersion, 1)
   assert.equal(storedEnvelope.prompts.length, 3)
+  assert.ok(
+    storedEnvelope.prompts.every(
+      ({ isFavorite }) => isFavorite === false
+    )
+  )
 })
 
 test('erneutes Laden dupliziert oder überschreibt die Seeds nicht', () => {
@@ -103,16 +112,45 @@ test('bewahrt ein bewusst leer gespeichertes Prompt-Array', () => {
   assert.equal(fakeStorage.setItemCalls, 0)
 })
 
-test('lädt gültige gespeicherte Prompt-Daten unverändert', () => {
+test('normalisiert einen alten Prompt ohne Favoritenfeld nur beim Laden', () => {
+  const legacyEnvelope = createStoredEnvelope([customPrompt])
   const fakeStorage = new FakeStorage([
-    [PROMPT_STORAGE_KEY, createStoredEnvelope([customPrompt])],
+    [PROMPT_STORAGE_KEY, legacyEnvelope],
   ])
   const { promptService } = createPromptSystem(fakeStorage)
 
   const result = promptService.loadPrompts()
 
   assert.equal(result.ok, true)
-  assert.deepEqual(result.prompts, [customPrompt])
+  assert.deepEqual(result.prompts, [
+    {
+      ...customPrompt,
+      isFavorite: false,
+    },
+  ])
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), legacyEnvelope)
+  assert.equal(fakeStorage.setItemCalls, 0)
+})
+
+test('weist einen vorhandenen ungültigen Favoritenwert kontrolliert zurück', () => {
+  const invalidEnvelope = createStoredEnvelope([
+    {
+      ...customPrompt,
+      isFavorite: 'true',
+    },
+  ])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, invalidEnvelope],
+  ])
+  const { promptService } = createPromptSystem(fakeStorage)
+
+  const result = promptService.loadPrompts()
+
+  assert.equal(result.ok, false)
+  assert.equal(result.status, 'invalidStoredData')
+  assert.equal(result.error.code, 'invalidPromptData')
+  assert.deepEqual(result.prompts, [])
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), invalidEnvelope)
   assert.equal(fakeStorage.setItemCalls, 0)
 })
 
@@ -180,6 +218,7 @@ test('erstellt und speichert einen gültigen eigenen Prompt', () => {
     content: '  Erste Zeile\nZweite Zeile  ',
     createdAt: '2000-01-01T00:00:00.000Z',
     updatedAt: '2000-01-01T00:00:00.000Z',
+    isFavorite: true,
     isDemo: true,
   })
 
@@ -193,6 +232,7 @@ test('erstellt und speichert einen gültigen eigenen Prompt', () => {
     content: 'Erste Zeile\nZweite Zeile',
     createdAt: '2026-07-12T09:30:00.000Z',
     updatedAt: '2026-07-12T09:30:00.000Z',
+    isFavorite: false,
     isDemo: false,
   })
   assert.deepEqual(result.prompts, [result.createdPrompt])
@@ -361,6 +401,7 @@ test('speichert optionale Kategorie und Beschreibung als leere Strings', () => {
   assert.equal(createResult.ok, true)
   assert.equal(createResult.createdPrompt.category, '')
   assert.equal(createResult.createdPrompt.description, '')
+  assert.equal(createResult.createdPrompt.isFavorite, false)
   assert.equal(createResult.createdPrompt.isDemo, false)
   assert.deepEqual(loadResult.prompts, [createResult.createdPrompt])
 })
@@ -505,6 +546,297 @@ test('erstellt bei beschädigten Storage-Daten keinen Prompt', () => {
   assert.equal(metadataCalls, 0)
   assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), corruptedJson)
   assert.equal(fakeStorage.setItemCalls, 0)
+})
+
+test('setzt einen Favoriten dauerhaft und erhält dessen Erstellzeit', () => {
+  const initialPrompt = {
+    ...customPrompt,
+    isFavorite: false,
+  }
+  const unchangedPrompt = {
+    ...customPrompt,
+    id: 'prompt-custom-002',
+    title: 'Unveränderter Prompt',
+    isFavorite: false,
+  }
+  const fakeStorage = new FakeStorage([
+    [
+      PROMPT_STORAGE_KEY,
+      createStoredEnvelope([initialPrompt, unchangedPrompt]),
+    ],
+  ])
+  let dateCalls = 0
+  const firstService = createPromptSystem(fakeStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date('2026-07-12T13:00:00.000Z')
+    },
+  }).promptService
+
+  const updateResult = firstService.setPromptFavorite(
+    initialPrompt.id,
+    true
+  )
+
+  assert.equal(updateResult.ok, true)
+  assert.equal(updateResult.status, 'favoriteUpdated')
+  assert.equal(updateResult.favoriteChanged, true)
+  assert.deepEqual(updateResult.updatedPrompt, {
+    ...initialPrompt,
+    updatedAt: '2026-07-12T13:00:00.000Z',
+    isFavorite: true,
+  })
+  assert.equal(
+    updateResult.updatedPrompt.createdAt,
+    initialPrompt.createdAt
+  )
+  assert.deepEqual(updateResult.prompts, [
+    updateResult.updatedPrompt,
+    unchangedPrompt,
+  ])
+  assert.equal(dateCalls, 1)
+  assert.equal(fakeStorage.setItemCalls, 1)
+
+  const storedEnvelope = JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY))
+  assert.deepEqual(storedEnvelope.prompts, [
+    updateResult.updatedPrompt,
+    unchangedPrompt,
+  ])
+
+  const restartedService = createPromptSystem(fakeStorage).promptService
+  const reloadResult = restartedService.loadPrompts()
+
+  assert.deepEqual(reloadResult.prompts, [
+    updateResult.updatedPrompt,
+    unchangedPrompt,
+  ])
+})
+
+test('entfernt einen Favoriten dauerhaft', () => {
+  const initialPrompt = {
+    ...customPrompt,
+    isFavorite: true,
+  }
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope([initialPrompt])],
+  ])
+  const firstService = createPromptSystem(fakeStorage, {
+    getCurrentDate: () => new Date('2026-07-12T13:30:00.000Z'),
+  }).promptService
+
+  const updateResult = firstService.setPromptFavorite(
+    initialPrompt.id,
+    false
+  )
+
+  assert.equal(updateResult.ok, true)
+  assert.equal(updateResult.favoriteChanged, true)
+  assert.equal(updateResult.updatedPrompt.isFavorite, false)
+  assert.equal(
+    updateResult.updatedPrompt.updatedAt,
+    '2026-07-12T13:30:00.000Z'
+  )
+  assert.equal(
+    updateResult.updatedPrompt.createdAt,
+    initialPrompt.createdAt
+  )
+
+  const restartedService = createPromptSystem(fakeStorage).promptService
+  const reloadResult = restartedService.loadPrompts()
+
+  assert.equal(reloadResult.prompts[0].isFavorite, false)
+  assert.equal(
+    reloadResult.prompts[0].updatedAt,
+    '2026-07-12T13:30:00.000Z'
+  )
+})
+
+test('wiederholt einen identischen Favoriten-Sollwert ohne Änderungen', () => {
+  const initialPrompt = {
+    ...customPrompt,
+    isFavorite: false,
+  }
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope([initialPrompt])],
+  ])
+  let dateCalls = 0
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date('2026-07-12T14:00:00.000Z')
+    },
+  })
+
+  const firstResult = promptService.setPromptFavorite(
+    initialPrompt.id,
+    true
+  )
+  const storedAfterFirstUpdate = fakeStorage.peek(PROMPT_STORAGE_KEY)
+  const result = promptService.setPromptFavorite(initialPrompt.id, true)
+
+  assert.equal(firstResult.favoriteChanged, true)
+  assert.equal(result.ok, true)
+  assert.equal(result.status, 'favoriteUpdated')
+  assert.equal(result.favoriteChanged, false)
+  assert.deepEqual(result.updatedPrompt, firstResult.updatedPrompt)
+  assert.deepEqual(result.prompts, firstResult.prompts)
+  assert.equal(dateCalls, 1)
+  assert.equal(fakeStorage.setItemCalls, 1)
+  assert.equal(
+    fakeStorage.peek(PROMPT_STORAGE_KEY),
+    storedAfterFirstUpdate
+  )
+})
+
+test('verhindert einen rückläufigen Favoriten-Zeitstempel', () => {
+  const initialPrompt = {
+    ...customPrompt,
+    updatedAt: '2026-07-12T15:00:00.000Z',
+    isFavorite: false,
+  }
+  const initialEnvelope = createStoredEnvelope([initialPrompt])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, initialEnvelope],
+  ])
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate: () => new Date('2026-07-12T14:59:59.999Z'),
+  })
+
+  const result = promptService.setPromptFavorite(initialPrompt.id, true)
+
+  assert.equal(result.ok, false)
+  assert.equal(result.status, 'generationFailed')
+  assert.equal(result.error.code, 'promptTimestampGenerationFailed')
+  assert.deepEqual(result.prompts, [initialPrompt])
+  assert.equal(fakeStorage.setItemCalls, 0)
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+})
+
+test('weist ungültige Favoritenargumente vor jedem Storage-Zugriff zurück', () => {
+  const testCases = [
+    {
+      promptId: '   ',
+      isFavorite: true,
+      errorCode: 'invalidPromptId',
+    },
+    {
+      promptId: null,
+      isFavorite: false,
+      errorCode: 'invalidPromptId',
+    },
+    {
+      promptId: customPrompt.id,
+      isFavorite: 'true',
+      errorCode: 'invalidPromptFavoriteValue',
+    },
+    {
+      promptId: customPrompt.id,
+      isFavorite: null,
+      errorCode: 'invalidPromptFavoriteValue',
+    },
+  ]
+
+  for (const testCase of testCases) {
+    const fakeStorage = new FakeStorage()
+    const { promptService } = createPromptSystem(fakeStorage)
+
+    const result = promptService.setPromptFavorite(
+      testCase.promptId,
+      testCase.isFavorite
+    )
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, 'validationFailed')
+    assert.equal(result.error.code, testCase.errorCode)
+    assert.deepEqual(result.prompts, [])
+    assert.equal(fakeStorage.getItemCalls, 0)
+    assert.equal(fakeStorage.setItemCalls, 0)
+  }
+})
+
+test('behandelt eine unbekannte Favoriten-ID ohne Schreibzugriff', () => {
+  const initialPrompt = {
+    ...customPrompt,
+    isFavorite: false,
+  }
+  const initialEnvelope = createStoredEnvelope([initialPrompt])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, initialEnvelope],
+  ])
+  let dateCalls = 0
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date()
+    },
+  })
+
+  const result = promptService.setPromptFavorite(
+    'prompt-unknown-999',
+    true
+  )
+
+  assert.equal(result.ok, false)
+  assert.equal(result.status, 'notFound')
+  assert.equal(result.error.code, 'promptNotFound')
+  assert.deepEqual(result.prompts, [initialPrompt])
+  assert.equal(dateCalls, 0)
+  assert.equal(fakeStorage.setItemCalls, 0)
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+})
+
+test('erhält Favoritenstatus und Promptliste bei Schreibfehlern', () => {
+  const errorCases = [
+    {
+      errorName: 'QuotaExceededError',
+      status: 'quotaExceeded',
+      errorCode: 'storageQuotaExceeded',
+    },
+    {
+      errorName: 'SecurityError',
+      status: 'unavailable',
+      errorCode: 'storageUnavailable',
+    },
+    {
+      errorName: 'Error',
+      status: 'writeFailed',
+      errorCode: 'storageWriteFailed',
+    },
+  ]
+
+  for (const errorCase of errorCases) {
+    const initialPrompt = {
+      ...customPrompt,
+      isFavorite: false,
+    }
+    const initialEnvelope = createStoredEnvelope([initialPrompt])
+    const fakeStorage = new FakeStorage([
+      [PROMPT_STORAGE_KEY, initialEnvelope],
+    ])
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate: () => new Date('2026-07-12T14:30:00.000Z'),
+    })
+    fakeStorage.writeError = createStorageError(errorCase.errorName)
+
+    const result = promptService.setPromptFavorite(
+      initialPrompt.id,
+      true
+    )
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, errorCase.status)
+    assert.equal(result.error.code, errorCase.errorCode)
+    assert.equal(Object.hasOwn(result, 'updatedPrompt'), false)
+    assert.deepEqual(result.prompts, [initialPrompt])
+    assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+    assert.equal(fakeStorage.setItemCalls, 1)
+
+    fakeStorage.writeError = null
+    const restartedService = createPromptSystem(fakeStorage).promptService
+    const reloadResult = restartedService.loadPrompts()
+
+    assert.deepEqual(reloadResult.prompts, [initialPrompt])
+  }
 })
 
 test('löscht einen vorhandenen Prompt dauerhaft', () => {
