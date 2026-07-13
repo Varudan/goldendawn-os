@@ -7,6 +7,13 @@ const PROMPT_INPUT_LIMITS = Object.freeze({
   content: 10000,
 })
 
+const PROMPT_EDITABLE_FIELDS = Object.freeze([
+  'title',
+  'category',
+  'description',
+  'content',
+])
+
 const MAX_ID_GENERATION_ATTEMPTS = 5
 
 function clonePrompts(prompts) {
@@ -25,11 +32,11 @@ function createFailure(status, code, message, prompts = []) {
   }
 }
 
-function createInputFailure(fieldErrors) {
+function createInputFailure(fieldErrors, prompts = []) {
   return {
     ok: false,
     status: 'validationFailed',
-    prompts: [],
+    prompts: clonePrompts(prompts),
     error: {
       code: 'invalidPromptInput',
       message: 'Bitte korrigiere die markierten Felder.',
@@ -182,12 +189,32 @@ function createUtcTimestamp(getCurrentDate) {
   }
 }
 
+function createPromptUpdateTimestamp(getCurrentDate, currentPrompt) {
+  const timestamp = createUtcTimestamp(getCurrentDate)
+
+  if (
+    !timestamp ||
+    Date.parse(timestamp) < Date.parse(currentPrompt.createdAt) ||
+    Date.parse(timestamp) < Date.parse(currentPrompt.updatedAt)
+  ) {
+    return null
+  }
+
+  return timestamp
+}
+
+function hasPromptContentChanged(currentPrompt, promptValues) {
+  return PROMPT_EDITABLE_FIELDS.some(
+    (field) => currentPrompt[field] !== promptValues[field]
+  )
+}
+
 export function createPromptService({
   promptStorage,
   generatePromptId = generateDefaultPromptId,
   getCurrentDate = getDefaultCurrentDate,
 } = {}) {
-  function loadPrompts() {
+  function readPromptCollectionState() {
     if (typeof promptStorage?.loadPromptCollection !== 'function') {
       return createFailure(
         'unavailable',
@@ -213,6 +240,36 @@ export function createPromptService({
 
       return {
         ok: true,
+        status: 'found',
+        prompts: clonePrompts(loadResult.prompts),
+      }
+    }
+
+    if (loadResult.status !== 'missing') {
+      return createFailure(
+        'storageFailed',
+        'unexpectedStorageResult',
+        'Die PromptVault-Daten konnten nicht verarbeitet werden.'
+      )
+    }
+
+    return {
+      ok: true,
+      status: 'missing',
+      prompts: clonePrompts(PROMPT_SEED_DATA),
+    }
+  }
+
+  function loadPrompts() {
+    const loadResult = readPromptCollectionState()
+
+    if (!loadResult.ok) {
+      return loadResult
+    }
+
+    if (loadResult.status === 'found') {
+      return {
+        ok: true,
         status: 'loaded',
         initialized: false,
         prompts: clonePrompts(loadResult.prompts),
@@ -235,7 +292,7 @@ export function createPromptService({
       )
     }
 
-    const initialPrompts = clonePrompts(PROMPT_SEED_DATA)
+    const initialPrompts = clonePrompts(loadResult.prompts)
     const saveResult = promptStorage.savePromptCollection(initialPrompts)
 
     if (!saveResult.ok) {
@@ -422,13 +479,12 @@ export function createPromptService({
       )
     }
 
-    const timestamp = createUtcTimestamp(getCurrentDate)
+    const timestamp = createPromptUpdateTimestamp(
+      getCurrentDate,
+      currentPrompt
+    )
 
-    if (
-      !timestamp ||
-      Date.parse(timestamp) < Date.parse(currentPrompt.createdAt) ||
-      Date.parse(timestamp) < Date.parse(currentPrompt.updatedAt)
-    ) {
+    if (!timestamp) {
       return createFailure(
         'generationFailed',
         'promptTimestampGenerationFailed',
@@ -460,10 +516,107 @@ export function createPromptService({
     }
   }
 
+  function updatePrompt(promptId, input) {
+    if (!isValidPromptId(promptId)) {
+      return createFailure(
+        'validationFailed',
+        'invalidPromptId',
+        'Für das Bearbeiten wird eine gültige Prompt-ID benötigt.'
+      )
+    }
+
+    const validationResult = validatePromptInput(input)
+    const loadResult = readPromptCollectionState()
+
+    if (!loadResult.ok) {
+      return loadResult
+    }
+
+    if (Object.keys(validationResult.fieldErrors).length > 0) {
+      return createInputFailure(
+        validationResult.fieldErrors,
+        loadResult.prompts
+      )
+    }
+
+    const promptIndex = loadResult.prompts.findIndex(
+      (prompt) => prompt.id === promptId
+    )
+
+    if (promptIndex === -1) {
+      return createFailure(
+        'notFound',
+        'promptNotFound',
+        'Der angeforderte Prompt wurde nicht gefunden.',
+        loadResult.prompts
+      )
+    }
+
+    const currentPrompt = loadResult.prompts[promptIndex]
+
+    if (
+      !hasPromptContentChanged(currentPrompt, validationResult.values)
+    ) {
+      return {
+        ok: true,
+        status: 'updated',
+        promptChanged: false,
+        updatedPrompt: { ...currentPrompt },
+        prompts: clonePrompts(loadResult.prompts),
+      }
+    }
+
+    if (typeof promptStorage?.savePromptCollection !== 'function') {
+      return createFailure(
+        'unavailable',
+        'promptStorageUnavailable',
+        'Der Prompt-Speicher ist nicht verfügbar.',
+        loadResult.prompts
+      )
+    }
+
+    const timestamp = createPromptUpdateTimestamp(
+      getCurrentDate,
+      currentPrompt
+    )
+
+    if (!timestamp) {
+      return createFailure(
+        'generationFailed',
+        'promptTimestampGenerationFailed',
+        'Der Prompt konnte nicht für die lokale Speicherung vorbereitet werden.',
+        loadResult.prompts
+      )
+    }
+
+    const updatedPrompt = {
+      ...currentPrompt,
+      ...validationResult.values,
+      updatedAt: timestamp,
+    }
+    const updatedPrompts = loadResult.prompts.map((prompt, index) =>
+      index === promptIndex ? updatedPrompt : prompt
+    )
+    const saveResult = promptStorage.savePromptCollection(updatedPrompts)
+
+    if (!saveResult.ok) {
+      return forwardFailure(saveResult, loadResult.prompts)
+    }
+
+    return {
+      ok: true,
+      status: 'updated',
+      promptChanged: true,
+      updatedPrompt: { ...updatedPrompt },
+      prompts: clonePrompts(updatedPrompts),
+    }
+  }
+
   return Object.freeze({
     loadPrompts,
     createPrompt,
     deletePrompt,
     setPromptFavorite,
+    updatePrompt,
   })
 }
