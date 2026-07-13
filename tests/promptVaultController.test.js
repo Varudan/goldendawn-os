@@ -12,6 +12,19 @@ const examplePrompt = {
   isFavorite: false,
 }
 
+const editableDemoPrompt = {
+  ...examplePrompt,
+  id: 'prompt-demo-edit-001',
+  title: 'Bearbeitbarer Beispielprompt',
+  category: 'Lernen',
+  description: 'Die Herkunft bleibt beim Bearbeiten erhalten.',
+  content: 'Erkläre [THEMA] sicher.',
+  createdAt: '2026-07-11T08:00:00.000Z',
+  updatedAt: '2026-07-12T08:00:00.000Z',
+  isFavorite: true,
+  isDemo: true,
+}
+
 const filterPromptsFixture = [
   {
     id: 'prompt-learning-001',
@@ -106,6 +119,16 @@ function openReadyController({ prompts, promptService = {} }) {
 
 function getPromptIds(prompts) {
   return prompts.map(({ id }) => id)
+}
+
+function getEditableValues(prompt, overrides = {}) {
+  return {
+    title: prompt.title,
+    category: prompt.category,
+    description: prompt.description,
+    content: prompt.content,
+    ...overrides,
+  }
 }
 
 test('rendert vor dem Service-Aufruf einen Ladezustand', () => {
@@ -568,6 +591,7 @@ test('ruft durch Such- und Filteraktionen keinen Service erneut auf', () => {
     create: 0,
     delete: 0,
     favorite: 0,
+    update: 0,
   }
   const { promptVaultView } = openReadyController({
     prompts: filterPromptsFixture,
@@ -588,6 +612,10 @@ test('ruft durch Such- und Filteraktionen keinen Service erneut auf', () => {
         serviceCalls.favorite += 1
         return { ok: true, prompts: filterPromptsFixture }
       },
+      updatePrompt() {
+        serviceCalls.update += 1
+        return { ok: true, prompts: filterPromptsFixture }
+      },
     },
   })
 
@@ -601,6 +629,7 @@ test('ruft durch Such- und Filteraktionen keinen Service erneut auf', () => {
     create: 0,
     delete: 0,
     favorite: 0,
+    update: 0,
   })
 })
 
@@ -996,4 +1025,668 @@ test('stellt nach Schließen und erneutem Öffnen den lokalen Filterstandard her
   assert.equal(reopenedState.favoritesOnly, false)
   assert.equal(reopenedState.hasActiveFilters, false)
   assert.deepEqual(reopenedState.visiblePrompts, filterPromptsFixture)
+})
+
+test('öffnet und wechselt ein vorbelegtes Bearbeitungsformular ohne Service-Aufruf', () => {
+  let updateCalls = 0
+  const { promptVaultView } = openReadyController({
+    prompts: [examplePrompt, editableDemoPrompt],
+    promptService: {
+      updatePrompt() {
+        updateCalls += 1
+        return { ok: true, prompts: [] }
+      },
+    },
+  })
+
+  promptVaultView.actions.onOpenEditForm(examplePrompt.id)
+
+  const ownEditState = promptVaultView.lastState()
+  assert.equal(ownEditState.editForm.isOpen, true)
+  assert.equal(ownEditState.editForm.editingPromptId, examplePrompt.id)
+  assert.deepEqual(
+    ownEditState.editForm.values,
+    getEditableValues(examplePrompt)
+  )
+  assert.deepEqual(Object.keys(ownEditState.editForm.values), [
+    'title',
+    'category',
+    'description',
+    'content',
+  ])
+  assert.deepEqual(ownEditState.focusTarget, {
+    type: 'editTitle',
+    id: examplePrompt.id,
+  })
+
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+
+  const demoEditState = promptVaultView.lastState()
+  assert.equal(demoEditState.editForm.isOpen, true)
+  assert.equal(
+    demoEditState.editForm.editingPromptId,
+    editableDemoPrompt.id
+  )
+  assert.deepEqual(
+    demoEditState.editForm.values,
+    getEditableValues(editableDemoPrompt)
+  )
+  assert.equal(
+    Object.hasOwn(demoEditState.editForm.values, 'isDemo'),
+    false
+  )
+  assert.equal(
+    Object.hasOwn(demoEditState.editForm.values, 'isFavorite'),
+    false
+  )
+  assert.equal(updateCalls, 0)
+})
+
+test('schließt Erstellen, Bearbeiten und Löschen gegenseitig kontrolliert aus', () => {
+  const { promptVaultView } = openReadyController({
+    prompts: [examplePrompt, editableDemoPrompt],
+  })
+
+  promptVaultView.actions.onOpenCreateForm('header')
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+
+  let state = promptVaultView.lastState()
+  assert.equal(state.createForm.isOpen, false)
+  assert.equal(state.editForm.isOpen, true)
+  assert.equal(state.pendingDeleteId, null)
+
+  promptVaultView.actions.onRequestDelete(examplePrompt.id)
+
+  state = promptVaultView.lastState()
+  assert.equal(state.editForm.isOpen, false)
+  assert.equal(state.createForm.isOpen, false)
+  assert.equal(state.pendingDeleteId, examplePrompt.id)
+
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+
+  state = promptVaultView.lastState()
+  assert.equal(state.editForm.isOpen, true)
+  assert.equal(state.pendingDeleteId, null)
+
+  promptVaultView.actions.onOpenCreateForm('header')
+
+  state = promptVaultView.lastState()
+  assert.equal(state.createForm.isOpen, true)
+  assert.equal(state.editForm.isOpen, false)
+})
+
+test('hält Filter und den aktuellen Favoriten während der Bearbeitung stabil', () => {
+  let favoriteCalls = 0
+  const { promptVaultView } = openReadyController({
+    prompts: [editableDemoPrompt, examplePrompt],
+    promptService: {
+      setPromptFavorite() {
+        favoriteCalls += 1
+        return { ok: true, prompts: [] }
+      },
+    },
+  })
+
+  promptVaultView.actions.onChangeSearchQuery('Bearbeitbarer')
+  promptVaultView.actions.onChangeCategory('Lernen')
+  promptVaultView.actions.onChangeFavoritesOnly(true)
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+
+  const renderCount = promptVaultView.states.length
+  promptVaultView.actions.onChangeSearchQuery('Keine Treffer')
+  promptVaultView.actions.onChangeCategory('Test')
+  promptVaultView.actions.onChangeFavoritesOnly(false)
+  promptVaultView.actions.onResetFilters()
+  promptVaultView.actions.onSetPromptFavorite(
+    editableDemoPrompt.id,
+    false
+  )
+
+  const state = promptVaultView.lastState()
+  assert.equal(promptVaultView.states.length, renderCount)
+  assert.equal(favoriteCalls, 0)
+  assert.equal(state.searchQuery, 'Bearbeitbarer')
+  assert.equal(state.selectedCategory, 'Lernen')
+  assert.equal(state.favoritesOnly, true)
+  assert.deepEqual(state.visiblePrompts, [editableDemoPrompt])
+  assert.equal(state.editForm.isOpen, true)
+  assert.equal(
+    state.editForm.editingPromptId,
+    editableDemoPrompt.id
+  )
+})
+
+test('bricht die Bearbeitung ohne Daten- oder Serviceänderung ab', () => {
+  let updateCalls = 0
+  const initialPrompts = [editableDemoPrompt, examplePrompt]
+  const { promptVaultView } = openReadyController({
+    prompts: initialPrompts,
+    promptService: {
+      updatePrompt() {
+        updateCalls += 1
+        return { ok: true, prompts: [] }
+      },
+    },
+  })
+
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+  promptVaultView.actions.onUpdateEditField(
+    'title',
+    'Nicht gespeicherter Titel'
+  )
+  promptVaultView.actions.onCancelEditForm()
+
+  const cancelledState = promptVaultView.lastState()
+  assert.equal(updateCalls, 0)
+  assert.equal(cancelledState.editForm.isOpen, false)
+  assert.equal(cancelledState.editForm.editingPromptId, null)
+  assert.deepEqual(cancelledState.editForm.values, {
+    title: '',
+    category: '',
+    description: '',
+    content: '',
+  })
+  assert.deepEqual(cancelledState.prompts, initialPrompts)
+  assert.deepEqual(cancelledState.focusTarget, {
+    type: 'editButton',
+    id: editableDemoPrompt.id,
+  })
+})
+
+test('übergibt exakt ID und vier Felder und übernimmt nur die Service-Liste', () => {
+  const updatedDemoPrompt = {
+    ...editableDemoPrompt,
+    title: 'Vom Service aktualisierter Beispielprompt',
+    category: 'Reflexion',
+    description: 'Aktualisierte Beschreibung',
+    content: 'Aktualisierter Prompt-Text',
+    updatedAt: '2026-07-13T08:00:00.000Z',
+  }
+  const servicePrompts = [updatedDemoPrompt, examplePrompt]
+  const updateCalls = []
+  const { promptVaultView } = openReadyController({
+    prompts: [examplePrompt, editableDemoPrompt],
+    promptService: {
+      updatePrompt(promptId, values) {
+        updateCalls.push([promptId, values])
+        return {
+          ok: true,
+          status: 'updated',
+          promptChanged: true,
+          updatedPrompt: updatedDemoPrompt,
+          prompts: servicePrompts,
+        }
+      },
+    },
+  })
+  const submittedValues = {
+    ...getEditableValues(updatedDemoPrompt),
+    id: 'prompt-injected',
+    isFavorite: false,
+    isDemo: false,
+    createdAt: '2000-01-01T00:00:00.000Z',
+    updatedAt: '2099-01-01T00:00:00.000Z',
+  }
+
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+  promptVaultView.actions.onSubmitEditForm(
+    editableDemoPrompt.id,
+    submittedValues
+  )
+
+  assert.deepEqual(updateCalls, [
+    [
+      editableDemoPrompt.id,
+      getEditableValues(updatedDemoPrompt),
+    ],
+  ])
+  const savingState = promptVaultView.states.at(-2)
+  assert.equal(savingState.editForm.isSubmitting, true)
+  assert.deepEqual(savingState.prompts, [
+    examplePrompt,
+    editableDemoPrompt,
+  ])
+
+  const successState = promptVaultView.lastState()
+  assert.deepEqual(successState.prompts, servicePrompts)
+  assert.deepEqual(successState.visiblePrompts, servicePrompts)
+  assert.equal(successState.editForm.isOpen, false)
+  assert.equal(successState.statusMessage, 'Prompt aktualisiert')
+  assert.equal(successState.prompts[0].id, editableDemoPrompt.id)
+  assert.equal(successState.prompts[0].isFavorite, true)
+  assert.equal(successState.prompts[0].isDemo, true)
+  assert.equal(
+    successState.prompts[0].createdAt,
+    editableDemoPrompt.createdAt
+  )
+  assert.deepEqual(successState.focusTarget, {
+    type: 'promptTitle',
+    id: editableDemoPrompt.id,
+  })
+})
+
+test('meldet einen erfolgreichen Bearbeitungs-No-op wahrheitsgemäß', () => {
+  const initialPrompts = [editableDemoPrompt]
+  const { promptVaultView } = openReadyController({
+    prompts: initialPrompts,
+    promptService: {
+      updatePrompt: () => ({
+        ok: true,
+        status: 'updated',
+        promptChanged: false,
+        updatedPrompt: editableDemoPrompt,
+        prompts: initialPrompts,
+      }),
+    },
+  })
+
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+  promptVaultView.actions.onSubmitEditForm(
+    editableDemoPrompt.id,
+    getEditableValues(editableDemoPrompt)
+  )
+
+  const noOpState = promptVaultView.lastState()
+  assert.deepEqual(noOpState.prompts, initialPrompts)
+  assert.equal(noOpState.editForm.isOpen, false)
+  assert.equal(
+    noOpState.statusMessage,
+    'Keine Änderungen erforderlich'
+  )
+  assert.deepEqual(noOpState.focusTarget, {
+    type: 'promptTitle',
+    id: editableDemoPrompt.id,
+  })
+})
+
+test('erhält Bearbeitungswerte und fokussiert den ersten Feldfehler', () => {
+  const initialPrompts = [editableDemoPrompt, examplePrompt]
+  const failurePrompts = [examplePrompt]
+  const { promptVaultView } = openReadyController({
+    prompts: initialPrompts,
+    promptService: {
+      updatePrompt: () => ({
+        ok: false,
+        status: 'validationFailed',
+        prompts: failurePrompts,
+        error: {
+          code: 'invalidPromptInput',
+          message: 'Bitte korrigiere die markierten Felder.',
+          fieldErrors: {
+            title: 'Bitte gib einen Titel ein.',
+            content: 'Bitte gib einen Prompt-Text ein.',
+            id: 'Darf nicht in die View gelangen.',
+          },
+        },
+      }),
+    },
+  })
+  const submittedValues = getEditableValues(editableDemoPrompt, {
+    title: '   ',
+    category: 'Lernen',
+    description: '<script>bleibt als Text</script>',
+    content: '',
+  })
+
+  promptVaultView.actions.onChangeCategory('Lernen')
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+  promptVaultView.actions.onSubmitEditForm(
+    editableDemoPrompt.id,
+    submittedValues
+  )
+
+  const validationState = promptVaultView.lastState()
+  assert.equal(validationState.editForm.isOpen, true)
+  assert.equal(validationState.editForm.isSubmitting, false)
+  assert.equal(
+    validationState.editForm.editingPromptId,
+    editableDemoPrompt.id
+  )
+  assert.deepEqual(validationState.editForm.values, submittedValues)
+  assert.deepEqual(validationState.editForm.fieldErrors, {
+    title: 'Bitte gib einen Titel ein.',
+    content: 'Bitte gib einen Prompt-Text ein.',
+  })
+  assert.deepEqual(validationState.prompts, initialPrompts)
+  assert.equal(validationState.selectedCategory, 'Lernen')
+  assert.equal(validationState.statusMessage, '')
+  assert.deepEqual(validationState.focusTarget, {
+    type: 'editField',
+    id: editableDemoPrompt.id,
+    fieldName: 'title',
+  })
+})
+
+test('erhält Formular, Liste und Filter bei Bearbeitungsfehlern', () => {
+  const errorCases = [
+    {
+      status: 'quotaExceeded',
+      errorCode: 'storageQuotaExceeded',
+      messagePattern: /freien Platz/,
+    },
+    {
+      status: 'unavailable',
+      errorCode: 'storageUnavailable',
+      messagePattern: /nicht verfügbar/,
+    },
+    {
+      status: 'readFailed',
+      errorCode: 'storageReadFailed',
+      messagePattern: /nicht gelesen/,
+    },
+    {
+      status: 'writeFailed',
+      errorCode: 'storageWriteFailed',
+      messagePattern: /nicht lokal aktualisiert/,
+    },
+    {
+      status: 'generationFailed',
+      errorCode: 'promptTimestampGenerationFailed',
+      messagePattern: /Zeitstempel/,
+    },
+    {
+      status: 'invalidJson',
+      errorCode: 'invalidJson',
+      messagePattern: /beschädigt/,
+    },
+    {
+      status: 'invalidStoredData',
+      errorCode: 'invalidPromptData',
+      messagePattern: /ungültige Struktur/,
+    },
+    {
+      status: 'unsupportedSchemaVersion',
+      errorCode: 'unsupportedSchemaVersion',
+      messagePattern: /noch nicht unterstützt/,
+    },
+  ]
+
+  for (const errorCase of errorCases) {
+    const initialPrompts = [editableDemoPrompt, examplePrompt]
+    const { promptVaultView } = openReadyController({
+      prompts: initialPrompts,
+      promptService: {
+        updatePrompt: () => ({
+          ok: false,
+          status: errorCase.status,
+          prompts: [examplePrompt],
+          error: {
+            code: errorCase.errorCode,
+            message: 'Simulierter Servicefehler',
+          },
+        }),
+      },
+    })
+    const submittedValues = getEditableValues(editableDemoPrompt, {
+      title: 'Nicht gespeicherte Änderung',
+    })
+
+    promptVaultView.actions.onChangeSearchQuery('Bearbeitbarer')
+    promptVaultView.actions.onChangeCategory('Lernen')
+    promptVaultView.actions.onChangeFavoritesOnly(true)
+    promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+    promptVaultView.actions.onSubmitEditForm(
+      editableDemoPrompt.id,
+      submittedValues
+    )
+
+    const errorState = promptVaultView.lastState()
+    assert.deepEqual(errorState.prompts, initialPrompts)
+    assert.deepEqual(errorState.visiblePrompts, [editableDemoPrompt])
+    assert.equal(errorState.searchQuery, 'Bearbeitbarer')
+    assert.equal(errorState.selectedCategory, 'Lernen')
+    assert.equal(errorState.favoritesOnly, true)
+    assert.equal(errorState.editForm.isOpen, true)
+    assert.equal(errorState.editForm.isSubmitting, false)
+    assert.deepEqual(errorState.editForm.values, submittedValues)
+    assert.match(
+      errorState.editForm.errorMessage,
+      errorCase.messagePattern
+    )
+    assert.equal(errorState.statusMessage, '')
+    assert.deepEqual(errorState.focusTarget, {
+      type: 'editAlert',
+      id: editableDemoPrompt.id,
+    })
+  }
+})
+
+test('beendet die Bearbeitung kontrolliert, wenn der Prompt nicht mehr existiert', () => {
+  const { promptVaultView } = openReadyController({
+    prompts: [editableDemoPrompt, examplePrompt],
+    promptService: {
+      updatePrompt: () => ({
+        ok: false,
+        status: 'notFound',
+        prompts: [examplePrompt],
+        error: {
+          code: 'promptNotFound',
+          message: 'Simulierter Fehler',
+        },
+      }),
+    },
+  })
+
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+  promptVaultView.actions.onSubmitEditForm(
+    editableDemoPrompt.id,
+    getEditableValues(editableDemoPrompt, {
+      title: 'Nicht mehr vorhandener Prompt',
+    })
+  )
+
+  const notFoundState = promptVaultView.lastState()
+  assert.equal(notFoundState.editForm.isOpen, false)
+  assert.equal(notFoundState.editForm.editingPromptId, null)
+  assert.deepEqual(notFoundState.prompts, [
+    editableDemoPrompt,
+    examplePrompt,
+  ])
+  assert.match(notFoundState.editErrorMessage, /nicht gefunden/)
+  assert.equal(notFoundState.statusMessage, '')
+  assert.deepEqual(notFoundState.focusTarget, {
+    type: 'editGlobalAlert',
+  })
+})
+
+test('behält aktive Filter und meldet Erfolg bei unsichtbarer Bearbeitung', () => {
+  const updatedPrompt = {
+    ...editableDemoPrompt,
+    title: 'Anderer Titel',
+    description: 'Passt nicht mehr zur aktiven Suche.',
+    content: 'Neuer Inhalt',
+  }
+  const servicePrompts = [updatedPrompt, examplePrompt]
+  const { promptVaultView } = openReadyController({
+    prompts: [editableDemoPrompt, examplePrompt],
+    promptService: {
+      updatePrompt: () => ({
+        ok: true,
+        status: 'updated',
+        promptChanged: true,
+        updatedPrompt,
+        prompts: servicePrompts,
+      }),
+    },
+  })
+
+  promptVaultView.actions.onChangeSearchQuery('Bearbeitbarer')
+  promptVaultView.actions.onChangeFavoritesOnly(true)
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+  promptVaultView.actions.onSubmitEditForm(
+    editableDemoPrompt.id,
+    getEditableValues(updatedPrompt)
+  )
+
+  const successState = promptVaultView.lastState()
+  assert.deepEqual(successState.prompts, servicePrompts)
+  assert.deepEqual(successState.visiblePrompts, [])
+  assert.equal(successState.searchQuery, 'Bearbeitbarer')
+  assert.equal(successState.favoritesOnly, true)
+  assert.equal(successState.hasActiveFilters, true)
+  assert.equal(successState.filteredEmptyState, 'noMatches')
+  assert.equal(successState.statusMessage, 'Prompt aktualisiert')
+  assert.equal(successState.editForm.isOpen, false)
+  assert.deepEqual(successState.focusTarget, {
+    type: 'contentHeading',
+  })
+})
+
+test('setzt eine durch Bearbeitung verschwundene Kategorie zurück', () => {
+  const updatedPrompt = {
+    ...editableDemoPrompt,
+    category: 'Reflexion',
+  }
+  const servicePrompts = [updatedPrompt, examplePrompt]
+  const { promptVaultView } = openReadyController({
+    prompts: [editableDemoPrompt, examplePrompt],
+    promptService: {
+      updatePrompt: () => ({
+        ok: true,
+        status: 'updated',
+        promptChanged: true,
+        updatedPrompt,
+        prompts: servicePrompts,
+      }),
+    },
+  })
+
+  promptVaultView.actions.onChangeCategory('Lernen')
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+  promptVaultView.actions.onSubmitEditForm(
+    editableDemoPrompt.id,
+    getEditableValues(updatedPrompt)
+  )
+
+  const successState = promptVaultView.lastState()
+  assert.deepEqual(successState.categories, ['Reflexion', 'Test'])
+  assert.equal(successState.selectedCategory, '')
+  assert.equal(successState.hasActiveFilters, false)
+  assert.deepEqual(successState.visiblePrompts, servicePrompts)
+  assert.equal(successState.statusMessage, 'Prompt aktualisiert')
+})
+
+test('behält eine weiterhin gültige Kategorie nach Bearbeitung aktiv', () => {
+  const secondLearningPrompt = {
+    ...filterPromptsFixture[0],
+    id: 'prompt-learning-remaining-001',
+  }
+  const updatedPrompt = {
+    ...editableDemoPrompt,
+    category: 'Reflexion',
+  }
+  const servicePrompts = [
+    updatedPrompt,
+    secondLearningPrompt,
+    examplePrompt,
+  ]
+  const { promptVaultView } = openReadyController({
+    prompts: [
+      editableDemoPrompt,
+      secondLearningPrompt,
+      examplePrompt,
+    ],
+    promptService: {
+      updatePrompt: () => ({
+        ok: true,
+        status: 'updated',
+        promptChanged: true,
+        updatedPrompt,
+        prompts: servicePrompts,
+      }),
+    },
+  })
+
+  promptVaultView.actions.onChangeCategory('Lernen')
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+  promptVaultView.actions.onSubmitEditForm(
+    editableDemoPrompt.id,
+    getEditableValues(updatedPrompt)
+  )
+
+  const successState = promptVaultView.lastState()
+  assert.equal(successState.selectedCategory, 'Lernen')
+  assert.deepEqual(successState.visiblePrompts, [secondLearningPrompt])
+  assert.equal(successState.statusMessage, 'Prompt aktualisiert')
+  assert.deepEqual(successState.focusTarget, {
+    type: 'contentHeading',
+  })
+})
+
+test('verhindert einen mehrfachen Bearbeitungs-Submit im Speicherzustand', () => {
+  let promptVaultView
+  let updateCalls = 0
+  const setup = openReadyController({
+    prompts: [editableDemoPrompt],
+    promptService: {
+      updatePrompt(promptId, values) {
+        updateCalls += 1
+        promptVaultView.actions.onSubmitEditForm(promptId, values)
+
+        return {
+          ok: true,
+          status: 'updated',
+          promptChanged: true,
+          updatedPrompt: {
+            ...editableDemoPrompt,
+            ...values,
+          },
+          prompts: [
+            {
+              ...editableDemoPrompt,
+              ...values,
+            },
+          ],
+        }
+      },
+    },
+  })
+  promptVaultView = setup.promptVaultView
+
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+  promptVaultView.actions.onSubmitEditForm(
+    editableDemoPrompt.id,
+    getEditableValues(editableDemoPrompt, {
+      title: 'Einmal gespeicherter Titel',
+    })
+  )
+
+  assert.equal(updateCalls, 1)
+  assert.equal(promptVaultView.lastState().editForm.isOpen, false)
+})
+
+test('setzt Bearbeitungszustände nach Schließen und Öffnen zurück', () => {
+  const {
+    controller,
+    promptVaultView,
+    scheduler,
+  } = openReadyController({
+    prompts: [editableDemoPrompt],
+  })
+
+  promptVaultView.actions.onOpenEditForm(editableDemoPrompt.id)
+  promptVaultView.actions.onUpdateEditField(
+    'title',
+    'Nicht übernommener Entwurf'
+  )
+  controller.close()
+  controller.open()
+
+  const loadingState = promptVaultView.lastState()
+  assert.equal(loadingState.phase, 'loading')
+  assert.equal(loadingState.editForm.isOpen, false)
+  assert.equal(loadingState.editForm.editingPromptId, null)
+  assert.equal(loadingState.editErrorMessage, '')
+
+  scheduler.run()
+
+  const reopenedState = promptVaultView.lastState()
+  assert.equal(reopenedState.phase, 'ready')
+  assert.equal(reopenedState.editForm.isOpen, false)
+  assert.deepEqual(reopenedState.editForm.values, {
+    title: '',
+    category: '',
+    description: '',
+    content: '',
+  })
 })

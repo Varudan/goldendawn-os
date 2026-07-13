@@ -7,7 +7,7 @@
 | Projektphase | `v0.2.0 – Local Dashboard MVP in Arbeit` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, TestAgent und DatenAgent |
-| Letzte Aktualisierung | 2026-07-12 |
+| Letzte Aktualisierung | 2026-07-13 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -108,7 +108,9 @@ bereitstellen. Externe Systeme sind für diese Version nicht erforderlich.
 - ✅ Prompt-Detailansicht mit vollständigem Prompt-Text erstellen.
 - ✅ Prompts nach zugänglicher Inline-Bestätigung dauerhaft lokal löschen.
 - ✅ Prompts lokal erstellen, validieren und dauerhaft speichern.
-- ⬜ Vorhandene Prompts bearbeiten.
+- ✅ Vorhandene Prompts über den bestehenden Service- und Storage-Datenfluss
+  bearbeiten; Identität, Erstellungsmetadaten und Favoritenstatus bleiben dabei
+  ebenso erhalten wie die Kennzeichnung der Beispielprompt-Herkunft.
 - ⬜ Neue unveränderliche Prompt-Versionen hinzufügen.
 - ✅ Lade-, Leer-, Validierungs-, Erfolgs- und Speicherfehlerzustände gestalten.
 - ✅ Responsive Darstellung und Tastaturbedienung prüfen.
@@ -350,11 +352,11 @@ Diese Punkte werden erst nach dem Portfolio Release bewertet und priorisiert.
 
 Der responsive Command-Center-Shell, die erste PromptVault-Modulstruktur und der
 gemeinsame Storage-Adapter sind umgesetzt. Das lokale PromptVault-MVP unterstützt
-Anzeigen, Erstellen, Löschen und Durchsuchen sowie Kategorie-Filter und
-persistent gespeicherte Favoriten. Suchbegriffe und Filterzustände werden nicht
-gespeichert. `v0.2.0 – Lokales Dashboard-MVP` bleibt in Arbeit.
+Anzeigen, Erstellen, Bearbeiten, Löschen und Durchsuchen sowie Kategorie-Filter
+und persistent gespeicherte Favoriten. Suchbegriffe und Filterzustände werden
+nicht gespeichert. `v0.2.0 – Lokales Dashboard-MVP` bleibt in Arbeit.
 
-Als nächste PromptVault-Funktion folgt das Bearbeiten vorhandener Prompts.
-Versionierung wird erst danach umgesetzt. Webhooks, Synchronisierung, Airtable,
-ein Backend und Agentenlogik beginnen erst in den dafür vorgesehenen späteren
-Versionen.
+Als nächste PromptVault-Funktion folgt die unveränderliche Versionierung
+bearbeiteter Prompts. Eine Versionshistorie oder Wiederherstellung ist noch
+nicht umgesetzt. Webhooks, Synchronisierung, Airtable, ein Backend und
+Agentenlogik beginnen erst in den dafür vorgesehenen späteren Versionen.

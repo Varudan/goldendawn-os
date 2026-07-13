@@ -23,7 +23,7 @@ const modules = [
     id: VIEW_PROMPT_VAULT,
     name: 'PromptVault',
     description:
-      'Prompts lokal durchsuchen, nach Kategorie filtern und favorisieren',
+      'Prompts lokal erstellen, bearbeiten, durchsuchen, filtern und favorisieren',
     status: 'Lokales MVP',
     statusClass: 'local',
     navigationState: 'Lokales MVP',
@@ -190,12 +190,12 @@ function renderCommandCenter() {
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
         <h2 id="focus-title">v0.2.0 – Local Dashboard MVP</h2>
-        <p>Das Command Center und PromptVault mit lokaler Suche, Kategorie-Filtern und persistenten Favoriten sind nutzbar. Bearbeiten und Versionierung bleiben geplant.</p>
+        <p>Das Command Center und PromptVault mit Erstellen, Bearbeiten, Löschen, lokaler Suche, Kategorie-Filtern und persistenten Favoriten sind nutzbar. Prompt-Versionierung bleibt geplant.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
           <span>Fortschritt der Phase</span>
-          <strong>3 von 5 Ausbauschritten</strong>
+          <strong>4 von 5 Ausbauschritten</strong>
         </div>
         <div
           class="progress-track"
@@ -203,11 +203,11 @@ function renderCommandCenter() {
           aria-label="Fortschritt der aktuellen Phase"
           aria-valuemin="0"
           aria-valuemax="5"
-          aria-valuenow="3"
+          aria-valuenow="4"
         >
           <span></span>
         </div>
-        <small>Command Center aktiv · Suche und Favoriten lokal nutzbar · Bearbeiten geplant</small>
+        <small>Command Center aktiv · PromptVault lokal bearbeitbar · Versionierung geplant</small>
       </div>
     </section>
 
@@ -228,8 +228,8 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Meilenstein</span>
-        <h2 id="milestone-title">Prompts bearbeiten</h2>
-        <p>Als nächster PromptVault-Ausbauschritt ist das Bearbeiten vorhandener Prompts geplant. Versionierung folgt erst danach.</p>
+        <h2 id="milestone-title">Prompt-Versionierung</h2>
+        <p>Als nächster PromptVault-Ausbauschritt sind unveränderliche Prompt-Versionen geplant. Eine Versionshistorie oder Wiederherstellung ist noch nicht umgesetzt.</p>
       </div>
       <span class="status status--planned">Geplant</span>
     </aside>

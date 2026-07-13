@@ -28,10 +28,9 @@ In dieser Phase liegt der Fokus auf:
 - dem bereits umgesetzten gemeinsamen Storage-Adapter für robuste lokale
   Speicherung;
 - PromptVault als erstem lokal nutzbaren MVP-Modul mit Anzeigen, Erstellen,
-  dauerhaftem Löschen, lokaler Textsuche, Kategorie-Filtern und persistenten
-  Favoriten;
-- dem weiteren PromptVault-Ausbau mit Bearbeiten als nächstem Schritt und
-  Versionierung als anschließendem Schritt.
+  Bearbeiten, dauerhaftem Löschen, lokaler Textsuche, Kategorie-Filtern und
+  persistenten Favoriten;
+- dem weiteren PromptVault-Ausbau mit Versionierung als nächstem Schritt.
 
 Noch nicht Teil dieser Phase sind:
 

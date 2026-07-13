@@ -66,7 +66,28 @@ const FAVORITE_ERROR_MESSAGES = Object.freeze({
     'Die Favoritenänderung konnte nicht für die lokale Speicherung vorbereitet werden.',
 })
 
-const CREATE_FORM_FIELDS = [
+const EDIT_ERROR_MESSAGES = Object.freeze({
+  notFound:
+    'Der Prompt wurde nicht gefunden. Die Bearbeitung wurde beendet. Lade PromptVault erneut, um die Liste zu aktualisieren.',
+  quotaExceeded:
+    'Der Prompt konnte nicht aktualisiert werden, weil der lokale Speicher keinen freien Platz hat. Deine Eingaben bleiben erhalten.',
+  unavailable:
+    'Der lokale Speicher ist nicht verfügbar. Der Prompt wurde nicht aktualisiert und deine Eingaben bleiben erhalten.',
+  readFailed:
+    'Die gespeicherten Prompts konnten vor dem Bearbeiten nicht gelesen werden. Deine Eingaben bleiben erhalten.',
+  writeFailed:
+    'Der Prompt konnte nicht lokal aktualisiert werden. Deine Eingaben bleiben erhalten.',
+  generationFailed:
+    'Die Änderung konnte nicht mit einem gültigen Zeitstempel gespeichert werden. Deine Eingaben bleiben erhalten.',
+  invalidJson:
+    'Die lokal gespeicherten PromptVault-Daten sind beschädigt. Sie wurden nicht überschrieben und deine Eingaben bleiben erhalten.',
+  invalidStoredData:
+    'Die lokal gespeicherten PromptVault-Daten haben eine ungültige Struktur. Sie wurden nicht überschrieben und deine Eingaben bleiben erhalten.',
+  unsupportedSchemaVersion:
+    'Die lokal gespeicherte PromptVault-Version wird noch nicht unterstützt. Die Daten wurden nicht überschrieben und deine Eingaben bleiben erhalten.',
+})
+
+const PROMPT_FORM_FIELDS = [
   'title',
   'category',
   'description',
@@ -124,6 +145,13 @@ function getFavoriteErrorMessage(result) {
   )
 }
 
+function getEditErrorMessage(result) {
+  return (
+    EDIT_ERROR_MESSAGES[result?.status] ??
+    'Der Prompt konnte nicht lokal aktualisiert werden. Deine Eingaben bleiben erhalten.'
+  )
+}
+
 function createFormValues() {
   return {
     title: '',
@@ -138,6 +166,17 @@ function createFormState() {
     isOpen: false,
     isSubmitting: false,
     openedFrom: null,
+    values: createFormValues(),
+    fieldErrors: {},
+    errorMessage: '',
+  }
+}
+
+function createEditFormState() {
+  return {
+    isOpen: false,
+    editingPromptId: null,
+    isSubmitting: false,
     values: createFormValues(),
     fieldErrors: {},
     errorMessage: '',
@@ -163,15 +202,17 @@ function createInitialState() {
     favoriteErrorMessage: '',
     statusMessage: '',
     errorMessage: '',
+    editErrorMessage: '',
     createForm: createFormState(),
+    editForm: createEditFormState(),
   }
 }
 
-function cloneCreateForm(createForm) {
+function cloneFormState(formState) {
   return {
-    ...createForm,
-    values: { ...createForm.values },
-    fieldErrors: { ...createForm.fieldErrors },
+    ...formState,
+    values: { ...formState.values },
+    fieldErrors: { ...formState.fieldErrors },
   }
 }
 
@@ -180,7 +221,7 @@ function normalizeFormValues(values) {
     typeof values === 'object' && values !== null ? values : {}
 
   return Object.fromEntries(
-    CREATE_FORM_FIELDS.map((fieldName) => [
+    PROMPT_FORM_FIELDS.map((fieldName) => [
       fieldName,
       typeof formValues[fieldName] === 'string'
         ? formValues[fieldName]
@@ -189,7 +230,7 @@ function normalizeFormValues(values) {
   )
 }
 
-function getCreateFieldErrors(result) {
+function getFormFieldErrors(result) {
   const rawFieldErrors = result?.error?.fieldErrors
 
   if (
@@ -201,7 +242,7 @@ function getCreateFieldErrors(result) {
   }
 
   return Object.fromEntries(
-    CREATE_FORM_FIELDS.flatMap((fieldName) =>
+    PROMPT_FORM_FIELDS.flatMap((fieldName) =>
       typeof rawFieldErrors[fieldName] === 'string'
         ? [[fieldName, rawFieldErrors[fieldName]]]
         : []
@@ -210,7 +251,7 @@ function getCreateFieldErrors(result) {
 }
 
 function getFirstInvalidField(fieldErrors) {
-  return CREATE_FORM_FIELDS.find((fieldName) => fieldErrors[fieldName]) ?? null
+  return PROMPT_FORM_FIELDS.find((fieldName) => fieldErrors[fieldName]) ?? null
 }
 
 function clonePrompts(prompts) {
@@ -277,6 +318,10 @@ export function createPromptVaultController({
     onUpdateCreateField: updateCreateField,
     onSubmitCreateForm: submitCreateForm,
     onCancelCreateForm: cancelCreateForm,
+    onOpenEditForm: openEditForm,
+    onUpdateEditField: updateEditField,
+    onSubmitEditForm: submitEditForm,
+    onCancelEditForm: cancelEditForm,
     onRequestDelete: requestDelete,
     onCancelDelete: cancelDelete,
     onConfirmDelete: confirmDelete,
@@ -298,7 +343,8 @@ export function createPromptVaultController({
         prompts: clonePrompts(viewState.prompts),
         visiblePrompts: clonePrompts(viewState.visiblePrompts),
         categories: [...viewState.categories],
-        createForm: cloneCreateForm(viewState.createForm),
+        createForm: cloneFormState(viewState.createForm),
+        editForm: cloneFormState(viewState.editForm),
         focusTarget,
       },
       actions
@@ -363,6 +409,7 @@ export function createPromptVaultController({
     if (
       !isActive ||
       viewState.phase !== 'ready' ||
+      viewState.editForm.isOpen ||
       typeof searchQuery !== 'string'
     ) {
       return
@@ -391,6 +438,7 @@ export function createPromptVaultController({
     if (
       !isActive ||
       viewState.phase !== 'ready' ||
+      viewState.editForm.isOpen ||
       typeof category !== 'string' ||
       (category !== ALL_CATEGORIES &&
         !viewState.categories.includes(category))
@@ -410,6 +458,7 @@ export function createPromptVaultController({
     if (
       !isActive ||
       viewState.phase !== 'ready' ||
+      viewState.editForm.isOpen ||
       typeof favoritesOnly !== 'boolean'
     ) {
       return
@@ -427,6 +476,7 @@ export function createPromptVaultController({
     if (
       !isActive ||
       viewState.phase !== 'ready' ||
+      viewState.editForm.isOpen ||
       !viewState.hasActiveFilters
     ) {
       return
@@ -455,6 +505,8 @@ export function createPromptVaultController({
       !isActive ||
       viewState.phase !== 'ready' ||
       viewState.favoriteSavingId ||
+      (viewState.editForm.isOpen &&
+        viewState.editForm.editingPromptId === promptId) ||
       !promptExists ||
       typeof isFavorite !== 'boolean'
     ) {
@@ -513,7 +565,11 @@ export function createPromptVaultController({
   }
 
   function openCreateForm(openedFrom = 'header') {
-    if (!isActive || viewState.phase !== 'ready') {
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      viewState.editForm.isSubmitting
+    ) {
       return
     }
 
@@ -524,11 +580,13 @@ export function createPromptVaultController({
       deleteErrorId: null,
       statusMessage: '',
       errorMessage: '',
+      editErrorMessage: '',
       createForm: {
         ...createFormState(),
         isOpen: true,
         openedFrom: openedFrom === 'empty' ? 'empty' : 'header',
       },
+      editForm: createEditFormState(),
     }
     render({ type: 'createTitle' })
   }
@@ -537,7 +595,7 @@ export function createPromptVaultController({
     if (
       !isActive ||
       !viewState.createForm.isOpen ||
-      !CREATE_FORM_FIELDS.includes(fieldName) ||
+      !PROMPT_FORM_FIELDS.includes(fieldName) ||
       typeof value !== 'string'
     ) {
       return
@@ -639,7 +697,7 @@ export function createPromptVaultController({
     }
 
     if (result?.status === 'validationFailed') {
-      const fieldErrors = getCreateFieldErrors(result)
+      const fieldErrors = getFormFieldErrors(result)
       const firstInvalidField = getFirstInvalidField(fieldErrors)
       viewState = {
         ...viewState,
@@ -672,12 +730,217 @@ export function createPromptVaultController({
     render({ type: 'createAlert' })
   }
 
+  function openEditForm(promptId) {
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      viewState.editForm.isSubmitting
+    ) {
+      return
+    }
+
+    const prompt = viewState.prompts.find(
+      (storedPrompt) => storedPrompt.id === promptId
+    )
+
+    if (!prompt) {
+      return
+    }
+
+    viewState = {
+      ...viewState,
+      pendingDeleteId: null,
+      deletingId: null,
+      deleteErrorId: null,
+      statusMessage: '',
+      errorMessage: '',
+      editErrorMessage: '',
+      createForm: createFormState(),
+      editForm: {
+        ...createEditFormState(),
+        isOpen: true,
+        editingPromptId: promptId,
+        values: normalizeFormValues(prompt),
+      },
+    }
+    render({ type: 'editTitle', id: promptId })
+  }
+
+  function updateEditField(fieldName, value) {
+    if (
+      !isActive ||
+      !viewState.editForm.isOpen ||
+      !PROMPT_FORM_FIELDS.includes(fieldName) ||
+      typeof value !== 'string'
+    ) {
+      return
+    }
+
+    viewState = {
+      ...viewState,
+      editForm: {
+        ...viewState.editForm,
+        values: {
+          ...viewState.editForm.values,
+          [fieldName]: value,
+        },
+      },
+    }
+  }
+
+  function cancelEditForm() {
+    if (
+      !isActive ||
+      !viewState.editForm.isOpen ||
+      viewState.editForm.isSubmitting
+    ) {
+      return
+    }
+
+    const editingPromptId = viewState.editForm.editingPromptId
+    viewState = {
+      ...viewState,
+      editErrorMessage: '',
+      editForm: createEditFormState(),
+    }
+    render({ type: 'editButton', id: editingPromptId })
+  }
+
+  function submitEditForm(promptId, values) {
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      !viewState.editForm.isOpen ||
+      viewState.editForm.isSubmitting ||
+      viewState.editForm.editingPromptId !== promptId
+    ) {
+      return
+    }
+
+    const promptExists = viewState.prompts.some(
+      (prompt) => prompt.id === promptId
+    )
+
+    if (!promptExists) {
+      viewState = {
+        ...viewState,
+        statusMessage: '',
+        editErrorMessage: EDIT_ERROR_MESSAGES.notFound,
+        editForm: createEditFormState(),
+      }
+      render({ type: 'editGlobalAlert' })
+      return
+    }
+
+    const formValues = normalizeFormValues(values)
+    viewState = {
+      ...viewState,
+      statusMessage: '',
+      editErrorMessage: '',
+      editForm: {
+        ...viewState.editForm,
+        isSubmitting: true,
+        values: formValues,
+        fieldErrors: {},
+        errorMessage: '',
+      },
+    }
+    render()
+
+    let result
+
+    try {
+      result = promptService?.updatePrompt?.(promptId, {
+        ...formValues,
+      })
+    } catch {
+      result = null
+    }
+
+    if (result?.ok === true && Array.isArray(result.prompts)) {
+      viewState = derivePromptPresentation(
+        {
+          ...viewState,
+          statusMessage:
+            result.promptChanged === false
+              ? 'Keine Änderungen erforderlich'
+              : 'Prompt aktualisiert',
+          editErrorMessage: '',
+          editForm: createEditFormState(),
+        },
+        result.prompts
+      )
+      const promptRemainsVisible = viewState.visiblePrompts.some(
+        (prompt) => prompt.id === promptId
+      )
+      render(
+        promptRemainsVisible
+          ? { type: 'promptTitle', id: promptId }
+          : { type: 'contentHeading' }
+      )
+      return
+    }
+
+    if (result?.status === 'validationFailed') {
+      const fieldErrors = getFormFieldErrors(result)
+      const firstInvalidField = getFirstInvalidField(fieldErrors)
+      viewState = {
+        ...viewState,
+        editForm: {
+          ...viewState.editForm,
+          isSubmitting: false,
+          fieldErrors,
+          errorMessage:
+            result?.error?.message ??
+            'Bitte korrigiere die markierten Felder.',
+        },
+      }
+      render(
+        firstInvalidField
+          ? {
+              type: 'editField',
+              id: promptId,
+              fieldName: firstInvalidField,
+            }
+          : { type: 'editAlert', id: promptId }
+      )
+      return
+    }
+
+    if (result?.status === 'notFound') {
+      viewState = {
+        ...viewState,
+        statusMessage: '',
+        editErrorMessage: getEditErrorMessage(result),
+        editForm: createEditFormState(),
+      }
+      render({ type: 'editGlobalAlert' })
+      return
+    }
+
+    viewState = {
+      ...viewState,
+      editForm: {
+        ...viewState.editForm,
+        isSubmitting: false,
+        fieldErrors: {},
+        errorMessage: getEditErrorMessage(result),
+      },
+    }
+    render({ type: 'editAlert', id: promptId })
+  }
+
   function requestDelete(promptId) {
     const promptExists = viewState.prompts.some(
       (prompt) => prompt.id === promptId
     )
 
-    if (!isActive || viewState.phase !== 'ready' || !promptExists) {
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      viewState.editForm.isSubmitting ||
+      !promptExists
+    ) {
       return
     }
 
@@ -688,6 +951,9 @@ export function createPromptVaultController({
       deleteErrorId: null,
       statusMessage: '',
       errorMessage: '',
+      editErrorMessage: '',
+      createForm: createFormState(),
+      editForm: createEditFormState(),
     }
     render({ type: 'cancelButton', id: promptId })
   }

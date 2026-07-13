@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { PROMPT_SEED_DATA } from '../src/modules/prompt-vault/promptSeedData.js'
 import { createPromptService } from '../src/services/promptService.js'
 import { createStorageAdapter } from '../src/storage/storageAdapter.js'
 import {
@@ -39,6 +40,29 @@ const customPrompt = {
   createdAt: '2026-07-10T10:00:00Z',
   updatedAt: '2026-07-10T10:15:00Z',
   isDemo: true,
+}
+
+const editablePrompt = {
+  id: 'prompt-editable-001',
+  title: 'Bestehender eigener Prompt',
+  description: 'Dieser Prompt darf kontrolliert bearbeitet werden.',
+  category: 'Planung',
+  content: 'Plane [VORHABEN] in klaren Schritten.',
+  createdAt: '2026-07-10T08:00:00.000Z',
+  updatedAt: '2026-07-11T09:30:00.000Z',
+  isFavorite: true,
+  isDemo: false,
+  storageMetadata: 'bleibt-erhalten',
+}
+
+function createPromptInput(prompt, overrides = {}) {
+  return {
+    title: prompt.title,
+    category: prompt.category,
+    description: prompt.description,
+    content: prompt.content,
+    ...overrides,
+  }
 }
 
 test('initialisiert bei fehlendem Key genau drei Seed-Prompts', () => {
@@ -938,4 +962,644 @@ test('weist eine ungültige Prompt-ID vor einem Storage-Zugriff zurück', () => 
   assert.equal(result.error.code, 'invalidPromptId')
   assert.equal(fakeStorage.getItemCalls, 0)
   assert.equal(fakeStorage.setItemCalls, 0)
+})
+
+test('aktualisiert einen eigenen Prompt positionsstabil und dauerhaft', () => {
+  const previousPrompt = {
+    ...editablePrompt,
+    id: 'prompt-before-001',
+    title: 'Vorheriger Prompt',
+    isFavorite: false,
+  }
+  const followingPrompt = {
+    ...editablePrompt,
+    id: 'prompt-after-001',
+    title: 'Nachfolgender Prompt',
+    isFavorite: false,
+  }
+  const initialPrompts = [
+    previousPrompt,
+    editablePrompt,
+    followingPrompt,
+  ]
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope(initialPrompts)],
+  ])
+  let idCalls = 0
+  let dateCalls = 0
+  const { promptService } = createPromptSystem(fakeStorage, {
+    generatePromptId() {
+      idCalls += 1
+      return 'prompt-ignored'
+    },
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date('2026-07-12T16:00:00.000Z')
+    },
+  })
+
+  const result = promptService.updatePrompt(editablePrompt.id, {
+    id: 'prompt-injected-id',
+    title: '  Überarbeiteter eigener Prompt  ',
+    category: '  Lernen  ',
+    description: '  Präzise überarbeitete Beschreibung.  ',
+    content: '  Erkläre [THEMA] in nachvollziehbaren Schritten.  ',
+    createdAt: '2000-01-01T00:00:00.000Z',
+    updatedAt: '2099-01-01T00:00:00.000Z',
+    isFavorite: false,
+    isDemo: true,
+    schemaVersion: 99,
+    storageMetadata: 'darf-nicht-eingeschleust-werden',
+  })
+
+  const expectedPrompt = {
+    ...editablePrompt,
+    title: 'Überarbeiteter eigener Prompt',
+    category: 'Lernen',
+    description: 'Präzise überarbeitete Beschreibung.',
+    content: 'Erkläre [THEMA] in nachvollziehbaren Schritten.',
+    updatedAt: '2026-07-12T16:00:00.000Z',
+  }
+
+  assert.equal(result.ok, true)
+  assert.equal(result.status, 'updated')
+  assert.equal(result.promptChanged, true)
+  assert.deepEqual(result.updatedPrompt, expectedPrompt)
+  assert.deepEqual(result.prompts, [
+    previousPrompt,
+    expectedPrompt,
+    followingPrompt,
+  ])
+  assert.equal(result.updatedPrompt.id, editablePrompt.id)
+  assert.equal(
+    result.updatedPrompt.createdAt,
+    editablePrompt.createdAt
+  )
+  assert.equal(result.updatedPrompt.isFavorite, true)
+  assert.equal(result.updatedPrompt.isDemo, false)
+  assert.equal(
+    result.updatedPrompt.storageMetadata,
+    editablePrompt.storageMetadata
+  )
+  assert.equal(Object.hasOwn(result.updatedPrompt, 'schemaVersion'), false)
+  assert.equal(idCalls, 0)
+  assert.equal(dateCalls, 1)
+  assert.equal(fakeStorage.setItemCalls, 1)
+
+  const storedEnvelope = JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY))
+  assert.equal(storedEnvelope.schemaVersion, PROMPT_SCHEMA_VERSION)
+  assert.deepEqual(storedEnvelope.prompts, result.prompts)
+
+  const restartedService = createPromptSystem(fakeStorage).promptService
+  const reloadResult = restartedService.loadPrompts()
+
+  assert.deepEqual(reloadResult.prompts, result.prompts)
+})
+
+test('aktualisiert einen Seed-Prompt und erhält dessen Herkunft', () => {
+  const seedPrompt = PROMPT_SEED_DATA[1]
+  const fakeStorage = new FakeStorage()
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate: () => new Date('2026-07-12T16:30:00.000Z'),
+  })
+
+  const result = promptService.updatePrompt(
+    seedPrompt.id,
+    createPromptInput(seedPrompt, {
+      title: 'KI-Automatisierung sicher planen',
+    })
+  )
+
+  assert.equal(result.ok, true)
+  assert.equal(result.promptChanged, true)
+  assert.equal(result.prompts.length, 3)
+  assert.equal(result.prompts[1].id, seedPrompt.id)
+  assert.equal(result.updatedPrompt.isDemo, true)
+  assert.equal(result.updatedPrompt.isFavorite, false)
+  assert.equal(result.updatedPrompt.createdAt, seedPrompt.createdAt)
+  assert.equal(result.updatedPrompt.title, 'KI-Automatisierung sicher planen')
+  assert.equal(
+    result.updatedPrompt.updatedAt,
+    '2026-07-12T16:30:00.000Z'
+  )
+  assert.equal(fakeStorage.setItemCalls, 1)
+
+  const restartedService = createPromptSystem(fakeStorage).promptService
+  const reloadResult = restartedService.loadPrompts()
+
+  assert.deepEqual(reloadResult.prompts, result.prompts)
+})
+
+test('erlaubt leere optionale Felder und exakte maximale Feldlängen', () => {
+  const limitStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope([editablePrompt])],
+  ])
+  const limitService = createPromptSystem(limitStorage, {
+    getCurrentDate: () => new Date('2026-07-12T17:00:00.000Z'),
+  }).promptService
+
+  const limitResult = limitService.updatePrompt(editablePrompt.id, {
+    title: ' ' + 'T'.repeat(120) + ' ',
+    category: ' ' + 'K'.repeat(60) + ' ',
+    description: ' ' + 'B'.repeat(240) + ' ',
+    content: ' ' + 'P'.repeat(10000) + ' ',
+  })
+
+  assert.equal(limitResult.ok, true)
+  assert.equal(limitResult.promptChanged, true)
+  assert.equal(limitResult.updatedPrompt.title.length, 120)
+  assert.equal(limitResult.updatedPrompt.category.length, 60)
+  assert.equal(limitResult.updatedPrompt.description.length, 240)
+  assert.equal(limitResult.updatedPrompt.content.length, 10000)
+  assert.equal(limitStorage.setItemCalls, 1)
+
+  const optionalStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope([editablePrompt])],
+  ])
+  const optionalService = createPromptSystem(optionalStorage, {
+    getCurrentDate: () => new Date('2026-07-12T17:30:00.000Z'),
+  }).promptService
+
+  const optionalResult = optionalService.updatePrompt(
+    editablePrompt.id,
+    createPromptInput(editablePrompt, {
+      category: '   ',
+      description: '\n  ',
+    })
+  )
+
+  assert.equal(optionalResult.ok, true)
+  assert.equal(optionalResult.updatedPrompt.category, '')
+  assert.equal(optionalResult.updatedPrompt.description, '')
+  assert.equal(optionalStorage.setItemCalls, 1)
+})
+
+test('behandelt normalisierte identische Eingaben als schreibfreien No-op', () => {
+  const initialEnvelope = createStoredEnvelope([editablePrompt])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, initialEnvelope],
+  ])
+  let idCalls = 0
+  let dateCalls = 0
+  const { promptService } = createPromptSystem(fakeStorage, {
+    generatePromptId() {
+      idCalls += 1
+      return 'prompt-unused'
+    },
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date('2026-07-12T17:30:00.000Z')
+    },
+  })
+
+  const result = promptService.updatePrompt(editablePrompt.id, {
+    ...createPromptInput(editablePrompt, {
+      title: '  ' + editablePrompt.title + '  ',
+      category: '  ' + editablePrompt.category + '  ',
+      description: '  ' + editablePrompt.description + '  ',
+      content: '  ' + editablePrompt.content + '  ',
+    }),
+    id: 'prompt-injected-id',
+    createdAt: '2000-01-01T00:00:00.000Z',
+    updatedAt: '2099-01-01T00:00:00.000Z',
+    isFavorite: false,
+    isDemo: true,
+  })
+
+  assert.equal(result.ok, true)
+  assert.equal(result.status, 'updated')
+  assert.equal(result.promptChanged, false)
+  assert.deepEqual(result.updatedPrompt, editablePrompt)
+  assert.deepEqual(result.prompts, [editablePrompt])
+  assert.equal(
+    result.updatedPrompt.updatedAt,
+    editablePrompt.updatedAt
+  )
+  assert.equal(idCalls, 0)
+  assert.equal(dateCalls, 0)
+  assert.equal(fakeStorage.setItemCalls, 0)
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+})
+
+test('initialisiert bei einem identischen Seed-Update keinen Storage', () => {
+  const seedPrompt = PROMPT_SEED_DATA[0]
+  const fakeStorage = new FakeStorage()
+  let dateCalls = 0
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date('2026-07-12T18:00:00.000Z')
+    },
+  })
+
+  const result = promptService.updatePrompt(
+    seedPrompt.id,
+    createPromptInput(seedPrompt)
+  )
+
+  assert.equal(result.ok, true)
+  assert.equal(result.promptChanged, false)
+  assert.deepEqual(result.updatedPrompt, seedPrompt)
+  assert.deepEqual(result.prompts, PROMPT_SEED_DATA)
+  assert.equal(dateCalls, 0)
+  assert.equal(fakeStorage.getItemCalls, 1)
+  assert.equal(fakeStorage.setItemCalls, 0)
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), null)
+})
+
+test('weist ungültige Update-IDs vor jedem Storage-Zugriff zurück', () => {
+  const invalidPromptIds = [
+    null,
+    42,
+    '',
+    '   ',
+    ' ' + editablePrompt.id,
+  ]
+
+  for (const promptId of invalidPromptIds) {
+    const fakeStorage = new FakeStorage()
+    let dateCalls = 0
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate() {
+        dateCalls += 1
+        return new Date()
+      },
+    })
+
+    const result = promptService.updatePrompt(
+      promptId,
+      createPromptInput(editablePrompt)
+    )
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, 'validationFailed')
+    assert.equal(result.error.code, 'invalidPromptId')
+    assert.deepEqual(result.prompts, [])
+    assert.equal(dateCalls, 0)
+    assert.equal(fakeStorage.getItemCalls, 0)
+    assert.equal(fakeStorage.setItemCalls, 0)
+  }
+})
+
+test('behandelt eine unbekannte Update-ID ohne Initialisierung', () => {
+  const fakeStorage = new FakeStorage()
+  let dateCalls = 0
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date()
+    },
+  })
+
+  const result = promptService.updatePrompt(
+    'prompt-unknown-999',
+    createPromptInput(PROMPT_SEED_DATA[0])
+  )
+
+  assert.equal(result.ok, false)
+  assert.equal(result.status, 'notFound')
+  assert.equal(result.error.code, 'promptNotFound')
+  assert.deepEqual(result.prompts, PROMPT_SEED_DATA)
+  assert.equal(Object.hasOwn(result, 'updatedPrompt'), false)
+  assert.equal(dateCalls, 0)
+  assert.equal(fakeStorage.getItemCalls, 1)
+  assert.equal(fakeStorage.setItemCalls, 0)
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), null)
+})
+
+test('validiert Update-Felder mit denselben Regeln wie die Erstellung', () => {
+  const testCases = [
+    {
+      field: 'title',
+      value: '   ',
+      message: 'Bitte gib einen Titel ein.',
+    },
+    {
+      field: 'content',
+      value: '\n   ',
+      message: 'Bitte gib einen Prompt-Text ein.',
+    },
+    {
+      field: 'title',
+      value: 'T'.repeat(121),
+      message: 'Der Titel darf höchstens 120 Zeichen lang sein.',
+    },
+    {
+      field: 'category',
+      value: 'K'.repeat(61),
+      message: 'Die Kategorie darf höchstens 60 Zeichen lang sein.',
+    },
+    {
+      field: 'description',
+      value: 'B'.repeat(241),
+      message: 'Die Beschreibung darf höchstens 240 Zeichen lang sein.',
+    },
+    {
+      field: 'content',
+      value: 'P'.repeat(10001),
+      message: 'Der Prompt-Text darf höchstens 10.000 Zeichen lang sein.',
+    },
+    {
+      field: 'category',
+      value: 42,
+      message: 'Die Kategorie muss als Text angegeben werden.',
+    },
+    {
+      field: 'description',
+      value: false,
+      message: 'Die Beschreibung muss als Text angegeben werden.',
+    },
+  ]
+
+  for (const testCase of testCases) {
+    const initialEnvelope = createStoredEnvelope([editablePrompt])
+    const fakeStorage = new FakeStorage([
+      [PROMPT_STORAGE_KEY, initialEnvelope],
+    ])
+    let dateCalls = 0
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate() {
+        dateCalls += 1
+        return new Date()
+      },
+    })
+    const input = createPromptInput(editablePrompt, {
+      [testCase.field]: testCase.value,
+    })
+
+    const result = promptService.updatePrompt(editablePrompt.id, input)
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, 'validationFailed')
+    assert.equal(result.error.code, 'invalidPromptInput')
+    assert.equal(
+      result.error.fieldErrors[testCase.field],
+      testCase.message
+    )
+    assert.deepEqual(result.prompts, [editablePrompt])
+    assert.equal(Object.hasOwn(result, 'updatedPrompt'), false)
+    assert.equal(dateCalls, 0)
+    assert.equal(fakeStorage.setItemCalls, 0)
+    assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+  }
+})
+
+test('liefert Seed-Prompts bei Feldfehlern ohne Initialisierung zurück', () => {
+  const seedPrompt = PROMPT_SEED_DATA[2]
+  const fakeStorage = new FakeStorage()
+  const { promptService } = createPromptSystem(fakeStorage)
+
+  const result = promptService.updatePrompt(
+    seedPrompt.id,
+    createPromptInput(seedPrompt, {
+      title: '   ',
+    })
+  )
+
+  assert.equal(result.ok, false)
+  assert.equal(result.error.code, 'invalidPromptInput')
+  assert.equal(result.error.fieldErrors.title, 'Bitte gib einen Titel ein.')
+  assert.deepEqual(result.prompts, PROMPT_SEED_DATA)
+  assert.equal(fakeStorage.getItemCalls, 1)
+  assert.equal(fakeStorage.setItemCalls, 0)
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), null)
+})
+
+test('überschreibt beschädigte oder unerwartete Prompt-Daten nicht', () => {
+  const testCases = [
+    {
+      storedValue: '{broken',
+      status: 'invalidJson',
+      errorCode: 'invalidJson',
+    },
+    {
+      storedValue: JSON.stringify({
+        schemaVersion: 2,
+        prompts: [editablePrompt],
+      }),
+      status: 'unsupportedSchemaVersion',
+      errorCode: 'unsupportedPromptSchemaVersion',
+    },
+    {
+      storedValue: createStoredEnvelope([
+        {
+          ...editablePrompt,
+          content: '',
+        },
+      ]),
+      status: 'invalidStoredData',
+      errorCode: 'invalidPromptData',
+    },
+  ]
+
+  for (const testCase of testCases) {
+    const fakeStorage = new FakeStorage([
+      [PROMPT_STORAGE_KEY, testCase.storedValue],
+    ])
+    let dateCalls = 0
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate() {
+        dateCalls += 1
+        return new Date()
+      },
+    })
+
+    const result = promptService.updatePrompt(
+      editablePrompt.id,
+      createPromptInput(editablePrompt, {
+        title: 'Darf nicht gespeichert werden',
+      })
+    )
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, testCase.status)
+    assert.equal(result.error.code, testCase.errorCode)
+    assert.deepEqual(result.prompts, [])
+    assert.equal(Object.hasOwn(result, 'updatedPrompt'), false)
+    assert.equal(dateCalls, 0)
+    assert.equal(fakeStorage.setItemCalls, 0)
+    assert.equal(
+      fakeStorage.peek(PROMPT_STORAGE_KEY),
+      testCase.storedValue
+    )
+  }
+})
+
+test('reicht nicht verfügbaren und fehlerhaften Storage kontrolliert weiter', () => {
+  const readErrorCases = [
+    {
+      errorName: 'SecurityError',
+      status: 'unavailable',
+      errorCode: 'storageUnavailable',
+    },
+    {
+      errorName: 'Error',
+      status: 'readFailed',
+      errorCode: 'storageReadFailed',
+    },
+  ]
+
+  for (const errorCase of readErrorCases) {
+    const fakeStorage = new FakeStorage()
+    fakeStorage.readError = createStorageError(errorCase.errorName)
+    const { promptService } = createPromptSystem(fakeStorage)
+
+    const result = promptService.updatePrompt(
+      editablePrompt.id,
+      createPromptInput(editablePrompt)
+    )
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, errorCase.status)
+    assert.equal(result.error.code, errorCase.errorCode)
+    assert.deepEqual(result.prompts, [])
+    assert.equal(fakeStorage.setItemCalls, 0)
+  }
+
+  const unavailableResult = createPromptSystem(undefined).promptService
+    .updatePrompt(
+      editablePrompt.id,
+      createPromptInput(editablePrompt)
+    )
+
+  assert.equal(unavailableResult.ok, false)
+  assert.equal(unavailableResult.status, 'unavailable')
+  assert.equal(unavailableResult.error.code, 'storageUnavailable')
+
+  const missingPromptStorageResult = createPromptService().updatePrompt(
+    editablePrompt.id,
+    createPromptInput(editablePrompt)
+  )
+
+  assert.equal(missingPromptStorageResult.ok, false)
+  assert.equal(missingPromptStorageResult.status, 'unavailable')
+  assert.equal(
+    missingPromptStorageResult.error.code,
+    'promptStorageUnavailable'
+  )
+})
+
+test('meldet eine fehlende PromptStorage-Schreibschnittstelle vor der Uhr', () => {
+  let dateCalls = 0
+  const promptService = createPromptService({
+    promptStorage: {
+      loadPromptCollection() {
+        return {
+          ok: true,
+          status: 'found',
+          prompts: [editablePrompt],
+        }
+      },
+    },
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date()
+    },
+  })
+
+  const result = promptService.updatePrompt(
+    editablePrompt.id,
+    createPromptInput(editablePrompt, {
+      title: 'Tatsächliche Änderung',
+    })
+  )
+
+  assert.equal(result.ok, false)
+  assert.equal(result.status, 'unavailable')
+  assert.equal(result.error.code, 'promptStorageUnavailable')
+  assert.deepEqual(result.prompts, [editablePrompt])
+  assert.equal(Object.hasOwn(result, 'updatedPrompt'), false)
+  assert.equal(dateCalls, 0)
+})
+
+test('erhält Prompt und Rohwert bei Update-Schreibfehlern', () => {
+  const errorCases = [
+    {
+      errorName: 'QuotaExceededError',
+      status: 'quotaExceeded',
+      errorCode: 'storageQuotaExceeded',
+    },
+    {
+      errorName: 'SecurityError',
+      status: 'unavailable',
+      errorCode: 'storageUnavailable',
+    },
+    {
+      errorName: 'Error',
+      status: 'writeFailed',
+      errorCode: 'storageWriteFailed',
+    },
+  ]
+
+  for (const errorCase of errorCases) {
+    const initialEnvelope = createStoredEnvelope([editablePrompt])
+    const fakeStorage = new FakeStorage([
+      [PROMPT_STORAGE_KEY, initialEnvelope],
+    ])
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate: () => new Date('2026-07-12T18:30:00.000Z'),
+    })
+    fakeStorage.writeError = createStorageError(errorCase.errorName)
+
+    const result = promptService.updatePrompt(
+      editablePrompt.id,
+      createPromptInput(editablePrompt, {
+        title: 'Nicht gespeicherte Änderung',
+      })
+    )
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, errorCase.status)
+    assert.equal(result.error.code, errorCase.errorCode)
+    assert.deepEqual(result.prompts, [editablePrompt])
+    assert.equal(Object.hasOwn(result, 'updatedPrompt'), false)
+    assert.equal(fakeStorage.setItemCalls, 1)
+    assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+
+    fakeStorage.writeError = null
+    const restartedService = createPromptSystem(fakeStorage).promptService
+    const reloadResult = restartedService.loadPrompts()
+
+    assert.deepEqual(reloadResult.prompts, [editablePrompt])
+  }
+})
+
+test('behandelt ungültige und rückläufige Update-Zeitwerte kontrolliert', () => {
+  const testCases = [
+    {
+      getCurrentDate: () => Symbol('ungültiger Zeitwert'),
+    },
+    {
+      getCurrentDate: () =>
+        new Date('2026-07-11T09:29:59.999Z'),
+    },
+  ]
+
+  for (const testCase of testCases) {
+    const initialEnvelope = createStoredEnvelope([editablePrompt])
+    const fakeStorage = new FakeStorage([
+      [PROMPT_STORAGE_KEY, initialEnvelope],
+    ])
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate: testCase.getCurrentDate,
+    })
+    let result
+
+    assert.doesNotThrow(() => {
+      result = promptService.updatePrompt(
+        editablePrompt.id,
+        createPromptInput(editablePrompt, {
+          title: 'Änderung ohne gültigen Zeitstempel',
+        })
+      )
+    })
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, 'generationFailed')
+    assert.equal(result.error.code, 'promptTimestampGenerationFailed')
+    assert.deepEqual(result.prompts, [editablePrompt])
+    assert.equal(Object.hasOwn(result, 'updatedPrompt'), false)
+    assert.equal(fakeStorage.setItemCalls, 0)
+    assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+  }
 })
