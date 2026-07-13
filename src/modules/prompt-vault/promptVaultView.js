@@ -5,7 +5,7 @@ const CATEGORY_FILTER_ID = 'prompt-category-filter'
 const FAVORITES_FILTER_ID = 'prompt-favorites-only'
 const FILTER_HEADING_ID = 'prompt-filter-title'
 
-const CREATE_FIELD_CONFIG = Object.freeze([
+const PROMPT_FORM_FIELD_CONFIG = Object.freeze([
   Object.freeze({
     name: 'title',
     label: 'Titel',
@@ -126,7 +126,7 @@ function createHeader(viewState, actions) {
   const description = createElement(
     'p',
     '',
-    'Dieses lokale MVP durchsucht und filtert gespeicherte Prompts, verwaltet Favoriten und unterstützt Erstellen sowie dauerhaftes Löschen. Bearbeiten ist als nächster Schritt geplant.'
+    'Dieses lokale MVP unterstützt Erstellen, Bearbeiten, dauerhaftes Löschen, Suche, Kategorie-Filter und Favoriten. Prompt-Versionierung bleibt als nächster Schritt geplant.'
   )
   const promptCount = createElement('p', 'prompt-count')
 
@@ -277,6 +277,7 @@ function createFilterField(labelText, control) {
 function createPromptFilters(viewState, actions) {
   const filterPanel = createElement('section', 'prompt-filter-panel')
   filterPanel.setAttribute('aria-labelledby', FILTER_HEADING_ID)
+  const filtersDisabled = viewState.editForm?.isOpen === true
 
   if (viewState.hasActiveFilters === true) {
     filterPanel.classList.add('has-active-filters')
@@ -319,6 +320,7 @@ function createPromptFilters(viewState, actions) {
     typeof viewState.searchQuery === 'string'
       ? viewState.searchQuery
       : ''
+  searchInput.disabled = filtersDisabled
   searchInput.autocomplete = 'off'
   searchInput.addEventListener('input', () => {
     actions.onChangeSearchQuery?.(
@@ -339,6 +341,7 @@ function createPromptFilters(viewState, actions) {
   )
   categoryFilter.id = CATEGORY_FILTER_ID
   categoryFilter.name = 'promptCategory'
+  categoryFilter.disabled = filtersDisabled
   const allCategoriesOption = createElement(
     'option',
     '',
@@ -388,6 +391,7 @@ function createPromptFilters(viewState, actions) {
   favoritesFilter.name = 'promptFavoritesOnly'
   favoritesFilter.type = 'checkbox'
   favoritesFilter.checked = viewState.favoritesOnly === true
+  favoritesFilter.disabled = filtersDisabled
   favoritesFilter.addEventListener('change', () => {
     actions.onChangeFavoritesOnly?.(favoritesFilter.checked)
   })
@@ -412,6 +416,7 @@ function createPromptFilters(viewState, actions) {
       'button button--secondary prompt-filter-reset',
       actions.onResetFilters
     )
+    resetButton.disabled = filtersDisabled
     filterActions.append(resetButton)
     filterPanel.append(filterActions)
   }
@@ -473,9 +478,14 @@ function createFilteredEmptyState(viewState, actions) {
   }
 }
 
-function createFormField(fieldConfig, createForm, actions, fieldReferences) {
+function createFormField(
+  fieldConfig,
+  formState,
+  { idPrefix, onUpdateField },
+  fieldReferences
+) {
   const field = createElement('div', 'form-field')
-  const fieldId = 'prompt-create-' + fieldConfig.name
+  const fieldId = idPrefix + '-' + fieldConfig.name
   const errorId = fieldId + '-error'
   const label = createElement('label', 'form-label')
   label.htmlFor = fieldId
@@ -493,8 +503,8 @@ function createFormField(fieldConfig, createForm, actions, fieldReferences) {
   control.name = fieldConfig.name
   control.maxLength = fieldConfig.maxLength
   control.value =
-    typeof createForm.values[fieldConfig.name] === 'string'
-      ? createForm.values[fieldConfig.name]
+    typeof formState.values[fieldConfig.name] === 'string'
+      ? formState.values[fieldConfig.name]
       : ''
   control.required = fieldConfig.required
   control.autocomplete = 'off'
@@ -507,12 +517,12 @@ function createFormField(fieldConfig, createForm, actions, fieldReferences) {
   }
 
   control.addEventListener('input', () => {
-    actions.onUpdateCreateField?.(fieldConfig.name, control.value)
+    onUpdateField?.(fieldConfig.name, control.value)
   })
   fieldReferences.set(fieldConfig.name, control)
   field.append(label, control)
 
-  const errorMessage = createForm.fieldErrors[fieldConfig.name]
+  const errorMessage = formState.fieldErrors[fieldConfig.name]
 
   if (typeof errorMessage === 'string') {
     control.setAttribute('aria-invalid', 'true')
@@ -550,12 +560,15 @@ function createPromptForm(viewState, actions) {
   const fieldGrid = createElement('div', 'prompt-create-form__fields')
   const fieldReferences = new Map()
 
-  CREATE_FIELD_CONFIG.forEach((fieldConfig) => {
+  PROMPT_FORM_FIELD_CONFIG.forEach((fieldConfig) => {
     fieldGrid.append(
       createFormField(
         fieldConfig,
         createForm,
-        actions,
+        {
+          idPrefix: 'prompt-create',
+          onUpdateField: actions.onUpdateCreateField,
+        },
         fieldReferences
       )
     )
@@ -598,7 +611,7 @@ function createPromptForm(viewState, actions) {
   form.addEventListener('submit', (event) => {
     event.preventDefault()
     const values = Object.fromEntries(
-      CREATE_FIELD_CONFIG.map(({ name }) => [
+      PROMPT_FORM_FIELD_CONFIG.map(({ name }) => [
         name,
         fieldReferences.get(name)?.value ?? '',
       ])
@@ -608,6 +621,112 @@ function createPromptForm(viewState, actions) {
 
   return {
     element: form,
+    fields: fieldReferences,
+    alert,
+  }
+}
+
+function createPromptEditForm(prompt, index, viewState, actions) {
+  const editForm = viewState.editForm
+  const idPrefix = 'prompt-edit-' + index
+  const formId = idPrefix + '-form'
+  const headingId = idPrefix + '-heading'
+  const hintId = idPrefix + '-local-hint'
+  const form = createElement('form', 'prompt-edit-form')
+  form.id = formId
+  form.noValidate = true
+  form.setAttribute('aria-labelledby', headingId)
+  form.setAttribute('aria-describedby', hintId)
+
+  if (editForm.isSubmitting) {
+    form.setAttribute('aria-busy', 'true')
+  }
+
+  const formHeader = createElement('div', 'prompt-edit-form__header')
+  const headingGroup = createElement('div')
+  const eyebrow = createElement(
+    'span',
+    'eyebrow',
+    prompt.isDemo === true ? 'Beispielprompt' : 'Lokaler Prompt'
+  )
+  const heading = createElement('h4', '', 'Prompt bearbeiten')
+  heading.id = headingId
+  headingGroup.append(eyebrow, heading)
+  const localHint = createElement(
+    'p',
+    'prompt-edit-form__hint',
+    'Änderungen werden ausschließlich lokal in diesem Browser gespeichert.'
+  )
+  localHint.id = hintId
+  formHeader.append(headingGroup, localHint)
+
+  const fieldGrid = createElement('div', 'prompt-edit-form__fields')
+  const fieldReferences = new Map()
+
+  PROMPT_FORM_FIELD_CONFIG.forEach((fieldConfig) => {
+    fieldGrid.append(
+      createFormField(
+        fieldConfig,
+        editForm,
+        {
+          idPrefix,
+          onUpdateField: actions.onUpdateEditField,
+        },
+        fieldReferences
+      )
+    )
+  })
+
+  let alert = null
+
+  if (editForm.errorMessage) {
+    alert = createElement(
+      'p',
+      'prompt-edit-form__error',
+      editForm.errorMessage
+    )
+    alert.setAttribute('role', 'alert')
+    alert.tabIndex = -1
+  }
+
+  const formActions = createElement('div', 'prompt-edit-form__actions')
+  const cancelButton = createButton(
+    'Abbrechen',
+    'button button--secondary',
+    actions.onCancelEditForm
+  )
+  cancelButton.disabled = editForm.isSubmitting
+  const submitButton = createButton(
+    editForm.isSubmitting
+      ? 'Änderungen werden gespeichert …'
+      : 'Änderungen speichern',
+    'button button--primary'
+  )
+  submitButton.type = 'submit'
+  submitButton.disabled = editForm.isSubmitting
+  formActions.append(cancelButton, submitButton)
+
+  form.append(formHeader, fieldGrid)
+
+  if (alert) {
+    form.append(alert)
+  }
+
+  form.append(formActions)
+  form.addEventListener('submit', (event) => {
+    event.preventDefault()
+    const values = Object.fromEntries(
+      PROMPT_FORM_FIELD_CONFIG.map(({ name }) => [
+        name,
+        fieldReferences.get(name)?.value ?? '',
+      ])
+    )
+    actions.onSubmitEditForm?.(prompt.id, values)
+  })
+
+  return {
+    element: form,
+    formId,
     fields: fieldReferences,
     alert,
   }
@@ -715,6 +834,12 @@ function createPromptCard(prompt, index, viewState, actions, focusReferences) {
     typeof prompt.title === 'string' && prompt.title
       ? prompt.title
       : 'Prompt'
+  const isEditingPrompt =
+    viewState.editForm?.isOpen === true &&
+    viewState.editForm.editingPromptId === prompt.id
+  const isEditSubmitting =
+    isEditingPrompt && viewState.editForm.isSubmitting === true
+  const editFormId = 'prompt-edit-' + index + '-form'
   const isFavorite = prompt.isFavorite === true
   const favoriteAction = isFavorite
     ? 'Aus Favoriten entfernen'
@@ -745,6 +870,28 @@ function createPromptCard(prompt, index, viewState, actions, focusReferences) {
     favoriteButton.setAttribute('aria-busy', 'true')
   }
 
+  if (isEditingPrompt) {
+    favoriteButton.disabled = true
+  }
+
+  const editButton = createButton(
+    'Bearbeiten',
+    'button button--secondary prompt-edit-trigger',
+    () => actions.onOpenEditForm?.(prompt.id)
+  )
+  editButton.setAttribute(
+    'aria-label',
+    accessibleTitle + ' bearbeiten'
+  )
+  editButton.setAttribute('aria-expanded', String(isEditingPrompt))
+
+  if (isEditingPrompt) {
+    editButton.setAttribute('aria-controls', editFormId)
+  }
+
+  editButton.disabled =
+    isEditingPrompt || viewState.editForm?.isSubmitting === true
+
   const deleteButton = createButton(
     'Löschen',
     'button button--delete',
@@ -754,7 +901,8 @@ function createPromptCard(prompt, index, viewState, actions, focusReferences) {
     'aria-label',
     accessibleTitle + ' löschen'
   )
-  cardActions.append(favoriteButton, deleteButton)
+  deleteButton.disabled = isEditSubmitting
+  cardActions.append(favoriteButton, editButton, deleteButton)
   card.append(...cardContent, details, cardActions)
 
   if (
@@ -770,10 +918,52 @@ function createPromptCard(prompt, index, viewState, actions, focusReferences) {
     card.append(favoriteError)
   }
 
+  let promptEditForm = null
+
+  if (isEditingPrompt) {
+    promptEditForm = createPromptEditForm(
+      prompt,
+      index,
+      viewState,
+      actions
+    )
+    card.append(promptEditForm.element)
+  }
+
   if (viewState.pendingDeleteId === prompt.id) {
     card.append(
       createDeleteConfirmation(prompt, viewState, actions, focusReferences)
     )
+  }
+
+  if (
+    viewState.focusTarget?.type === 'editButton' &&
+    viewState.focusTarget.id === prompt.id
+  ) {
+    focusReferences.editButton = editButton
+  }
+
+  if (
+    viewState.focusTarget?.type === 'editTitle' &&
+    viewState.focusTarget.id === prompt.id
+  ) {
+    focusReferences.editTitle = promptEditForm?.fields.get('title')
+  }
+
+  if (
+    viewState.focusTarget?.type === 'editField' &&
+    viewState.focusTarget.id === prompt.id
+  ) {
+    focusReferences.editField = promptEditForm?.fields.get(
+      viewState.focusTarget.fieldName
+    )
+  }
+
+  if (
+    viewState.focusTarget?.type === 'editAlert' &&
+    viewState.focusTarget.id === prompt.id
+  ) {
+    focusReferences.editAlert = promptEditForm?.alert
   }
 
   if (
@@ -853,6 +1043,18 @@ function createSuccessMessage(message) {
   return status
 }
 
+function createEditErrorMessage(message) {
+  const alert = createElement(
+    'p',
+    'prompt-feedback prompt-feedback--error',
+    message
+  )
+  alert.setAttribute('role', 'alert')
+  alert.tabIndex = -1
+
+  return alert
+}
+
 export function createPromptVaultView(rootElement) {
   if (typeof rootElement?.replaceChildren !== 'function') {
     throw new TypeError(
@@ -872,9 +1074,17 @@ export function createPromptVaultView(rootElement) {
       : []
     let requestedFocusElement = null
     let shouldRevealFocus = false
+    let editGlobalAlert = null
 
     if (viewState.statusMessage) {
       fragment.append(createSuccessMessage(viewState.statusMessage))
+    }
+
+    if (viewState.editErrorMessage) {
+      editGlobalAlert = createEditErrorMessage(
+        viewState.editErrorMessage
+      )
+      fragment.append(editGlobalAlert)
     }
 
     let promptForm = null
@@ -940,6 +1150,22 @@ export function createPromptVaultView(rootElement) {
       shouldRevealFocus = true
     } else if (focusTarget?.type === 'createAlert') {
       requestedFocusElement = promptForm?.alert
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'editTitle') {
+      requestedFocusElement = promptList?.focusReferences.editTitle
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'editField') {
+      requestedFocusElement = promptList?.focusReferences.editField
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'editAlert') {
+      requestedFocusElement = promptList?.focusReferences.editAlert
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'editButton') {
+      requestedFocusElement =
+        promptList?.focusReferences.editButton ?? contentHeading
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'editGlobalAlert') {
+      requestedFocusElement = editGlobalAlert
       shouldRevealFocus = true
     } else if (focusTarget?.type === 'searchInput') {
       requestedFocusElement = promptFilters?.searchInput
