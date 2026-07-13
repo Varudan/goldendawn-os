@@ -17,7 +17,19 @@ const PROMPT_EDITABLE_FIELDS = Object.freeze([
 const MAX_ID_GENERATION_ATTEMPTS = 5
 
 function clonePrompts(prompts) {
-  return prompts.map((prompt) => ({ ...prompt }))
+  return prompts.map(clonePrompt)
+}
+
+function clonePrompt(prompt) {
+  const clonedPrompt = { ...prompt }
+
+  if (Array.isArray(prompt.versions)) {
+    clonedPrompt.versions = prompt.versions.map((version) => ({
+      ...version,
+    }))
+  }
+
+  return clonedPrompt
 }
 
 function createFailure(status, code, message, prompts = []) {
@@ -209,6 +221,24 @@ function hasPromptContentChanged(currentPrompt, promptValues) {
   )
 }
 
+function createPromptVersion({
+  promptValues,
+  versionNumber,
+  createdAt,
+  changeType,
+}) {
+  return {
+    versionNumber,
+    title: promptValues.title,
+    category: promptValues.category,
+    description: promptValues.description,
+    content: promptValues.content,
+    createdAt,
+    changeType,
+    restoredFromVersion: null,
+  }
+}
+
 export function createPromptService({
   promptStorage,
   generatePromptId = generateDefaultPromptId,
@@ -361,6 +391,14 @@ export function createPromptService({
       updatedAt: timestamp,
       isFavorite: false,
       isDemo: false,
+      versions: [
+        createPromptVersion({
+          promptValues: validationResult.values,
+          versionNumber: 1,
+          createdAt: timestamp,
+          changeType: 'created',
+        }),
+      ],
     }
     const updatedPrompts = [newPrompt, ...loadResult.prompts]
     const saveResult = promptStorage.savePromptCollection(updatedPrompts)
@@ -372,7 +410,7 @@ export function createPromptService({
     return {
       ok: true,
       status: 'created',
-      createdPrompt: { ...newPrompt },
+      createdPrompt: clonePrompt(newPrompt),
       prompts: clonePrompts(updatedPrompts),
     }
   }
@@ -401,6 +439,15 @@ export function createPromptService({
         'notFound',
         'promptNotFound',
         'Der angeforderte Prompt wurde nicht gefunden.',
+        loadResult.prompts
+      )
+    }
+
+    if (typeof promptStorage?.savePromptCollection !== 'function') {
+      return createFailure(
+        'unavailable',
+        'promptStorageUnavailable',
+        'Der Prompt-Speicher ist nicht verfügbar.',
         loadResult.prompts
       )
     }
@@ -465,7 +512,7 @@ export function createPromptService({
         ok: true,
         status: 'favoriteUpdated',
         favoriteChanged: false,
-        updatedPrompt: { ...currentPrompt },
+        updatedPrompt: clonePrompt(currentPrompt),
         prompts: clonePrompts(loadResult.prompts),
       }
     }
@@ -511,7 +558,7 @@ export function createPromptService({
       ok: true,
       status: 'favoriteUpdated',
       favoriteChanged: true,
-      updatedPrompt: { ...updatedPrompt },
+      updatedPrompt: clonePrompt(updatedPrompt),
       prompts: clonePrompts(updatedPrompts),
     }
   }
@@ -561,7 +608,7 @@ export function createPromptService({
         ok: true,
         status: 'updated',
         promptChanged: false,
-        updatedPrompt: { ...currentPrompt },
+        updatedPrompt: clonePrompt(currentPrompt),
         prompts: clonePrompts(loadResult.prompts),
       }
     }
@@ -589,10 +636,18 @@ export function createPromptService({
       )
     }
 
+    const lastVersion = currentPrompt.versions.at(-1)
+    const newVersion = createPromptVersion({
+      promptValues: validationResult.values,
+      versionNumber: lastVersion.versionNumber + 1,
+      createdAt: timestamp,
+      changeType: 'edited',
+    })
     const updatedPrompt = {
       ...currentPrompt,
       ...validationResult.values,
       updatedAt: timestamp,
+      versions: [...currentPrompt.versions, newVersion],
     }
     const updatedPrompts = loadResult.prompts.map((prompt, index) =>
       index === promptIndex ? updatedPrompt : prompt
@@ -607,7 +662,7 @@ export function createPromptService({
       ok: true,
       status: 'updated',
       promptChanged: true,
-      updatedPrompt: { ...updatedPrompt },
+      updatedPrompt: clonePrompt(updatedPrompt),
       prompts: clonePrompts(updatedPrompts),
     }
   }
