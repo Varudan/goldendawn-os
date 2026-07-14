@@ -4,20 +4,24 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.1.0 – Foundation` |
+| Projektphase | `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend` |
 | Vertragsversion | `1.0` |
+| PromptVault-Speicherschema | `2` |
 | Agenten-Scope | SyncAgent, TestAgent und DatenAgent |
-| Status | Initialer Vertrag für Version 1 |
-| Letzte Aktualisierung | 2026-07-11 |
+| Status | Lokaler PromptVault-Vertrag implementiert; Sync-Vertrag als Zielzustand dokumentiert |
+| Letzte Aktualisierung | 2026-07-13 |
 
-Dieses Dokument definiert die maschinenlesbare Sprache zwischen dem
+Dieses Dokument definiert den implementierten lokalen PromptVault-
+Speichervertrag sowie die maschinenlesbare Sprache zwischen dem
 GoldenDawn-OS-Frontend, dem SyncAgent, dem TestAgent und dem DatenAgent. Es
 konkretisiert die Grenzen aus `AGENTS.md`, `docs/architecture.md` und
 `docs/security.md`.
 
-Der Vertrag beschreibt den geplanten Zielzustand. Solange eine Aktion noch
-nicht implementiert ist, muss sie in UI und Dokumentation als geplant
-gekennzeichnet bleiben.
+Der lokale PromptVault-Vertrag gilt für den aktuellen Stand von `v0.2.0`. Die
+externen Sync- und Agentenverträge beschreiben weiterhin den geplanten
+Zielzustand späterer Versionen. Solange eine externe Aktion noch nicht
+implementiert ist, muss sie in UI und Dokumentation als geplant gekennzeichnet
+bleiben.
 
 ## Ziele des Vertrags
 
@@ -34,6 +38,9 @@ Der Vertrag soll:
 ## Geltungsbereich von Version 1
 
 ### Externe Aktionen des Dashboards
+
+Die folgenden Aktionen gehören zum Zielvertrag für spätere Versionen. Sie sind
+in `v0.2.0` noch nicht implementiert.
 
 | Aktion | Zweck | Primärer Handler | Schreibend |
 | --- | --- | --- | --- |
@@ -68,9 +75,172 @@ autonom durch Agenten ausgeführt.
 - Benutzerkonten und Rollenmodelle;
 - öffentliche Schreibzugriffe ohne gesonderte Sicherheitsentscheidung.
 
-PromptVault bleibt zunächst lokal. Falls später eine externe Synchronisation
-beschlossen wird, läuft sie ebenfalls ausschließlich über SyncAgent und
-DatenAgent und erhält eigene dokumentierte Aktionen.
+PromptVault bleibt in `v0.2.0` ausschließlich lokal. Falls später eine externe
+Synchronisation beschlossen wird, läuft sie ebenfalls ausschließlich über
+SyncAgent und DatenAgent und erhält eigene dokumentierte Aktionen.
+
+## Lokaler PromptVault-Speichervertrag
+
+### Geltungsbereich und Datenfluss
+
+Der lokale Vertrag ist implementiert und verwendet ausschließlich diesen
+Datenfluss:
+
+```text
+PromptVaultView
+  → PromptVaultController
+  → PromptService
+  → PromptStorage
+  → StorageAdapter
+  → localStorage
+```
+
+View und Controller greifen nicht direkt auf `localStorage`, `PromptStorage`
+oder `StorageAdapter` zu. Die vollständige Promptliste aus dem Service ist die
+autoritative Datenquelle der Oberfläche. Suchtext, Kategorieauswahl und der
+Favoritenfilter sind flüchtige UI-Zustände und nicht Bestandteil des
+Speichervertrags.
+
+### Storage-Key und Envelope
+
+PromptVault verwendet genau diesen Storage-Key:
+
+```text
+goldendawn.promptVault.v1
+```
+
+Neue Schreibvorgänge verwenden den Schema-2-Envelope:
+
+```json
+{
+  "schemaVersion": 2,
+  "prompts": []
+}
+```
+
+| Feld | Typ | Regel |
+| --- | --- | --- |
+| `schemaVersion` | Ganzzahl | für den aktuellen Vertrag exakt `2` |
+| `prompts` | Array | vollständige Promptliste; darf bewusst leer sein |
+
+Storage-Key und `schemaVersion` erfüllen unterschiedliche Aufgaben. Der Name
+des bestehenden Keys bleibt trotz der Schema-2-Migration unverändert.
+
+### Aktueller Promptvertrag
+
+Jeder Prompt im Schema-2-Envelope enthält mindestens folgende Felder:
+
+| Feld | Typ | Regel |
+| --- | --- | --- |
+| `id` | String | stabil, nicht leer und ohne führende oder abschließende Leerzeichen |
+| `title` | String | aktueller Titel, nicht leer; Anwendungslimit 120 Zeichen |
+| `category` | String | aktuelle Kategorie oder leer; Anwendungslimit 60 Zeichen |
+| `description` | String | aktuelle Beschreibung oder leer; Anwendungslimit 240 Zeichen |
+| `content` | String | aktueller vollständiger Prompt-Text, nicht leer; Anwendungslimit 10.000 Zeichen |
+| `createdAt` | ISO-8601-String | Erstellungszeitpunkt des Prompts in UTC |
+| `updatedAt` | ISO-8601-String | Zeitpunkt der letzten erfolgreichen Promptmutation in UTC; nicht vor `createdAt` |
+| `isFavorite` | Boolean | persistenter Favoritenstatus außerhalb der Inhaltsversionen |
+| `isDemo` | Boolean | Kennzeichnung synthetischer Beispielprompts |
+| `versions` | Array | nicht leere, lückenlos aufsteigende und fachlich unveränderliche Versionshistorie |
+
+`title`, `category`, `description` und `content` auf der Prompt-Ebene bilden den
+aktuellen, durchsuchbaren Stand. Diese vier Felder müssen exakt der letzten
+gespeicherten Version entsprechen. Suche und Kategorie-Filter verwenden nur
+diesen aktuellen Top-Level-Inhalt und durchsuchen nicht die Historie.
+
+### Vertrag einer Promptversion
+
+Jeder Eintrag in `versions` enthält exakt folgende Felder:
+
+| Feld | Typ | Regel |
+| --- | --- | --- |
+| `versionNumber` | positive Ganzzahl | beginnt bei `1` und steigt lückenlos um eins |
+| `title` | String | Titel-Snapshot dieser Fassung, nicht leer |
+| `category` | String | Kategorie-Snapshot dieser Fassung oder leer |
+| `description` | String | Beschreibungs-Snapshot dieser Fassung oder leer |
+| `content` | String | vollständiger Prompt-Text dieser Fassung, nicht leer |
+| `createdAt` | ISO-8601-String | Entstehungszeitpunkt dieser Inhaltsversion in UTC |
+| `changeType` | String | einer der erlaubten Änderungstypen |
+| `restoredFromVersion` | positive Ganzzahl oder `null` | direkte Ursprungsversion einer Wiederherstellung |
+
+Erlaubte Werte für `changeType`:
+
+| Wert | Bedeutung |
+| --- | --- |
+| `created` | Version 1 eines neu erstellten oder synthetischen Beispielprompts |
+| `migrated` | im Arbeitsspeicher erzeugte Ausgangsversion eines gültigen Schema-1-Prompts |
+| `edited` | neue Version nach einer tatsächlichen Änderung der vier Inhaltsfelder |
+| `restored` | neue Version aus einer ausgewählten früheren Fassung |
+
+Für `created`, `migrated` und `edited` ist `restoredFromVersion` immer `null`.
+Bei `restored` enthält das Feld die positive Nummer einer bereits vorhandenen,
+kleineren Version. Es verweist auf die direkt ausgewählte Fassung. Wird eine
+frühere Restore-Version ausgewählt, verweist die neue Version daher auf deren
+eigene `versionNumber` und nicht transitiv auf deren Ursprung.
+
+### Unveränderlichkeit und Mutationen
+
+Das gespeicherte `versions`-Array ist fachlich append-only:
+
+- Versionen bleiben lückenlos aufsteigend gespeichert und werden weder
+  umsortiert noch überschrieben oder entfernt.
+- Die Oberfläche darf für die absteigende Anzeige eine Kopie verwenden, aber
+  nicht das gespeicherte Array verändern.
+- Erstellen legt genau Version 1 mit `changeType: "created"` an.
+- Eine tatsächliche Änderung an `title`, `category`, `description` oder
+  `content` hängt genau eine neue Version mit `changeType: "edited"` an.
+- Wiederherstellen übernimmt ausschließlich die vier Inhaltsfelder der
+  ausgewählten Version und hängt genau eine neue Version mit
+  `changeType: "restored"` an. Identität, Listenposition, Erstellungsmetadaten,
+  Demo-Herkunft, Favoritenstatus und frühere Versionen bleiben erhalten.
+- Entsprechen die vier Zielwerte bereits dem aktuellen Stand, ist Bearbeiten
+  beziehungsweise Wiederherstellen ein No-op. Es entsteht keine Version, kein
+  neuer Zeitstempel und kein Storage-Schreibvorgang.
+- Eine Favoritenänderung aktualisiert ausschließlich Top-Level-Metadaten. Sie
+  erzeugt keine Inhaltsversion und verändert keinen historischen Snapshot.
+- Löschen entfernt den vollständigen Prompt einschließlich seiner gesamten
+  Versionshistorie.
+
+Nach jeder erfolgreichen Mutation speichert `PromptStorage` die vollständige
+Promptliste im Schema-2-Envelope. Schlägt die Validierung, Zeitstempelerzeugung
+oder Speicherung fehl, bleibt die zuvor geladene Liste autoritativ; es wird
+keine neue Version vorgetäuscht.
+
+### Migration von Schema 1
+
+Ein gültiger Schema-1-Envelope wird beim Laden validiert und ausschließlich im
+Arbeitsspeicher normalisiert:
+
+- fehlende boolesche Felder werden kontrolliert auf `false` normalisiert;
+- jeder Prompt erhält genau eine Baseline als Version 1;
+- diese Baseline übernimmt die vier vorhandenen Top-Level-Inhaltsfelder;
+- ihr `createdAt` entspricht dem bisherigen `updatedAt`;
+- ihr `changeType` ist `migrated` und `restoredFromVersion` ist `null`;
+- frühere, nicht gespeicherte Änderungen werden nicht rekonstruiert.
+
+Das bloße Laden eines vorhandenen Schema-1-Envelopes überschreibt den Rohwert
+nicht. Erst eine erfolgreiche Mutation schreibt die vollständige Sammlung als
+Schema 2. Ein fehlender Storage-Key ist davon zu unterscheiden: Beim ersten
+Laden initialisiert der Service die klar gekennzeichneten synthetischen
+Beispielprompts direkt als Schema 2. Eine bewusst gespeicherte leere Liste
+bleibt leer.
+
+Beschädigte Daten, ein unbekanntes Schema und fehlgeschlagene Schreibvorgänge
+werden nicht durch Fallback- oder Migrationsdaten überschrieben.
+
+### Lokale Grenzen
+
+`localStorage` speichert PromptVault-Daten ausschließlich für den aktuellen
+Browser-Origin und das aktuelle Browserprofil. Diese Speicherung ist:
+
+- keine Cloud-Sicherung;
+- keine geräte- oder browserübergreifende Synchronisierung;
+- kein Import- oder Exportmechanismus;
+- kein Backend und keine Airtable-Anbindung.
+
+Das Löschen lokaler Browserdaten kann die PromptVault-Daten entfernen.
+Benutzerkonten, automatische Cloud-Sicherung und Wiederherstellung außerhalb
+des aktuellen Browserprofils sind nicht implementiert.
 
 ## Gemeinsamer Request-Umschlag
 

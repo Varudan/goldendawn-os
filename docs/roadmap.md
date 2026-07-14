@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.0 – Local Dashboard MVP in Arbeit` |
+| Projektphase | `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, TestAgent und DatenAgent |
 | Letzte Aktualisierung | 2026-07-13 |
@@ -41,7 +41,7 @@ nicht starre Kalendertermine.
 | Version | Schwerpunkt | Ergebnis | Status |
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
-| `v0.2.0` | Lokales MVP | Command Center und PromptVault mit lokalen Daten | 🟡 |
+| `v0.2.0` | Lokales MVP | Implementierung abgeschlossen; Release-Vorbereitung ausstehend | 🟡 |
 | `v0.3.0` | SyncAgent | Standardisierter Webhook- und Routingfluss | ⬜ |
 | `v0.4.0` | DatenAgent | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent | Lerntests erstellen, bewerten und speichern | ⬜ |
@@ -111,7 +111,8 @@ bereitstellen. Externe Systeme sind für diese Version nicht erforderlich.
 - ✅ Vorhandene Prompts über den bestehenden Service- und Storage-Datenfluss
   bearbeiten; Identität, Erstellungsmetadaten und Favoritenstatus bleiben dabei
   ebenso erhalten wie die Kennzeichnung der Beispielprompt-Herkunft.
-- ⬜ Neue unveränderliche Prompt-Versionen hinzufügen.
+- ✅ Unveränderliche Prompt-Versionen mit zugänglicher Historie bereitstellen
+  und historische Fassungen ausschließlich als neue Version wiederherstellen.
 - ✅ Lade-, Leer-, Validierungs-, Erfolgs- und Speicherfehlerzustände gestalten.
 - ✅ Responsive Darstellung und Tastaturbedienung prüfen.
 
@@ -121,8 +122,15 @@ bereitstellen. Externe Systeme sind für diese Version nicht erforderlich.
 - PromptVault ist nach einem Browser-Neustart weiterhin nutzbar.
 - UI-Komponenten greifen nicht direkt auf `localStorage` zu.
 - Beschädigte lokale JSON-Daten bringen die Anwendung nicht zum Absturz.
+- Erstellen erzeugt Version 1, Bearbeiten ergänzt eine neue Inhaltsversion und
+  Wiederherstellen erhält jede frühere Fassung unverändert.
+- Favoriten erzeugen keine Inhaltsversion; Löschen entfernt den Prompt und
+  seine vollständige Historie.
 - Der Produktions-Build ist erfolgreich.
 - Die Oberfläche kennzeichnet lokale und gemockte Daten korrekt.
+- Die Oberfläche macht deutlich, dass lokale Browserdaten weder
+  geräteübergreifend synchronisiert noch automatisch in der Cloud gesichert
+  werden.
 
 ### Portfolio-Nachweis für v0.2.0
 
@@ -350,13 +358,17 @@ Diese Punkte werden erst nach dem Portfolio Release bewertet und priorisiert.
 
 ## Nächster konkreter Schritt
 
-Der responsive Command-Center-Shell, die erste PromptVault-Modulstruktur und der
-gemeinsame Storage-Adapter sind umgesetzt. Das lokale PromptVault-MVP unterstützt
-Anzeigen, Erstellen, Bearbeiten, Löschen und Durchsuchen sowie Kategorie-Filter
-und persistent gespeicherte Favoriten. Suchbegriffe und Filterzustände werden
-nicht gespeichert. `v0.2.0 – Lokales Dashboard-MVP` bleibt in Arbeit.
+Die Implementierung von `v0.2.0 – Lokales Dashboard-MVP` ist abgeschlossen.
+PromptVault unterstützt lokal Anzeigen, Erstellen, Bearbeiten, Löschen,
+Durchsuchen, Kategorie- und Favoritenfilter, persistente Favoriten,
+unveränderliche Versionierung und Wiederherstellung als neue Version. Suchtext
+und Filterzustände bleiben flüchtig. Die Daten liegen ausschließlich im
+aktuellen Browserprofil; dies ist keine Cloud-Sicherung.
 
-Als nächste PromptVault-Funktion folgt die unveränderliche Versionierung
-bearbeiteter Prompts. Eine Versionshistorie oder Wiederherstellung ist noch
-nicht umgesetzt. Webhooks, Synchronisierung, Airtable, ein Backend und
-Agentenlogik beginnen erst in den dafür vorgesehenen späteren Versionen.
+Als nächster Schritt folgt die Release-Vorbereitung mit abschließendem
+Dokumentations- und Qualitätsabgleich sowie dem manuellen Git- und
+Release-Workflow durch Jan. Ein veröffentlichter `v0.2.0`-Tag oder ein Release
+wird noch nicht behauptet. Import/Export, Webhooks, Synchronisierung,
+geräteübergreifende Speicherung, automatische Cloud-Sicherung, Airtable, ein
+Backend, Benutzerkonten und Agentenlogik bleiben offen beziehungsweise beginnen
+erst in den dafür vorgesehenen späteren Versionen.

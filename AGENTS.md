@@ -19,21 +19,25 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.2.0 – Local Dashboard MVP in Arbeit`
+Aktueller Stand: `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend`
 
 In dieser Phase liegt der Fokus auf:
 
-- dem bereits umgesetzten responsiven Command-Center-Shell;
-- der bereits umgesetzten ersten PromptVault-Modulstruktur;
-- dem bereits umgesetzten gemeinsamen Storage-Adapter für robuste lokale
-  Speicherung;
-- PromptVault als erstem lokal nutzbaren MVP-Modul mit Anzeigen, Erstellen,
-  Bearbeiten, dauerhaftem Löschen, lokaler Textsuche, Kategorie-Filtern und
-  persistenten Favoriten;
-- dem weiteren PromptVault-Ausbau mit Versionierung als nächstem Schritt.
+- dem umgesetzten responsiven Command-Center-Shell;
+- der umgesetzten PromptVault-Modulstruktur und dem gemeinsamen
+  Storage-Adapter für robuste lokale Speicherung;
+- PromptVault als lokal nutzbarem MVP-Modul mit Anzeigen, Erstellen,
+  Bearbeiten, dauerhaftem Löschen, lokaler Textsuche, Kategorie-Filtern,
+  persistenten Favoriten, unveränderlicher Versionierung und
+  Wiederherstellung als neue Version;
+- der abschließenden Release-Vorbereitung für `v0.2.0`, ohne einen bereits
+  veröffentlichten Tag oder ein Release zu behaupten.
 
 Noch nicht Teil dieser Phase sind:
 
+- Import oder Export von PromptVault-Daten;
+- Synchronisierung, geräteübergreifende Speicherung oder automatische
+  Cloud-Sicherung;
 - Airtable-Integrationen;
 - Webhooks oder die Anbindung des SyncAgent;
 - echte LLM- oder Agentenlogik;
@@ -178,10 +182,19 @@ Regeln:
 - Vermische Daten verschiedener Module nicht in einem unstrukturierten
   Sammelobjekt.
 - Speichere PromptVault-Suchbegriffe und -Filterzustände nicht. Persistente
-  Favoriten verwenden ausschließlich den bestehenden Datenfluss über
-  `PromptService`, `PromptStorage` und `StorageAdapter` sowie den Storage-Key
-  `goldendawn.promptVault.v1`.
+  Favoriten, Inhaltsänderungen und Wiederherstellungen verwenden ausschließlich
+  den bestehenden Datenfluss über `PromptService`, `PromptStorage` und
+  `StorageAdapter` sowie den Storage-Key `goldendawn.promptVault.v1`.
+- PromptVault verwendet für neue Schreibvorgänge den Envelope mit
+  `schemaVersion: 2`. Das Versionsarray bleibt fachlich unveränderlich und wird
+  nur um neue Versionen ergänzt; eine Wiederherstellung überschreibt keine
+  frühere Fassung.
+- Normalisiere gültige Schema-1-Daten nur im Arbeitsspeicher. Schreibe den
+  Schema-2-Envelope erst bei einer erfolgreichen Mutation und rekonstruiere
+  keine unbekannte frühere Historie.
 - Plane Migrationen ein, bevor ein bestehendes Datenformat geändert wird.
+- Behandle lokale Browserdaten nicht als Synchronisierung, geräteübergreifende
+  Speicherung oder Cloud-Sicherung.
 - Mock-Daten müssen klar als Mock- oder Demo-Daten erkennbar sein.
 
 ## Sicherheit und Datenschutz

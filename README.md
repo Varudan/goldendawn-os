@@ -8,14 +8,14 @@
 
 ## Project status
 
-**Current phase:** `v0.2.0 — Local Dashboard MVP in progress`
+**Current phase:** `v0.2.0 — implementation complete, release preparation pending`
 
 The responsive Command Center shell is implemented on top of the verified Vite
-and Vanilla JavaScript foundation. The first PromptVault module structure and
-the shared local storage adapter are implemented. PromptVault is locally usable
-for viewing, creating, editing, permanently deleting, searching, filtering by
-category, and persisting favorite prompts. `v0.2.0` remains in progress;
-features marked as planned are not implemented yet.
+and Vanilla JavaScript foundation. PromptVault now supports local viewing,
+creation, editing, permanent deletion, search, category filters, persistent
+favorites, immutable version history, and restoration as a new version. The
+five local MVP expansion steps are implemented. Release preparation is still
+pending; no published `v0.2.0` tag or release is claimed.
 
 ## Vision
 
@@ -63,7 +63,7 @@ Accepted architecture decisions and their rationale are indexed in
 | Module | Purpose | Status |
 | --- | --- | --- |
 | Command Center | Central overview, navigation, and system status | Shell implemented |
-| PromptVault | Local prompt library with editing, search, category filters, and favorites; versioning remains planned | Local MVP usable: view, create, edit, delete, search, filter, and favorite |
+| PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | Local MVP implementation complete |
 | Learning Core | Learning progress, notes, and Arisa Tests | Planned |
 | Agent Hub | Agent overview, capabilities, and execution status | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Planned |
@@ -76,13 +76,24 @@ PromptVault currently uses the local storage key
 `goldendawn.promptVault.v1`. If that key is completely missing, the service
 initializes exactly three clearly marked synthetic example prompts. The local
 MVP displays category metadata and the complete prompt text, lets users create
-validated custom prompts with persistent local storage, edits the title,
-category, description, and content of existing custom or demo prompts in place,
-and permanently deletes prompts only after an accessible inline confirmation.
-Editing preserves prompt identity, creation metadata, demo provenance, and
-favorite state while the service advances `updatedAt`. The module also
-provides local full-text search, category filters, and persistent favorites. A
-deliberately stored empty list remains empty after a reload.
+validated custom prompts with persistent local storage, and permanently deletes
+prompts and their complete history only after an accessible inline
+confirmation. Every new prompt starts with Version 1. A content-changing edit
+appends an immutable `edited` snapshot while preserving prompt identity,
+creation metadata, demo provenance, favorite state, and every earlier version.
+
+Each prompt card provides an accessible version history with the newest entry
+shown first without changing the stored ascending order. Historical content can
+be reviewed in full and restored after an inline confirmation. Restoration
+never overwrites history: it appends a new `restored` version that references
+the selected source version. Restoring content that already matches the current
+state is reported as unchanged and creates no additional version.
+
+The module also provides local full-text search over the current prompt content,
+category filters, and persistent favorites. Search text and filter selections
+remain transient. Favorite changes are stored outside the content-version
+history and do not create a new content version. A deliberately stored empty
+list remains empty after a reload.
 
 The implemented local data flow is:
 
@@ -95,15 +106,17 @@ PromptVault view
   → localStorage
 ```
 
-The UI does not access `localStorage` directly. Search text, category selection,
-and the favorites-only filter remain transient controller and UI state and are
-not stored. Favorite and edit changes use the existing service and storage flow
-shown above and persist within `goldendawn.promptVault.v1`; no second storage
-key is used.
+The UI does not access `localStorage` directly. Create, edit, favorite, delete,
+and restore actions use the service and storage flow shown above and persist
+within `goldendawn.promptVault.v1`; no second storage key is used. A restore
+request passes only the prompt ID and version number to the service, never a
+second content copy from the view.
 
-Editing existing prompts is implemented without version history or recovery.
-Immutable prompt versioning is the next planned PromptVault step. Webhooks,
-synchronization, Airtable, a backend, and agent logic remain outside this step.
+These records exist only in `localStorage` for the current browser profile and
+origin. They are not a cloud backup, do not synchronize across browsers or
+devices, and can be lost when local browser data is cleared. Import/export,
+webhooks, synchronization, Airtable, a backend, agent logic, user accounts, and
+automatic cloud backup are not implemented.
 
 ## Development principles
 
@@ -143,7 +156,7 @@ Detailed milestones and acceptance criteria are maintained in
 | Version | Milestone | Outcome |
 | --- | --- | --- |
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
-| v0.2.0 | Local dashboard MVP | Command Center and PromptVault using local mock data |
+| v0.2.0 | Local dashboard MVP | Implementation complete; release preparation pending |
 | v0.3.0 | SyncAgent connection | Validated webhook communication with n8n |
 | v0.4.0 | Structured persistence | DatenAgent with a controlled Airtable read and write flow |
 | v0.5.0 | Learning tests | TestAgent routed through the SyncAgent |
