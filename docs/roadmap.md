@@ -6,8 +6,8 @@
 | --- | --- |
 | Projektphase | `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
-| Agenten-Scope | SyncAgent, TestAgent und DatenAgent |
-| Letzte Aktualisierung | 2026-07-13 |
+| Agenten-Scope | SyncAgent, DataAgent und TestAgent |
+| Letzte Aktualisierung | 2026-07-14 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -19,7 +19,11 @@ nicht starre Kalendertermine.
 - Eine neue Phase beginnt erst, wenn die Abnahmekriterien der vorherigen Phase
   erfüllt sind.
 - Die Reihenfolge bleibt: **Mock → Webhook → Airtable → Agentenlogik**.
-- Version 1 bleibt auf `SyncAgent`, `DatenAgent` und `TestAgent` begrenzt.
+- Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten;
+  `v0.3.0` markiert den Beginn der externen Kommunikation.
+- Weitere Unterversionen dürfen ergänzt werden, wenn neue, klar abgegrenzte
+  Arbeitspakete entstehen.
+- Version 1 bleibt auf `SyncAgent`, `DataAgent` und `TestAgent` begrenzt.
 - Neue Abhängigkeiten, Agenten oder Infrastruktur benötigen eine dokumentierte
   Entscheidung.
 - Git-Commits, Pushes, Pull Requests, Merges, Tags und Releases bleiben manuell
@@ -41,11 +45,13 @@ nicht starre Kalendertermine.
 | Version | Schwerpunkt | Ergebnis | Status |
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
-| `v0.2.0` | Lokales MVP | Implementierung abgeschlossen; Release-Vorbereitung ausstehend | 🟡 |
-| `v0.3.0` | SyncAgent | Standardisierter Webhook- und Routingfluss | ⬜ |
-| `v0.4.0` | DatenAgent | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
-| `v0.5.0` | TestAgent | Lerntests erstellen, bewerten und speichern | ⬜ |
-| `v0.6.0` | Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
+| `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert; Release-Vorbereitung ausstehend | 🟡 |
+| `v0.2.1` | LearningHub Local MVP | Bekannte Kursstruktur, lokaler Fortschritt und lokaler Mock-Test | ⬜ |
+| `v0.2.2` | LichtwaldLog Local MVP | Lokale Reflexions- und Erkenntniseinträge | ⬜ |
+| `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
+| `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
+| `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
+| `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
 | `v1.0.0` | Portfolio Release | Dokumentierte und deployte Drei-Agenten-Demo | ⬜ |
 
 ## v0.1.0 – Foundation
@@ -86,7 +92,7 @@ bevor neue Produktfunktionen implementiert werden.
 - nachvollziehbare Pull-Request-Historie;
 - dokumentierte Scope- und Sicherheitsentscheidungen.
 
-## v0.2.0 – Lokales Dashboard-MVP
+## v0.2.0 – Local Dashboard MVP
 
 ### Ziel des lokalen MVP
 
@@ -138,18 +144,155 @@ bereitstellen. Externe Systeme sind für diese Version nicht erforderlich.
 - demonstrierbarer PromptVault-Workflow;
 - dokumentierte Trennung von UI, Service und Storage.
 
-## v0.3.0 – SyncAgent-Anbindung
+## v0.2.1 – LearningHub Local MVP
 
-### Ziel der SyncAgent-Anbindung
+### Ziel des LearningHub Local MVP
+
+LearningHub als lokal nutzbares Modul für genau den aktuell bekannten Kurs
+bereitstellen. Diese Version bildet den real bekannten Kursstand ab und ist
+noch kein allgemeines Learning-Management-System. Externe Bewertung und echte
+Agentenlogik sind nicht Teil dieses lokalen MVP.
+
+### Fachliche Abgrenzung und bekannter Kursstand
+
+- Der aktuelle Kurs besteht insgesamt aus vier Modulen.
+- Aktuell ist ausschließlich Modul 1 fachlich bekannt und wird erfasst;
+  der ehrliche sichtbare Status lautet beispielsweise
+  **„Aktuell erfasst: Modul 1 von 4“**.
+- Modul 1 besitzt zwei Units; die Units enthalten Kapitel.
+- Inhalte oder Binnenstrukturen der Module 2 bis 4 werden nicht erfunden,
+  sondern erst ergänzt, wenn sie tatsächlich bekannt sind.
+- Die natürliche fachliche Hierarchie lautet
+  **Course → Module → Unit → Chapter**.
+- Ein späteres Datenmodell kann ein `modules`-Array verwenden. Für `v0.2.1`
+  wird daraus weder ein verbindlicher Datenvertrag noch ein endgültiges
+  Storage-Schema abgeleitet.
+- Eine Verallgemeinerung für weitere Kurse bleibt möglich, wird aber erst bei
+  realem Bedarf entworfen.
+- Echter Kursinhalt bleibt privat und wird nicht in das Repository
+  übernommen. Öffentliche Demo-Daten bestehen ausschließlich aus synthetischen
+  Mock-Inhalten.
+
+### Umfang des LearningHub Local MVP
+
+- ⬜ Lokale Kursnavigation für die tatsächlich bekannte Struktur bereitstellen.
+- ⬜ Fortschritt ausschließlich aus tatsächlich bekannten Modulen, Units und
+  Kapiteln berechnen; unbekannte Inhalte der Module 2 bis 4 fließen nicht in
+  Prozentwerte oder Abschlussstände ein.
+- ⬜ Lokale Notizen und Zusammenfassungen hinter den vorgesehenen Service- und
+  Storage-Grenzen speichern.
+- ⬜ Einen vorbereiteten, sichtbaren **„Lokalen Mock-Test“** für bekannte Inhalte
+  anbieten.
+- ⬜ Single-Choice-, Selbstkontroll- oder andere eindeutig auswertbare Aufgaben
+  mit synthetischen, vorbereiteten Fragen verwenden.
+- ⬜ Lokale Testversuche ausschließlich hinter Service- und Storage-Grenzen
+  speichern; Views und Controller greifen nicht direkt auf `localStorage` zu.
+- ⬜ Lade-, Leer-, Fehler- und noch-nicht-bekannt-Zustände zugänglich gestalten.
+
+Der geplante lokale Mock-Testfluss lautet:
+
+```text
+LearningHubView
+  → LearningHubController
+  → LearningTestService
+  → MockLearningTestProvider
+```
+
+Der `MockLearningTestProvider` arbeitet ausschließlich lokal, deterministisch
+und testbar. Er verwendet synthetische, vorbereitete Fragen, behauptet weder
+KI-Auswertung noch semantische Freitextbewertung und benötigt keine externe
+Kommunikation.
+
+Der spätere Zielpfad bleibt:
+
+```text
+LearningTestService
+  → SyncService
+  → SyncAgent
+  → TestAgent
+```
+
+Semantische Freitextbewertung und echte `TestAgent`-Logik bleiben für `v0.5.0`
+geplant.
+
+### Abnahmekriterien für v0.2.1
+
+- LearningHub zeigt genau einen bekannten Kurs und den Erfassungsstand ehrlich
+  an.
+- Modul 1 mit seinen zwei Units und bekannten Kapiteln ist lokal navigierbar;
+  Module 2 bis 4 enthalten keine erfundenen Inhalte oder Strukturen.
+- Fortschritt berücksichtigt nur tatsächlich bekannte Lerninhalte.
+- Notizen, Zusammenfassungen und Testversuche bleiben lokal und verwenden die
+  vorgesehenen Service- und Storage-Grenzen.
+- Der lokale Mock-Test ist eindeutig gekennzeichnet, reproduzierbar und ohne
+  KI-Auswertung eindeutig auswertbar.
+- Private Kursinhalte gelangen nicht in das Repository; eine öffentliche Demo
+  verwendet ausschließlich synthetische Inhalte.
+- Das Modul funktioniert ohne Webhook, Airtable oder Agentenlogik.
+
+### Portfolio-Nachweis für v0.2.1
+
+- synthetische Demo der bekannten Kurshierarchie;
+- nachvollziehbare Fortschrittsberechnung nur über bekannte Inhalte;
+- reproduzierbarer lokaler Mock-Test ohne behauptete KI-Funktion.
+
+## v0.2.2 – LichtwaldLog Local MVP
+
+### Ziel des LichtwaldLog Local MVP
+
+Ein vollständig lokales Modul für persönliche Reflexions- und
+Erkenntniseinträge bereitstellen. Synchronisierte, automatisierte oder
+agentengestützte Prozesse sind nicht Teil dieser Version.
+
+### Umfang des LichtwaldLog Local MVP
+
+- ⬜ Einträge mit Titel, Kalenderdatum, Text und Tags lokal abbilden.
+- ⬜ Einträge erstellen, anzeigen, bearbeiten und löschen.
+- ⬜ Lokale Textsuche und Filter bereitstellen.
+- ⬜ Datenzugriffe vollständig hinter Services und Storage-Adaptern kapseln.
+- ⬜ Private lokale Einträge und synthetische öffentliche Demo-Daten strikt
+  getrennt halten.
+- ⬜ Bilder nicht als Base64-Daten in `localStorage` speichern.
+- ⬜ Lade-, Leer-, Validierungs-, Erfolgs- und Speicherfehlerzustände gestalten.
+- ⬜ Klar kennzeichnen, dass lokale Browserdaten weder synchronisiert noch
+  automatisch in der Cloud gesichert werden.
+
+`v0.2.2` enthält keine Synchronisierung und keine Agentenlogik. Auch der Weekly
+Review gehört nicht zu diesem lokalen MVP. Agentengestützte, synchronisierte
+oder automatisierte LichtwaldLog-Prozesse sowie der Weekly Review bleiben für
+eine spätere Phase geplant.
+
+### Abnahmekriterien für v0.2.2
+
+- LichtwaldLog unterstützt den vollständigen lokalen CRUD-Fluss für Titel,
+  Datum, Text und Tags.
+- Suche und Filter funktionieren ohne externe Kommunikation.
+- UI-Komponenten greifen nicht direkt auf `localStorage` zu.
+- Private lokale Daten und synthetische Demo-Daten bleiben getrennt.
+- In `localStorage` werden keine Bilder als Base64-Daten abgelegt.
+- Das Modul enthält weder Sync- oder Agentenlogik noch einen Weekly Review.
+
+### Portfolio-Nachweis für v0.2.2
+
+- synthetischer lokaler CRUD-Workflow;
+- demonstrierbare lokale Suche und Filterung;
+- dokumentierte Trennung von privaten lokalen und öffentlichen Demo-Daten.
+
+## v0.3.0 – SyncAgent and Webhook Foundation
+
+### Ziel der Webhook-Grundlage
 
 Den ersten kontrollierten Kommunikationsfluss zwischen Dashboard und n8n
-bereitstellen, ohne Airtable oder Fachagenten einzubeziehen.
+bereitstellen, ohne Airtable oder Fachagenten einzubeziehen. `v0.3.0` markiert
+damit den Beginn der externen Kommunikationsschicht.
 
-### Umfang der SyncAgent-Anbindung
+### Umfang der Webhook-Grundlage
 
 - ⬜ `docs/data-contracts.md` für Request und Response finalisieren.
-- ⬜ Sync-Service im Frontend implementieren.
+- ⬜ `SyncService` als einzige externe Kommunikationsschicht des Frontends
+  implementieren und den Übergang von lokalen Mocks zum Webhook vorbereiten.
 - ⬜ Konfigurierbaren Webhook-Endpunkt außerhalb von UI-Komponenten verwalten.
+- ⬜ Direkte externe Kommunikation aus UI-Komponenten ausschließen.
 - ⬜ Lokalen Modus bei fehlender Webhook-Konfiguration erhalten.
 - ⬜ n8n-Webhook mit HTTP `POST` erstellen.
 - ⬜ SyncAgent als Validierungs- und Routinggerüst aufbauen.
@@ -174,20 +317,21 @@ bereitstellen, ohne Airtable oder Fachagenten einzubeziehen.
 - n8n-Workflow-Diagramm ohne Credentials;
 - kurze Demonstration des lokalen und verbundenen Modus.
 
-## v0.4.0 – DatenAgent und Airtable
+## v0.4.0 – DataAgent and Airtable Integration
 
 ### Ziel der Datenanbindung
 
-Den `DatenAgent` als einzige strukturierte Schnittstelle zwischen Agentensystem
-und Airtable etablieren.
+Den `DataAgent` als Bibliothekar und einzige strukturierte Schnittstelle
+zwischen Agentensystem und Airtable etablieren. Nur er kommuniziert direkt mit
+Airtable; `SyncAgent` und `TestAgent` erhalten keinen direkten Zugriff.
 
 ### Umfang der Datenanbindung
 
 - ⬜ Minimales Airtable-Schema für den ersten Testfluss definieren.
 - ⬜ Feldnamen und fachliche Entitäten in `schemas/airtable/` dokumentieren.
 - ⬜ Airtable-Credentials ausschließlich in n8n konfigurieren.
-- ⬜ DatenAgent für validierte Lese- und Schreibaufträge implementieren.
-- ⬜ SyncAgent-Routing zum DatenAgent ergänzen.
+- ⬜ DataAgent für validierte Lese- und Schreibaufträge implementieren.
+- ⬜ SyncAgent-Routing zum DataAgent ergänzen.
 - ⬜ Airtable-interne Antworten in stabile Domänenobjekte übersetzen.
 - ⬜ Eindeutige IDs und `requestId` zur Duplikatvermeidung verwenden.
 - ⬜ Einen Datensatz kontrolliert schreiben und wieder lesen.
@@ -196,7 +340,7 @@ und Airtable etablieren.
 
 ### Abnahmekriterien für v0.4.0
 
-- Nur der DatenAgent besitzt Zugriff auf Airtable-Credentials.
+- Nur der DataAgent besitzt Zugriff auf Airtable-Credentials.
 - Ein gültiger Schreibauftrag erzeugt genau einen Datensatz.
 - Ein Leseauftrag liefert ein normalisiertes Ergebnis zurück.
 - Wiederholte Requests erzeugen keine unbeabsichtigten Duplikate.
@@ -207,24 +351,25 @@ und Airtable etablieren.
 
 - dokumentiertes Airtable-Schema;
 - End-to-End-Beispiel für Schreiben und Lesen;
-- sichtbare Kapselung des Datenzugriffs im DatenAgent.
+- sichtbare Kapselung des Datenzugriffs im DataAgent.
 
-## v0.5.0 – TestAgent-Lernfluss
+## v0.5.0 – TestAgent and Learning Tests
 
-### Ziel des TestAgent-Lernflusses
+### Ziel der TestAgent-Lerntests
 
 Einen abgegrenzten Lernprüfungsprozess mit Erstellung, Bewertung, Feedback und
 kontrollierter Ergebnisspeicherung umsetzen.
 
-### Umfang des TestAgent-Lernflusses
+### Umfang der TestAgent-Lerntests
 
 - ⬜ Request- und Ergebnisformat für Lerntests definieren.
 - ⬜ Freigegebenen Lernkontext strukturiert an den TestAgent übergeben.
 - ⬜ Testfragen mit erwarteten Antwortmerkmalen erzeugen.
 - ⬜ Nutzerantworten anhand dokumentierter Kriterien bewerten.
+- ⬜ Semantische Freitextbewertung als echte TestAgent-Funktion einführen.
 - ⬜ Punktzahl, Status, Feedback und Wiederholungshinweise zurückgeben.
-- ⬜ Ergebnisse über den SyncAgent an den DatenAgent übergeben.
-- ⬜ Testergebnisse durch den DatenAgent in Airtable speichern.
+- ⬜ Ergebnisse über den SyncAgent an den DataAgent übergeben.
+- ⬜ Testergebnisse durch den DataAgent in Airtable speichern.
 - ⬜ Fachliches Testergebnis und technischen Speicherstatus getrennt anzeigen.
 - ⬜ Beschädigte oder unvollständige Modellantworten kontrolliert behandeln.
 - ⬜ Einen vollständigen Arisa-Test-Durchlauf dokumentieren.
@@ -245,7 +390,7 @@ kontrollierter Ergebnisspeicherung umsetzen.
 - strukturierte Bewertungsantwort;
 - Sequenzdarstellung vom Dashboard bis Airtable.
 
-## v0.6.0 – Integration und Härtung
+## v0.6.0 – Multi-Agent Integration
 
 ### Ziel der Integrationsphase
 
@@ -281,7 +426,7 @@ Portfolio-Demo vorbereiten.
 - Demo-Datensatz und Sicherheitscheckliste;
 - Architekturvergleich zwischen lokalem und verbundenem Modus.
 
-## v1.0.0 – Portfolio-Release
+## v1.0.0 – Portfolio Release
 
 ### Ziel des Portfolio-Releases
 
@@ -303,7 +448,7 @@ Drei-Agenten-Demo veröffentlichen.
 ### Abnahmekriterien für v1.0.0
 
 - Die öffentliche Demo enthält keine privaten Daten oder Secrets.
-- SyncAgent, DatenAgent und TestAgent sind klar unterscheidbar demonstrierbar.
+- SyncAgent, DataAgent und TestAgent sind klar unterscheidbar demonstrierbar.
 - Ein vollständiger Lerntest kann durchgeführt und kontrolliert gespeichert
   werden.
 - Dokumentation und sichtbarer Produktstand stimmen überein.
@@ -335,7 +480,7 @@ Vor dem Start einer neuen Version werden folgende Punkte geprüft:
 | --- | --- |
 | Unkontrolliertes Scope-Wachstum | Version 1 strikt auf drei Agenten und definierte Module begrenzen |
 | Secrets im Frontend | Credentials ausschließlich in n8n oder serverseitiger Umgebung speichern |
-| Kopplung an Airtable-Feldnamen | Mapping vollständig im DatenAgent kapseln |
+| Kopplung an Airtable-Feldnamen | Mapping vollständig im DataAgent kapseln |
 | Ungültige Modellantworten | Struktur validieren und kontrollierte Fallbacks verwenden |
 | Doppelte Datensätze | Stabile IDs, `requestId` und idempotente Schreiblogik einsetzen |
 | Vermischung privater und öffentlicher Daten | Getrennte Datenquellen, Konfigurationen und Deployments verwenden |
@@ -346,7 +491,8 @@ Vor dem Start einer neuen Version werden folgende Punkte geprüft:
 Folgende Ideen bleiben erhalten, sind aber kein Versprechen für Version 1:
 
 - zusätzliche Fachagenten;
-- Lichtwald Log und Wochenreview als angebundene Agentenprozesse;
+- agentengestützte, synchronisierte oder automatisierte LichtwaldLog-Prozesse;
+- Weekly Review als eigenständige spätere Funktion;
 - Benutzerkonten und Rollen;
 - eigene relationale Datenbank;
 - PWA-Installation und erweiterte Offline-Synchronisation;
@@ -358,7 +504,7 @@ Diese Punkte werden erst nach dem Portfolio Release bewertet und priorisiert.
 
 ## Nächster konkreter Schritt
 
-Die Implementierung von `v0.2.0 – Lokales Dashboard-MVP` ist abgeschlossen.
+Die Implementierung von `v0.2.0 – Local Dashboard MVP` ist abgeschlossen.
 PromptVault unterstützt lokal Anzeigen, Erstellen, Bearbeiten, Löschen,
 Durchsuchen, Kategorie- und Favoritenfilter, persistente Favoriten,
 unveränderliche Versionierung und Wiederherstellung als neue Version. Suchtext
@@ -368,7 +514,12 @@ aktuellen Browserprofil; dies ist keine Cloud-Sicherung.
 Als nächster Schritt folgt die Release-Vorbereitung mit abschließendem
 Dokumentations- und Qualitätsabgleich sowie dem manuellen Git- und
 Release-Workflow durch Jan. Ein veröffentlichter `v0.2.0`-Tag oder ein Release
-wird noch nicht behauptet. Import/Export, Webhooks, Synchronisierung,
-geräteübergreifende Speicherung, automatische Cloud-Sicherung, Airtable, ein
-Backend, Benutzerkonten und Agentenlogik bleiben offen beziehungsweise beginnen
-erst in den dafür vorgesehenen späteren Versionen.
+wird noch nicht behauptet. Danach ist `v0.2.1 – LearningHub Local MVP` als
+nächster Entwicklungsschritt geplant; `v0.2.2 – LichtwaldLog Local MVP` folgt
+als weiteres rein lokales Modul. Beide sind noch nicht implementiert.
+
+Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
+automatische Cloud-Sicherung, Airtable, ein Backend, Benutzerkonten und
+Agentenlogik bleiben offen beziehungsweise beginnen erst in den dafür
+vorgesehenen späteren Versionen. Die externe Kommunikationsschicht beginnt
+bewusst erst mit `v0.3.0 – SyncAgent and Webhook Foundation`.

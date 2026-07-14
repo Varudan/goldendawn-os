@@ -7,13 +7,13 @@
 | Projektphase | `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
-| Agenten-Scope | SyncAgent, TestAgent und DatenAgent |
+| Agenten-Scope | SyncAgent, DataAgent und TestAgent |
 | Status | Lokaler PromptVault-Vertrag implementiert; Sync-Vertrag als Zielzustand dokumentiert |
-| Letzte Aktualisierung | 2026-07-13 |
+| Letzte Aktualisierung | 2026-07-14 |
 
 Dieses Dokument definiert den implementierten lokalen PromptVault-
 Speichervertrag sowie die maschinenlesbare Sprache zwischen dem
-GoldenDawn-OS-Frontend, dem SyncAgent, dem TestAgent und dem DatenAgent. Es
+GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und dem TestAgent. Es
 konkretisiert die Grenzen aus `AGENTS.md`, `docs/architecture.md` und
 `docs/security.md`.
 
@@ -22,6 +22,61 @@ externen Sync- und Agentenverträge beschreiben weiterhin den geplanten
 Zielzustand späterer Versionen. Solange eine externe Aktion noch nicht
 implementiert ist, muss sie in UI und Dokumentation als geplant gekennzeichnet
 bleiben.
+
+## Vertragsgrenzen der lokalen Module v0.2.1 und v0.2.2
+
+Die geplanten lokalen Module `v0.2.1` und `v0.2.2` erweitern die externe
+Aktions-Allowlist dieses Dokuments nicht. In diesem Schritt entstehen für sie
+weder neue externe Aktionen noch verbindliche Datenverträge, Storage-Keys oder
+Storage-Schemas. Die nachfolgenden `learningTest.*`-Verträge bleiben
+ausdrücklich ein Zielzustand für `v0.5.0`; die internen `DataAgent`-Verträge
+sind Zielzustände für `v0.4.0` und, im Lernfluss, `v0.5.0`.
+
+### v0.2.1 – LearningHub Local MVP
+
+Der geplante LearningHub-Datenfluss bleibt vollständig lokal:
+
+```text
+LearningHubView
+  → LearningHubController
+  → LearningTestService
+  → MockLearningTestProvider
+```
+
+Der `MockLearningTestProvider` verwendet vorbereitete synthetische Fragen,
+arbeitet deterministisch und wird sichtbar als „Lokaler Mock-Test“
+gekennzeichnet. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
+`TestAgent` und ist nicht mit den geplanten Aktionen `learningTest.create`,
+`learningTest.evaluate` oder `learningTest.result.get` gleichzusetzen.
+
+Der aktuelle fachliche Informationsstand beschreibt genau einen Kurs mit vier
+Modulen. Nur Modul 1 ist bekannt und erfasst; es besitzt zwei Units, deren
+Inhalte in Kapitel gegliedert sind. Die natürliche Hierarchie
+**Course → Module → Unit → Chapter** und ein mögliches späteres `modules`-Array
+sind ausschließlich fachliche beziehungsweise optionale Vorschauen. Für die
+Module 2 bis 4 werden keine Inhalte oder Binnenstrukturen erfunden. Fortschritt
+wird nur aus tatsächlich bekannten Modulen, Units und Kapiteln berechnet.
+
+Diese Vorschau definiert keinen verbindlichen LearningHub-Datenvertrag und kein
+endgültiges Storage-Modell. Lokale Notizen, Zusammenfassungen und Mock-
+Testversuche werden bei der späteren Implementierung hinter Service- und
+Storage-Grenzen gekapselt, ohne in diesem Dokument bereits einen Storage-Key
+oder ein Storage-Schema festzulegen. Echter Kursinhalt bleibt privat und wird
+nicht in das Repository übernommen; öffentliche Demos verwenden ausschließlich
+synthetische Mock-Inhalte.
+
+### v0.2.2 – LichtwaldLog Local MVP
+
+LichtwaldLog bleibt in `v0.2.2` ein rein lokales Modul. Seine geplanten
+Einträge, lokalen CRUD-Funktionen sowie Suche und Filter führen in diesem
+Schritt weder neue externe Aktionen noch einen verbindlichen Datenvertrag,
+Storage-Key oder ein Storage-Schema ein. Es gibt keine Synchronisierung und
+keinen Zugriff durch `SyncAgent`, `DataAgent` oder `TestAgent`.
+
+Private lokale LichtwaldLog-Inhalte und synthetische öffentliche Demo-Daten
+bleiben strikt getrennt. Agentengestützte, synchronisierte oder automatisierte
+LichtwaldLog-Prozesse gehören zu einem späteren Zielzustand und sind nicht Teil
+der hier beschriebenen Verträge.
 
 ## Ziele des Vertrags
 
@@ -47,7 +102,7 @@ in `v0.2.0` noch nicht implementiert.
 | `syncTest` | Verbindung und Vertragsformat prüfen | SyncAgent | nein |
 | `learningTest.create` | Lerntest erzeugen und Definition sicher speichern | TestAgent | ja |
 | `learningTest.evaluate` | Antworten bewerten und Ergebnis speichern | TestAgent | ja |
-| `learningTest.result.get` | Gespeichertes Testergebnis abrufen | DatenAgent | nein |
+| `learningTest.result.get` | Gespeichertes Testergebnis abrufen | DataAgent | nein |
 
 Diese Allowlist ist für Version 1 geschlossen. Externe Clients dürfen keine
 `data.*`-Aktionen oder frei gewählten Agentennamen übermitteln.
@@ -58,10 +113,10 @@ Diese Allowlist ist für Version 1 geschlossen. Externe Clients dürfen keine
 | --- | --- | --- | --- |
 | `test.generate` | SyncAgent | TestAgent | Test und serverseitige Bewertungskriterien erzeugen |
 | `test.evaluate` | SyncAgent | TestAgent | Antworten nach gespeicherten Kriterien bewerten |
-| `data.record.create` | SyncAgent | DatenAgent | erlaubten Datensatz anlegen |
-| `data.record.get` | SyncAgent | DatenAgent | erlaubten Datensatz über stabile ID lesen |
-| `data.record.list` | SyncAgent | DatenAgent | erlaubte Datensätze paginiert lesen |
-| `data.record.update` | SyncAgent | DatenAgent | erlaubte Felder eines Datensatzes ändern |
+| `data.record.create` | SyncAgent | DataAgent | erlaubten Datensatz anlegen |
+| `data.record.get` | SyncAgent | DataAgent | erlaubten Datensatz über stabile ID lesen |
+| `data.record.list` | SyncAgent | DataAgent | erlaubte Datensätze paginiert lesen |
+| `data.record.update` | SyncAgent | DataAgent | erlaubte Felder eines Datensatzes ändern |
 
 `data.record.delete` ist nicht Teil von Version 1. Löschungen werden nicht
 autonom durch Agenten ausgeführt.
@@ -77,7 +132,7 @@ autonom durch Agenten ausgeführt.
 
 PromptVault bleibt in `v0.2.0` ausschließlich lokal. Falls später eine externe
 Synchronisation beschlossen wird, läuft sie ebenfalls ausschließlich über
-SyncAgent und DatenAgent und erhält eigene dokumentierte Aktionen.
+SyncAgent und DataAgent und erhält eigene dokumentierte Aktionen.
 
 ## Lokaler PromptVault-Speichervertrag
 
@@ -306,7 +361,7 @@ Erlaubte Quellen:
 | Dashboard an SyncAgent | `goldendawn-os` |
 | SyncAgent an Fachagent | `SyncAgent` |
 | TestAgent an SyncAgent | `TestAgent` |
-| DatenAgent an SyncAgent | `DatenAgent` |
+| DataAgent an SyncAgent | `DataAgent` |
 
 Ein externer Request darf sich nicht durch `source: "SyncAgent"` als interner
 Request ausgeben. Die vertrauenswürdige Quelle wird an der Systemgrenze durch
@@ -418,7 +473,7 @@ und `warnings` den Speicherfehler sichtbar machen.
 ```json
 {
   "durationMs": 842,
-  "processedBy": ["SyncAgent", "TestAgent", "DatenAgent"]
+  "processedBy": ["SyncAgent", "TestAgent", "DataAgent"]
 }
 ```
 
@@ -475,8 +530,8 @@ und `warnings` den Speicherfehler sichtbar machen.
 | `RATE_LIMITED` | Aufruflimit wurde überschritten | ja, verzögert |
 | `TEST_GENERATION_FAILED` | TestAgent konnte keinen gültigen Test erzeugen | bedingt |
 | `TEST_EVALUATION_FAILED` | TestAgent konnte nicht valide bewerten | bedingt |
-| `DATA_READ_FAILED` | DatenAgent konnte nicht lesen | bedingt |
-| `DATA_WRITE_FAILED` | DatenAgent konnte nicht schreiben | bedingt |
+| `DATA_READ_FAILED` | DataAgent konnte nicht lesen | bedingt |
+| `DATA_WRITE_FAILED` | DataAgent konnte nicht schreiben | bedingt |
 | `UPSTREAM_TIMEOUT` | Externes System antwortet nicht rechtzeitig | ja |
 | `SERVICE_UNAVAILABLE` | Benötigter Dienst ist vorübergehend nicht verfügbar | ja |
 | `INTERNAL_ERROR` | Unerwarteter interner Fehler | bedingt |
@@ -633,7 +688,7 @@ nicht die gesamte beliebige Payload zurück.
 | `language` | für Version 1 `de-DE` |
 
 Der TestAgent erzeugt intern Bewertungskriterien. Diese Kriterien werden über
-den SyncAgent vom DatenAgent als `learningTestDefinition` gespeichert und nicht
+den SyncAgent vom DataAgent als `learningTestDefinition` gespeichert und nicht
 an das Dashboard ausgegeben. Schlägt diese notwendige Speicherung fehl, gilt
 `learningTest.create` als fehlgeschlagen, da der Test später nicht zuverlässig
 bewertet werden könnte.
@@ -679,7 +734,7 @@ bewertet werden könnte.
   "warnings": [],
   "meta": {
     "durationMs": 2400,
-    "processedBy": ["SyncAgent", "TestAgent", "DatenAgent"]
+    "processedBy": ["SyncAgent", "TestAgent", "DataAgent"]
   }
 }
 ```
@@ -786,7 +841,7 @@ Client übernommen.
   "warnings": [],
   "meta": {
     "durationMs": 3400,
-    "processedBy": ["SyncAgent", "TestAgent", "DatenAgent"]
+    "processedBy": ["SyncAgent", "TestAgent", "DataAgent"]
   }
 }
 ```
@@ -830,7 +885,7 @@ Client übernommen.
   ],
   "meta": {
     "durationMs": 3400,
-    "processedBy": ["SyncAgent", "TestAgent", "DatenAgent"]
+    "processedBy": ["SyncAgent", "TestAgent", "DataAgent"]
   }
 }
 ```
@@ -871,7 +926,7 @@ Der SyncAgent übersetzt diese externe Aktion in einen internen
   "success": true,
   "requestId": "req_33fdb3f2-dc70-4ca1-b91a-ed5f5d8d77ac",
   "action": "learningTest.result.get",
-  "handledBy": "DatenAgent",
+  "handledBy": "DataAgent",
   "timestamp": "2026-07-11T12:30:00.400Z",
   "data": {
     "result": {
@@ -892,12 +947,12 @@ Der SyncAgent übersetzt diese externe Aktion in einen internen
   "warnings": [],
   "meta": {
     "durationMs": 400,
-    "processedBy": ["SyncAgent", "DatenAgent"]
+    "processedBy": ["SyncAgent", "DataAgent"]
   }
 }
 ```
 
-## Interner DatenAgent-Vertrag
+## Interner DataAgent-Vertrag
 
 ### Erlaubte Entitäten
 
@@ -907,7 +962,7 @@ Der SyncAgent übersetzt diese externe Aktion in einen internen
 | `learningTestDefinition` | Testfragen und serverseitige Bewertungskriterien | v0.5.0 |
 | `learningTestResult` | bewertetes und angezeigtes Testergebnis | v0.5.0 |
 
-Der DatenAgent ordnet diese Entitäten serverseitig Airtable-Tabellen zu.
+Der DataAgent ordnet diese Entitäten serverseitig Airtable-Tabellen zu.
 Base-IDs, Tabellen-IDs und frei gewählte Feldnamen sind kein Bestandteil des
 Requests.
 
@@ -940,7 +995,7 @@ Requests.
 }
 ```
 
-### Interne Response des DatenAgent
+### Interne Response des DataAgent
 
 ```json
 {
@@ -948,7 +1003,7 @@ Requests.
   "success": true,
   "requestId": "req_d28bd3c9-3218-498d-a4af-88327fd2dc5a",
   "action": "data.record.create",
-  "handledBy": "DatenAgent",
+  "handledBy": "DataAgent",
   "timestamp": "2026-07-11T12:20:03.350Z",
   "data": {
     "entity": "learningTestResult",
@@ -1122,7 +1177,7 @@ Der SyncAgent validiert in dieser Reihenfolge:
 9. Modus und serverseitige Datenquellenzuordnung;
 10. Idempotenzstatus vor schreibenden Aktionen.
 
-Erst danach wird an TestAgent oder DatenAgent geroutet.
+Erst danach wird an TestAgent oder DataAgent geroutet.
 
 ## Datenschutz- und Sicherheitsregeln
 

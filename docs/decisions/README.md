@@ -10,7 +10,7 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 | --- | --- | --- |
 | [0001](0001-vite-vanilla-js.md) | Vite und Vanilla JavaScript als Frontend-Grundlage | Angenommen |
 | [0002](0002-syncagent-gateway.md) | SyncAgent als einziges externes Gateway des Dashboards | Angenommen |
-| [0003](0003-datenagent-airtable-boundary.md) | DatenAgent als einzige Airtable-Schnittstelle | Angenommen |
+| [0003](0003-dataagent-airtable-boundary.md) | DataAgent als einzige Airtable-Schnittstelle | Angenommen |
 | [0004](0004-private-demo-separation.md) | Strikte Trennung privater Daten und Demo-Daten | Angenommen |
 | [0005](0005-v1-three-agent-scope.md) | Version 1 bleibt auf drei Agenten begrenzt | Angenommen |
 

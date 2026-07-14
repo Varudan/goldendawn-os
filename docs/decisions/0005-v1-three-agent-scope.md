@@ -18,7 +18,7 @@ Version 1 verwendet ausschließlich:
 
 - SyncAgent für Kommunikation, Validierung und Routing;
 - TestAgent für Erstellung und Bewertung von Lerntests;
-- DatenAgent für strukturierte Datenoperationen und Airtable.
+- DataAgent für strukturierte Datenoperationen und Airtable.
 
 Weitere Agenten werden weder implementiert noch in Version 1 nebenbei
 vorbereitet. Neue Rollen werden erst nach dem Portfolio-Release anhand eines
@@ -37,7 +37,7 @@ Kosten und Einschränkungen:
 
 - weitere Ideen wie Wochenreview, E-Mail oder Lichtwald-Prozesse bleiben
   zunächst manuell oder lokal;
-- der DatenAgent verarbeitet mehrere erlaubte Entitätstypen;
+- der DataAgent verarbeitet mehrere erlaubte Entitätstypen;
 - neue Funktionen müssen sich in die drei Rollen einordnen oder warten.
 
 ## Erwogene Alternativen
