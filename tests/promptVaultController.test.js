@@ -25,6 +25,92 @@ const editableDemoPrompt = {
   isDemo: true,
 }
 
+function createPromptVersion(
+  versionNumber,
+  {
+    title,
+    category = 'Reflexion',
+    description,
+    content,
+    createdAt,
+    changeType,
+    restoredFromVersion = null,
+  }
+) {
+  return {
+    versionNumber,
+    title,
+    category,
+    description,
+    content,
+    createdAt,
+    changeType,
+    restoredFromVersion,
+  }
+}
+
+const historyPrompt = {
+  id: 'prompt-history-001',
+  title: 'Aktueller gemeinsamer Stand',
+  category: 'Reflexion',
+  description: 'Aktuelle gemeinsame Beschreibung',
+  content: 'Aktuelle gemeinsame Fassung',
+  createdAt: '2026-07-10T08:00:00.000Z',
+  updatedAt: '2026-07-12T08:00:00.000Z',
+  isFavorite: true,
+  isDemo: false,
+  versions: [
+    createPromptVersion(1, {
+      title: 'Ausgangsfassung gemeinsam',
+      description: 'Erste gemeinsame Beschreibung',
+      content: 'Erste gemeinsame Fassung',
+      createdAt: '2026-07-10T08:00:00.000Z',
+      changeType: 'created',
+    }),
+    createPromptVersion(2, {
+      title: 'Zwischenfassung gemeinsam',
+      description: 'Zweite gemeinsame Beschreibung',
+      content: 'Zweite gemeinsame Fassung',
+      createdAt: '2026-07-11T08:00:00.000Z',
+      changeType: 'edited',
+    }),
+    createPromptVersion(3, {
+      title: 'Aktueller gemeinsamer Stand',
+      description: 'Aktuelle gemeinsame Beschreibung',
+      content: 'Aktuelle gemeinsame Fassung',
+      createdAt: '2026-07-12T08:00:00.000Z',
+      changeType: 'edited',
+    }),
+  ],
+}
+
+function createRestoredHistoryPrompt(overrides = {}) {
+  const restoredAt = '2026-07-13T08:00:00.000Z'
+  const selectedVersion = historyPrompt.versions[0]
+
+  return {
+    ...historyPrompt,
+    title: selectedVersion.title,
+    category: selectedVersion.category,
+    description: selectedVersion.description,
+    content: selectedVersion.content,
+    updatedAt: restoredAt,
+    versions: [
+      ...historyPrompt.versions.map((version) => ({ ...version })),
+      createPromptVersion(4, {
+        title: selectedVersion.title,
+        category: selectedVersion.category,
+        description: selectedVersion.description,
+        content: selectedVersion.content,
+        createdAt: restoredAt,
+        changeType: 'restored',
+        restoredFromVersion: 1,
+      }),
+    ],
+    ...overrides,
+  }
+}
+
 const filterPromptsFixture = [
   {
     id: 'prompt-learning-001',
@@ -1689,4 +1775,774 @@ test('setzt Bearbeitungszustände nach Schließen und Öffnen zurück', () => {
     description: '',
     content: '',
   })
+})
+
+test('öffnet und schließt genau eine Historie mit defensiv geklonten Versionen', () => {
+  const initialSnapshot = structuredClone(historyPrompt)
+  let restoreCalls = 0
+  const { promptVaultView } = openReadyController({
+    prompts: [historyPrompt, examplePrompt],
+    promptService: {
+      restorePromptVersion() {
+        restoreCalls += 1
+        return { ok: true, prompts: [] }
+      },
+    },
+  })
+
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+
+  let state = promptVaultView.lastState()
+  assert.equal(state.historyPromptId, historyPrompt.id)
+  assert.deepEqual(state.restoreState, {
+    promptId: null,
+    versionNumber: null,
+    isSubmitting: false,
+    errorMessage: '',
+  })
+  assert.deepEqual(state.focusTarget, {
+    type: 'historyHeading',
+    id: historyPrompt.id,
+  })
+
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+
+  state = promptVaultView.lastState()
+  assert.equal(state.historyPromptId, null)
+  assert.deepEqual(state.focusTarget, {
+    type: 'historyButton',
+    id: historyPrompt.id,
+  })
+  assert.equal(restoreCalls, 0)
+  assert.deepEqual(historyPrompt, initialSnapshot)
+})
+
+test('entkoppelt Versionsarrays und Versionsobjekte vollständig von der View', () => {
+  const scheduler = createManualScheduler()
+  const observedVersionNumbers = []
+  let actions
+  let mutatedReadyRender = false
+  const promptSnapshot = structuredClone(historyPrompt)
+  const promptVaultView = {
+    render(viewState, renderedActions) {
+      actions = renderedActions
+
+      if (viewState.phase !== 'ready') {
+        return
+      }
+
+      observedVersionNumbers.push(
+        viewState.prompts[0].versions.map(
+          ({ versionNumber }) => versionNumber
+        )
+      )
+
+      if (!mutatedReadyRender) {
+        mutatedReadyRender = true
+        viewState.prompts[0].versions.reverse()
+        viewState.prompts[0].versions[0].title =
+          'Nur die View wurde verändert'
+      }
+    },
+  }
+  const controller = createPromptVaultController({
+    promptService: {
+      loadPrompts: () => ({
+        ok: true,
+        status: 'loaded',
+        prompts: [historyPrompt],
+      }),
+    },
+    promptVaultView,
+    scheduleTask: scheduler.scheduleTask,
+  })
+
+  controller.open()
+  scheduler.run()
+  actions.onToggleVersionHistory(historyPrompt.id)
+
+  assert.deepEqual(observedVersionNumbers, [
+    [1, 2, 3],
+    [1, 2, 3],
+  ])
+  assert.deepEqual(historyPrompt, promptSnapshot)
+})
+
+test('ordnet eine Restore-Bestätigung exakt zu und bricht ohne Service-Aufruf ab', () => {
+  let restoreCalls = 0
+  const { promptVaultView } = openReadyController({
+    prompts: [historyPrompt],
+    promptService: {
+      restorePromptVersion() {
+        restoreCalls += 1
+        return { ok: true, prompts: [] }
+      },
+    },
+  })
+
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+  const renderCount = promptVaultView.states.length
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 3)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 99)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, '1')
+
+  assert.equal(promptVaultView.states.length, renderCount)
+
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+
+  let state = promptVaultView.lastState()
+  assert.equal(state.historyPromptId, historyPrompt.id)
+  assert.deepEqual(state.restoreState, {
+    promptId: historyPrompt.id,
+    versionNumber: 1,
+    isSubmitting: false,
+    errorMessage: '',
+  })
+  assert.deepEqual(state.focusTarget, {
+    type: 'restoreCancelButton',
+    id: historyPrompt.id,
+    versionNumber: 1,
+  })
+
+  promptVaultView.actions.onCancelRestore()
+
+  state = promptVaultView.lastState()
+  assert.equal(state.historyPromptId, historyPrompt.id)
+  assert.deepEqual(state.restoreState, {
+    promptId: null,
+    versionNumber: null,
+    isSubmitting: false,
+    errorMessage: '',
+  })
+  assert.deepEqual(state.focusTarget, {
+    type: 'restoreButton',
+    id: historyPrompt.id,
+    versionNumber: 1,
+  })
+  assert.equal(restoreCalls, 0)
+})
+
+test('stellt exakt über den Service wieder her und übernimmt ausschließlich dessen Liste', () => {
+  const restoredPrompt = createRestoredHistoryPrompt()
+  const servicePrompts = [examplePrompt, restoredPrompt]
+  const restoreCalls = []
+  const { promptVaultView } = openReadyController({
+    prompts: [historyPrompt, examplePrompt],
+    promptService: {
+      restorePromptVersion(promptId, versionNumber) {
+        restoreCalls.push([promptId, versionNumber])
+        return {
+          ok: true,
+          status: 'restored',
+          promptChanged: true,
+          restoredFromVersion: versionNumber,
+          updatedPrompt: {
+            ...restoredPrompt,
+            id: 'darf-nicht-separat-übernommen-werden',
+          },
+          prompts: servicePrompts,
+        }
+      },
+    },
+  })
+
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  promptVaultView.actions.onConfirmRestore(historyPrompt.id, 1)
+
+  assert.deepEqual(restoreCalls, [[historyPrompt.id, 1]])
+  const savingState = promptVaultView.states.at(-2)
+  assert.equal(savingState.restoreState.isSubmitting, true)
+  assert.deepEqual(savingState.prompts, [historyPrompt, examplePrompt])
+
+  const successState = promptVaultView.lastState()
+  assert.deepEqual(successState.prompts, servicePrompts)
+  assert.deepEqual(
+    getPromptIds(successState.prompts),
+    getPromptIds(servicePrompts)
+  )
+  assert.equal(successState.historyPromptId, historyPrompt.id)
+  assert.equal(successState.prompts[1].versions.length, 4)
+  assert.equal(
+    successState.prompts[1].versions.at(-1).changeType,
+    'restored'
+  )
+  assert.equal(
+    successState.prompts[1].versions.at(-1).restoredFromVersion,
+    1
+  )
+  assert.deepEqual(successState.restoreState, {
+    promptId: null,
+    versionNumber: null,
+    isSubmitting: false,
+    errorMessage: '',
+  })
+  assert.equal(successState.statusMessage, 'Version wiederhergestellt')
+  assert.equal(successState.statusMessageTone, 'success')
+  assert.deepEqual(successState.focusTarget, {
+    type: 'statusMessage',
+  })
+})
+
+test('meldet einen Restore-No-op ohne vorgetäuschte neue Version', () => {
+  const noOpPrompts = [
+    {
+      ...historyPrompt,
+      storageMetadata: 'ausschließlich aus result.prompts',
+    },
+  ]
+  const { promptVaultView } = openReadyController({
+    prompts: [historyPrompt],
+    promptService: {
+      restorePromptVersion: () => ({
+        ok: true,
+        status: 'unchanged',
+        promptChanged: false,
+        restoredFromVersion: 1,
+        updatedPrompt: historyPrompt,
+        prompts: noOpPrompts,
+      }),
+    },
+  })
+
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  promptVaultView.actions.onConfirmRestore(historyPrompt.id, 1)
+
+  const noOpState = promptVaultView.lastState()
+  assert.deepEqual(noOpState.prompts, noOpPrompts)
+  assert.equal(noOpState.prompts[0].versions.length, 3)
+  assert.equal(noOpState.historyPromptId, historyPrompt.id)
+  assert.equal(
+    noOpState.statusMessage,
+    'Diese Fassung entspricht bereits dem aktuellen Stand.'
+  )
+  assert.equal(noOpState.statusMessageTone, 'notice')
+  assert.deepEqual(noOpState.restoreState, {
+    promptId: null,
+    versionNumber: null,
+    isSubmitting: false,
+    errorMessage: '',
+  })
+  assert.deepEqual(noOpState.focusTarget, {
+    type: 'restoreButton',
+    id: historyPrompt.id,
+    versionNumber: 1,
+  })
+})
+
+test('ordnet Restore-Fehler verständlich zu, bewahrt den Zustand und erlaubt einen Retry', () => {
+  const errorCases = [
+    {
+      result: {
+        ok: false,
+        status: 'validationFailed',
+        error: { code: 'invalidPromptId' },
+      },
+      pattern: /Prompt-Kennung/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'validationFailed',
+        error: { code: 'invalidPromptVersionNumber' },
+      },
+      pattern: /Versionsnummer/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'notFound',
+        error: { code: 'promptNotFound' },
+      },
+      pattern: /Prompt wurde nicht gefunden/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'notFound',
+        error: { code: 'promptVersionNotFound' },
+      },
+      pattern: /Version wurde nicht gefunden/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'invalidJson',
+        error: { code: 'invalidJson' },
+      },
+      pattern: /beschädigt/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'invalidStoredData',
+        error: { code: 'invalidPromptData' },
+      },
+      pattern: /ungültige Struktur/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'unsupportedSchemaVersion',
+        error: { code: 'unsupportedSchemaVersion' },
+      },
+      pattern: /noch nicht unterstützt/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'generationFailed',
+        error: { code: 'promptTimestampGenerationFailed' },
+      },
+      pattern: /Zeitstempel/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'quotaExceeded',
+        error: { code: 'storageQuotaExceeded' },
+      },
+      pattern: /freien Platz/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'unavailable',
+        error: { code: 'storageUnavailable' },
+      },
+      pattern: /blockiert/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'readFailed',
+        error: { code: 'storageReadFailed' },
+      },
+      pattern: /nicht gelesen/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'writeFailed',
+        error: { code: 'storageWriteFailed' },
+      },
+      pattern: /nicht lokal gespeichert/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'serializationFailed',
+        error: { code: 'serializationFailed' },
+      },
+      pattern: /vorbereitet/,
+    },
+    {
+      result: {
+        ok: false,
+        status: 'storageFailed',
+        error: { code: 'unexpectedStorageResult' },
+      },
+      pattern: /verarbeitet/,
+    },
+    {
+      result: null,
+      pattern: /konnte nicht wiederhergestellt werden/,
+    },
+  ]
+
+  for (const errorCase of errorCases) {
+    const initialPrompts = [historyPrompt, examplePrompt]
+    const restoredPrompt = createRestoredHistoryPrompt()
+    let restoreCalls = 0
+    const { promptVaultView } = openReadyController({
+      prompts: initialPrompts,
+      promptService: {
+        restorePromptVersion() {
+          restoreCalls += 1
+
+          if (restoreCalls === 1) {
+            return errorCase.result === null
+              ? null
+              : {
+                  ...errorCase.result,
+                  prompts: [examplePrompt],
+                }
+          }
+
+          return {
+            ok: true,
+            status: 'restored',
+            prompts: [restoredPrompt, examplePrompt],
+          }
+        },
+      },
+    })
+
+    promptVaultView.actions.onChangeSearchQuery('gemeinsam')
+    promptVaultView.actions.onChangeCategory('Reflexion')
+    promptVaultView.actions.onChangeFavoritesOnly(true)
+    promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+    promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+    promptVaultView.actions.onConfirmRestore(historyPrompt.id, 1)
+
+    const errorState = promptVaultView.lastState()
+    assert.deepEqual(errorState.prompts, initialPrompts)
+    assert.deepEqual(errorState.visiblePrompts, [historyPrompt])
+    assert.equal(errorState.searchQuery, 'gemeinsam')
+    assert.equal(errorState.selectedCategory, 'Reflexion')
+    assert.equal(errorState.favoritesOnly, true)
+    assert.equal(errorState.historyPromptId, historyPrompt.id)
+    assert.equal(errorState.restoreState.promptId, historyPrompt.id)
+    assert.equal(errorState.restoreState.versionNumber, 1)
+    assert.equal(errorState.restoreState.isSubmitting, false)
+    assert.match(errorState.restoreState.errorMessage, errorCase.pattern)
+    assert.deepEqual(errorState.focusTarget, {
+      type: 'restoreAlert',
+      id: historyPrompt.id,
+      versionNumber: 1,
+    })
+
+    promptVaultView.actions.onConfirmRestore(historyPrompt.id, 1)
+
+    const retryState = promptVaultView.lastState()
+    assert.equal(restoreCalls, 2)
+    assert.equal(retryState.statusMessage, 'Version wiederhergestellt')
+    assert.equal(retryState.historyPromptId, historyPrompt.id)
+    assert.equal(retryState.restoreState.promptId, null)
+  }
+})
+
+test('blockiert Filter und Favoriten, solange eine Restore-Bestätigung offen ist', () => {
+  let favoriteCalls = 0
+  const { promptVaultView } = openReadyController({
+    prompts: [historyPrompt, examplePrompt],
+    promptService: {
+      setPromptFavorite() {
+        favoriteCalls += 1
+        return { ok: true, prompts: [] }
+      },
+    },
+  })
+
+  promptVaultView.actions.onChangeSearchQuery('gemeinsam')
+  promptVaultView.actions.onChangeCategory('Reflexion')
+  promptVaultView.actions.onChangeFavoritesOnly(true)
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  const pendingState = promptVaultView.lastState()
+  const renderCount = promptVaultView.states.length
+
+  promptVaultView.actions.onChangeSearchQuery('anderer Suchtext')
+  promptVaultView.actions.onChangeCategory('Test')
+  promptVaultView.actions.onChangeFavoritesOnly(false)
+  promptVaultView.actions.onResetFilters()
+  promptVaultView.actions.onSetPromptFavorite(historyPrompt.id, false)
+
+  assert.equal(promptVaultView.states.length, renderCount)
+  assert.equal(favoriteCalls, 0)
+  assert.deepEqual(promptVaultView.lastState(), pendingState)
+})
+
+test('schließt eine Restore-Bestätigung kontrolliert für andere Arbeitszustände', () => {
+  const { promptVaultView } = openReadyController({
+    prompts: [historyPrompt, examplePrompt],
+  })
+
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  promptVaultView.actions.onOpenCreateForm('header')
+
+  let state = promptVaultView.lastState()
+  assert.equal(state.createForm.isOpen, true)
+  assert.equal(state.restoreState.promptId, null)
+  assert.equal(state.historyPromptId, historyPrompt.id)
+
+  promptVaultView.actions.onCancelCreateForm()
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  promptVaultView.actions.onOpenEditForm(historyPrompt.id)
+
+  state = promptVaultView.lastState()
+  assert.equal(state.editForm.isOpen, true)
+  assert.equal(state.restoreState.promptId, null)
+
+  promptVaultView.actions.onCancelEditForm()
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  promptVaultView.actions.onRequestDelete(examplePrompt.id)
+
+  state = promptVaultView.lastState()
+  assert.equal(state.pendingDeleteId, examplePrompt.id)
+  assert.equal(state.restoreState.promptId, null)
+})
+
+test('bewahrt einen geänderten Erstellungsentwurf bei konkurrierenden Aktionen', () => {
+  let restoreCalls = 0
+  const { promptVaultView } = openReadyController({
+    prompts: [historyPrompt, examplePrompt],
+    promptService: {
+      restorePromptVersion() {
+        restoreCalls += 1
+        return { ok: true, prompts: [] }
+      },
+    },
+  })
+
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+  promptVaultView.actions.onOpenCreateForm('header')
+  promptVaultView.actions.onUpdateCreateField(
+    'title',
+    'Ungespeicherter neuer Prompt'
+  )
+  promptVaultView.actions.onOpenEditForm(examplePrompt.id)
+  promptVaultView.actions.onRequestDelete(examplePrompt.id)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  promptVaultView.actions.onOpenCreateForm('header')
+
+  const state = promptVaultView.lastState()
+  assert.equal(state.createForm.isOpen, true)
+  assert.equal(
+    state.createForm.values.title,
+    'Ungespeicherter neuer Prompt'
+  )
+  assert.match(state.createForm.errorMessage, /Speichere den neuen Prompt/)
+  assert.equal(state.editForm.isOpen, false)
+  assert.equal(state.pendingDeleteId, null)
+  assert.equal(state.restoreState.promptId, null)
+  assert.equal(restoreCalls, 0)
+  assert.deepEqual(state.focusTarget, {
+    type: 'createAlert',
+  })
+})
+
+test('bewahrt einen geänderten Bearbeitungsentwurf bei konkurrierenden Aktionen', () => {
+  let restoreCalls = 0
+  const { promptVaultView } = openReadyController({
+    prompts: [historyPrompt, examplePrompt],
+    promptService: {
+      restorePromptVersion() {
+        restoreCalls += 1
+        return { ok: true, prompts: [] }
+      },
+    },
+  })
+
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+  promptVaultView.actions.onOpenEditForm(historyPrompt.id)
+  promptVaultView.actions.onUpdateEditField(
+    'content',
+    'Ungespeicherter bearbeiteter Inhalt'
+  )
+  promptVaultView.actions.onOpenCreateForm('header')
+  promptVaultView.actions.onRequestDelete(examplePrompt.id)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  promptVaultView.actions.onOpenEditForm(examplePrompt.id)
+
+  const state = promptVaultView.lastState()
+  assert.equal(state.createForm.isOpen, false)
+  assert.equal(state.editForm.isOpen, true)
+  assert.equal(state.editForm.editingPromptId, historyPrompt.id)
+  assert.equal(
+    state.editForm.values.content,
+    'Ungespeicherter bearbeiteter Inhalt'
+  )
+  assert.match(
+    state.editForm.errorMessage,
+    /Speichere deine Änderungen/
+  )
+  assert.equal(state.pendingDeleteId, null)
+  assert.equal(state.restoreState.promptId, null)
+  assert.equal(restoreCalls, 0)
+  assert.deepEqual(state.focusTarget, {
+    type: 'editAlert',
+    id: historyPrompt.id,
+  })
+})
+
+test('behält Suche, Kategorie- und Favoritenfilter bei sichtbarem Restore bei', () => {
+  const restoredPrompt = createRestoredHistoryPrompt()
+  const { promptVaultView } = openReadyController({
+    prompts: [historyPrompt, examplePrompt],
+    promptService: {
+      restorePromptVersion: () => ({
+        ok: true,
+        status: 'restored',
+        prompts: [restoredPrompt, examplePrompt],
+      }),
+    },
+  })
+
+  promptVaultView.actions.onChangeSearchQuery('gemeinsam')
+  promptVaultView.actions.onChangeCategory('Reflexion')
+  promptVaultView.actions.onChangeFavoritesOnly(true)
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  promptVaultView.actions.onConfirmRestore(historyPrompt.id, 1)
+
+  const state = promptVaultView.lastState()
+  assert.equal(state.searchQuery, 'gemeinsam')
+  assert.equal(state.selectedCategory, 'Reflexion')
+  assert.equal(state.favoritesOnly, true)
+  assert.deepEqual(state.visiblePrompts, [restoredPrompt])
+  assert.equal(state.historyPromptId, historyPrompt.id)
+  assert.equal(state.statusMessage, 'Version wiederhergestellt')
+})
+
+test('schließt die Historie, wenn der Prompt nach Restore aus der Filteransicht verschwindet', () => {
+  const remainingReflectionPrompt = {
+    ...examplePrompt,
+    id: 'prompt-reflection-visible-category-001',
+    category: 'Reflexion',
+    isFavorite: false,
+  }
+  const restoredPrompt = createRestoredHistoryPrompt()
+  const { promptVaultView } = openReadyController({
+    prompts: [historyPrompt, remainingReflectionPrompt],
+    promptService: {
+      restorePromptVersion: () => ({
+        ok: true,
+        status: 'restored',
+        prompts: [restoredPrompt, remainingReflectionPrompt],
+      }),
+    },
+  })
+
+  promptVaultView.actions.onChangeSearchQuery(
+    'Aktueller gemeinsamer Stand'
+  )
+  promptVaultView.actions.onChangeCategory('Reflexion')
+  promptVaultView.actions.onChangeFavoritesOnly(true)
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  promptVaultView.actions.onConfirmRestore(historyPrompt.id, 1)
+
+  const state = promptVaultView.lastState()
+  assert.equal(state.searchQuery, 'Aktueller gemeinsamer Stand')
+  assert.equal(state.selectedCategory, 'Reflexion')
+  assert.equal(state.favoritesOnly, true)
+  assert.deepEqual(state.visiblePrompts, [])
+  assert.equal(state.filteredEmptyState, 'noMatches')
+  assert.equal(state.historyPromptId, null)
+  assert.equal(state.statusMessage, 'Version wiederhergestellt')
+  assert.deepEqual(state.focusTarget, {
+    type: 'statusMessage',
+  })
+})
+
+test('setzt eine durch Restore verschwundene Kategorie mit der bestehenden Ableitung zurück', () => {
+  const categoryChangingPrompt = structuredClone(historyPrompt)
+  categoryChangingPrompt.versions[0].category = 'Lernen'
+  const selectedVersion = categoryChangingPrompt.versions[0]
+  const restoredAt = '2026-07-13T09:00:00.000Z'
+  const restoredPrompt = {
+    ...categoryChangingPrompt,
+    title: selectedVersion.title,
+    category: selectedVersion.category,
+    description: selectedVersion.description,
+    content: selectedVersion.content,
+    updatedAt: restoredAt,
+    versions: [
+      ...categoryChangingPrompt.versions,
+      createPromptVersion(4, {
+        title: selectedVersion.title,
+        category: selectedVersion.category,
+        description: selectedVersion.description,
+        content: selectedVersion.content,
+        createdAt: restoredAt,
+        changeType: 'restored',
+        restoredFromVersion: 1,
+      }),
+    ],
+  }
+  const { promptVaultView } = openReadyController({
+    prompts: [categoryChangingPrompt],
+    promptService: {
+      restorePromptVersion: () => ({
+        ok: true,
+        status: 'restored',
+        prompts: [restoredPrompt],
+      }),
+    },
+  })
+
+  promptVaultView.actions.onChangeCategory('Reflexion')
+  promptVaultView.actions.onToggleVersionHistory(categoryChangingPrompt.id)
+  promptVaultView.actions.onRequestRestore(categoryChangingPrompt.id, 1)
+  promptVaultView.actions.onConfirmRestore(
+    categoryChangingPrompt.id,
+    1
+  )
+
+  const state = promptVaultView.lastState()
+  assert.deepEqual(state.categories, ['Lernen'])
+  assert.equal(state.selectedCategory, '')
+  assert.equal(state.hasActiveFilters, false)
+  assert.deepEqual(state.visiblePrompts, [restoredPrompt])
+  assert.equal(state.historyPromptId, categoryChangingPrompt.id)
+})
+
+test('verhindert einen mehrfachen Restore-Submit im Speicherzustand', () => {
+  let promptVaultView
+  let restoreCalls = 0
+  const restoredPrompt = createRestoredHistoryPrompt()
+  const setup = openReadyController({
+    prompts: [historyPrompt],
+    promptService: {
+      restorePromptVersion(promptId, versionNumber) {
+        restoreCalls += 1
+        promptVaultView.actions.onConfirmRestore(
+          promptId,
+          versionNumber
+        )
+
+        return {
+          ok: true,
+          status: 'restored',
+          prompts: [restoredPrompt],
+        }
+      },
+    },
+  })
+  promptVaultView = setup.promptVaultView
+
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  promptVaultView.actions.onConfirmRestore(historyPrompt.id, 1)
+
+  assert.equal(restoreCalls, 1)
+  assert.equal(
+    promptVaultView.lastState().statusMessage,
+    'Version wiederhergestellt'
+  )
+})
+
+test('setzt Historien- und Restore-Zustände nach Schließen und Öffnen zurück', () => {
+  const {
+    controller,
+    promptVaultView,
+    scheduler,
+  } = openReadyController({
+    prompts: [historyPrompt],
+  })
+
+  promptVaultView.actions.onToggleVersionHistory(historyPrompt.id)
+  promptVaultView.actions.onRequestRestore(historyPrompt.id, 1)
+  controller.close()
+  controller.open()
+
+  let state = promptVaultView.lastState()
+  assert.equal(state.phase, 'loading')
+  assert.equal(state.historyPromptId, null)
+  assert.deepEqual(state.restoreState, {
+    promptId: null,
+    versionNumber: null,
+    isSubmitting: false,
+    errorMessage: '',
+  })
+
+  scheduler.run()
+
+  state = promptVaultView.lastState()
+  assert.equal(state.phase, 'ready')
+  assert.equal(state.historyPromptId, null)
+  assert.equal(state.restoreState.promptId, null)
 })
