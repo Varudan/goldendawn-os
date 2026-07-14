@@ -17,7 +17,19 @@ const PROMPT_EDITABLE_FIELDS = Object.freeze([
 const MAX_ID_GENERATION_ATTEMPTS = 5
 
 function clonePrompts(prompts) {
-  return prompts.map((prompt) => ({ ...prompt }))
+  return prompts.map(clonePrompt)
+}
+
+function clonePrompt(prompt) {
+  const clonedPrompt = { ...prompt }
+
+  if (Array.isArray(prompt.versions)) {
+    clonedPrompt.versions = prompt.versions.map((version) => ({
+      ...version,
+    }))
+  }
+
+  return clonedPrompt
 }
 
 function createFailure(status, code, message, prompts = []) {
@@ -69,6 +81,10 @@ function isValidPromptId(promptId) {
     promptId.trim().length > 0 &&
     promptId === promptId.trim()
   )
+}
+
+function isValidPromptVersionNumber(versionNumber) {
+  return Number.isInteger(versionNumber) && versionNumber > 0
 }
 
 function isObjectRecord(value) {
@@ -207,6 +223,25 @@ function hasPromptContentChanged(currentPrompt, promptValues) {
   return PROMPT_EDITABLE_FIELDS.some(
     (field) => currentPrompt[field] !== promptValues[field]
   )
+}
+
+function createPromptVersion({
+  promptValues,
+  versionNumber,
+  createdAt,
+  changeType,
+  restoredFromVersion = null,
+}) {
+  return {
+    versionNumber,
+    title: promptValues.title,
+    category: promptValues.category,
+    description: promptValues.description,
+    content: promptValues.content,
+    createdAt,
+    changeType,
+    restoredFromVersion,
+  }
 }
 
 export function createPromptService({
@@ -361,6 +396,14 @@ export function createPromptService({
       updatedAt: timestamp,
       isFavorite: false,
       isDemo: false,
+      versions: [
+        createPromptVersion({
+          promptValues: validationResult.values,
+          versionNumber: 1,
+          createdAt: timestamp,
+          changeType: 'created',
+        }),
+      ],
     }
     const updatedPrompts = [newPrompt, ...loadResult.prompts]
     const saveResult = promptStorage.savePromptCollection(updatedPrompts)
@@ -372,7 +415,7 @@ export function createPromptService({
     return {
       ok: true,
       status: 'created',
-      createdPrompt: { ...newPrompt },
+      createdPrompt: clonePrompt(newPrompt),
       prompts: clonePrompts(updatedPrompts),
     }
   }
@@ -401,6 +444,15 @@ export function createPromptService({
         'notFound',
         'promptNotFound',
         'Der angeforderte Prompt wurde nicht gefunden.',
+        loadResult.prompts
+      )
+    }
+
+    if (typeof promptStorage?.savePromptCollection !== 'function') {
+      return createFailure(
+        'unavailable',
+        'promptStorageUnavailable',
+        'Der Prompt-Speicher ist nicht verfügbar.',
         loadResult.prompts
       )
     }
@@ -465,7 +517,7 @@ export function createPromptService({
         ok: true,
         status: 'favoriteUpdated',
         favoriteChanged: false,
-        updatedPrompt: { ...currentPrompt },
+        updatedPrompt: clonePrompt(currentPrompt),
         prompts: clonePrompts(loadResult.prompts),
       }
     }
@@ -511,7 +563,7 @@ export function createPromptService({
       ok: true,
       status: 'favoriteUpdated',
       favoriteChanged: true,
-      updatedPrompt: { ...updatedPrompt },
+      updatedPrompt: clonePrompt(updatedPrompt),
       prompts: clonePrompts(updatedPrompts),
     }
   }
@@ -561,7 +613,7 @@ export function createPromptService({
         ok: true,
         status: 'updated',
         promptChanged: false,
-        updatedPrompt: { ...currentPrompt },
+        updatedPrompt: clonePrompt(currentPrompt),
         prompts: clonePrompts(loadResult.prompts),
       }
     }
@@ -589,10 +641,18 @@ export function createPromptService({
       )
     }
 
+    const lastVersion = currentPrompt.versions.at(-1)
+    const newVersion = createPromptVersion({
+      promptValues: validationResult.values,
+      versionNumber: lastVersion.versionNumber + 1,
+      createdAt: timestamp,
+      changeType: 'edited',
+    })
     const updatedPrompt = {
       ...currentPrompt,
       ...validationResult.values,
       updatedAt: timestamp,
+      versions: [...currentPrompt.versions, newVersion],
     }
     const updatedPrompts = loadResult.prompts.map((prompt, index) =>
       index === promptIndex ? updatedPrompt : prompt
@@ -607,7 +667,131 @@ export function createPromptService({
       ok: true,
       status: 'updated',
       promptChanged: true,
-      updatedPrompt: { ...updatedPrompt },
+      updatedPrompt: clonePrompt(updatedPrompt),
+      prompts: clonePrompts(updatedPrompts),
+    }
+  }
+
+  function restorePromptVersion(promptId, versionNumber) {
+    if (!isValidPromptId(promptId)) {
+      return createFailure(
+        'validationFailed',
+        'invalidPromptId',
+        'Für die Wiederherstellung wird eine gültige Prompt-ID benötigt.'
+      )
+    }
+
+    if (!isValidPromptVersionNumber(versionNumber)) {
+      return createFailure(
+        'validationFailed',
+        'invalidPromptVersionNumber',
+        'Die Versionsnummer muss eine positive ganze Zahl sein.'
+      )
+    }
+
+    const loadResult = readPromptCollectionState()
+
+    if (!loadResult.ok) {
+      return loadResult
+    }
+
+    const promptIndex = loadResult.prompts.findIndex(
+      (prompt) => prompt.id === promptId
+    )
+
+    if (promptIndex === -1) {
+      return createFailure(
+        'notFound',
+        'promptNotFound',
+        'Der angeforderte Prompt wurde nicht gefunden.',
+        loadResult.prompts
+      )
+    }
+
+    const currentPrompt = loadResult.prompts[promptIndex]
+    const restoredVersion = currentPrompt.versions.find(
+      (version) => version.versionNumber === versionNumber
+    )
+
+    if (!restoredVersion) {
+      return createFailure(
+        'notFound',
+        'promptVersionNotFound',
+        'Die angeforderte Prompt-Version wurde nicht gefunden.',
+        loadResult.prompts
+      )
+    }
+
+    const restoredPromptValues = {
+      title: restoredVersion.title,
+      category: restoredVersion.category,
+      description: restoredVersion.description,
+      content: restoredVersion.content,
+    }
+
+    if (!hasPromptContentChanged(currentPrompt, restoredPromptValues)) {
+      return {
+        ok: true,
+        status: 'unchanged',
+        promptChanged: false,
+        restoredFromVersion: restoredVersion.versionNumber,
+        updatedPrompt: clonePrompt(currentPrompt),
+        prompts: clonePrompts(loadResult.prompts),
+      }
+    }
+
+    if (typeof promptStorage?.savePromptCollection !== 'function') {
+      return createFailure(
+        'unavailable',
+        'promptStorageUnavailable',
+        'Der Prompt-Speicher ist nicht verfügbar.',
+        loadResult.prompts
+      )
+    }
+
+    const timestamp = createPromptUpdateTimestamp(
+      getCurrentDate,
+      currentPrompt
+    )
+
+    if (!timestamp) {
+      return createFailure(
+        'generationFailed',
+        'promptTimestampGenerationFailed',
+        'Der Prompt konnte nicht für die lokale Speicherung vorbereitet werden.',
+        loadResult.prompts
+      )
+    }
+
+    const lastVersion = currentPrompt.versions.at(-1)
+    const newVersion = createPromptVersion({
+      promptValues: restoredPromptValues,
+      versionNumber: lastVersion.versionNumber + 1,
+      createdAt: timestamp,
+      changeType: 'restored',
+      restoredFromVersion: restoredVersion.versionNumber,
+    })
+    const updatedPrompt = {
+      ...currentPrompt,
+      ...restoredPromptValues,
+      updatedAt: timestamp,
+      versions: [...currentPrompt.versions, newVersion],
+    }
+    const updatedPrompts = loadResult.prompts.map((prompt, index) =>
+      index === promptIndex ? updatedPrompt : prompt
+    )
+    const saveResult = promptStorage.savePromptCollection(updatedPrompts)
+
+    if (!saveResult.ok) {
+      return forwardFailure(saveResult, loadResult.prompts)
+    }
+
+    return {
+      ok: true,
+      status: 'restored',
+      promptChanged: true,
+      restoredFromVersion: restoredVersion.versionNumber,
+      updatedPrompt: clonePrompt(updatedPrompt),
       prompts: clonePrompts(updatedPrompts),
     }
   }
@@ -618,5 +802,6 @@ export function createPromptService({
     deletePrompt,
     setPromptFavorite,
     updatePrompt,
+    restorePromptVersion,
   })
 }

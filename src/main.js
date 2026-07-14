@@ -23,7 +23,7 @@ const modules = [
     id: VIEW_PROMPT_VAULT,
     name: 'PromptVault',
     description:
-      'Prompts lokal erstellen, bearbeiten, durchsuchen, filtern und favorisieren',
+      'Prompts lokal anzeigen, erstellen, bearbeiten, löschen, durchsuchen, filtern, favorisieren, versionieren und wiederherstellen',
     status: 'Lokales MVP',
     statusClass: 'local',
     navigationState: 'Lokales MVP',
@@ -189,13 +189,13 @@ function renderCommandCenter() {
     <section class="focus-panel" aria-labelledby="focus-title">
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
-        <h2 id="focus-title">v0.2.0 – Local Dashboard MVP</h2>
-        <p>Das Command Center und PromptVault mit Erstellen, Bearbeiten, Löschen, lokaler Suche, Kategorie-Filtern und persistenten Favoriten sind nutzbar. Prompt-Versionierung bleibt geplant.</p>
+        <h2 id="focus-title">v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend</h2>
+        <p>Das lokale PromptVault-MVP unterstützt Anzeigen, Erstellen, Bearbeiten, Löschen, Suche, Kategorie-Filter, Favoriten, Versionierung und Wiederherstellung. Die Daten bleiben ausschließlich im aktuellen Browserprofil; Synchronisierung und Cloud-Sicherung sind nicht umgesetzt.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
           <span>Fortschritt der Phase</span>
-          <strong>4 von 5 Ausbauschritten</strong>
+          <strong>5 von 5 Ausbauschritten</strong>
         </div>
         <div
           class="progress-track"
@@ -203,11 +203,11 @@ function renderCommandCenter() {
           aria-label="Fortschritt der aktuellen Phase"
           aria-valuemin="0"
           aria-valuemax="5"
-          aria-valuenow="4"
+          aria-valuenow="5"
         >
           <span></span>
         </div>
-        <small>Command Center aktiv · PromptVault lokal bearbeitbar · Versionierung geplant</small>
+        <small>Command Center aktiv · PromptVault als lokales MVP abgeschlossen · Release-Vorbereitung ausstehend</small>
       </div>
     </section>
 
@@ -228,10 +228,10 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Meilenstein</span>
-        <h2 id="milestone-title">Prompt-Versionierung</h2>
-        <p>Als nächster PromptVault-Ausbauschritt sind unveränderliche Prompt-Versionen geplant. Eine Versionshistorie oder Wiederherstellung ist noch nicht umgesetzt.</p>
+        <h2 id="milestone-title">Release-Vorbereitung</h2>
+        <p>Als nächster Schritt stehen Abschlussprüfung, Dokumentationsabgleich und die manuelle Release-Vorbereitung an. Ein Tag oder Release wurde noch nicht veröffentlicht.</p>
       </div>
-      <span class="status status--planned">Geplant</span>
+      <span class="status status--planned">Ausstehend</span>
     </aside>
   `
 }

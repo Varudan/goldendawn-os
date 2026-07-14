@@ -31,7 +31,64 @@ function createStoredEnvelope(prompts) {
   })
 }
 
-const customPrompt = {
+function createLegacyEnvelope(prompts) {
+  return JSON.stringify({
+    schemaVersion: 1,
+    prompts,
+  })
+}
+
+function createPromptVersion(
+  prompt,
+  {
+    versionNumber = 1,
+    createdAt = prompt.updatedAt,
+    changeType = 'migrated',
+    restoredFromVersion = null,
+  } = {}
+) {
+  return {
+    versionNumber,
+    title: prompt.title,
+    category: prompt.category,
+    description: prompt.description,
+    content: prompt.content,
+    createdAt,
+    changeType,
+    restoredFromVersion,
+  }
+}
+
+function createVersionedPrompt(prompt, versionOptions) {
+  return {
+    ...prompt,
+    versions: [createPromptVersion(prompt, versionOptions)],
+  }
+}
+
+function updateCurrentPromptFixture(prompt, overrides) {
+  const updatedPrompt = {
+    ...prompt,
+    ...overrides,
+  }
+  const currentVersion = prompt.versions.at(-1)
+
+  return {
+    ...updatedPrompt,
+    versions: [
+      ...prompt.versions.slice(0, -1).map((version) => ({ ...version })),
+      {
+        ...currentVersion,
+        title: updatedPrompt.title,
+        category: updatedPrompt.category,
+        description: updatedPrompt.description,
+        content: updatedPrompt.content,
+      },
+    ],
+  }
+}
+
+const legacyCustomPrompt = {
   id: 'prompt-custom-001',
   title: 'Eigener Beispielprompt',
   description: 'Ein gültiger synthetischer Prompt für den Ladetest.',
@@ -42,7 +99,12 @@ const customPrompt = {
   isDemo: true,
 }
 
-const editablePrompt = {
+const customPrompt = createVersionedPrompt({
+  ...legacyCustomPrompt,
+  isFavorite: false,
+})
+
+const editablePrompt = createVersionedPrompt({
   id: 'prompt-editable-001',
   title: 'Bestehender eigener Prompt',
   description: 'Dieser Prompt darf kontrolliert bearbeitet werden.',
@@ -53,7 +115,7 @@ const editablePrompt = {
   isFavorite: true,
   isDemo: false,
   storageMetadata: 'bleibt-erhalten',
-}
+})
 
 function createPromptInput(prompt, overrides = {}) {
   return {
@@ -62,6 +124,40 @@ function createPromptInput(prompt, overrides = {}) {
     description: prompt.description,
     content: prompt.content,
     ...overrides,
+  }
+}
+
+function createHistoricalPromptFixture() {
+  const versionTwoValues = createPromptInput(editablePrompt, {
+    title: 'Zweite Fassung',
+    category: 'Lernen',
+    description: 'Die zweite Fassung für den Restore-Test.',
+    content: 'Erkläre [THEMA] anhand von drei Beispielen.',
+  })
+  const versionThreeValues = createPromptInput(editablePrompt, {
+    title: 'Dritte Fassung',
+    category: 'Reflexion',
+    description: 'Die aktuelle dritte Fassung vor dem Restore.',
+    content: 'Reflektiere [THEMA] mit Chancen und Risiken.',
+  })
+
+  return {
+    ...editablePrompt,
+    ...versionThreeValues,
+    updatedAt: '2026-07-11T11:30:00.000Z',
+    versions: [
+      { ...editablePrompt.versions[0] },
+      createPromptVersion(versionTwoValues, {
+        versionNumber: 2,
+        createdAt: '2026-07-11T10:30:00.000Z',
+        changeType: 'edited',
+      }),
+      createPromptVersion(versionThreeValues, {
+        versionNumber: 3,
+        createdAt: '2026-07-11T11:30:00.000Z',
+        changeType: 'edited',
+      }),
+    ],
   }
 }
 
@@ -92,14 +188,33 @@ test('initialisiert bei fehlendem Key genau drei Seed-Prompts', () => {
   assert.ok(
     result.prompts.every(({ isFavorite }) => isFavorite === false)
   )
+  assert.ok(
+    result.prompts.every(
+      (prompt) =>
+        prompt.versions.length === 1 &&
+        prompt.versions[0].versionNumber === 1 &&
+        prompt.versions[0].title === prompt.title &&
+        prompt.versions[0].category === prompt.category &&
+        prompt.versions[0].description === prompt.description &&
+        prompt.versions[0].content === prompt.content &&
+        prompt.versions[0].createdAt === prompt.createdAt &&
+        prompt.versions[0].changeType === 'created' &&
+        prompt.versions[0].restoredFromVersion === null
+    )
+  )
   assert.equal(fakeStorage.setItemCalls, 1)
 
   const storedEnvelope = JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY))
-  assert.equal(storedEnvelope.schemaVersion, 1)
+  assert.equal(storedEnvelope.schemaVersion, 2)
   assert.equal(storedEnvelope.prompts.length, 3)
   assert.ok(
     storedEnvelope.prompts.every(
       ({ isFavorite }) => isFavorite === false
+    )
+  )
+  assert.ok(
+    storedEnvelope.prompts.every(
+      ({ versions }) => versions.length === 1
     )
   )
 })
@@ -136,8 +251,8 @@ test('bewahrt ein bewusst leer gespeichertes Prompt-Array', () => {
   assert.equal(fakeStorage.setItemCalls, 0)
 })
 
-test('normalisiert einen alten Prompt ohne Favoritenfeld nur beim Laden', () => {
-  const legacyEnvelope = createStoredEnvelope([customPrompt])
+test('migriert einen Schema-1-Prompt ohne Favoritenfeld nur im Arbeitsspeicher', () => {
+  const legacyEnvelope = createLegacyEnvelope([legacyCustomPrompt])
   const fakeStorage = new FakeStorage([
     [PROMPT_STORAGE_KEY, legacyEnvelope],
   ])
@@ -148,8 +263,13 @@ test('normalisiert einen alten Prompt ohne Favoritenfeld nur beim Laden', () => 
   assert.equal(result.ok, true)
   assert.deepEqual(result.prompts, [
     {
-      ...customPrompt,
+      ...legacyCustomPrompt,
       isFavorite: false,
+      versions: [
+        createPromptVersion(legacyCustomPrompt, {
+          changeType: 'migrated',
+        }),
+      ],
     },
   ])
   assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), legacyEnvelope)
@@ -200,7 +320,7 @@ test('meldet beschädigtes JSON ohne Absturz oder Überschreiben', () => {
 
 test('überschreibt einen gültigen, aber unerwarteten Datenumschlag nicht', () => {
   const unsupportedEnvelope = JSON.stringify({
-    schemaVersion: 2,
+    schemaVersion: 3,
     prompts: [],
   })
   const fakeStorage = new FakeStorage([
@@ -244,6 +364,10 @@ test('erstellt und speichert einen gültigen eigenen Prompt', () => {
     updatedAt: '2000-01-01T00:00:00.000Z',
     isFavorite: true,
     isDemo: true,
+    versions: [{ versionNumber: 99 }],
+    versionNumber: 99,
+    changeType: 'restored',
+    restoredFromVersion: 1,
   })
 
   assert.equal(result.ok, true)
@@ -258,7 +382,25 @@ test('erstellt und speichert einen gültigen eigenen Prompt', () => {
     updatedAt: '2026-07-12T09:30:00.000Z',
     isFavorite: false,
     isDemo: false,
+    versions: [
+      {
+        versionNumber: 1,
+        title: 'Eigener Prompt',
+        category: 'Planung',
+        description: 'Ein lokal erstellter Prompt.',
+        content: 'Erste Zeile\nZweite Zeile',
+        createdAt: '2026-07-12T09:30:00.000Z',
+        changeType: 'created',
+        restoredFromVersion: null,
+      },
+    ],
   })
+  assert.equal(Object.hasOwn(result.createdPrompt, 'versionNumber'), false)
+  assert.equal(Object.hasOwn(result.createdPrompt, 'changeType'), false)
+  assert.equal(
+    Object.hasOwn(result.createdPrompt, 'restoredFromVersion'),
+    false
+  )
   assert.deepEqual(result.prompts, [result.createdPrompt])
   assert.equal(idCalls, 1)
   assert.equal(dateCalls, 1)
@@ -577,12 +719,12 @@ test('setzt einen Favoriten dauerhaft und erhält dessen Erstellzeit', () => {
     ...customPrompt,
     isFavorite: false,
   }
-  const unchangedPrompt = {
-    ...customPrompt,
+  const versionsSnapshot = structuredClone(initialPrompt.versions)
+  const unchangedPrompt = updateCurrentPromptFixture(customPrompt, {
     id: 'prompt-custom-002',
     title: 'Unveränderter Prompt',
     isFavorite: false,
-  }
+  })
   const fakeStorage = new FakeStorage([
     [
       PROMPT_STORAGE_KEY,
@@ -620,6 +762,7 @@ test('setzt einen Favoriten dauerhaft und erhält dessen Erstellzeit', () => {
   ])
   assert.equal(dateCalls, 1)
   assert.equal(fakeStorage.setItemCalls, 1)
+  assert.deepEqual(updateResult.updatedPrompt.versions, versionsSnapshot)
 
   const storedEnvelope = JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY))
   assert.deepEqual(storedEnvelope.prompts, [
@@ -965,18 +1108,16 @@ test('weist eine ungültige Prompt-ID vor einem Storage-Zugriff zurück', () => 
 })
 
 test('aktualisiert einen eigenen Prompt positionsstabil und dauerhaft', () => {
-  const previousPrompt = {
-    ...editablePrompt,
+  const previousPrompt = updateCurrentPromptFixture(editablePrompt, {
     id: 'prompt-before-001',
     title: 'Vorheriger Prompt',
     isFavorite: false,
-  }
-  const followingPrompt = {
-    ...editablePrompt,
+  })
+  const followingPrompt = updateCurrentPromptFixture(editablePrompt, {
     id: 'prompt-after-001',
     title: 'Nachfolgender Prompt',
     isFavorite: false,
-  }
+  })
   const initialPrompts = [
     previousPrompt,
     editablePrompt,
@@ -1010,6 +1151,10 @@ test('aktualisiert einen eigenen Prompt positionsstabil und dauerhaft', () => {
     isDemo: true,
     schemaVersion: 99,
     storageMetadata: 'darf-nicht-eingeschleust-werden',
+    versions: [],
+    versionNumber: 99,
+    changeType: 'restored',
+    restoredFromVersion: 1,
   })
 
   const expectedPrompt = {
@@ -1019,6 +1164,19 @@ test('aktualisiert einen eigenen Prompt positionsstabil und dauerhaft', () => {
     description: 'Präzise überarbeitete Beschreibung.',
     content: 'Erkläre [THEMA] in nachvollziehbaren Schritten.',
     updatedAt: '2026-07-12T16:00:00.000Z',
+    versions: [
+      ...editablePrompt.versions,
+      {
+        versionNumber: 2,
+        title: 'Überarbeiteter eigener Prompt',
+        category: 'Lernen',
+        description: 'Präzise überarbeitete Beschreibung.',
+        content: 'Erkläre [THEMA] in nachvollziehbaren Schritten.',
+        createdAt: '2026-07-12T16:00:00.000Z',
+        changeType: 'edited',
+        restoredFromVersion: null,
+      },
+    ],
   }
 
   assert.equal(result.ok, true)
@@ -1042,6 +1200,12 @@ test('aktualisiert einen eigenen Prompt positionsstabil und dauerhaft', () => {
     editablePrompt.storageMetadata
   )
   assert.equal(Object.hasOwn(result.updatedPrompt, 'schemaVersion'), false)
+  assert.equal(Object.hasOwn(result.updatedPrompt, 'versionNumber'), false)
+  assert.equal(Object.hasOwn(result.updatedPrompt, 'changeType'), false)
+  assert.equal(
+    Object.hasOwn(result.updatedPrompt, 'restoredFromVersion'),
+    false
+  )
   assert.equal(idCalls, 0)
   assert.equal(dateCalls, 1)
   assert.equal(fakeStorage.setItemCalls, 1)
@@ -1058,6 +1222,7 @@ test('aktualisiert einen eigenen Prompt positionsstabil und dauerhaft', () => {
 
 test('aktualisiert einen Seed-Prompt und erhält dessen Herkunft', () => {
   const seedPrompt = PROMPT_SEED_DATA[1]
+  const seedSnapshot = structuredClone(PROMPT_SEED_DATA)
   const fakeStorage = new FakeStorage()
   const { promptService } = createPromptSystem(fakeStorage, {
     getCurrentDate: () => new Date('2026-07-12T16:30:00.000Z'),
@@ -1083,6 +1248,9 @@ test('aktualisiert einen Seed-Prompt und erhält dessen Herkunft', () => {
     '2026-07-12T16:30:00.000Z'
   )
   assert.equal(fakeStorage.setItemCalls, 1)
+  assert.deepEqual(result.updatedPrompt.versions[0], seedPrompt.versions[0])
+  assert.equal(result.updatedPrompt.versions.length, 2)
+  assert.deepEqual(PROMPT_SEED_DATA, seedSnapshot)
 
   const restartedService = createPromptSystem(fakeStorage).promptService
   const reloadResult = restartedService.loadPrompts()
@@ -1171,6 +1339,8 @@ test('behandelt normalisierte identische Eingaben als schreibfreien No-op', () =
   assert.equal(result.promptChanged, false)
   assert.deepEqual(result.updatedPrompt, editablePrompt)
   assert.deepEqual(result.prompts, [editablePrompt])
+  assert.deepEqual(result.updatedPrompt.versions, editablePrompt.versions)
+  assert.equal(result.updatedPrompt.versions.length, 1)
   assert.equal(
     result.updatedPrompt.updatedAt,
     editablePrompt.updatedAt
@@ -1374,7 +1544,7 @@ test('überschreibt beschädigte oder unerwartete Prompt-Daten nicht', () => {
     },
     {
       storedValue: JSON.stringify({
-        schemaVersion: 2,
+        schemaVersion: 3,
         prompts: [editablePrompt],
       }),
       status: 'unsupportedSchemaVersion',
@@ -1602,4 +1772,1305 @@ test('behandelt ungültige und rückläufige Update-Zeitwerte kontrolliert', () 
     assert.equal(fakeStorage.setItemCalls, 0)
     assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
   }
+})
+
+test('erstellt in einer migrierten Sammlung einen Schema-2-Prompt samt Baseline', () => {
+  const legacyPrompt = {
+    ...legacyCustomPrompt,
+    isFavorite: false,
+  }
+  const legacyEnvelope = createLegacyEnvelope([legacyPrompt])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, legacyEnvelope],
+  ])
+  const { promptService } = createPromptSystem(fakeStorage, {
+    generatePromptId: () => 'prompt-after-migration-001',
+    getCurrentDate: () => new Date('2026-07-13T08:00:00.000Z'),
+  })
+
+  const result = promptService.createPrompt({
+    title: 'Nach Migration erstellt',
+    category: 'Test',
+    description: 'Speichert die vollständige Sammlung als Schema 2.',
+    content: 'Prüfe den ersten mutierenden Vorgang.',
+  })
+
+  assert.equal(result.ok, true)
+  assert.equal(result.prompts.length, 2)
+  assert.equal(result.prompts[0].versions[0].changeType, 'created')
+  assert.equal(result.prompts[1].versions[0].changeType, 'migrated')
+  assert.equal(
+    result.prompts[1].versions[0].createdAt,
+    legacyPrompt.updatedAt
+  )
+  assert.equal(fakeStorage.setItemCalls, 1)
+
+  const storedEnvelope = JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY))
+  assert.equal(storedEnvelope.schemaVersion, 2)
+  assert.deepEqual(storedEnvelope.prompts, result.prompts)
+})
+
+test('erstellt nach einem leeren Schema-1-Array direkt einen Schema-2-Zustand', () => {
+  const legacyEnvelope = createLegacyEnvelope([])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, legacyEnvelope],
+  ])
+  const { promptService } = createPromptSystem(fakeStorage, {
+    generatePromptId: () => 'prompt-empty-migration-001',
+    getCurrentDate: () => new Date('2026-07-13T08:30:00.000Z'),
+  })
+
+  const result = promptService.createPrompt({
+    title: 'Erster Prompt',
+    content: 'Entsteht nach einem bewusst leeren Legacy-Zustand.',
+  })
+
+  assert.equal(result.ok, true)
+  assert.equal(result.prompts.length, 1)
+  assert.equal(result.prompts[0].versions.length, 1)
+  assert.equal(result.prompts[0].versions[0].changeType, 'created')
+  assert.equal(fakeStorage.setItemCalls, 1)
+  assert.equal(
+    JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY)).schemaVersion,
+    2
+  )
+})
+
+test('favorisiert in einer migrierten Sammlung ohne Inhaltsversion', () => {
+  const legacyPrompt = {
+    ...legacyCustomPrompt,
+    isFavorite: false,
+  }
+  const legacyEnvelope = createLegacyEnvelope([legacyPrompt])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, legacyEnvelope],
+  ])
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate: () => new Date('2026-07-13T09:00:00.000Z'),
+  })
+
+  const result = promptService.setPromptFavorite(legacyPrompt.id, true)
+
+  assert.equal(result.ok, true)
+  assert.equal(result.favoriteChanged, true)
+  assert.equal(result.updatedPrompt.isFavorite, true)
+  assert.equal(result.updatedPrompt.versions.length, 1)
+  assert.equal(result.updatedPrompt.versions[0].changeType, 'migrated')
+  assert.equal(fakeStorage.setItemCalls, 1)
+
+  const storedEnvelope = JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY))
+  assert.equal(storedEnvelope.schemaVersion, 2)
+  assert.equal(storedEnvelope.prompts[0].versions.length, 1)
+})
+
+test('bearbeitet in einer migrierten Sammlung und speichert Baseline plus Version 2', () => {
+  const legacyPrompt = {
+    ...legacyCustomPrompt,
+    isFavorite: true,
+  }
+  const legacyEnvelope = createLegacyEnvelope([legacyPrompt])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, legacyEnvelope],
+  ])
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate: () => new Date('2026-07-13T09:15:00.000Z'),
+  })
+
+  const result = promptService.updatePrompt(
+    legacyPrompt.id,
+    createPromptInput(legacyPrompt, {
+      title: 'Migrierter Prompt, jetzt bearbeitet',
+    })
+  )
+
+  assert.equal(result.ok, true)
+  assert.equal(result.promptChanged, true)
+  assert.deepEqual(
+    result.updatedPrompt.versions.map(
+      ({ versionNumber, changeType }) => ({
+        versionNumber,
+        changeType,
+      })
+    ),
+    [
+      { versionNumber: 1, changeType: 'migrated' },
+      { versionNumber: 2, changeType: 'edited' },
+    ]
+  )
+  assert.equal(result.updatedPrompt.isFavorite, true)
+  assert.equal(fakeStorage.setItemCalls, 1)
+  assert.equal(
+    JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY)).schemaVersion,
+    2
+  )
+})
+
+test('löscht aus einer migrierten Sammlung und speichert den Rest als Schema 2', () => {
+  const deletedLegacyPrompt = {
+    ...legacyCustomPrompt,
+    isFavorite: false,
+  }
+  const remainingLegacyPrompt = {
+    ...legacyCustomPrompt,
+    id: 'prompt-legacy-remaining-001',
+    title: 'Verbleibender Legacy-Prompt',
+    content: 'Dieser Prompt bleibt nach dem Löschen erhalten.',
+    isFavorite: true,
+  }
+  const legacyEnvelope = createLegacyEnvelope([
+    deletedLegacyPrompt,
+    remainingLegacyPrompt,
+  ])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, legacyEnvelope],
+  ])
+  const { promptService } = createPromptSystem(fakeStorage)
+
+  const result = promptService.deletePrompt(deletedLegacyPrompt.id)
+
+  assert.equal(result.ok, true)
+  assert.deepEqual(
+    result.prompts.map(({ id }) => id),
+    [remainingLegacyPrompt.id]
+  )
+  assert.equal(result.prompts[0].versions.length, 1)
+  assert.equal(result.prompts[0].versions[0].changeType, 'migrated')
+  assert.equal(fakeStorage.setItemCalls, 1)
+
+  const storedEnvelope = JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY))
+  assert.equal(storedEnvelope.schemaVersion, 2)
+  assert.deepEqual(storedEnvelope.prompts, result.prompts)
+})
+
+test('erzwingt bei Schema-1-No-ops keine Migration', () => {
+  const legacyPrompt = {
+    ...legacyCustomPrompt,
+    isFavorite: false,
+  }
+  const legacyEnvelope = createLegacyEnvelope([legacyPrompt])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, legacyEnvelope],
+  ])
+  let dateCalls = 0
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date('2026-07-13T09:30:00.000Z')
+    },
+  })
+
+  const updateResult = promptService.updatePrompt(
+    legacyPrompt.id,
+    createPromptInput(legacyPrompt)
+  )
+  const favoriteResult = promptService.setPromptFavorite(
+    legacyPrompt.id,
+    false
+  )
+
+  assert.equal(updateResult.ok, true)
+  assert.equal(updateResult.promptChanged, false)
+  assert.equal(updateResult.updatedPrompt.versions.length, 1)
+  assert.equal(
+    updateResult.updatedPrompt.versions[0].changeType,
+    'migrated'
+  )
+  assert.equal(favoriteResult.ok, true)
+  assert.equal(favoriteResult.favoriteChanged, false)
+  assert.equal(favoriteResult.updatedPrompt.versions.length, 1)
+  assert.equal(dateCalls, 0)
+  assert.equal(fakeStorage.setItemCalls, 0)
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), legacyEnvelope)
+})
+
+test('erhält den Schema-1-Rohwert bei fehlgeschlagenen Migrationsschreibvorgängen', () => {
+  const operationCases = [
+    {
+      name: 'create',
+      run(promptService) {
+        return promptService.createPrompt({
+          title: 'Nicht gespeichert',
+          content: 'Dieser Create-Vorgang muss atomar scheitern.',
+        })
+      },
+    },
+    {
+      name: 'update',
+      run(promptService, promptId, legacyPrompt) {
+        return promptService.updatePrompt(
+          promptId,
+          createPromptInput(legacyPrompt, {
+            title: 'Nicht gespeicherte Bearbeitung',
+          })
+        )
+      },
+    },
+    {
+      name: 'favorite',
+      run(promptService, promptId) {
+        return promptService.setPromptFavorite(promptId, true)
+      },
+    },
+    {
+      name: 'delete',
+      run(promptService, promptId) {
+        return promptService.deletePrompt(promptId)
+      },
+    },
+  ]
+
+  for (const operationCase of operationCases) {
+    const legacyPrompt = {
+      ...legacyCustomPrompt,
+      isFavorite: false,
+    }
+    const legacyEnvelope = createLegacyEnvelope([legacyPrompt])
+    const fakeStorage = new FakeStorage([
+      [PROMPT_STORAGE_KEY, legacyEnvelope],
+    ])
+    const { promptService } = createPromptSystem(fakeStorage, {
+      generatePromptId: () => `prompt-failed-${operationCase.name}`,
+      getCurrentDate: () => new Date('2026-07-13T10:00:00.000Z'),
+    })
+    fakeStorage.writeError = createStorageError('QuotaExceededError')
+
+    const result = operationCase.run(
+      promptService,
+      legacyPrompt.id,
+      legacyPrompt
+    )
+
+    assert.equal(result.ok, false, operationCase.name)
+    assert.equal(result.status, 'quotaExceeded', operationCase.name)
+    assert.equal(
+      result.error.code,
+      'storageQuotaExceeded',
+      operationCase.name
+    )
+    assert.equal(fakeStorage.setItemCalls, 1, operationCase.name)
+    assert.equal(
+      fakeStorage.peek(PROMPT_STORAGE_KEY),
+      legacyEnvelope,
+      operationCase.name
+    )
+    assert.equal(result.prompts.length, 1, operationCase.name)
+    assert.equal(
+      result.prompts[0].versions[0].changeType,
+      'migrated',
+      operationCase.name
+    )
+  }
+})
+
+test('hängt bei zwei Bearbeitungen genau Version 2 und Version 3 an', () => {
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope([editablePrompt])],
+  ])
+  const timestamps = [
+    new Date('2026-07-13T11:00:00.000Z'),
+    new Date('2026-07-13T12:00:00.000Z'),
+  ]
+  let timestampIndex = 0
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate() {
+      const timestamp = timestamps[timestampIndex]
+      timestampIndex += 1
+      return timestamp
+    },
+  })
+  const originalSnapshot = structuredClone(editablePrompt)
+  const originalVersionReference = editablePrompt.versions[0]
+
+  const secondVersionResult = promptService.updatePrompt(
+    editablePrompt.id,
+    createPromptInput(editablePrompt, {
+      title: 'Zweite Fassung',
+    })
+  )
+  const thirdVersionResult = promptService.updatePrompt(
+    editablePrompt.id,
+    createPromptInput(secondVersionResult.updatedPrompt, {
+      content: 'Dritte Fassung des Prompt-Texts.',
+    })
+  )
+
+  assert.equal(secondVersionResult.ok, true)
+  assert.equal(thirdVersionResult.ok, true)
+  assert.deepEqual(
+    thirdVersionResult.updatedPrompt.versions.map(
+      ({ versionNumber }) => versionNumber
+    ),
+    [1, 2, 3]
+  )
+  assert.deepEqual(
+    thirdVersionResult.updatedPrompt.versions[0],
+    originalSnapshot.versions[0]
+  )
+  assert.deepEqual(
+    thirdVersionResult.updatedPrompt.versions[1],
+    secondVersionResult.updatedPrompt.versions[1]
+  )
+  assert.equal(
+    thirdVersionResult.updatedPrompt.versions[2].changeType,
+    'edited'
+  )
+  assert.equal(
+    thirdVersionResult.updatedPrompt.versions[2].createdAt,
+    '2026-07-13T12:00:00.000Z'
+  )
+  assert.equal(
+    thirdVersionResult.updatedPrompt.title,
+    thirdVersionResult.updatedPrompt.versions[2].title
+  )
+  assert.equal(
+    thirdVersionResult.updatedPrompt.content,
+    thirdVersionResult.updatedPrompt.versions[2].content
+  )
+  assert.deepEqual(editablePrompt, originalSnapshot)
+  assert.strictEqual(editablePrompt.versions[0], originalVersionReference)
+  assert.equal(fakeStorage.setItemCalls, 2)
+
+  const restartedService = createPromptSystem(fakeStorage).promptService
+  const reloadResult = restartedService.loadPrompts()
+
+  assert.deepEqual(reloadResult.prompts, thirdVersionResult.prompts)
+})
+
+test('löscht einen Prompt einschließlich seiner vollständigen Historie', () => {
+  const promptWithHistory = {
+    ...editablePrompt,
+    title: 'Zweite Fassung',
+    updatedAt: '2026-07-13T11:00:00.000Z',
+    versions: [
+      ...editablePrompt.versions,
+      createPromptVersion(
+        {
+          ...editablePrompt,
+          title: 'Zweite Fassung',
+        },
+        {
+          versionNumber: 2,
+          createdAt: '2026-07-13T11:00:00.000Z',
+          changeType: 'edited',
+        }
+      ),
+    ],
+  }
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope([promptWithHistory])],
+  ])
+  const { promptService } = createPromptSystem(fakeStorage)
+
+  const result = promptService.deletePrompt(promptWithHistory.id)
+
+  assert.equal(result.ok, true)
+  assert.deepEqual(result.prompts, [])
+  assert.deepEqual(
+    JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY)),
+    {
+      schemaVersion: 2,
+      prompts: [],
+    }
+  )
+})
+
+test('entkoppelt Service-Rückgaben vollständig von den tief gefrorenen Seeds', () => {
+  const seedSnapshot = structuredClone(PROMPT_SEED_DATA)
+  const fakeStorage = new FakeStorage()
+  const { promptService } = createPromptSystem(fakeStorage)
+
+  const result = promptService.loadPrompts()
+
+  assert.equal(Object.isFrozen(PROMPT_SEED_DATA), true)
+  assert.ok(PROMPT_SEED_DATA.every((prompt) => Object.isFrozen(prompt)))
+  assert.ok(
+    PROMPT_SEED_DATA.every((prompt) => Object.isFrozen(prompt.versions))
+  )
+  assert.ok(
+    PROMPT_SEED_DATA.every((prompt) =>
+      prompt.versions.every((version) => Object.isFrozen(version))
+    )
+  )
+  assert.notStrictEqual(result.prompts[0], PROMPT_SEED_DATA[0])
+  assert.notStrictEqual(
+    result.prompts[0].versions,
+    PROMPT_SEED_DATA[0].versions
+  )
+  assert.notStrictEqual(
+    result.prompts[0].versions[0],
+    PROMPT_SEED_DATA[0].versions[0]
+  )
+
+  result.prompts[0].versions[0].title = 'Nur Rückgabe geändert'
+  result.prompts[0].versions.push({
+    ...result.prompts[0].versions[0],
+    versionNumber: 2,
+  })
+
+  assert.deepEqual(PROMPT_SEED_DATA, seedSnapshot)
+})
+
+test('mutiert weder Create-Eingabe noch teilt es Versionsreferenzen in Rückgaben', () => {
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope([])],
+  ])
+  const { promptService } = createPromptSystem(fakeStorage, {
+    generatePromptId: () => 'prompt-immutable-create-001',
+    getCurrentDate: () => new Date('2026-07-13T13:00:00.000Z'),
+  })
+  const input = {
+    title: '  Unveränderliche Eingabe  ',
+    category: ' Test ',
+    description: ' Bleibt als Eingabe unverändert. ',
+    content: ' Prüfe defensive Kopien. ',
+    versions: [{ versionNumber: 99 }],
+  }
+  const inputSnapshot = structuredClone(input)
+
+  const result = promptService.createPrompt(input)
+
+  assert.equal(result.ok, true)
+  assert.deepEqual(input, inputSnapshot)
+  assert.notStrictEqual(
+    result.createdPrompt.versions,
+    result.prompts[0].versions
+  )
+  assert.notStrictEqual(
+    result.createdPrompt.versions[0],
+    result.prompts[0].versions[0]
+  )
+
+  result.createdPrompt.versions[0].title = 'Nur Einzelrückgabe geändert'
+  assert.equal(result.prompts[0].versions[0].title, 'Unveränderliche Eingabe')
+
+  const reloadResult = createPromptSystem(fakeStorage).promptService
+    .loadPrompts()
+  assert.equal(
+    reloadResult.prompts[0].versions[0].title,
+    'Unveränderliche Eingabe'
+  )
+})
+
+test('mutiert bei Update weder Eingabe noch vorherige Historie oder Rückgabelisten', () => {
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope([editablePrompt])],
+  ])
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate: () => new Date('2026-07-13T14:00:00.000Z'),
+  })
+  const promptSnapshot = structuredClone(editablePrompt)
+  const input = createPromptInput(editablePrompt, {
+    description: 'Neue unveränderliche Beschreibung.',
+    versions: [{ versionNumber: 77 }],
+  })
+  const inputSnapshot = structuredClone(input)
+
+  const result = promptService.updatePrompt(editablePrompt.id, input)
+
+  assert.equal(result.ok, true)
+  assert.deepEqual(input, inputSnapshot)
+  assert.deepEqual(editablePrompt, promptSnapshot)
+  assert.notStrictEqual(
+    result.updatedPrompt.versions,
+    result.prompts[0].versions
+  )
+  assert.notStrictEqual(
+    result.updatedPrompt.versions[0],
+    result.prompts[0].versions[0]
+  )
+  assert.deepEqual(
+    result.updatedPrompt.versions[0],
+    promptSnapshot.versions[0]
+  )
+
+  result.updatedPrompt.versions[0].title = 'Nur Einzelrückgabe geändert'
+  assert.equal(
+    result.prompts[0].versions[0].title,
+    promptSnapshot.versions[0].title
+  )
+})
+
+test('meldet beim Löschen eine fehlende PromptStorage-Schreibschnittstelle kontrolliert', () => {
+  const promptService = createPromptService({
+    promptStorage: {
+      loadPromptCollection() {
+        return {
+          ok: true,
+          status: 'found',
+          prompts: [editablePrompt],
+        }
+      },
+    },
+  })
+  let result
+
+  assert.doesNotThrow(() => {
+    result = promptService.deletePrompt(editablePrompt.id)
+  })
+
+  assert.equal(result.ok, false)
+  assert.equal(result.status, 'unavailable')
+  assert.equal(result.error.code, 'promptStorageUnavailable')
+  assert.deepEqual(result.prompts, [editablePrompt])
+  assert.equal(Object.hasOwn(result, 'deletedPromptId'), false)
+})
+
+test('stellt eine ältere Version positionsstabil und dauerhaft als neue Version wieder her', () => {
+  const historicalPrompt = createHistoricalPromptFixture()
+  const previousVersionsSnapshot = structuredClone(
+    historicalPrompt.versions
+  )
+  const previousVersionsJson = JSON.stringify(historicalPrompt.versions)
+  const previousPrompt = updateCurrentPromptFixture(editablePrompt, {
+    id: 'prompt-before-restore-001',
+    title: 'Prompt vor dem Restore-Ziel',
+    isFavorite: false,
+  })
+  const followingPrompt = updateCurrentPromptFixture(editablePrompt, {
+    id: 'prompt-after-restore-001',
+    title: 'Prompt nach dem Restore-Ziel',
+    isFavorite: false,
+  })
+  const initialPrompts = [
+    previousPrompt,
+    historicalPrompt,
+    followingPrompt,
+  ]
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope(initialPrompts)],
+  ])
+  let dateCalls = 0
+  const restoreTimestamp = '2026-07-11T12:30:00.000Z'
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date(restoreTimestamp)
+    },
+  })
+
+  const result = promptService.restorePromptVersion(
+    historicalPrompt.id,
+    1
+  )
+  const restoredValues = createPromptInput(
+    historicalPrompt.versions[0]
+  )
+  const restoredVersion = {
+    versionNumber: 4,
+    ...restoredValues,
+    createdAt: restoreTimestamp,
+    changeType: 'restored',
+    restoredFromVersion: 1,
+  }
+  const expectedPrompt = {
+    ...historicalPrompt,
+    ...restoredValues,
+    updatedAt: restoreTimestamp,
+    versions: [...previousVersionsSnapshot, restoredVersion],
+  }
+  const expectedPrompts = [
+    previousPrompt,
+    expectedPrompt,
+    followingPrompt,
+  ]
+
+  assert.deepEqual(result, {
+    ok: true,
+    status: 'restored',
+    promptChanged: true,
+    restoredFromVersion: 1,
+    updatedPrompt: expectedPrompt,
+    prompts: expectedPrompts,
+  })
+  assert.deepEqual(
+    result.updatedPrompt.versions.slice(0, -1),
+    previousVersionsSnapshot
+  )
+  assert.equal(
+    JSON.stringify(result.updatedPrompt.versions.slice(0, -1)),
+    previousVersionsJson
+  )
+  assert.deepEqual(
+    result.updatedPrompt.versions.map(({ versionNumber }) => versionNumber),
+    [1, 2, 3, 4]
+  )
+  assert.equal(result.prompts[1].id, historicalPrompt.id)
+  assert.equal(
+    result.updatedPrompt.createdAt,
+    historicalPrompt.createdAt
+  )
+  assert.equal(result.updatedPrompt.isFavorite, historicalPrompt.isFavorite)
+  assert.equal(result.updatedPrompt.isDemo, historicalPrompt.isDemo)
+  assert.equal(
+    result.updatedPrompt.storageMetadata,
+    historicalPrompt.storageMetadata
+  )
+  assert.deepEqual(result.prompts[0], previousPrompt)
+  assert.deepEqual(result.prompts[2], followingPrompt)
+  assert.deepEqual(historicalPrompt.versions, previousVersionsSnapshot)
+  assert.equal(dateCalls, 1)
+  assert.equal(fakeStorage.setItemCalls, 1)
+
+  const storedEnvelope = JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY))
+  assert.equal(storedEnvelope.schemaVersion, PROMPT_SCHEMA_VERSION)
+  assert.deepEqual(storedEnvelope.prompts, expectedPrompts)
+
+  const reloadResult = createPromptSystem(fakeStorage).promptService
+    .loadPrompts()
+
+  assert.equal(reloadResult.ok, true)
+  assert.deepEqual(reloadResult.prompts, expectedPrompts)
+})
+
+test('verwendet beim Restore einer Restore-Version deren direkte Versionsnummer', () => {
+  const historicalPrompt = createHistoricalPromptFixture()
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope([historicalPrompt])],
+  ])
+  const timestamps = [
+    '2026-07-11T12:30:00.000Z',
+    '2026-07-11T13:30:00.000Z',
+    '2026-07-11T14:30:00.000Z',
+  ]
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate: () => new Date(timestamps.shift()),
+  })
+
+  const firstRestore = promptService.restorePromptVersion(
+    historicalPrompt.id,
+    1
+  )
+  const editResult = promptService.updatePrompt(
+    historicalPrompt.id,
+    createPromptInput(firstRestore.updatedPrompt, {
+      title: 'Fünfte Fassung nach dem ersten Restore',
+      category: 'Planung',
+      description: 'Schafft Abstand zur wiederhergestellten Version.',
+      content: 'Plane [THEMA] nach dem ersten Restore neu.',
+    })
+  )
+  const secondRestore = promptService.restorePromptVersion(
+    historicalPrompt.id,
+    4
+  )
+  const directlySelectedVersion = editResult.updatedPrompt.versions[3]
+  const latestVersion = secondRestore.updatedPrompt.versions.at(-1)
+
+  assert.equal(firstRestore.ok, true)
+  assert.equal(editResult.ok, true)
+  assert.equal(secondRestore.ok, true)
+  assert.equal(secondRestore.status, 'restored')
+  assert.equal(secondRestore.promptChanged, true)
+  assert.equal(secondRestore.restoredFromVersion, 4)
+  assert.equal(latestVersion.versionNumber, 6)
+  assert.equal(latestVersion.changeType, 'restored')
+  assert.equal(latestVersion.restoredFromVersion, 4)
+  assert.deepEqual(
+    createPromptInput(latestVersion),
+    createPromptInput(directlySelectedVersion)
+  )
+  assert.deepEqual(
+    secondRestore.updatedPrompt.versions.map(
+      ({ versionNumber }) => versionNumber
+    ),
+    [1, 2, 3, 4, 5, 6]
+  )
+  assert.equal(fakeStorage.setItemCalls, 3)
+})
+
+test('behandelt die aktuellste Version als schreibfreien Restore-No-op', () => {
+  const historicalPrompt = createHistoricalPromptFixture()
+  const initialEnvelope = createStoredEnvelope([historicalPrompt])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, initialEnvelope],
+  ])
+  let dateCalls = 0
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date('2026-07-11T12:30:00.000Z')
+    },
+  })
+
+  const result = promptService.restorePromptVersion(
+    historicalPrompt.id,
+    3
+  )
+
+  assert.deepEqual(result, {
+    ok: true,
+    status: 'unchanged',
+    promptChanged: false,
+    restoredFromVersion: 3,
+    updatedPrompt: historicalPrompt,
+    prompts: [historicalPrompt],
+  })
+  assert.notStrictEqual(result.updatedPrompt, result.prompts[0])
+  assert.notStrictEqual(
+    result.updatedPrompt.versions,
+    result.prompts[0].versions
+  )
+  assert.notStrictEqual(
+    result.updatedPrompt.versions[0],
+    result.prompts[0].versions[0]
+  )
+  assert.equal(dateCalls, 0)
+  assert.equal(fakeStorage.setItemCalls, 0)
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+})
+
+test('behandelt eine ältere inhaltsgleiche Version als Restore-No-op', () => {
+  const historicalPrompt = createHistoricalPromptFixture()
+  const firstVersion = historicalPrompt.versions[0]
+  const duplicateTimestamp = '2026-07-11T12:30:00.000Z'
+  const duplicateVersion = createPromptVersion(firstVersion, {
+    versionNumber: 4,
+    createdAt: duplicateTimestamp,
+    changeType: 'restored',
+    restoredFromVersion: 1,
+  })
+  const duplicateCurrentPrompt = {
+    ...historicalPrompt,
+    ...createPromptInput(firstVersion),
+    updatedAt: duplicateTimestamp,
+    versions: [
+      ...historicalPrompt.versions.map((version) => ({ ...version })),
+      duplicateVersion,
+    ],
+  }
+  const initialEnvelope = createStoredEnvelope([duplicateCurrentPrompt])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, initialEnvelope],
+  ])
+  let dateCalls = 0
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date('2026-07-11T13:30:00.000Z')
+    },
+  })
+
+  const result = promptService.restorePromptVersion(
+    duplicateCurrentPrompt.id,
+    1
+  )
+
+  assert.deepEqual(result, {
+    ok: true,
+    status: 'unchanged',
+    promptChanged: false,
+    restoredFromVersion: 1,
+    updatedPrompt: duplicateCurrentPrompt,
+    prompts: [duplicateCurrentPrompt],
+  })
+  assert.equal(result.updatedPrompt.versions.length, 4)
+  assert.equal(
+    result.updatedPrompt.updatedAt,
+    duplicateCurrentPrompt.updatedAt
+  )
+  assert.equal(dateCalls, 0)
+  assert.equal(fakeStorage.setItemCalls, 0)
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+})
+
+test('validiert Restore-ID und Versionsnummer vor jedem Storage-Zugriff', () => {
+  const invalidPromptIds = [
+    null,
+    42,
+    '',
+    '   ',
+    ' ' + editablePrompt.id,
+  ]
+
+  for (const promptId of invalidPromptIds) {
+    const fakeStorage = new FakeStorage()
+    let dateCalls = 0
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate() {
+        dateCalls += 1
+        return new Date()
+      },
+    })
+
+    const result = promptService.restorePromptVersion(promptId, 1)
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, 'validationFailed')
+    assert.equal(result.error.code, 'invalidPromptId')
+    assert.deepEqual(result.prompts, [])
+    assert.equal(dateCalls, 0)
+    assert.equal(fakeStorage.getItemCalls, 0)
+    assert.equal(fakeStorage.setItemCalls, 0)
+  }
+
+  const invalidVersionNumbers = [
+    undefined,
+    null,
+    false,
+    0,
+    -1,
+    1.5,
+    '1',
+    Number.NaN,
+    Number.POSITIVE_INFINITY,
+  ]
+
+  for (const versionNumber of invalidVersionNumbers) {
+    const fakeStorage = new FakeStorage()
+    let dateCalls = 0
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate() {
+        dateCalls += 1
+        return new Date()
+      },
+    })
+
+    const result = promptService.restorePromptVersion(
+      editablePrompt.id,
+      versionNumber
+    )
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, 'validationFailed')
+    assert.equal(result.error.code, 'invalidPromptVersionNumber')
+    assert.deepEqual(result.prompts, [])
+    assert.equal(dateCalls, 0)
+    assert.equal(fakeStorage.getItemCalls, 0)
+    assert.equal(fakeStorage.setItemCalls, 0)
+  }
+})
+
+test('behandelt unbekannte Prompts und Versionen ohne Schreibzugriff', () => {
+  let dateCalls = 0
+  const missingStorage = new FakeStorage()
+  const missingPromptService = createPromptSystem(missingStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date()
+    },
+  }).promptService
+
+  const missingPromptResult = missingPromptService.restorePromptVersion(
+    'prompt-unknown-restore-999',
+    1
+  )
+
+  assert.equal(missingPromptResult.ok, false)
+  assert.equal(missingPromptResult.status, 'notFound')
+  assert.equal(missingPromptResult.error.code, 'promptNotFound')
+  assert.deepEqual(missingPromptResult.prompts, PROMPT_SEED_DATA)
+  assert.equal(
+    Object.hasOwn(missingPromptResult, 'updatedPrompt'),
+    false
+  )
+  assert.equal(missingStorage.getItemCalls, 1)
+  assert.equal(missingStorage.setItemCalls, 0)
+  assert.equal(missingStorage.peek(PROMPT_STORAGE_KEY), null)
+
+  const historicalPrompt = createHistoricalPromptFixture()
+  const initialEnvelope = createStoredEnvelope([historicalPrompt])
+  const versionStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, initialEnvelope],
+  ])
+  const versionService = createPromptSystem(versionStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date()
+    },
+  }).promptService
+
+  const missingVersionResult = versionService.restorePromptVersion(
+    historicalPrompt.id,
+    99
+  )
+
+  assert.equal(missingVersionResult.ok, false)
+  assert.equal(missingVersionResult.status, 'notFound')
+  assert.equal(
+    missingVersionResult.error.code,
+    'promptVersionNotFound'
+  )
+  assert.deepEqual(missingVersionResult.prompts, [historicalPrompt])
+  assert.equal(
+    Object.hasOwn(missingVersionResult, 'updatedPrompt'),
+    false
+  )
+  assert.equal(dateCalls, 0)
+  assert.equal(versionStorage.setItemCalls, 0)
+  assert.equal(versionStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+})
+
+test('überschreibt beim Restore beschädigte oder unerwartete Daten nicht', () => {
+  const historicalPrompt = createHistoricalPromptFixture()
+  const testCases = [
+    {
+      storedValue: '{broken',
+      status: 'invalidJson',
+      errorCode: 'invalidJson',
+    },
+    {
+      storedValue: JSON.stringify({
+        schemaVersion: 3,
+        prompts: [historicalPrompt],
+      }),
+      status: 'unsupportedSchemaVersion',
+      errorCode: 'unsupportedPromptSchemaVersion',
+    },
+    {
+      storedValue: createStoredEnvelope([
+        {
+          ...historicalPrompt,
+          content: 'Abweichender aktueller Inhalt.',
+        },
+      ]),
+      status: 'invalidStoredData',
+      errorCode: 'promptVersionContentMismatch',
+    },
+  ]
+
+  for (const testCase of testCases) {
+    const fakeStorage = new FakeStorage([
+      [PROMPT_STORAGE_KEY, testCase.storedValue],
+    ])
+    let dateCalls = 0
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate() {
+        dateCalls += 1
+        return new Date()
+      },
+    })
+
+    const result = promptService.restorePromptVersion(
+      historicalPrompt.id,
+      1
+    )
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, testCase.status)
+    assert.equal(result.error.code, testCase.errorCode)
+    assert.deepEqual(result.prompts, [])
+    assert.equal(Object.hasOwn(result, 'updatedPrompt'), false)
+    assert.equal(dateCalls, 0)
+    assert.equal(fakeStorage.setItemCalls, 0)
+    assert.equal(
+      fakeStorage.peek(PROMPT_STORAGE_KEY),
+      testCase.storedValue
+    )
+  }
+})
+
+test('reicht Restore-Lesefehler und nicht verfügbaren Storage kontrolliert weiter', () => {
+  const readErrorCases = [
+    {
+      errorName: 'SecurityError',
+      status: 'unavailable',
+      errorCode: 'storageUnavailable',
+    },
+    {
+      errorName: 'Error',
+      status: 'readFailed',
+      errorCode: 'storageReadFailed',
+    },
+  ]
+
+  for (const errorCase of readErrorCases) {
+    const fakeStorage = new FakeStorage()
+    fakeStorage.readError = createStorageError(errorCase.errorName)
+    let dateCalls = 0
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate() {
+        dateCalls += 1
+        return new Date()
+      },
+    })
+
+    const result = promptService.restorePromptVersion(
+      editablePrompt.id,
+      1
+    )
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, errorCase.status)
+    assert.equal(result.error.code, errorCase.errorCode)
+    assert.deepEqual(result.prompts, [])
+    assert.equal(dateCalls, 0)
+    assert.equal(fakeStorage.setItemCalls, 0)
+  }
+
+  const unavailableResult = createPromptSystem(undefined).promptService
+    .restorePromptVersion(editablePrompt.id, 1)
+
+  assert.equal(unavailableResult.ok, false)
+  assert.equal(unavailableResult.status, 'unavailable')
+  assert.equal(unavailableResult.error.code, 'storageUnavailable')
+  assert.deepEqual(unavailableResult.prompts, [])
+
+  const missingPromptStorageResult = createPromptService()
+    .restorePromptVersion(editablePrompt.id, 1)
+
+  assert.equal(missingPromptStorageResult.ok, false)
+  assert.equal(missingPromptStorageResult.status, 'unavailable')
+  assert.equal(
+    missingPromptStorageResult.error.code,
+    'promptStorageUnavailable'
+  )
+  assert.deepEqual(missingPromptStorageResult.prompts, [])
+})
+
+test('meldet eine fehlende Restore-Schreibschnittstelle vor der Uhr', () => {
+  const historicalPrompt = createHistoricalPromptFixture()
+  const promptSnapshot = structuredClone(historicalPrompt)
+  let dateCalls = 0
+  const promptService = createPromptService({
+    promptStorage: {
+      loadPromptCollection() {
+        return {
+          ok: true,
+          status: 'found',
+          prompts: [historicalPrompt],
+        }
+      },
+    },
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date('2026-07-11T12:30:00.000Z')
+    },
+  })
+
+  const result = promptService.restorePromptVersion(
+    historicalPrompt.id,
+    1
+  )
+
+  assert.equal(result.ok, false)
+  assert.equal(result.status, 'unavailable')
+  assert.equal(result.error.code, 'promptStorageUnavailable')
+  assert.deepEqual(result.prompts, [promptSnapshot])
+  assert.equal(Object.hasOwn(result, 'updatedPrompt'), false)
+  assert.equal(dateCalls, 0)
+  assert.deepEqual(historicalPrompt, promptSnapshot)
+})
+
+test('behandelt ungültige und rückläufige Restore-Zeitwerte kontrolliert', () => {
+  const testCases = [
+    {
+      getCurrentDate: () => Symbol('ungültiger Zeitwert'),
+    },
+    {
+      getCurrentDate: () =>
+        new Date('2026-07-11T11:29:59.999Z'),
+    },
+  ]
+
+  for (const testCase of testCases) {
+    const historicalPrompt = createHistoricalPromptFixture()
+    const initialEnvelope = createStoredEnvelope([historicalPrompt])
+    const fakeStorage = new FakeStorage([
+      [PROMPT_STORAGE_KEY, initialEnvelope],
+    ])
+    let dateCalls = 0
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate() {
+        dateCalls += 1
+        return testCase.getCurrentDate()
+      },
+    })
+    let result
+
+    assert.doesNotThrow(() => {
+      result = promptService.restorePromptVersion(
+        historicalPrompt.id,
+        1
+      )
+    })
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, 'generationFailed')
+    assert.equal(result.error.code, 'promptTimestampGenerationFailed')
+    assert.deepEqual(result.prompts, [historicalPrompt])
+    assert.equal(Object.hasOwn(result, 'updatedPrompt'), false)
+    assert.equal(dateCalls, 1)
+    assert.equal(fakeStorage.setItemCalls, 0)
+    assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+  }
+})
+
+test('erhält Promptliste und Rohwert bei Restore-Schreibfehlern', () => {
+  const errorCases = [
+    {
+      errorName: 'QuotaExceededError',
+      status: 'quotaExceeded',
+      errorCode: 'storageQuotaExceeded',
+    },
+    {
+      errorName: 'SecurityError',
+      status: 'unavailable',
+      errorCode: 'storageUnavailable',
+    },
+    {
+      errorName: 'Error',
+      status: 'writeFailed',
+      errorCode: 'storageWriteFailed',
+    },
+  ]
+
+  for (const errorCase of errorCases) {
+    const historicalPrompt = createHistoricalPromptFixture()
+    const promptSnapshot = structuredClone(historicalPrompt)
+    const initialEnvelope = createStoredEnvelope([historicalPrompt])
+    const fakeStorage = new FakeStorage([
+      [PROMPT_STORAGE_KEY, initialEnvelope],
+    ])
+    let dateCalls = 0
+    const { promptService } = createPromptSystem(fakeStorage, {
+      getCurrentDate() {
+        dateCalls += 1
+        return new Date('2026-07-11T12:30:00.000Z')
+      },
+    })
+    fakeStorage.writeError = createStorageError(errorCase.errorName)
+
+    const result = promptService.restorePromptVersion(
+      historicalPrompt.id,
+      1
+    )
+
+    assert.equal(result.ok, false)
+    assert.equal(result.status, errorCase.status)
+    assert.equal(result.error.code, errorCase.errorCode)
+    assert.deepEqual(result.prompts, [promptSnapshot])
+    assert.equal(Object.hasOwn(result, 'updatedPrompt'), false)
+    assert.equal(Object.hasOwn(result, 'restoredFromVersion'), false)
+    assert.equal(dateCalls, 1)
+    assert.equal(fakeStorage.setItemCalls, 1)
+    assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), initialEnvelope)
+    assert.deepEqual(historicalPrompt, promptSnapshot)
+
+    fakeStorage.writeError = null
+    const reloadResult = createPromptSystem(fakeStorage).promptService
+      .loadPrompts()
+
+    assert.deepEqual(reloadResult.prompts, [promptSnapshot])
+  }
+})
+
+test('lässt einen Schema-1-Baseline-Restore als No-op unmigriert', () => {
+  const legacyPrompt = {
+    ...legacyCustomPrompt,
+    isFavorite: false,
+  }
+  const legacyEnvelope = createLegacyEnvelope([legacyPrompt])
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, legacyEnvelope],
+  ])
+  let dateCalls = 0
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate() {
+      dateCalls += 1
+      return new Date('2026-07-13T15:00:00.000Z')
+    },
+  })
+  const normalizedPrompt = {
+    ...legacyPrompt,
+    isFavorite: false,
+    isDemo: true,
+    versions: [
+      createPromptVersion(legacyPrompt, {
+        changeType: 'migrated',
+      }),
+    ],
+  }
+
+  const result = promptService.restorePromptVersion(legacyPrompt.id, 1)
+
+  assert.deepEqual(result, {
+    ok: true,
+    status: 'unchanged',
+    promptChanged: false,
+    restoredFromVersion: 1,
+    updatedPrompt: normalizedPrompt,
+    prompts: [normalizedPrompt],
+  })
+  assert.equal(result.updatedPrompt.versions.length, 1)
+  assert.equal(result.updatedPrompt.versions[0].changeType, 'migrated')
+  assert.equal(dateCalls, 0)
+  assert.equal(fakeStorage.setItemCalls, 0)
+  assert.equal(fakeStorage.peek(PROMPT_STORAGE_KEY), legacyEnvelope)
+  assert.equal(
+    JSON.parse(fakeStorage.peek(PROMPT_STORAGE_KEY)).schemaVersion,
+    1
+  )
+})
+
+test('entkoppelt Restore-Rückgaben, Historie und gespeicherte Daten defensiv', () => {
+  const historicalPrompt = createHistoricalPromptFixture()
+  const originalPromptSnapshot = structuredClone(historicalPrompt)
+  const fakeStorage = new FakeStorage([
+    [PROMPT_STORAGE_KEY, createStoredEnvelope([historicalPrompt])],
+  ])
+  const { promptService } = createPromptSystem(fakeStorage, {
+    getCurrentDate: () => new Date('2026-07-11T12:30:00.000Z'),
+  })
+
+  const result = promptService.restorePromptVersion(
+    historicalPrompt.id,
+    1
+  )
+  const persistedSnapshot = structuredClone(result.prompts)
+
+  assert.equal(result.ok, true)
+  assert.deepEqual(historicalPrompt, originalPromptSnapshot)
+  assert.notStrictEqual(result.updatedPrompt, result.prompts[0])
+  assert.notStrictEqual(result.updatedPrompt, historicalPrompt)
+  assert.notStrictEqual(
+    result.updatedPrompt.versions,
+    result.prompts[0].versions
+  )
+  assert.notStrictEqual(
+    result.updatedPrompt.versions,
+    historicalPrompt.versions
+  )
+
+  for (let index = 0; index < result.updatedPrompt.versions.length; index += 1) {
+    assert.notStrictEqual(
+      result.updatedPrompt.versions[index],
+      result.prompts[0].versions[index]
+    )
+
+    if (index < historicalPrompt.versions.length) {
+      assert.notStrictEqual(
+        result.updatedPrompt.versions[index],
+        historicalPrompt.versions[index]
+      )
+    }
+  }
+
+  result.updatedPrompt.title = 'Nur updatedPrompt geändert'
+  result.updatedPrompt.versions[0].title = 'Nur alte Einzelversion geändert'
+  result.updatedPrompt.versions.at(-1).content =
+    'Nur neue Einzelversion geändert'
+  result.updatedPrompt.versions.push({
+    ...result.updatedPrompt.versions.at(-1),
+    versionNumber: 99,
+  })
+  result.prompts[0].description = 'Nur die Listenrückgabe geändert'
+  result.prompts[0].versions[1].description =
+    'Nur eine Listenversion geändert'
+  result.prompts[0].versions.pop()
+
+  assert.deepEqual(historicalPrompt, originalPromptSnapshot)
+  assert.equal(
+    result.prompts[0].versions[0].title,
+    persistedSnapshot[0].versions[0].title
+  )
+  assert.equal(
+    result.updatedPrompt.description,
+    persistedSnapshot[0].description
+  )
+
+  const reloadResult = createPromptSystem(fakeStorage).promptService
+    .loadPrompts()
+
+  assert.equal(reloadResult.ok, true)
+  assert.deepEqual(reloadResult.prompts, persistedSnapshot)
 })

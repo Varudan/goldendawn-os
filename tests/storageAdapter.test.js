@@ -76,3 +76,75 @@ test('gibt Serialisierungsfehler strukturiert zurück, ohne Storage aufzurufen',
   assert.equal(result.error.code, 'serializationFailed')
   assert.equal(fakeStorage.setItemCalls, 0)
 })
+
+test('klassifiziert allgemeine Lese- und Schreibfehler getrennt', () => {
+  const fakeStorage = new FakeStorage()
+  const storageAdapter = createStorageAdapter(fakeStorage)
+
+  fakeStorage.readError = createStorageError('Error')
+  const readResult = storageAdapter.readJson('prompts')
+
+  assert.equal(readResult.ok, false)
+  assert.equal(readResult.status, 'readFailed')
+  assert.equal(readResult.error.code, 'storageReadFailed')
+
+  fakeStorage.readError = null
+  fakeStorage.writeError = createStorageError('Error')
+  const writeResult = storageAdapter.writeJson('prompts', [])
+
+  assert.equal(writeResult.ok, false)
+  assert.equal(writeResult.status, 'writeFailed')
+  assert.equal(writeResult.error.code, 'storageWriteFailed')
+})
+
+test('erkennt auch den Firefox-Quota-Fehler', () => {
+  const fakeStorage = new FakeStorage()
+  fakeStorage.writeError = createStorageError(
+    'NS_ERROR_DOM_QUOTA_REACHED'
+  )
+  const storageAdapter = createStorageAdapter(fakeStorage)
+
+  const result = storageAdapter.writeJson('prompts', [])
+
+  assert.equal(result.ok, false)
+  assert.equal(result.status, 'quotaExceeded')
+  assert.equal(result.error.code, 'storageQuotaExceeded')
+})
+
+test('weist leere und typfremde Storage-Keys ohne Zugriff zurück', () => {
+  const fakeStorage = new FakeStorage()
+  const storageAdapter = createStorageAdapter(fakeStorage)
+
+  for (const key of ['', '   ', null, 42]) {
+    const readResult = storageAdapter.readJson(key)
+    const writeResult = storageAdapter.writeJson(key, [])
+
+    assert.equal(readResult.ok, false)
+    assert.equal(readResult.status, 'invalidKey')
+    assert.equal(readResult.error.code, 'invalidStorageKey')
+    assert.equal(writeResult.ok, false)
+    assert.equal(writeResult.status, 'invalidKey')
+    assert.equal(writeResult.error.code, 'invalidStorageKey')
+  }
+
+  assert.equal(fakeStorage.getItemCalls, 0)
+  assert.equal(fakeStorage.setItemCalls, 0)
+})
+
+test('serialisiert einen erfolgreichen Schreibzugriff genau einmal', () => {
+  const fakeStorage = new FakeStorage()
+  const storageAdapter = createStorageAdapter(fakeStorage)
+  const value = {
+    schemaVersion: 2,
+    prompts: [],
+  }
+
+  const result = storageAdapter.writeJson('prompts', value)
+
+  assert.deepEqual(result, {
+    ok: true,
+    status: 'saved',
+  })
+  assert.equal(fakeStorage.setItemCalls, 1)
+  assert.equal(fakeStorage.peek('prompts'), JSON.stringify(value))
+})

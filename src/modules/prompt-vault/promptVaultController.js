@@ -87,6 +87,71 @@ const EDIT_ERROR_MESSAGES = Object.freeze({
     'Die lokal gespeicherte PromptVault-Version wird noch nicht unterstützt. Die Daten wurden nicht überschrieben und deine Eingaben bleiben erhalten.',
 })
 
+const RESTORE_ERROR_MESSAGES = Object.freeze({
+  invalidPromptId:
+    'Die Version konnte wegen einer ungültigen Prompt-Kennung nicht wiederhergestellt werden.',
+  invalidPromptVersionNumber:
+    'Die Version konnte wegen einer ungültigen Versionsnummer nicht wiederhergestellt werden.',
+  promptNotFound:
+    'Der Prompt wurde nicht gefunden. Die bisherige Historie bleibt sichtbar.',
+  promptVersionNotFound:
+    'Die ausgewählte Version wurde nicht gefunden. Die bisherige Historie bleibt sichtbar.',
+  invalidJson:
+    'Die lokal gespeicherten PromptVault-Daten sind beschädigt. Sie wurden nicht überschrieben.',
+  invalidPromptData:
+    'Die lokal gespeicherten PromptVault-Daten haben eine ungültige Struktur. Sie wurden nicht überschrieben.',
+  unsupportedSchemaVersion:
+    'Die lokal gespeicherte PromptVault-Version wird noch nicht unterstützt. Die Daten wurden nicht überschrieben.',
+  promptTimestampGenerationFailed:
+    'Die Wiederherstellung konnte nicht mit einem gültigen Zeitstempel gespeichert werden.',
+  storageQuotaExceeded:
+    'Die Version konnte nicht wiederhergestellt werden, weil der lokale Speicher keinen freien Platz hat.',
+  storageUnavailable:
+    'Der lokale Speicher ist nicht verfügbar oder wurde blockiert. Die Version wurde nicht wiederhergestellt.',
+  storageReadFailed:
+    'Die gespeicherten Prompts konnten vor der Wiederherstellung nicht gelesen werden.',
+  storageWriteFailed:
+    'Die Wiederherstellung konnte nicht lokal gespeichert werden.',
+  serializationFailed:
+    'Die Wiederherstellung konnte nicht für die lokale Speicherung vorbereitet werden.',
+  promptStorageUnavailable:
+    'Der lokale Prompt-Speicher ist nicht verfügbar. Die Version wurde nicht wiederhergestellt.',
+  unexpectedStorageResult:
+    'Die gespeicherten PromptVault-Daten konnten nicht verarbeitet werden.',
+})
+
+const RESTORE_STATUS_ERROR_MESSAGES = Object.freeze({
+  validationFailed:
+    'Die ausgewählte Version konnte wegen ungültiger Angaben nicht wiederhergestellt werden.',
+  notFound:
+    'Der Prompt oder die ausgewählte Version wurde nicht gefunden.',
+  invalidJson:
+    'Die lokal gespeicherten PromptVault-Daten sind beschädigt. Sie wurden nicht überschrieben.',
+  invalidStoredData:
+    'Die lokal gespeicherten PromptVault-Daten haben eine ungültige Struktur. Sie wurden nicht überschrieben.',
+  unsupportedSchemaVersion:
+    'Die lokal gespeicherte PromptVault-Version wird noch nicht unterstützt. Die Daten wurden nicht überschrieben.',
+  generationFailed:
+    'Die Wiederherstellung konnte nicht mit einem gültigen Zeitstempel gespeichert werden.',
+  quotaExceeded:
+    'Die Version konnte nicht wiederhergestellt werden, weil der lokale Speicher keinen freien Platz hat.',
+  unavailable:
+    'Der lokale Speicher ist nicht verfügbar oder wurde blockiert. Die Version wurde nicht wiederhergestellt.',
+  readFailed:
+    'Die gespeicherten Prompts konnten vor der Wiederherstellung nicht gelesen werden.',
+  writeFailed:
+    'Die Wiederherstellung konnte nicht lokal gespeichert werden.',
+  serializationFailed:
+    'Die Wiederherstellung konnte nicht für die lokale Speicherung vorbereitet werden.',
+  storageFailed:
+    'Die gespeicherten PromptVault-Daten konnten nicht verarbeitet werden.',
+})
+
+const UNSAVED_CREATE_DRAFT_MESSAGE =
+  'Speichere den neuen Prompt oder brich die Erstellung ab, bevor du einen anderen Arbeitsbereich öffnest.'
+const UNSAVED_EDIT_DRAFT_MESSAGE =
+  'Speichere deine Änderungen oder brich die Bearbeitung ab, bevor du einen anderen Arbeitsbereich öffnest.'
+
 const PROMPT_FORM_FIELDS = [
   'title',
   'category',
@@ -152,6 +217,16 @@ function getEditErrorMessage(result) {
   )
 }
 
+function getRestoreErrorMessage(result) {
+  const errorCode = result?.error?.code
+
+  return (
+    RESTORE_ERROR_MESSAGES[errorCode] ??
+    RESTORE_STATUS_ERROR_MESSAGES[result?.status] ??
+    'Die ausgewählte Version konnte nicht wiederhergestellt werden. Die bisherige Historie bleibt unverändert.'
+  )
+}
+
 function createFormValues() {
   return {
     title: '',
@@ -183,6 +258,15 @@ function createEditFormState() {
   }
 }
 
+function createRestoreState() {
+  return {
+    promptId: null,
+    versionNumber: null,
+    isSubmitting: false,
+    errorMessage: '',
+  }
+}
+
 function createInitialState() {
   return {
     phase: 'loading',
@@ -201,8 +285,11 @@ function createInitialState() {
     favoriteErrorId: null,
     favoriteErrorMessage: '',
     statusMessage: '',
+    statusMessageTone: 'success',
     errorMessage: '',
     editErrorMessage: '',
+    historyPromptId: null,
+    restoreState: createRestoreState(),
     createForm: createFormState(),
     editForm: createEditFormState(),
   }
@@ -254,8 +341,52 @@ function getFirstInvalidField(fieldErrors) {
   return PROMPT_FORM_FIELDS.find((fieldName) => fieldErrors[fieldName]) ?? null
 }
 
+function clonePrompt(prompt) {
+  const clonedPrompt = { ...prompt }
+
+  if (Array.isArray(prompt.versions)) {
+    clonedPrompt.versions = prompt.versions.map((version) => ({
+      ...version,
+    }))
+  }
+
+  return clonedPrompt
+}
+
 function clonePrompts(prompts) {
-  return prompts.map((prompt) => ({ ...prompt }))
+  return prompts.map(clonePrompt)
+}
+
+function hasChangedFormValues(values, baselineValues) {
+  return PROMPT_FORM_FIELDS.some(
+    (fieldName) => values[fieldName] !== baselineValues[fieldName]
+  )
+}
+
+function hasUnsavedCreateDraft(state) {
+  return (
+    state.createForm.isOpen &&
+    hasChangedFormValues(state.createForm.values, createFormValues())
+  )
+}
+
+function hasUnsavedEditDraft(state) {
+  if (!state.editForm.isOpen) {
+    return false
+  }
+
+  const prompt = state.prompts.find(
+    (storedPrompt) => storedPrompt.id === state.editForm.editingPromptId
+  )
+
+  if (!prompt) {
+    return true
+  }
+
+  return hasChangedFormValues(
+    state.editForm.values,
+    normalizeFormValues(prompt)
+  )
 }
 
 function derivePromptPresentation(state, servicePrompts = state.prompts) {
@@ -330,6 +461,10 @@ export function createPromptVaultController({
     onChangeFavoritesOnly: changeFavoritesOnly,
     onResetFilters: resetFilters,
     onSetPromptFavorite: setPromptFavorite,
+    onToggleVersionHistory: toggleVersionHistory,
+    onRequestRestore: requestRestore,
+    onCancelRestore: cancelRestore,
+    onConfirmRestore: confirmRestore,
   })
 
   function render(focusTarget = null) {
@@ -345,6 +480,7 @@ export function createPromptVaultController({
         categories: [...viewState.categories],
         createForm: cloneFormState(viewState.createForm),
         editForm: cloneFormState(viewState.editForm),
+        restoreState: { ...viewState.restoreState },
         focusTarget,
       },
       actions
@@ -357,6 +493,35 @@ export function createPromptVaultController({
     }
 
     cancelScheduledLoad = null
+  }
+
+  function preserveUnsavedDraft() {
+    if (hasUnsavedCreateDraft(viewState)) {
+      viewState = {
+        ...viewState,
+        createForm: {
+          ...viewState.createForm,
+          errorMessage: UNSAVED_CREATE_DRAFT_MESSAGE,
+        },
+      }
+      render({ type: 'createAlert' })
+      return true
+    }
+
+    if (hasUnsavedEditDraft(viewState)) {
+      const editingPromptId = viewState.editForm.editingPromptId
+      viewState = {
+        ...viewState,
+        editForm: {
+          ...viewState.editForm,
+          errorMessage: UNSAVED_EDIT_DRAFT_MESSAGE,
+        },
+      }
+      render({ type: 'editAlert', id: editingPromptId })
+      return true
+    }
+
+    return false
   }
 
   function finishLoading() {
@@ -410,6 +575,7 @@ export function createPromptVaultController({
       !isActive ||
       viewState.phase !== 'ready' ||
       viewState.editForm.isOpen ||
+      viewState.restoreState.promptId !== null ||
       typeof searchQuery !== 'string'
     ) {
       return
@@ -439,6 +605,7 @@ export function createPromptVaultController({
       !isActive ||
       viewState.phase !== 'ready' ||
       viewState.editForm.isOpen ||
+      viewState.restoreState.promptId !== null ||
       typeof category !== 'string' ||
       (category !== ALL_CATEGORIES &&
         !viewState.categories.includes(category))
@@ -459,6 +626,7 @@ export function createPromptVaultController({
       !isActive ||
       viewState.phase !== 'ready' ||
       viewState.editForm.isOpen ||
+      viewState.restoreState.promptId !== null ||
       typeof favoritesOnly !== 'boolean'
     ) {
       return
@@ -477,6 +645,7 @@ export function createPromptVaultController({
       !isActive ||
       viewState.phase !== 'ready' ||
       viewState.editForm.isOpen ||
+      viewState.restoreState.promptId !== null ||
       !viewState.hasActiveFilters
     ) {
       return
@@ -505,6 +674,7 @@ export function createPromptVaultController({
       !isActive ||
       viewState.phase !== 'ready' ||
       viewState.favoriteSavingId ||
+      viewState.restoreState.promptId !== null ||
       (viewState.editForm.isOpen &&
         viewState.editForm.editingPromptId === promptId) ||
       !promptExists ||
@@ -519,6 +689,7 @@ export function createPromptVaultController({
       favoriteErrorId: null,
       favoriteErrorMessage: '',
       statusMessage: '',
+      statusMessageTone: 'success',
     }
     render()
 
@@ -540,6 +711,7 @@ export function createPromptVaultController({
           statusMessage: isFavorite
             ? 'Zu Favoriten hinzugefügt'
             : 'Aus Favoriten entfernt',
+          statusMessageTone: 'success',
         },
         result.prompts
       )
@@ -568,8 +740,13 @@ export function createPromptVaultController({
     if (
       !isActive ||
       viewState.phase !== 'ready' ||
-      viewState.editForm.isSubmitting
+      viewState.editForm.isSubmitting ||
+      viewState.restoreState.isSubmitting
     ) {
+      return
+    }
+
+    if (preserveUnsavedDraft()) {
       return
     }
 
@@ -579,8 +756,10 @@ export function createPromptVaultController({
       deletingId: null,
       deleteErrorId: null,
       statusMessage: '',
+      statusMessageTone: 'success',
       errorMessage: '',
       editErrorMessage: '',
+      restoreState: createRestoreState(),
       createForm: {
         ...createFormState(),
         isOpen: true,
@@ -678,6 +857,7 @@ export function createPromptVaultController({
           deletingId: null,
           deleteErrorId: null,
           statusMessage: 'Prompt erstellt',
+          statusMessageTone: 'success',
           errorMessage: '',
           createForm: createFormState(),
         },
@@ -734,8 +914,13 @@ export function createPromptVaultController({
     if (
       !isActive ||
       viewState.phase !== 'ready' ||
-      viewState.editForm.isSubmitting
+      viewState.editForm.isSubmitting ||
+      viewState.restoreState.isSubmitting
     ) {
+      return
+    }
+
+    if (preserveUnsavedDraft()) {
       return
     }
 
@@ -753,8 +938,10 @@ export function createPromptVaultController({
       deletingId: null,
       deleteErrorId: null,
       statusMessage: '',
+      statusMessageTone: 'success',
       errorMessage: '',
       editErrorMessage: '',
+      restoreState: createRestoreState(),
       createForm: createFormState(),
       editForm: {
         ...createEditFormState(),
@@ -865,6 +1052,8 @@ export function createPromptVaultController({
             result.promptChanged === false
               ? 'Keine Änderungen erforderlich'
               : 'Prompt aktualisiert',
+          statusMessageTone:
+            result.promptChanged === false ? 'notice' : 'success',
           editErrorMessage: '',
           editForm: createEditFormState(),
         },
@@ -939,8 +1128,13 @@ export function createPromptVaultController({
       !isActive ||
       viewState.phase !== 'ready' ||
       viewState.editForm.isSubmitting ||
+      viewState.restoreState.isSubmitting ||
       !promptExists
     ) {
+      return
+    }
+
+    if (preserveUnsavedDraft()) {
       return
     }
 
@@ -950,8 +1144,10 @@ export function createPromptVaultController({
       deletingId: null,
       deleteErrorId: null,
       statusMessage: '',
+      statusMessageTone: 'success',
       errorMessage: '',
       editErrorMessage: '',
+      restoreState: createRestoreState(),
       createForm: createFormState(),
       editForm: createEditFormState(),
     }
@@ -974,6 +1170,7 @@ export function createPromptVaultController({
       pendingDeleteId: null,
       deleteErrorId: null,
       statusMessage: '',
+      statusMessageTone: 'success',
       errorMessage: '',
     }
     render({ type: 'deleteButton', id: cancelledPromptId })
@@ -1022,6 +1219,7 @@ export function createPromptVaultController({
             ? ''
             : viewState.favoriteErrorMessage,
           statusMessage: 'Prompt gelöscht',
+          statusMessageTone: 'success',
           errorMessage: '',
         },
         result.prompts
@@ -1039,6 +1237,185 @@ export function createPromptVaultController({
     render({ type: 'deleteAlert', id: promptId })
   }
 
+  function toggleVersionHistory(promptId) {
+    const promptIsVisible = viewState.visiblePrompts.some(
+      (prompt) => prompt.id === promptId
+    )
+
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      viewState.restoreState.isSubmitting ||
+      !promptIsVisible
+    ) {
+      return
+    }
+
+    const historyIsOpen = viewState.historyPromptId === promptId
+    viewState = {
+      ...viewState,
+      historyPromptId: historyIsOpen ? null : promptId,
+      restoreState:
+        historyIsOpen || viewState.restoreState.promptId !== promptId
+          ? createRestoreState()
+          : viewState.restoreState,
+    }
+    render({
+      type: historyIsOpen ? 'historyButton' : 'historyHeading',
+      id: promptId,
+    })
+  }
+
+  function requestRestore(promptId, versionNumber) {
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      viewState.restoreState.isSubmitting ||
+      viewState.historyPromptId !== promptId ||
+      !Number.isInteger(versionNumber) ||
+      versionNumber <= 0
+    ) {
+      return
+    }
+
+    const prompt = viewState.prompts.find(
+      (storedPrompt) => storedPrompt.id === promptId
+    )
+    const versions = Array.isArray(prompt?.versions) ? prompt.versions : []
+    const selectedVersion = versions.find(
+      (version) => version.versionNumber === versionNumber
+    )
+    const currentVersion = versions.at(-1)
+
+    if (
+      !selectedVersion ||
+      selectedVersion.versionNumber === currentVersion?.versionNumber
+    ) {
+      return
+    }
+
+    if (preserveUnsavedDraft()) {
+      return
+    }
+
+    viewState = {
+      ...viewState,
+      pendingDeleteId: null,
+      deletingId: null,
+      deleteErrorId: null,
+      statusMessage: '',
+      statusMessageTone: 'success',
+      errorMessage: '',
+      editErrorMessage: '',
+      createForm: createFormState(),
+      editForm: createEditFormState(),
+      restoreState: {
+        promptId,
+        versionNumber,
+        isSubmitting: false,
+        errorMessage: '',
+      },
+    }
+    render({ type: 'restoreCancelButton', id: promptId, versionNumber })
+  }
+
+  function cancelRestore() {
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      viewState.restoreState.isSubmitting ||
+      viewState.restoreState.promptId === null
+    ) {
+      return
+    }
+
+    const { promptId, versionNumber } = viewState.restoreState
+    viewState = {
+      ...viewState,
+      restoreState: createRestoreState(),
+    }
+    render({ type: 'restoreButton', id: promptId, versionNumber })
+  }
+
+  function confirmRestore(promptId, versionNumber) {
+    if (
+      !isActive ||
+      viewState.phase !== 'ready' ||
+      viewState.restoreState.isSubmitting ||
+      viewState.restoreState.promptId !== promptId ||
+      viewState.restoreState.versionNumber !== versionNumber
+    ) {
+      return
+    }
+
+    viewState = {
+      ...viewState,
+      statusMessage: '',
+      statusMessageTone: 'success',
+      restoreState: {
+        ...viewState.restoreState,
+        isSubmitting: true,
+        errorMessage: '',
+      },
+    }
+    render()
+
+    let result
+
+    try {
+      result = promptService?.restorePromptVersion?.(
+        promptId,
+        versionNumber
+      )
+    } catch {
+      result = null
+    }
+
+    if (
+      result?.ok === true &&
+      Array.isArray(result.prompts) &&
+      (result.status === 'restored' || result.status === 'unchanged')
+    ) {
+      const isUnchanged = result.status === 'unchanged'
+      const derivedState = derivePromptPresentation(
+        {
+          ...viewState,
+          statusMessage: isUnchanged
+            ? 'Diese Fassung entspricht bereits dem aktuellen Stand.'
+            : 'Version wiederhergestellt',
+          statusMessageTone: isUnchanged ? 'notice' : 'success',
+          restoreState: createRestoreState(),
+        },
+        result.prompts
+      )
+      const promptRemainsVisible = derivedState.visiblePrompts.some(
+        (prompt) => prompt.id === promptId
+      )
+      viewState = {
+        ...derivedState,
+        historyPromptId: promptRemainsVisible ? promptId : null,
+      }
+      render(
+        isUnchanged && promptRemainsVisible
+          ? { type: 'restoreButton', id: promptId, versionNumber }
+          : { type: 'statusMessage' }
+      )
+      return
+    }
+
+    viewState = {
+      ...viewState,
+      statusMessage: '',
+      statusMessageTone: 'success',
+      restoreState: {
+        ...viewState.restoreState,
+        isSubmitting: false,
+        errorMessage: getRestoreErrorMessage(result),
+      },
+    }
+    render({ type: 'restoreAlert', id: promptId, versionNumber })
+  }
+
   function open() {
     isActive = true
     loadPrompts()
@@ -1047,6 +1424,7 @@ export function createPromptVaultController({
   function close() {
     isActive = false
     cancelPendingLoad()
+    viewState = createInitialState()
   }
 
   return Object.freeze({ open, close })

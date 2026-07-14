@@ -5,6 +5,18 @@ const CATEGORY_FILTER_ID = 'prompt-category-filter'
 const FAVORITES_FILTER_ID = 'prompt-favorites-only'
 const FILTER_HEADING_ID = 'prompt-filter-title'
 
+const VERSION_CHANGE_LABELS = Object.freeze({
+  created: 'Erstellt',
+  migrated: 'Als Ausgangsversion übernommen',
+  edited: 'Bearbeitet',
+  restored: 'Wiederhergestellt',
+})
+
+const VERSION_TIMESTAMP_FORMATTER = new Intl.DateTimeFormat('de-DE', {
+  dateStyle: 'medium',
+  timeStyle: 'short',
+})
+
 const PROMPT_FORM_FIELD_CONFIG = Object.freeze([
   Object.freeze({
     name: 'title',
@@ -61,6 +73,24 @@ function createButton(label, className, onClick) {
   }
 
   return button
+}
+
+function formatVersionTimestamp(timestamp) {
+  const date = new Date(timestamp)
+
+  if (Number.isNaN(date.getTime())) {
+    return timestamp
+  }
+
+  return VERSION_TIMESTAMP_FORMATTER.format(date)
+}
+
+function getPromptVersions(prompt) {
+  return Array.isArray(prompt?.versions) ? prompt.versions : []
+}
+
+function getVersionChangeLabel(changeType) {
+  return VERSION_CHANGE_LABELS[changeType] ?? 'Unbekannte Änderung'
 }
 
 function focusElement(element, { preventScroll = true } = {}) {
@@ -126,7 +156,7 @@ function createHeader(viewState, actions) {
   const description = createElement(
     'p',
     '',
-    'Dieses lokale MVP unterstützt Erstellen, Bearbeiten, dauerhaftes Löschen, Suche, Kategorie-Filter und Favoriten. Prompt-Versionierung bleibt als nächster Schritt geplant.'
+    'Dieses lokale MVP unterstützt Erstellen, Bearbeiten, dauerhaftes Löschen, Suche, Kategorie-Filter, Favoriten, Versionierung und Wiederherstellung. Alle Daten bleiben im aktuellen Browserprofil.'
   )
   const promptCount = createElement('p', 'prompt-count')
 
@@ -277,7 +307,9 @@ function createFilterField(labelText, control) {
 function createPromptFilters(viewState, actions) {
   const filterPanel = createElement('section', 'prompt-filter-panel')
   filterPanel.setAttribute('aria-labelledby', FILTER_HEADING_ID)
-  const filtersDisabled = viewState.editForm?.isOpen === true
+  const filtersDisabled =
+    viewState.editForm?.isOpen === true ||
+    viewState.restoreState?.promptId != null
 
   if (viewState.hasActiveFilters === true) {
     filterPanel.classList.add('has-active-filters')
@@ -774,6 +806,318 @@ function createDeleteConfirmation(prompt, viewState, actions, focusReferences) {
   return confirmation
 }
 
+function createVersionField(label, value, emptyLabel, valueClass = '') {
+  const field = createElement('div', 'prompt-version-field')
+  const term = createElement('dt', 'prompt-version-field__label', label)
+  const hasValue = typeof value === 'string' && value.trim().length > 0
+  const description = createElement(
+    'dd',
+    ['prompt-version-field__value', valueClass].filter(Boolean).join(' '),
+    hasValue ? value : emptyLabel
+  )
+  field.append(term, description)
+
+  return field
+}
+
+function isVersionFocusTarget(viewState, type, promptId, versionNumber) {
+  const focusTarget = viewState.focusTarget
+
+  return (
+    focusTarget?.type === type &&
+    focusTarget.id === promptId &&
+    focusTarget.versionNumber === versionNumber
+  )
+}
+
+function createRestoreConfirmation(
+  prompt,
+  version,
+  viewState,
+  actions,
+  focusReferences
+) {
+  const restoreState = viewState.restoreState ?? {}
+  const confirmation = createElement(
+    'fieldset',
+    'restore-confirmation'
+  )
+  const legend = createElement(
+    'legend',
+    '',
+    'Version ' + version.versionNumber + ' wirklich wiederherstellen?'
+  )
+  const explanation = createElement(
+    'p',
+    '',
+    'Der aktuelle Stand bleibt in der Historie erhalten. Die ausgewählte Fassung wird als neue Version gespeichert.'
+  )
+  const actionGroup = createElement(
+    'div',
+    'restore-confirmation__actions'
+  )
+  const cancelButton = createButton(
+    'Abbrechen',
+    'button button--secondary',
+    actions.onCancelRestore
+  )
+  const confirmButton = createButton(
+    restoreState.isSubmitting === true
+      ? 'Wiederherstellung wird gespeichert …'
+      : 'Als neue Version wiederherstellen',
+    'button button--primary button--restore-confirm',
+    () => actions.onConfirmRestore?.(prompt.id, version.versionNumber)
+  )
+  const isSubmitting = restoreState.isSubmitting === true
+  cancelButton.disabled = isSubmitting
+  confirmButton.disabled = isSubmitting
+
+  if (isSubmitting) {
+    confirmation.setAttribute('aria-busy', 'true')
+  }
+
+  actionGroup.append(cancelButton, confirmButton)
+  confirmation.append(legend, explanation, actionGroup)
+
+  if (restoreState.errorMessage) {
+    const errorMessage = createElement(
+      'p',
+      'restore-confirmation__error',
+      restoreState.errorMessage
+    )
+    errorMessage.setAttribute('role', 'alert')
+    errorMessage.tabIndex = -1
+    confirmation.append(errorMessage)
+
+    if (
+      isVersionFocusTarget(
+        viewState,
+        'restoreAlert',
+        prompt.id,
+        version.versionNumber
+      )
+    ) {
+      focusReferences.restoreAlert = errorMessage
+    }
+  }
+
+  if (
+    isVersionFocusTarget(
+      viewState,
+      'restoreCancelButton',
+      prompt.id,
+      version.versionNumber
+    )
+  ) {
+    focusReferences.restoreCancelButton = cancelButton
+  }
+
+  return confirmation
+}
+
+function createPromptVersionEntry(
+  prompt,
+  version,
+  currentVersionNumber,
+  index,
+  viewState,
+  actions,
+  focusReferences
+) {
+  const listItem = createElement('li', 'prompt-version-list__item')
+  const versionEntry = createElement('article', 'prompt-version')
+  const versionId =
+    'prompt-version-' + index + '-' + version.versionNumber
+  const versionHeadingId = versionId + '-heading'
+  const isCurrent = version.versionNumber === currentVersionNumber
+  const isRestored = version.changeType === 'restored'
+
+  if (isCurrent) {
+    versionEntry.classList.add('prompt-version--current')
+  }
+
+  if (isRestored) {
+    versionEntry.classList.add('prompt-version--restored')
+  }
+
+  versionEntry.setAttribute('aria-labelledby', versionHeadingId)
+
+  const header = createElement('header', 'prompt-version__header')
+  const headingGroup = createElement('div', 'prompt-version__heading-group')
+  const heading = createElement(
+    'h5',
+    'prompt-version__title',
+    'Version ' + version.versionNumber
+  )
+  heading.id = versionHeadingId
+  const metadata = createElement('div', 'prompt-version__metadata')
+  const changeType = createElement(
+    'span',
+    'prompt-version__change-type',
+    getVersionChangeLabel(version.changeType)
+  )
+  const timestamp = createElement(
+    'time',
+    'prompt-version__timestamp',
+    formatVersionTimestamp(version.createdAt)
+  )
+  timestamp.setAttribute('datetime', version.createdAt)
+  metadata.append(changeType, timestamp)
+  headingGroup.append(heading, metadata)
+  header.append(headingGroup)
+
+  if (isCurrent) {
+    const currentLabel = createElement(
+      'span',
+      'prompt-version__current-label',
+      'Aktuelle Version'
+    )
+    currentLabel.setAttribute('aria-current', 'true')
+    header.append(currentLabel)
+  }
+
+  versionEntry.append(header)
+
+  if (isRestored && Number.isInteger(version.restoredFromVersion)) {
+    versionEntry.append(
+      createElement(
+        'p',
+        'prompt-version__restored-from',
+        'Wiederhergestellt aus Version ' + version.restoredFromVersion
+      )
+    )
+  }
+
+  const details = createElement('details', 'prompt-version-details')
+  const summary = createElement(
+    'summary',
+    '',
+    'Vollständige Fassung anzeigen'
+  )
+  const versionContent = createElement('dl', 'prompt-version-content')
+  versionContent.append(
+    createVersionField('Titel', version.title, 'Kein Titel'),
+    createVersionField(
+      'Kategorie',
+      version.category,
+      'Keine Kategorie'
+    ),
+    createVersionField(
+      'Beschreibung',
+      version.description,
+      'Keine Beschreibung',
+      'prompt-version-field__value--multiline'
+    ),
+    createVersionField(
+      'Prompt-Text',
+      version.content,
+      'Kein Prompt-Text',
+      'prompt-version-field__value--prompt'
+    )
+  )
+  details.append(summary, versionContent)
+  versionEntry.append(details)
+
+  if (!isCurrent) {
+    const restoreState = viewState.restoreState ?? {}
+    const isPendingRestore =
+      restoreState.promptId === prompt.id &&
+      restoreState.versionNumber === version.versionNumber
+
+    if (isPendingRestore) {
+      versionEntry.append(
+        createRestoreConfirmation(
+          prompt,
+          version,
+          viewState,
+          actions,
+          focusReferences
+        )
+      )
+    } else {
+      const restoreButton = createButton(
+        'Diese Version wiederherstellen',
+        'button button--restore prompt-version__restore-button',
+        () => actions.onRequestRestore?.(prompt.id, version.versionNumber)
+      )
+      restoreButton.disabled = Boolean(restoreState.promptId)
+      versionEntry.append(restoreButton)
+
+      if (
+        isVersionFocusTarget(
+          viewState,
+          'restoreButton',
+          prompt.id,
+          version.versionNumber
+        )
+      ) {
+        focusReferences.restoreButton = restoreButton
+      }
+    }
+  }
+
+  listItem.append(versionEntry)
+
+  return listItem
+}
+
+function createPromptVersionHistory(
+  prompt,
+  index,
+  viewState,
+  actions,
+  focusReferences
+) {
+  const versions = getPromptVersions(prompt)
+  const displayedVersions = [...versions].reverse()
+  const currentVersionNumber = versions.at(-1)?.versionNumber ?? null
+  const historyId = 'prompt-history-' + index
+  const historyHeadingId = historyId + '-heading'
+  const history = createElement('section', 'prompt-version-history')
+  history.id = historyId
+  history.setAttribute('aria-labelledby', historyHeadingId)
+
+  const header = createElement('div', 'prompt-version-history__header')
+  const heading = createElement('h4', '', 'Versionshistorie')
+  heading.id = historyHeadingId
+  heading.tabIndex = -1
+  const description = createElement(
+    'p',
+    '',
+    versions.length === 1
+      ? 'Neueste Version zuerst · 1 Version'
+      : 'Neueste Version zuerst · ' + versions.length + ' Versionen'
+  )
+  header.append(heading, description)
+
+  const list = createElement('ol', 'prompt-version-list')
+
+  displayedVersions.forEach((version) => {
+    list.append(
+      createPromptVersionEntry(
+        prompt,
+        version,
+        currentVersionNumber,
+        index,
+        viewState,
+        actions,
+        focusReferences
+      )
+    )
+  })
+
+  history.append(header, list)
+
+  if (
+    viewState.focusTarget?.type === 'historyHeading' &&
+    viewState.focusTarget.id === prompt.id
+  ) {
+    focusReferences.historyHeading = heading
+  }
+
+  return history
+}
+
 function createPromptCard(prompt, index, viewState, actions, focusReferences) {
   const listItem = createElement('li', 'prompt-list__item')
   const card = createElement('article', 'prompt-card')
@@ -834,6 +1178,9 @@ function createPromptCard(prompt, index, viewState, actions, focusReferences) {
     typeof prompt.title === 'string' && prompt.title
       ? prompt.title
       : 'Prompt'
+  const versions = getPromptVersions(prompt)
+  const isHistoryOpen = viewState.historyPromptId === prompt.id
+  const historyId = 'prompt-history-' + index
   const isEditingPrompt =
     viewState.editForm?.isOpen === true &&
     viewState.editForm.editingPromptId === prompt.id
@@ -870,9 +1217,21 @@ function createPromptCard(prompt, index, viewState, actions, focusReferences) {
     favoriteButton.setAttribute('aria-busy', 'true')
   }
 
-  if (isEditingPrompt) {
+  if (isEditingPrompt || viewState.restoreState?.promptId != null) {
     favoriteButton.disabled = true
   }
+
+  const historyButton = createButton(
+    'Versionen (' + versions.length + ')',
+    'button button--secondary prompt-history-trigger',
+    () => actions.onToggleVersionHistory?.(prompt.id)
+  )
+  historyButton.setAttribute('aria-expanded', String(isHistoryOpen))
+  historyButton.setAttribute('aria-controls', historyId)
+  historyButton.setAttribute(
+    'aria-label',
+    'Versionshistorie für ' + accessibleTitle
+  )
 
   const editButton = createButton(
     'Bearbeiten',
@@ -902,7 +1261,12 @@ function createPromptCard(prompt, index, viewState, actions, focusReferences) {
     accessibleTitle + ' löschen'
   )
   deleteButton.disabled = isEditSubmitting
-  cardActions.append(favoriteButton, editButton, deleteButton)
+  cardActions.append(
+    favoriteButton,
+    historyButton,
+    editButton,
+    deleteButton
+  )
   card.append(...cardContent, details, cardActions)
 
   if (
@@ -934,6 +1298,25 @@ function createPromptCard(prompt, index, viewState, actions, focusReferences) {
     card.append(
       createDeleteConfirmation(prompt, viewState, actions, focusReferences)
     )
+  }
+
+  if (isHistoryOpen) {
+    card.append(
+      createPromptVersionHistory(
+        prompt,
+        index,
+        viewState,
+        actions,
+        focusReferences
+      )
+    )
+  }
+
+  if (
+    viewState.focusTarget?.type === 'historyButton' &&
+    viewState.focusTarget.id === prompt.id
+  ) {
+    focusReferences.historyButton = historyButton
   }
 
   if (
@@ -1035,10 +1418,16 @@ function createPromptList(viewState, actions) {
   }
 }
 
-function createSuccessMessage(message) {
+function createSuccessMessage(message, tone = 'success') {
   const status = createElement('p', 'prompt-feedback', message)
   status.setAttribute('role', 'status')
   status.setAttribute('aria-live', 'polite')
+  status.setAttribute('aria-atomic', 'true')
+  status.tabIndex = -1
+
+  if (tone === 'notice') {
+    status.classList.add('prompt-feedback--notice')
+  }
 
   return status
 }
@@ -1075,9 +1464,14 @@ export function createPromptVaultView(rootElement) {
     let requestedFocusElement = null
     let shouldRevealFocus = false
     let editGlobalAlert = null
+    let statusMessage = null
 
     if (viewState.statusMessage) {
-      fragment.append(createSuccessMessage(viewState.statusMessage))
+      statusMessage = createSuccessMessage(
+        viewState.statusMessage,
+        viewState.statusMessageTone
+      )
+      fragment.append(statusMessage)
     }
 
     if (viewState.editErrorMessage) {
@@ -1190,6 +1584,30 @@ export function createPromptVaultView(rootElement) {
     } else if (focusTarget?.type === 'promptTitle') {
       requestedFocusElement =
         promptList?.focusReferences.promptTitle ?? contentHeading
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'historyHeading') {
+      requestedFocusElement =
+        promptList?.focusReferences.historyHeading ?? contentHeading
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'historyButton') {
+      requestedFocusElement =
+        promptList?.focusReferences.historyButton ?? contentHeading
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'restoreCancelButton') {
+      requestedFocusElement =
+        promptList?.focusReferences.restoreCancelButton ?? contentHeading
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'restoreButton') {
+      requestedFocusElement =
+        promptList?.focusReferences.restoreButton ?? statusMessage ??
+        contentHeading
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'restoreAlert') {
+      requestedFocusElement =
+        promptList?.focusReferences.restoreAlert ?? contentHeading
+      shouldRevealFocus = true
+    } else if (focusTarget?.type === 'statusMessage') {
+      requestedFocusElement = statusMessage ?? contentHeading
       shouldRevealFocus = true
     }
 
