@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.1.0 – Foundation` |
+| Projektphase | `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
 | Status | Verbindliche Sicherheitsbasis |
-| Letzte Aktualisierung | 2026-07-11 |
+| Letzte Aktualisierung | 2026-07-14 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -24,7 +24,7 @@ GoldenDawn OS soll:
 - keine Secrets im Frontend oder Repository offenlegen;
 - private Daten strikt von öffentlichen Demo-Daten trennen;
 - externe Requests validieren, begrenzen und nachvollziehbar behandeln;
-- Airtable ausschließlich über den DatenAgent ansprechen;
+- Airtable ausschließlich über den DataAgent ansprechen;
 - Agenten nur die für ihre Aufgabe nötigen Daten und Fähigkeiten geben;
 - Fehler und Logs für die Diagnose nutzbar halten, ohne sensible Inhalte zu
   verbreiten;
@@ -63,7 +63,7 @@ flowchart TD
     Browser["Browser und Vite-Frontend"] --> Webhook["n8n-Webhook"]
     Webhook --> Sync["SyncAgent"]
     Sync --> Test["TestAgent"]
-    Sync --> Data["DatenAgent"]
+    Sync --> Data["DataAgent"]
     Data --> Airtable["Airtable"]
 
     Public["Öffentliche Demo-Daten"] -. getrennt .-> Private["Private Daten"]
@@ -84,7 +84,7 @@ An jeder Grenze gilt:
 | Secret-Leak | Token in `VITE_*`, Git oder Screenshot | keine Secrets im Client, Secret-Scan und Rotation |
 | Webhook-Missbrauch | automatisierte oder übergroße Requests | Authentisierung oder Netzschutz, Rate Limit, Größenlimit |
 | Prompt Injection | Lerntext fordert den TestAgent zu Fremdaktionen auf | Kontext als Daten behandeln, Toolrechte begrenzen, Output validieren |
-| Unberechtigter Datenzugriff | frei wählbare Airtable-Tabelle oder Record-ID | Entitäts- und Feld-Allowlist im DatenAgent |
+| Unberechtigter Datenzugriff | frei wählbare Airtable-Tabelle oder Record-ID | Entitäts- und Feld-Allowlist im DataAgent |
 | Mass Assignment | Client sendet zusätzliche geschützte Felder | nur definierte Felder übernehmen |
 | Doppelte Schreibvorgänge | Wiederholung nach Timeout | `requestId`, Idempotenz und eindeutige IDs |
 | Datenvermischung | Demo schreibt in private Base | getrennte Bases, Tokens, Workflows und Deployments |
@@ -121,6 +121,43 @@ wird.
 - Beschädigte oder manipulierte Werte werden nicht ungeprüft verwendet.
 - Eine spätere Browser-Authentifizierung benötigt eine eigene serverseitige
   Architekturentscheidung.
+
+### Lokale Modulgrenzen für v0.2.x
+
+Die Module der Reihe `v0.2.x` arbeiten ausschließlich lokal. Sie übertragen
+keine Inhalte an Webhooks, Agenten, Airtable oder andere externe Dienste.
+Datenzugriffe laufen über fachliche Services und Storage-Adapter; Views und
+Controller greifen nicht direkt auf `localStorage` zu.
+
+#### LearningHub Local MVP in v0.2.1
+
+- Reale Kursinhalte, Lernnotizen, Zusammenfassungen und lokale Testversuche sind
+  privat. Sie werden weder in das Repository übernommen noch in öffentlichen
+  Demo-Daten oder unnötigen Logs verwendet.
+- Öffentliche Demos verwenden ausschließlich neu erstellte, synthetische
+  Mock-Inhalte und vorbereitete synthetische Testfragen.
+- Fortschritt wird nur aus tatsächlich bekannten Modulen, Units und Kapiteln
+  berechnet. Unbekannte Inhalte der Module 2 bis 4 fließen nicht in
+  Fortschrittswerte ein.
+- Der Mock-Test arbeitet lokal und deterministisch mit vorbereiteten Fragen. Er
+  wird sichtbar als **„Lokaler Mock-Test“** gekennzeichnet und behauptet weder
+  eine KI-Auswertung noch eine semantische Freitextbewertung.
+- Notizen, Zusammenfassungen und Testversuche werden ausschließlich hinter den
+  vorgesehenen Service- und Storage-Adapter-Grenzen gespeichert.
+
+Dieser Dokumentationsschritt definiert für LearningHub weder einen neuen
+verbindlichen Datenvertrag noch ein endgültiges Storage-Schema.
+
+#### LichtwaldLog Local MVP in v0.2.2
+
+- Private lokale Reflexions- und Erkenntniseinträge bleiben strikt von
+  synthetischen öffentlichen Demo-Daten getrennt. Es gibt keinen automatischen
+  Fallback oder gemeinsamen Datenfluss zwischen beiden Bereichen.
+- Bilder werden nicht als Base64-Daten in `localStorage` gespeichert.
+- LichtwaldLog-Inhalte werden in `v0.2.2` weder synchronisiert noch an Agenten,
+  Webhooks, Airtable oder andere externe Dienste übertragen.
+- Lokale Datenzugriffe bleiben vollständig hinter Services und
+  Storage-Adaptern gekapselt.
 
 ### Sichere Darstellung
 
@@ -245,9 +282,9 @@ Kosten und Datenbereinigung kontrolliert sind.
 - Tokens werden regelmäßig überprüft und bei Verdacht sofort regeneriert oder
   gelöscht.
 
-### DatenAgent als Schutzschicht
+### DataAgent als Schutzschicht
 
-Der DatenAgent:
+Der DataAgent:
 
 - akzeptiert nur bekannte Entitäten und Operationen;
 - verwendet feste Tabellen- und Feldzuordnungen;
@@ -297,9 +334,9 @@ Der DatenAgent:
 - Eine Bewertung verändert den Lernfortschritt nicht ohne dokumentierten
   Folgeauftrag.
 
-### Schutz des DatenAgent
+### Schutz des DataAgent
 
-- Der DatenAgent führt keine freien Anweisungen aus Prompt-Texten aus.
+- Der DataAgent führt keine freien Anweisungen aus Prompt-Texten aus.
 - Er akzeptiert nur strukturierte, erlaubte Datenoperationen.
 - Tabellen, Felder und Operationen werden serverseitig zugeordnet.
 - Schreibvorgänge verwenden stabile IDs und Idempotenzschutz.
@@ -375,7 +412,9 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | --- | --- |
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
-| `v0.3.0` | Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
+| `v0.2.1` | private Lerninhalte und lokale Testversuche, ausschließlich synthetische Demo-Daten, deterministischer lokaler Mock-Test |
+| `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
+| `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
 | `v0.5.0` | Prompt-Injection-Schutz, strukturierter TestAgent-Output, keine Direktzugriffe |
 | `v0.6.0` | End-to-End-Sicherheitsreview und vollständige Demo-Trennung |

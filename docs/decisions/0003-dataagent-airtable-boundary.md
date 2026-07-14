@@ -1,4 +1,4 @@
-# ADR 0003: DatenAgent als einzige Airtable-Schnittstelle
+# ADR 0003: DataAgent als einzige Airtable-Schnittstelle
 
 ## Status
 
@@ -13,10 +13,10 @@ Prüfungslogik konzentrieren und keine Datenbankverantwortung erhalten.
 
 ## Entscheidung
 
-Nur der DatenAgent besitzt Zugriff auf Airtable-Credentials und führt
+Nur der DataAgent besitzt Zugriff auf Airtable-Credentials und führt
 strukturierte Lese- oder Schreiboperationen aus.
 
-Der DatenAgent:
+Der DataAgent:
 
 - akzeptiert nur erlaubte interne `data.*`-Aktionen vom SyncAgent;
 - ordnet fachliche Entitäten festen Tabellen und Feldern zu;
@@ -42,7 +42,7 @@ Positive Auswirkungen:
 Kosten und Einschränkungen:
 
 - Datenzugriffe benötigen einen zusätzlichen Agentenschritt;
-- der DatenAgent braucht sorgfältige Entitäts- und Felddefinitionen;
+- der DataAgent braucht sorgfältige Entitäts- und Felddefinitionen;
 - komplexe Airtable-Operationen dürfen nicht als freie Formeln aus dem Client
   durchgereicht werden.
 

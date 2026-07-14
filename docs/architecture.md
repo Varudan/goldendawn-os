@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.1.0 – Foundation` |
+| Projektphase | `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Initiale Entscheidung |
-| Letzte Aktualisierung | 2026-07-11 |
+| Status | Verbindliche Zielarchitektur; lokale Erweiterungen geplant |
+| Letzte Aktualisierung | 2026-07-14 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -35,7 +35,7 @@ Version 1 verwendet ausschließlich drei Agentenrollen:
 | --- | --- | --- |
 | `SyncAgent` | Requests validieren, klassifizieren und routen | Fachlogik oder Airtable-Zugriffe übernehmen |
 | `TestAgent` | Lerntests erstellen, Antworten bewerten und Feedback liefern | Ergebnisse direkt speichern oder Airtable aufrufen |
-| `DatenAgent` | Strukturierte Daten lesen, schreiben und in Airtable verwalten | Prüfungslogik oder UI-Aufgaben übernehmen |
+| `DataAgent` | Strukturierte Daten lesen, schreiben und in Airtable verwalten | Prüfungslogik oder UI-Aufgaben übernehmen |
 
 Weitere Agenten sind nicht Teil von Version 1. Sie werden erst nach einer
 Auswertung dieser Architektur geplant.
@@ -62,7 +62,7 @@ flowchart TD
     UI --> Sync["Sync-Service"]
     Sync --> Router["SyncAgent in n8n"]
     Router --> Test["TestAgent"]
-    Router --> Data["DatenAgent"]
+    Router --> Data["DataAgent"]
     Test --> Router
     Data --> Airtable["Airtable"]
 ```
@@ -70,21 +70,21 @@ flowchart TD
 Der Pfeil vom `TestAgent` zurück zum `SyncAgent` zeigt, dass Testergebnisse
 zunächst an die zentrale Orchestrierung zurückgegeben werden. Wenn sie
 gespeichert werden sollen, erstellt der `SyncAgent` daraus einen strukturierten
-Auftrag für den `DatenAgent`.
+Auftrag für den `DataAgent`.
 
 ## Zentrale Architekturregel
 
 Das Dashboard kommuniziert langfristig ausschließlich über den Sync-Service
 mit dem Agentensystem. Innerhalb des Agentensystems ist der `SyncAgent` der
-zentrale Einstiegspunkt. Airtable wird ausschließlich durch den `DatenAgent`
+zentrale Einstiegspunkt. Airtable wird ausschließlich durch den `DataAgent`
 angesprochen.
 
 ```text
 Dashboard
   → Sync-Service
   → SyncAgent
-  → TestAgent oder DatenAgent
-  → Airtable ausschließlich über DatenAgent
+  → TestAgent oder DataAgent
+  → Airtable ausschließlich über DataAgent
 ```
 
 Diese Regel verhindert:
@@ -165,7 +165,7 @@ Der `SyncAgent` ist Gateway und Orchestrator. Er:
 2. prüft Version, Aktion, Quelle, Zeitstempel und Payload;
 3. erzeugt oder übernimmt eine `requestId`;
 4. klassifiziert die Anfrage;
-5. routet sie an `TestAgent` oder `DatenAgent`;
+5. routet sie an `TestAgent` oder `DataAgent`;
 6. normalisiert das Ergebnis;
 7. gibt eine standardisierte Antwort an das Dashboard zurück.
 
@@ -186,9 +186,9 @@ Der `TestAgent` erhält nur den Lernkontext, der für die konkrete Prüfung nöt
 ist. Er schreibt nicht direkt in Airtable und verändert nicht selbstständig den
 Lernfortschritt.
 
-### DatenAgent
+### DataAgent
 
-Der `DatenAgent` ist Bibliothekar und Datenverwalter. Er:
+Der `DataAgent` ist Bibliothekar und Datenverwalter. Er:
 
 - validiert strukturierte Datenaufträge;
 - ordnet fachliche Entitäten den richtigen Airtable-Tabellen zu;
@@ -197,7 +197,7 @@ Der `DatenAgent` ist Bibliothekar und Datenverwalter. Er:
 - verhindert, dass Airtable-interne Feldnamen in die UI durchsickern;
 - liefert verständliche Fehler an den `SyncAgent` zurück.
 
-Nur der `DatenAgent` besitzt in Version 1 Zugriff auf Airtable-Credentials.
+Nur der `DataAgent` besitzt in Version 1 Zugriff auf Airtable-Credentials.
 
 ## Betriebsmodi
 
@@ -216,6 +216,85 @@ Eigenschaften:
 - Mock- oder lokale Daten;
 - vollständige lokale Nutzbarkeit des jeweiligen MVP-Moduls;
 - keine Fehlermeldung allein wegen einer fehlenden Webhook-Konfiguration.
+
+### Geplante lokale Module der Reihe v0.2.x
+
+Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
+Alle Datenzugriffe bleiben hinter Modulservices und Storage-Adaptern. Erst
+`v0.3.0` beginnt mit externer Kommunikation über den Sync-Service.
+
+#### LearningHub Local MVP in v0.2.1
+
+LearningHub wird zunächst für den einen aktuell bekannten Kurs entworfen und
+nicht als allgemeines Learning-Management-System. Der reale Informationsstand
+ist begrenzt:
+
+- Der Kurs besitzt insgesamt vier Module.
+- Aktuell ist nur Modul 1 fachlich bekannt und erfasst.
+- Modul 1 besitzt zwei Units; die Units enthalten Kapitel.
+- Module 2 bis 4 erhalten bis zur Kenntnis ihrer realen Inhalte weder erfundene
+  Inhalte noch vorweggenommene Strukturen.
+
+Die natürliche fachliche Hierarchie lautet:
+
+```text
+Course
+  → Module
+  → Unit
+  → Chapter
+```
+
+Ein späteres Modell kann dafür ein `modules`-Array verwenden. Diese
+Architekturbeschreibung definiert jedoch weder einen neuen verbindlichen
+Datenvertrag noch ein endgültiges Storage-Schema. Eine spätere
+Verallgemeinerung für weitere Kurse wird erst bei realem Bedarf entworfen.
+Der sichtbare Status kann ehrlich „Aktuell erfasst: Modul 1 von 4“ lauten.
+Fortschritt wird ausschließlich aus tatsächlich bekannten Modulen, Units und
+Kapiteln berechnet. Reale Kursinhalte, lokale Notizen und Zusammenfassungen
+bleiben privat; öffentliche Demo-Daten sind vollständig synthetisch.
+
+Der vorbereitete Testmodus verwendet diesen ausschließlich lokalen Pfad:
+
+```text
+LearningHubView
+  → LearningHubController
+  → LearningTestService
+  → MockLearningTestProvider
+```
+
+Der `MockLearningTestProvider` liefert vorbereitete synthetische Fragen
+deterministisch und testbar. Die Oberfläche kennzeichnet den Ablauf sichtbar
+als „Lokaler Mock-Test“ und behauptet weder KI-Auswertung noch Agentenlogik.
+Zunächst sind Single-Choice-, Selbstkontroll- oder andere eindeutig
+auswertbare Aufgaben vorgesehen. Lokale Testversuche dürfen nur über die
+vorgesehenen Service- und Storage-Grenzen gespeichert werden.
+
+Der spätere Zielpfad bleibt:
+
+```text
+LearningTestService
+  → SyncService
+  → SyncAgent
+  → TestAgent
+```
+
+Semantische Freitextbewertung und echte `TestAgent`-Logik beginnen erst in
+`v0.5.0`.
+
+#### LichtwaldLog Local MVP in v0.2.2
+
+LichtwaldLog umfasst lokal Reflexions- und Erkenntniseinträge mit Titel,
+Kalenderdatum, Text und Tags. Geplant sind Erstellen, Anzeigen, Bearbeiten,
+Löschen sowie lokale Suche und Filterung. Private lokale Einträge und
+synthetische Demo-Daten bleiben getrennt. Bilder werden nicht als Base64 in
+`localStorage` abgelegt.
+
+Für `v0.2.2` werden weder Synchronisierung noch Agentenlogik eingeführt.
+Agentengestützte, synchronisierte oder automatisierte LichtwaldLog-Prozesse
+bleiben einer späteren Phase vorbehalten. Weekly Review ist weiterhin geplant
+und kein stillschweigender Bestandteil dieses lokalen MVP. Auch für
+LichtwaldLog wird in diesem Schritt kein Storage-Key oder Storage-Schema
+festgelegt.
 
 ### Verbundener Modus
 
@@ -270,7 +349,7 @@ sequenceDiagram
     participant UI as Dashboard
     participant Sync as SyncAgent
     participant Test as TestAgent
-    participant Data as DatenAgent
+    participant Data as DataAgent
     participant DB as Airtable
 
     User->>UI: Test starten oder Antwort abgeben
@@ -301,7 +380,7 @@ Fehler werden an der Schicht behandelt, die genügend Kontext dafür besitzt:
 | Netzwerkfehler oder Timeout | Sync-Service |
 | Ungültiger Request-Vertrag | SyncAgent |
 | Fehlerhafte Prüfungsantwort | TestAgent |
-| Airtable- oder Mappingfehler | DatenAgent |
+| Airtable- oder Mappingfehler | DataAgent |
 
 Grundregeln:
 
@@ -363,19 +442,22 @@ benötigt werden. Leere Architekturordner werden vermieden.
 
 ## Implementierungsreihenfolge
 
-| Phase | Ergebnis |
+| Version | Ergebnis |
 | --- | --- |
-| 0 | Dokumentation, Vite-Grundlage und Architekturregeln |
-| 1 | Lokal nutzbares Dashboard und PromptVault mit Mock-Daten |
-| 2 | Sync-Service und dokumentierter Request-Vertrag |
-| 3 | SyncAgent mit Webhook und reproduzierbarem `syncTest` |
-| 4 | DatenAgent mit minimalem Airtable-Lese- und Schreibfluss |
-| 5 | TestAgent für Erstellung und Bewertung eines Lerntests |
-| 6 | Durchgängiger Testfluss mit kontrollierter Ergebnisspeicherung |
-| 7 | Demo-Datensatz, Sicherheitshärtung und Portfolio-Dokumentation |
+| `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
+| `v0.2.0` | Lokales Command Center und PromptVault; Implementierung abgeschlossen, Release-Vorbereitung ausstehend |
+| `v0.2.1` | LearningHub Local MVP mit vorbereitetem lokalem Mock-Testmodus |
+| `v0.2.2` | LichtwaldLog Local MVP ohne Synchronisierung oder Agentenlogik |
+| `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
+| `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
+| `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
+| `v0.6.0` | Integrierter Drei-Agenten-Fluss |
+| `v1.0.0` | Sichere Portfolio-Demo, getrennte Deployments und Dokumentation |
 
-Jede Phase muss lokal überprüfbar und dokumentiert sein, bevor die nächste
-begonnen wird.
+Die technische Reihenfolge bleibt **Mock → Webhook → Airtable →
+Agentenlogik**. Jede Version muss überprüfbar und dokumentiert sein, bevor die
+nächste begonnen wird. Weitere Unterversionen dürfen für neue, klar
+abgegrenzte Arbeitspakete ergänzt werden.
 
 ## Architekturentscheidungen
 
@@ -386,7 +468,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | --- | --- | --- |
 | [0001](decisions/0001-vite-vanilla-js.md) | Vite und Vanilla JavaScript als Frontend-Grundlage | Angenommen |
 | [0002](decisions/0002-syncagent-gateway.md) | SyncAgent als einziges Gateway des Dashboards | Angenommen |
-| [0003](decisions/0003-datenagent-airtable-boundary.md) | DatenAgent als einzige Airtable-Schnittstelle | Angenommen |
+| [0003](decisions/0003-dataagent-airtable-boundary.md) | DataAgent als einzige Airtable-Schnittstelle | Angenommen |
 | [0004](decisions/0004-private-demo-separation.md) | Trennung von privaten und öffentlichen Daten | Angenommen |
 | [0005](decisions/0005-v1-three-agent-scope.md) | Begrenzung von Version 1 auf drei Agenten | Angenommen |
 

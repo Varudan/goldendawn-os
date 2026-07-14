@@ -17,6 +17,9 @@ favorites, immutable version history, and restoration as a new version. The
 five local MVP expansion steps are implemented. Release preparation is still
 pending; no published `v0.2.0` tag or release is claimed.
 
+LearningHub `v0.2.1` and LichtwaldLog `v0.2.2` are the next planned local
+modules. Neither module is implemented as part of the current `v0.2.0` status.
+
 ## Vision
 
 GoldenDawn OS is designed as a calm, modular command center that connects
@@ -40,14 +43,14 @@ flowchart TD
     Services --> Sync["Sync service"]
     Sync --> Agent["SyncAgent in n8n"]
     Agent --> Test["TestAgent"]
-    Agent --> Data["DatenAgent"]
+    Agent --> Data["DataAgent"]
     Test --> Agent
     Data --> Airtable["Airtable"]
 ```
 
 The dashboard will communicate with external systems through the SyncAgent
 instead of accessing Airtable, APIs, or specialized agents directly.
-Only the DatenAgent communicates with Airtable in Version 1.
+Only the DataAgent communicates with Airtable in Version 1.
 
 See [`docs/architecture.md`](docs/architecture.md) for responsibilities,
 boundaries, and end-to-end data flows.
@@ -60,15 +63,15 @@ Accepted architecture decisions and their rationale are indexed in
 
 ## Modules
 
-| Module | Purpose | Status |
-| --- | --- | --- |
-| Command Center | Central overview, navigation, and system status | Shell implemented |
-| PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | Local MVP implementation complete |
-| Learning Core | Learning progress, notes, and Arisa Tests | Planned |
-| Agent Hub | Agent overview, capabilities, and execution status | Planned |
-| Automation Hub | Visibility into n8n workflows and results | Planned |
-| Lichtwald Log | Reflection, training, meditation, and nature sessions | Planned |
-| Weekly Review | Structured summaries, progress, and next actions | Planned |
+| Module | Purpose | Delivery target | Status |
+| --- | --- | --- | --- |
+| Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; release preparation pending |
+| PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; release preparation pending |
+| LearningHub | Bounded local course progress and deterministic synthetic mock tests | `v0.2.1` | Planned; not implemented |
+| LichtwaldLog | Local text journal with search and filters | `v0.2.2` | Planned; not implemented |
+| Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
+| Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
+| Weekly Review | Structured summaries, progress, and next actions | Later, after the LichtwaldLog Local MVP | Planned; not part of `v0.2.2` |
 
 ### PromptVault local MVP
 
@@ -118,10 +121,50 @@ devices, and can be lost when local browser data is cleared. Import/export,
 webhooks, synchronization, Airtable, a backend, agent logic, user accounts, and
 automatic cloud backup are not implemented.
 
+### LearningHub Local MVP (planned for v0.2.1)
+
+LearningHub is a bounded local learning module, not a general-purpose LMS. Its
+planned content hierarchy is `Course → Module → Unit → Chapter`. Four modules
+are intended, but only Module 1 is currently known; it contains two known units
+made up of chapters. Modules 2–4 will not be invented, and progress will cover
+known content only. Local notes and summaries will remain behind the planned
+service and storage boundaries. Private course content and synthetic portfolio
+demo content will remain separate.
+
+The planned local test path is:
+
+```text
+LearningHubView
+  → LearningHubController
+  → LearningTestService
+  → MockLearningTestProvider
+```
+
+This local provider will be deterministic, synthetic, visibly labeled
+`Lokaler Mock-Test`, and will not use AI. Free-text evaluation and TestAgent
+processing are deferred to `v0.5.0`, using the later path:
+
+```text
+LearningTestService
+  → SyncService
+  → SyncAgent
+  → TestAgent
+```
+
+### LichtwaldLog Local MVP (planned for v0.2.2)
+
+LichtwaldLog is limited to local CRUD for entries with a title, calendar date,
+plain text, and tags, plus local search and filters. Private entries and
+synthetic demo entries will remain separate. Images will not be stored as
+Base64 in `localStorage`. Synchronization, agents, and Weekly Review are later
+work and are not part of the `v0.2.2` Local MVP.
+
 ## Development principles
 
 - Build in small, stable, and verifiable steps.
 - Follow the sequence: **mock → webhook → Airtable → agent logic**.
+- Keep every `v0.2.x` milestone local; external communication starts with
+  `v0.3.0`.
 - Keep UI components independent from concrete storage technologies.
 - Encapsulate local persistence behind storage adapters.
 - Route external communication through services and the SyncAgent.
@@ -156,11 +199,19 @@ Detailed milestones and acceptance criteria are maintained in
 | Version | Milestone | Outcome |
 | --- | --- | --- |
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
-| v0.2.0 | Local dashboard MVP | Implementation complete; release preparation pending |
-| v0.3.0 | SyncAgent connection | Validated webhook communication with n8n |
-| v0.4.0 | Structured persistence | DatenAgent with a controlled Airtable read and write flow |
-| v0.5.0 | Learning tests | TestAgent routed through the SyncAgent |
-| v1.0.0 | Portfolio release | Integrated three-agent flow, secure demo mode, documentation, and deployment |
+| v0.2.0 | Command Center and PromptVault Local MVP | Implementation complete; release preparation pending |
+| v0.2.1 | LearningHub Local MVP | Planned local course view, known-content progress, and deterministic synthetic mock tests |
+| v0.2.2 | LichtwaldLog Local MVP | Planned local text-entry CRUD, search, and filters |
+| v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
+| v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
+| v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
+| v0.6.0 | Integration | Planned integration and verification of the previously introduced local and external components |
+| v1.0.0 | Portfolio release | Planned secure demo separation, portfolio documentation, and deployment |
+
+The `v0.2.x` line intentionally remains local, and `v0.3.0` begins external
+communication. Additional patch or minor versions may be inserted when needed
+without reordering these milestones. The architecture sequence remains
+**mock → webhook → Airtable → agent logic**.
 
 ## Getting started
 

@@ -35,6 +35,8 @@ In dieser Phase liegt der Fokus auf:
 
 Noch nicht Teil dieser Phase sind:
 
+- der LearningHub Local MVP aus `v0.2.1`;
+- der LichtwaldLog Local MVP aus `v0.2.2`;
 - Import oder Export von PromptVault-Daten;
 - Synchronisierung, geräteübergreifende Speicherung oder automatische
   Cloud-Sicherung;
@@ -48,18 +50,82 @@ Noch nicht Teil dieser Phase sind:
 
 ## Verbindliche Entwicklungsreihenfolge
 
-Halte diese Reihenfolge ein:
+Halte diese Reihenfolge der Hauptmeilensteine ein:
 
-1. lokaler Mock und stabile Benutzeroberfläche;
-2. standardisierter Sync-Vertrag;
-3. n8n-Webhook und SyncAgent;
-4. Airtable oder eine andere strukturierte Datenquelle;
-5. DatenAgent und TestAgent als erste spezialisierte Agentenlogik;
-6. getrennte private und öffentliche Deployments.
+1. `v0.2.0`: lokales Command Center und PromptVault;
+2. `v0.2.1`: LearningHub Local MVP;
+3. `v0.2.2`: LichtwaldLog Local MVP;
+4. `v0.3.0`: SyncService, Webhook und SyncAgent;
+5. `v0.4.0`: DataAgent und Airtable;
+6. `v0.5.0`: TestAgent und Lerntests;
+7. `v0.6.0`: Integration der zuvor eingeführten lokalen und externen Bausteine;
+8. `v1.0.0`: abgesicherte, dokumentierte Portfolio-Version.
+
+Die gesamte Reihe `v0.2.x` bleibt bewusst lokal. `v0.3.0` markiert den Beginn
+der externen Kommunikation. Zusätzliche Unterversionen dürfen zwischen den
+Hauptmeilensteinen liegen, dürfen deren Reihenfolge und Architekturgrenzen aber
+nicht verändern. Die technische Entwicklung folgt damit verbindlich dem Pfad
+`Mock → Webhook → Airtable → Agentenlogik`.
 
 Implementiere keine spätere Phase vorzeitig, sofern die Aufgabe dies nicht
 ausdrücklich verlangt und die dafür notwendige Architekturentscheidung nicht
 dokumentiert wurde.
+
+## Lokale Modulgrenzen für v0.2.x
+
+### LearningHub Local MVP in v0.2.1
+
+- Der LearningHub ist kein allgemeines Learning-Management-System. Er bildet
+  ausschließlich den aktuell bekannten Kursinhalt als
+  `Course → Module → Unit → Chapter` ab.
+- Für den Kurs sind vier Module vorgesehen, fachlich bekannt ist derzeit nur
+  Modul 1 mit genau zwei bekannten Units. Units enthalten Kapitel. Erfinde
+  weder Titel, Inhalte noch Metadaten für die unbekannten Module 2 bis 4.
+- Ein `modules`-Array ist lediglich eine mögliche spätere Implementierungsform.
+  Es ist weder ein beschlossener Datenvertrag noch ein festgelegtes
+  Persistenzschema.
+- Fortschritt darf nur für tatsächlich bekannte Inhalte erfasst oder angezeigt
+  werden. Unbekannte Module oder Kapitel erhalten keine konstruierten
+  Fortschrittswerte.
+- Lokale Notizen und Zusammenfassungen gehören zum LearningHub-MVP und bleiben
+  hinter den vorgesehenen Service- und Storage-Grenzen.
+- Private Lerninhalte und synthetische Portfolio-Demos bleiben klar getrennt.
+  Öffentliche Beispieldaten dürfen keine privaten Inhalte ableiten oder
+  nachbilden.
+- Der lokale Testfluss lautet exakt:
+
+```text
+LearningHubView
+  → LearningHubController
+  → LearningTestService
+  → MockLearningTestProvider
+```
+
+Der `MockLearningTestProvider` arbeitet lokal, deterministisch und ausschließlich
+mit synthetischen Testdaten. Die Oberfläche kennzeichnet diesen Zustand sichtbar
+als `Lokaler Mock-Test`; er verwendet keine KI und darf nicht als KI-Test
+beschrieben werden. Der spätere externe Testfluss lautet:
+
+```text
+LearningTestService
+  → SyncService
+  → SyncAgent
+  → TestAgent
+```
+
+Freitextbewertung und die Anbindung des TestAgent gehören erst zu `v0.5.0`.
+
+### LichtwaldLog Local MVP in v0.2.2
+
+- LichtwaldLog bleibt ein lokales Journal-Modul mit CRUD für Einträge aus
+  Titel, reinem Kalenderdatum, Text und Tags sowie lokaler Suche und Filtern.
+- Kalenderdaten werden als `YYYY-MM-DD` gespeichert.
+- Bilder werden nicht als Base64 in localStorage gespeichert.
+- Private Einträge und synthetische Demo-Einträge müssen getrennt und sichtbar
+  unterscheidbar bleiben.
+- Synchronisierung, Agentenanbindung und Weekly Review gehören nicht zu
+  `v0.2.2` und dürfen für diesen Meilenstein nicht als umgesetzt dargestellt
+  werden.
 
 ## Technischer Rahmen
 
@@ -85,8 +151,8 @@ UI-Komponente
   → Anwendungs- oder Modulservice
   → lokaler Storage-Adapter oder Sync-Service
   → SyncAgent in n8n
-  → TestAgent oder DatenAgent
-  → Airtable ausschließlich über den DatenAgent
+  → TestAgent oder DataAgent
+  → Airtable ausschließlich über den DataAgent
 ```
 
 Dabei gelten folgende Grenzen:
@@ -99,7 +165,7 @@ Dabei gelten folgende Grenzen:
 - Der Sync-Service ist die einzige vorgesehene externe Kommunikationsschicht
   des Frontends.
 - Der SyncAgent validiert, klassifiziert und routet externe Requests.
-- Der SyncAgent greift nicht selbst auf Airtable zu, sobald der DatenAgent
+- Der SyncAgent greift nicht selbst auf Airtable zu, sobald der DataAgent
   eingeführt wurde, sondern übergibt strukturierte Datenaufträge an ihn.
 - Echte Agentenlogik lebt später in n8n oder einem Backend, nicht in
   Frontend-Komponenten.
@@ -114,7 +180,7 @@ Version 1 verwendet ausschließlich diese drei Agentenrollen:
 - `TestAgent`: fachlich der Prüfer für das Lernen. Er erstellt strukturierte
   Lerntests, bewertet Antworten und liefert nachvollziehbare Ergebnisse und
   Wiederholungshinweise. Er speichert Ergebnisse nicht selbst in Airtable.
-- `DatenAgent`: fachlich der Bibliothekar und zentrale Datenverwalter. Er
+- `DataAgent`: fachlich der Bibliothekar und zentrale Datenverwalter. Er
   verarbeitet strukturierte Lese- und Schreibaufträge und kapselt sämtliche
   Airtable-Zugriffe des Agentensystems.
 
@@ -129,11 +195,11 @@ Dashboard
   → SyncAgent
   → TestAgent
   → SyncAgent
-  → DatenAgent
+  → DataAgent
   → Airtable
 ```
 
-Der `TestAgent` konzentriert sich auf Prüfungslogik, der `DatenAgent` auf
+Der `TestAgent` konzentriert sich auf Prüfungslogik, der `DataAgent` auf
 Datenzugriffe und der `SyncAgent` auf Kommunikation und Routing. Diese
 Verantwortlichkeiten dürfen nicht vermischt werden.
 
