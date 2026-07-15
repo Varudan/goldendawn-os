@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend` |
+| Projektphase | `v0.2.0 – Local Dashboard MVP abgeschlossen` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
 | Status | Verbindliche Sicherheitsbasis |
 | Letzte Aktualisierung | 2026-07-14 |

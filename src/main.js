@@ -30,9 +30,9 @@ const modules = [
     isNavigable: true,
   },
   {
-    id: 'learning-core',
-    name: 'Learning Core',
-    description: 'Lernziele und Fortschritt bündeln',
+    id: 'learning-hub',
+    name: 'LearningHub',
+    description: 'Bekannte Kursstruktur und Lernfortschritt lokal abbilden',
     status: 'Geplant',
     statusClass: 'planned',
   },
@@ -52,7 +52,7 @@ const modules = [
   },
   {
     id: 'lichtwald-log',
-    name: 'Lichtwald Log',
+    name: 'LichtwaldLog',
     description: 'Erkenntnisse und Reflexionen festhalten',
     status: 'Geplant',
     statusClass: 'planned',
@@ -189,8 +189,8 @@ function renderCommandCenter() {
     <section class="focus-panel" aria-labelledby="focus-title">
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
-        <h2 id="focus-title">v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend</h2>
-        <p>Das lokale PromptVault-MVP unterstützt Anzeigen, Erstellen, Bearbeiten, Löschen, Suche, Kategorie-Filter, Favoriten, Versionierung und Wiederherstellung. Die Daten bleiben ausschließlich im aktuellen Browserprofil; Synchronisierung und Cloud-Sicherung sind nicht umgesetzt.</p>
+        <h2 id="focus-title">v0.2.0 – Local Dashboard MVP abgeschlossen</h2>
+        <p>Command Center und PromptVault sind lokal nutzbar; alle fünf geplanten PromptVault-Ausbauschritte sind umgesetzt. Die Daten bleiben ausschließlich im aktuellen Browserprofil; Synchronisierung und automatische Cloud-Sicherung sind nicht umgesetzt.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
@@ -207,7 +207,7 @@ function renderCommandCenter() {
         >
           <span></span>
         </div>
-        <small>Command Center aktiv · PromptVault als lokales MVP abgeschlossen · Release-Vorbereitung ausstehend</small>
+        <small>Command Center aktiv · PromptVault als lokales MVP abgeschlossen · 5 von 5 PromptVault-Ausbauschritten abgeschlossen</small>
       </div>
     </section>
 
@@ -228,10 +228,10 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Meilenstein</span>
-        <h2 id="milestone-title">Release-Vorbereitung</h2>
-        <p>Als nächster Schritt stehen Abschlussprüfung, Dokumentationsabgleich und die manuelle Release-Vorbereitung an. Ein Tag oder Release wurde noch nicht veröffentlicht.</p>
+        <h2 id="milestone-title">v0.2.1 – LearningHub Local MVP</h2>
+        <p>Geplant sind die bekannte Kursstruktur – aktuell Modul 1 von 4 mit zwei Units und Kapiteln – sowie ein deterministischer lokaler Mock-Test mit synthetischen Fragen.</p>
       </div>
-      <span class="status status--planned">Ausstehend</span>
+      <span class="status status--planned">Als Nächstes</span>
     </aside>
   `
 }

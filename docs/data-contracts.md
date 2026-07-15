@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend` |
+| Projektphase | `v0.2.0 – Local Dashboard MVP abgeschlossen` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
