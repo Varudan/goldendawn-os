@@ -8,17 +8,19 @@
 
 ## Project status
 
-**Current phase:** `v0.2.0 — implementation complete, release preparation pending`
+**Current phase:** `v0.2.0 — Local Dashboard MVP complete`
 
-The responsive Command Center shell is implemented on top of the verified Vite
-and Vanilla JavaScript foundation. PromptVault now supports local viewing,
-creation, editing, permanent deletion, search, category filters, persistent
-favorites, immutable version history, and restoration as a new version. The
-five local MVP expansion steps are implemented. Release preparation is still
-pending; no published `v0.2.0` tag or release is claimed.
+The `v0.2.0` implementation is technically complete and verified as a release
+candidate with the automated test suite and production build. The responsive
+Command Center shell is implemented on top of the Vite and Vanilla JavaScript
+foundation. PromptVault supports local viewing, creation, editing, permanent
+deletion, search, category filters, persistent favorites, immutable version
+history, and restoration as a new version. No published `v0.2.0` tag or release
+is claimed; those Git and release steps remain manual.
 
-LearningHub `v0.2.1` and LichtwaldLog `v0.2.2` are the next planned local
-modules. Neither module is implemented as part of the current `v0.2.0` status.
+LearningHub `v0.2.1` is the next planned development step. LichtwaldLog
+`v0.2.2` remains planned after it. Neither module is implemented as part of the
+completed `v0.2.0` scope.
 
 ## Vision
 
@@ -65,8 +67,8 @@ Accepted architecture decisions and their rationale are indexed in
 
 | Module | Purpose | Delivery target | Status |
 | --- | --- | --- | --- |
-| Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; release preparation pending |
-| PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; release preparation pending |
+| Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
+| PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
 | LearningHub | Bounded local course progress and deterministic synthetic mock tests | `v0.2.1` | Planned; not implemented |
 | LichtwaldLog | Local text journal with search and filters | `v0.2.2` | Planned; not implemented |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
@@ -199,7 +201,7 @@ Detailed milestones and acceptance criteria are maintained in
 | Version | Milestone | Outcome |
 | --- | --- | --- |
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
-| v0.2.0 | Command Center and PromptVault Local MVP | Implementation complete; release preparation pending |
+| v0.2.0 | Command Center and PromptVault Local MVP | Complete and verified as a release candidate |
 | v0.2.1 | LearningHub Local MVP | Planned local course view, known-content progress, and deterministic synthetic mock tests |
 | v0.2.2 | LichtwaldLog Local MVP | Planned local text-entry CRUD, search, and filters |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
@@ -236,12 +238,23 @@ Create a production build with:
 npm run build
 ```
 
+## Verification
+
+The completed `v0.2.0` release candidate was verified with:
+
+```bash
+npm test
+npm run build
+```
+
+Both commands complete successfully for the documented release candidate.
+
 ## Security and privacy
 
-GoldenDawn OS is private during the foundation phase. Secrets must never be
-committed to Git or exposed through frontend environment variables. The later
-portfolio version will use dedicated demo data and a separate configuration
-from the private system.
+GoldenDawn OS remains private during the current local MVP phase. Secrets must
+never be committed to Git or exposed through frontend environment variables.
+The later portfolio version will use dedicated demo data and a separate
+configuration from the private system.
 
 Detailed security rules are maintained in
 [`docs/security.md`](docs/security.md).
@@ -251,6 +264,9 @@ Detailed security rules are maintained in
 - **2026-07-05:** GoldenDawn began as the shared Jan & Arisa project vision.
 - **2026-07-11:** GoldenDawn OS started as a clean, modular repository based on
   lessons learned from the original KI-Manager-Dashboard prototype.
+- **2026-07-15:** The `v0.2.0` Local Dashboard MVP was completed and verified
+  with its automated tests and production build. No published tag or release is
+  claimed; those steps remain manual.
 
 ## Author and collaboration
 

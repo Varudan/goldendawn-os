@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend` |
+| Projektphase | `v0.2.0 – Local Dashboard MVP abgeschlossen` |
 | Architekturumfang | Zielarchitektur für Version 1 |
 | Status | Verbindliche Zielarchitektur; lokale Erweiterungen geplant |
 | Letzte Aktualisierung | 2026-07-14 |
@@ -445,8 +445,8 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | Version | Ergebnis |
 | --- | --- |
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
-| `v0.2.0` | Lokales Command Center und PromptVault; Implementierung abgeschlossen, Release-Vorbereitung ausstehend |
-| `v0.2.1` | LearningHub Local MVP mit vorbereitetem lokalem Mock-Testmodus |
+| `v0.2.0` | Local Dashboard MVP abgeschlossen |
+| `v0.2.1` | Als Nächstes geplant: LearningHub Local MVP mit vorbereitetem lokalem Mock-Testmodus |
 | `v0.2.2` | LichtwaldLog Local MVP ohne Synchronisierung oder Agentenlogik |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |

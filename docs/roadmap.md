@@ -4,10 +4,11 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend` |
+| Projektphase | `v0.2.0 – Local Dashboard MVP abgeschlossen` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Letzte Aktualisierung | 2026-07-14 |
+| Status | Technisch abgeschlossen und geprüft; Release-Kandidat |
+| Letzte Aktualisierung | 2026-07-15 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -45,7 +46,7 @@ nicht starre Kalendertermine.
 | Version | Schwerpunkt | Ergebnis | Status |
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
-| `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert; Release-Vorbereitung ausstehend | 🟡 |
+| `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert und geprüft | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Bekannte Kursstruktur, lokaler Fortschritt und lokaler Mock-Test | ⬜ |
 | `v0.2.2` | LichtwaldLog Local MVP | Lokale Reflexions- und Erkenntniseinträge | ⬜ |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
@@ -504,18 +505,18 @@ Diese Punkte werden erst nach dem Portfolio Release bewertet und priorisiert.
 
 ## Nächster konkreter Schritt
 
-Die Implementierung von `v0.2.0 – Local Dashboard MVP` ist abgeschlossen.
-PromptVault unterstützt lokal Anzeigen, Erstellen, Bearbeiten, Löschen,
-Durchsuchen, Kategorie- und Favoritenfilter, persistente Favoriten,
+Die Implementierung von `v0.2.0 – Local Dashboard MVP` ist technisch
+abgeschlossen und mit den automatisierten Tests sowie dem Produktions-Build
+geprüft. PromptVault unterstützt lokal Anzeigen, Erstellen, Bearbeiten,
+Löschen, Durchsuchen, Kategorie- und Favoritenfilter, persistente Favoriten,
 unveränderliche Versionierung und Wiederherstellung als neue Version. Suchtext
 und Filterzustände bleiben flüchtig. Die Daten liegen ausschließlich im
 aktuellen Browserprofil; dies ist keine Cloud-Sicherung.
 
-Als nächster Schritt folgt die Release-Vorbereitung mit abschließendem
-Dokumentations- und Qualitätsabgleich sowie dem manuellen Git- und
-Release-Workflow durch Jan. Ein veröffentlichter `v0.2.0`-Tag oder ein Release
-wird noch nicht behauptet. Danach ist `v0.2.1 – LearningHub Local MVP` als
-nächster Entwicklungsschritt geplant; `v0.2.2 – LichtwaldLog Local MVP` folgt
+Tag und GitHub Release für `v0.2.0` bleiben manuelle Schritte bei Jan; ein
+veröffentlichter Tag oder ein Release wird hier nicht behauptet. Nach dieser
+manuellen Git- und Release-Arbeit ist `v0.2.1 – LearningHub Local MVP` der
+nächste geplante Entwicklungsschritt. `v0.2.2 – LichtwaldLog Local MVP` folgt
 als weiteres rein lokales Modul. Beide sind noch nicht implementiert.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,

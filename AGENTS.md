@@ -19,21 +19,25 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.2.0 – Implementierung abgeschlossen, Release-Vorbereitung ausstehend`
+Aktueller Stand: `v0.2.0 – Local Dashboard MVP abgeschlossen`
 
-In dieser Phase liegt der Fokus auf:
+Dieser abgeschlossene Stand umfasst:
 
-- dem umgesetzten responsiven Command-Center-Shell;
-- der umgesetzten PromptVault-Modulstruktur und dem gemeinsamen
+- die umgesetzte responsive Command-Center-Shell;
+- die umgesetzte PromptVault-Modulstruktur und den gemeinsamen
   Storage-Adapter für robuste lokale Speicherung;
-- PromptVault als lokal nutzbarem MVP-Modul mit Anzeigen, Erstellen,
+- PromptVault als lokal nutzbares MVP-Modul mit Anzeigen, Erstellen,
   Bearbeiten, dauerhaftem Löschen, lokaler Textsuche, Kategorie-Filtern,
   persistenten Favoriten, unveränderlicher Versionierung und
-  Wiederherstellung als neue Version;
-- der abschließenden Release-Vorbereitung für `v0.2.0`, ohne einen bereits
-  veröffentlichten Tag oder ein Release zu behaupten.
+  Wiederherstellung als neue Version.
 
-Noch nicht Teil dieser Phase sind:
+`v0.2.0` ist als technischer Release-Kandidat abgeschlossen und mit den
+relevanten automatisierten Tests sowie dem Produktions-Build geprüft. Ein
+veröffentlichter Tag oder ein Release wird damit nicht behauptet; die
+zugehörigen Git- und Release-Schritte bleiben manuell bei Jan. Der nächste
+geplante Entwicklungsschritt ist `v0.2.1 – LearningHub Local MVP`.
+
+Noch nicht Teil von `v0.2.0` sind:
 
 - der LearningHub Local MVP aus `v0.2.1`;
 - der LichtwaldLog Local MVP aus `v0.2.2`;
