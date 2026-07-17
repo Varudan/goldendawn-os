@@ -8,8 +8,8 @@
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokaler PromptVault-Vertrag implementiert; Sync-Vertrag als Zielzustand dokumentiert |
-| Letzte Aktualisierung | 2026-07-14 |
+| Status | Lokale PromptVault- und LearningHub-Katalogverträge implementiert; Sync-Vertrag als Zielzustand dokumentiert |
+| Letzte Aktualisierung | 2026-07-17 |
 
 Dieses Dokument definiert den implementierten lokalen PromptVault-
 Speichervertrag sowie die maschinenlesbare Sprache zwischen dem
@@ -25,10 +25,11 @@ bleiben.
 
 ## Vertragsgrenzen der lokalen Module v0.2.1 und v0.2.2
 
-Die geplanten lokalen Module `v0.2.1` und `v0.2.2` erweitern die externe
-Aktions-Allowlist dieses Dokuments nicht. In diesem Schritt entstehen für sie
-weder neue externe Aktionen noch verbindliche Datenverträge, Storage-Keys oder
-Storage-Schemas. Die nachfolgenden `learningTest.*`-Verträge bleiben
+Die lokalen Module `v0.2.1` und `v0.2.2` erweitern die externe
+Aktions-Allowlist dieses Dokuments nicht. Der LearningHub-Katalogvertrag ist
+ein rein interner Datenvertrag und führt weder externe Aktionen noch einen
+Storage-Key oder ein Storage-Schema ein. Die nachfolgenden
+`learningTest.*`-Verträge bleiben
 ausdrücklich ein Zielzustand für `v0.5.0`; die internen `DataAgent`-Verträge
 sind Zielzustände für `v0.4.0` und, im Lernfluss, `v0.5.0`.
 
@@ -50,20 +51,43 @@ gekennzeichnet. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
 `learningTest.evaluate` oder `learningTest.result.get` gleichzusetzen.
 
 Der aktuelle fachliche Informationsstand beschreibt genau einen Kurs mit vier
-Modulen. Nur Modul 1 ist bekannt und erfasst; es besitzt zwei Units, deren
-Inhalte in Kapitel gegliedert sind. Die natürliche Hierarchie
-**Course → Module → Unit → Chapter** und ein mögliches späteres `modules`-Array
-sind ausschließlich fachliche beziehungsweise optionale Vorschauen. Für die
+Modulen. Nur Modul 1 ist bekannt und erfasst; es besitzt zwei Units. Für die
 Module 2 bis 4 werden keine Inhalte oder Binnenstrukturen erfunden. Fortschritt
-wird nur aus tatsächlich bekannten Modulen, Units und Kapiteln berechnet.
+wird nur aus tatsächlich bekannten Inhalten berechnet.
 
-Diese Vorschau definiert keinen verbindlichen LearningHub-Datenvertrag und kein
-endgültiges Storage-Modell. Lokale Notizen, Zusammenfassungen und Mock-
-Testversuche werden bei der späteren Implementierung hinter Service- und
-Storage-Grenzen gekapselt, ohne in diesem Dokument bereits einen Storage-Key
-oder ein Storage-Schema festzulegen. Echter Kursinhalt bleibt privat und wird
-nicht in das Repository übernommen; öffentliche Demos verwenden ausschließlich
-synthetische Mock-Inhalte.
+#### Interner LearningHub-Katalogvertrag – Schema 1
+
+Der Katalog-Envelope besitzt `schemaVersion: 1`, eine `dataOrigin` und genau
+ein `course`-Objekt. `dataOrigin` erlaubt ausschließlich `synthetic` oder
+`private`. Der Kurs und seine tatsächlich vorhandenen Module und Units tragen
+jeweils stabile `id`- und `title`-Felder; Module und Units besitzen zusätzlich
+eine positive `position`. Unbekannte Module erhalten keine Platzhalter.
+
+Die sichtbare Haupthierarchie bleibt **Course → Module → Unit → Chapter**.
+Jede Unit besitzt eine flache `learningNodes`-Liste. Ein LearningNode enthält
+mindestens `id`, `nodeType`, `title`, `position`, `parentId` und `isTrackable`.
+
+Schema 1 erlaubt `chapter`, `section` und `subsection`. IDs sind katalogweit
+eindeutig, nicht leer und getrimmt. Titel sind nicht leer und getrimmt;
+Positionen sind positive Ganzzahlen und unter Geschwistern eindeutig.
+`chapter` besitzt `parentId: null`, `section` verweist innerhalb derselben Unit
+auf ein `chapter`, `subsection` entsprechend auf eine `section`. Fehlende,
+typologisch falsche, zyklische oder Unit-übergreifende Verweise sind ungültig.
+Nur `chapter` trägt in Schema 1 `isTrackable: true`; dies bereitet eine spätere
+Fortschrittsdefinition vor, implementiert sie aber nicht.
+
+Die reine Validierung verändert Eingaben nicht und meldet Fehler gesammelt als
+stabile Einträge mit `code`, `path` und `message`. Der öffentliche Demo-Katalog
+ist tief unveränderlich, trägt `dataOrigin: synthetic` und enthält nur
+unabhängig erfundene neutrale Inhalte. Private Laufzeitdaten tragen
+`dataOrigin: private` und bleiben von öffentlichen Demo-Daten und deren
+Datenquellen getrennt.
+
+Dieser Vertrag definiert kein Storage-Modell. Lokale Notizen,
+Zusammenfassungen und Mock-Testversuche werden bei der späteren Implementierung
+hinter Service- und Storage-Grenzen gekapselt. Ein späteres append-only
+Lernereignisprotokoll darf xAPI-inspiriert sein; es beansprucht keine
+xAPI-Konformität, verwendet kein LRS und ist kein Event Sourcing.
 
 ### v0.2.2 – LichtwaldLog Local MVP
 

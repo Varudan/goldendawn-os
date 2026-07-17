@@ -235,7 +235,7 @@ ist begrenzt:
 - Module 2 bis 4 erhalten bis zur Kenntnis ihrer realen Inhalte weder erfundene
   Inhalte noch vorweggenommene Strukturen.
 
-Die natürliche fachliche Hierarchie lautet:
+Die verbindliche sichtbare fachliche Hierarchie lautet:
 
 ```text
 Course
@@ -244,14 +244,22 @@ Course
   → Chapter
 ```
 
-Ein späteres Modell kann dafür ein `modules`-Array verwenden. Diese
-Architekturbeschreibung definiert jedoch weder einen neuen verbindlichen
-Datenvertrag noch ein endgültiges Storage-Schema. Eine spätere
-Verallgemeinerung für weitere Kurse wird erst bei realem Bedarf entworfen.
+Der interne Katalogvertrag für `v0.2.1` verwendet genau ein `course`-Objekt mit
+nur den tatsächlich vorhandenen `modules` und `units`. Innerhalb einer Unit
+bildet eine flache, normalisierte `learningNodes`-Liste unterschiedliche
+Gliederungstiefen ab. Schema 1 kennt `chapter`, `section` und `subsection`;
+stabile `parentId`-Verweise bleiben innerhalb derselben Unit. Nur Kapitel sind
+über `isTrackable` für einen späteren Fortschrittsvertrag vorgesehen. Der
+Katalogvertrag ist weder ein Storage-Schema noch eine Fortschrittsdefinition.
+Eine spätere Verallgemeinerung für weitere Kurse wird erst bei realem Bedarf
+entworfen.
 Der sichtbare Status kann ehrlich „Aktuell erfasst: Modul 1 von 4“ lauten.
 Fortschritt wird ausschließlich aus tatsächlich bekannten Modulen, Units und
 Kapiteln berechnet. Reale Kursinhalte, lokale Notizen und Zusammenfassungen
-bleiben privat; öffentliche Demo-Daten sind vollständig synthetisch.
+bleiben privat. Der öffentliche Demo-Katalog besitzt `dataOrigin: synthetic`,
+ist tief unveränderlich und enthält ausschließlich unabhängig erfundene
+neutrale Inhalte. Private Laufzeitkataloge verwenden `dataOrigin: private`
+und bleiben von Repository-Demos sowie deren Datenquellen getrennt.
 
 Der vorbereitete Testmodus verwendet diesen ausschließlich lokalen Pfad:
 
@@ -471,6 +479,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0003](decisions/0003-dataagent-airtable-boundary.md) | DataAgent als einzige Airtable-Schnittstelle | Angenommen |
 | [0004](decisions/0004-private-demo-separation.md) | Trennung von privaten und öffentlichen Daten | Angenommen |
 | [0005](decisions/0005-v1-three-agent-scope.md) | Begrenzung von Version 1 auf drei Agenten | Angenommen |
+| [0006](decisions/0006-learning-catalog-hierarchy-and-nodes.md) | Feste LearningHub-Hierarchie mit normalisierten LearningNodes | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).
