@@ -238,6 +238,9 @@ Create a production build with:
 npm run build
 ```
 
+Safe, local PowerShell helpers for the manual commit and merged-branch cleanup
+process are documented in [the Git workflow guide](docs/git-workflows.md).
+
 ## Verification
 
 The completed `v0.2.0` release candidate was verified with:
