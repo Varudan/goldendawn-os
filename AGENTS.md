@@ -79,18 +79,18 @@ dokumentiert wurde.
 
 ### LearningHub Local MVP in v0.2.1
 
-- Der LearningHub ist kein allgemeines Learning-Management-System. Er bildet
-  ausschließlich den aktuell bekannten Kursinhalt als
-  `Course → Module → Unit → Chapter` ab.
-- Für den Kurs sind vier Module vorgesehen, fachlich bekannt ist derzeit nur
-  Modul 1 mit genau zwei bekannten Units. Units enthalten Kapitel. Erfinde
-  weder Titel, Inhalte noch Metadaten für die unbekannten Module 2 bis 4.
-- Ein `modules`-Array ist lediglich eine mögliche spätere Implementierungsform.
-  Es ist weder ein beschlossener Datenvertrag noch ein festgelegtes
-  Persistenzschema.
-- Fortschritt darf nur für tatsächlich bekannte Inhalte erfasst oder angezeigt
-  werden. Unbekannte Module oder Kapitel erhalten keine konstruierten
-  Fortschrittswerte.
+- Der LearningHub ist kein allgemeines Learning-Management-System. Seine
+  verbindliche Struktur lautet `LearningHub → LearningModule → LearningChapter
+  → LearningNode`.
+- Schema 2 unterstützt mehrere nutzerkonfigurierte LearningModules direkt im
+  `modules`-Array. Ein neuer Hub darf leer sein; persistierbare Module besitzen
+  mindestens ein Kapitel. Kapitel dürfen noch keine LearningNodes enthalten.
+- Alle Kapitel sind implizit trackbar. LearningNodes sind selbst erstellte
+  Textkarten; Course, Unit, Elternverweise, Knotentypen und `isTrackable` sind
+  nicht Teil des Vertrags.
+- Kapitelabschluss, daraus abgeleiteter Modulfortschritt und Testkompetenz
+  werden später in getrennten Verträgen modelliert. 100-%-Module bleiben
+  erhalten und später testbar.
 - Lokale Notizen und Zusammenfassungen gehören zum LearningHub-MVP und bleiben
   hinter den vorgesehenen Service- und Storage-Grenzen.
 - Private Lerninhalte und synthetische Portfolio-Demos bleiben klar getrennt.

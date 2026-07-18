@@ -7,7 +7,7 @@
 | Projektphase | `v0.2.0 – Local Dashboard MVP abgeschlossen` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
 | Status | Verbindliche Sicherheitsbasis |
-| Letzte Aktualisierung | 2026-07-14 |
+| Letzte Aktualisierung | 2026-07-18 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -131,22 +131,24 @@ Controller greifen nicht direkt auf `localStorage` zu.
 
 #### LearningHub Local MVP in v0.2.1
 
-- Reale Kursinhalte, Lernnotizen, Zusammenfassungen und lokale Testversuche sind
-  privat. Sie werden weder in das Repository übernommen noch in öffentlichen
-  Demo-Daten oder unnötigen Logs verwendet.
-- Öffentliche Demos verwenden ausschließlich neu erstellte, synthetische
-  Mock-Inhalte und vorbereitete synthetische Testfragen.
-- Fortschritt wird nur aus tatsächlich bekannten Modulen, Units und Kapiteln
-  berechnet. Unbekannte Inhalte der Module 2 bis 4 fließen nicht in
-  Fortschrittswerte ein.
+- Private LearningModules, Kapitel, LearningNodes, Lernnotizen,
+  Zusammenfassungen und lokale Testversuche werden weder in das Repository
+  übernommen noch in öffentlichen Demo-Daten oder unnötigen Logs verwendet.
+- Der Demo-Hub verwendet ausschließlich unabhängig erfundene synthetische
+  Inhalte mit `dataOrigin: synthetic`. Private Nutzerdaten tragen
+  `dataOrigin: private` und verwenden getrennte Datenquellen.
+- Schema 2 speichert keine Abschluss- oder Fortschrittsdaten. Späterer
+  Kapitelabschluss, daraus abgeleiteter Modulfortschritt und Testkompetenz
+  bleiben voneinander getrennte Konzepte.
 - Der Mock-Test arbeitet lokal und deterministisch mit vorbereiteten Fragen. Er
   wird sichtbar als **„Lokaler Mock-Test“** gekennzeichnet und behauptet weder
   eine KI-Auswertung noch eine semantische Freitextbewertung.
 - Notizen, Zusammenfassungen und Testversuche werden ausschließlich hinter den
   vorgesehenen Service- und Storage-Adapter-Grenzen gespeichert.
 
-Dieser Dokumentationsschritt definiert für LearningHub weder einen neuen
-verbindlichen Datenvertrag noch ein endgültiges Storage-Schema.
+Schema 2 ist ein verbindlicher interner Struktur- und Validierungsvertrag,
+aber ausdrücklich kein Storage- oder Persistenzschema. Die Foundation speichert
+keine privaten Nutzerdaten und implementiert weder UI noch Fortschrittslogik.
 
 #### LichtwaldLog Local MVP in v0.2.2
 

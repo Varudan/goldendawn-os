@@ -7,7 +7,7 @@
 | Projektphase | `v0.2.0 – Local Dashboard MVP abgeschlossen` |
 | Architekturumfang | Zielarchitektur für Version 1 |
 | Status | Verbindliche Zielarchitektur; lokale Erweiterungen geplant |
-| Letzte Aktualisierung | 2026-07-14 |
+| Letzte Aktualisierung | 2026-07-18 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -225,41 +225,37 @@ Alle Datenzugriffe bleiben hinter Modulservices und Storage-Adaptern. Erst
 
 #### LearningHub Local MVP in v0.2.1
 
-LearningHub wird zunächst für den einen aktuell bekannten Kurs entworfen und
-nicht als allgemeines Learning-Management-System. Der reale Informationsstand
-ist begrenzt:
-
-- Der Kurs besitzt insgesamt vier Module.
-- Aktuell ist nur Modul 1 fachlich bekannt und erfasst.
-- Modul 1 besitzt zwei Units; die Units enthalten Kapitel.
-- Module 2 bis 4 erhalten bis zur Kenntnis ihrer realen Inhalte weder erfundene
-  Inhalte noch vorweggenommene Strukturen.
-
-Die verbindliche sichtbare fachliche Hierarchie lautet:
+LearningHub bleibt ein begrenztes lokales Lernmodul und kein allgemeines
+Learning-Management-System. Die verbindliche fachliche Hierarchie von Schema 2
+lautet:
 
 ```text
-Course
-  → Module
-  → Unit
-  → Chapter
+LearningHub
+  → LearningModule
+  → LearningChapter
+  → LearningNode
 ```
 
-Der interne Katalogvertrag für `v0.2.1` verwendet genau ein `course`-Objekt mit
-nur den tatsächlich vorhandenen `modules` und `units`. Innerhalb einer Unit
-bildet eine flache, normalisierte `learningNodes`-Liste unterschiedliche
-Gliederungstiefen ab. Schema 1 kennt `chapter`, `section` und `subsection`;
-stabile `parentId`-Verweise bleiben innerhalb derselben Unit. Nur Kapitel sind
-über `isTrackable` für einen späteren Fortschrittsvertrag vorgesehen. Der
-Katalogvertrag ist weder ein Storage-Schema noch eine Fortschrittsdefinition.
-Eine spätere Verallgemeinerung für weitere Kurse wird erst bei realem Bedarf
-entworfen.
-Der sichtbare Status kann ehrlich „Aktuell erfasst: Modul 1 von 4“ lauten.
-Fortschritt wird ausschließlich aus tatsächlich bekannten Modulen, Units und
-Kapiteln berechnet. Reale Kursinhalte, lokale Notizen und Zusammenfassungen
-bleiben privat. Der öffentliche Demo-Katalog besitzt `dataOrigin: synthetic`,
-ist tief unveränderlich und enthält ausschließlich unabhängig erfundene
-neutrale Inhalte. Private Laufzeitkataloge verwenden `dataOrigin: private`
-und bleiben von Repository-Demos sowie deren Datenquellen getrennt.
+Der interne Schema-2-Vertrag unterstützt mehrere nutzerkonfigurierte Module
+direkt im `modules`-Array. Ein neuer Hub darf leer sein; jedes persistierbare
+LearningModule besitzt mindestens ein LearningChapter. Alle Kapitel sind
+implizit trackbar und dürfen noch keine LearningNodes enthalten. LearningNodes
+sind selbst erstellte Textkarten innerhalb genau eines Kapitels. Course, Unit,
+normalisierte Knotentypen, `parentId` und `isTrackable` gehören nicht zum
+Vertrag.
+
+Kapitelabschluss und Fortschritt werden später getrennt von der Inhaltsstruktur
+modelliert. Modulfortschritt wird dann aus abgeschlossenen Kapiteln abgeleitet;
+auch zu 100 Prozent abgeschlossene Module bleiben erhalten und später testbar.
+Fortschritt und Testkompetenz sind getrennte Konzepte. LearningNode-Aktionen
+wie Erstellen, Bearbeiten, Löschen oder Umsortieren sind spätere Controller-
+und UI-Fähigkeiten, keine Datenfelder.
+
+Diese Foundation implementiert ausschließlich Struktur und Validierung, keine
+UI, Persistenz, Storage- oder Fortschrittslogik. Der öffentliche Demo-Hub trägt
+`dataOrigin: synthetic`, ist tief unveränderlich und enthält ausschließlich
+unabhängig erfundene Inhalte. Private Nutzerdaten tragen `dataOrigin: private`
+und bleiben von Repository-Demos und deren Datenquellen getrennt.
 
 Der vorbereitete Testmodus verwendet diesen ausschließlich lokalen Pfad:
 
@@ -479,7 +475,8 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0003](decisions/0003-dataagent-airtable-boundary.md) | DataAgent als einzige Airtable-Schnittstelle | Angenommen |
 | [0004](decisions/0004-private-demo-separation.md) | Trennung von privaten und öffentlichen Daten | Angenommen |
 | [0005](decisions/0005-v1-three-agent-scope.md) | Begrenzung von Version 1 auf drei Agenten | Angenommen |
-| [0006](decisions/0006-learning-catalog-hierarchy-and-nodes.md) | Feste LearningHub-Hierarchie mit normalisierten LearningNodes | Angenommen |
+| [0006](decisions/0006-learning-catalog-hierarchy-and-nodes.md) | Feste LearningHub-Hierarchie mit normalisierten LearningNodes | Ersetzt |
+| [0007](decisions/0007-user-configured-learning-modules.md) | Nutzerkonfigurierte LearningModules mit trackbaren Kapiteln und LearningNodes | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).

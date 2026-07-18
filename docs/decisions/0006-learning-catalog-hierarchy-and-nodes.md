@@ -2,7 +2,10 @@
 
 ## Status
 
-Angenommen – 2026-07-17
+Ersetzt – 2026-07-18
+
+Ursprünglich angenommen am 2026-07-17. Ersetzt durch
+[ADR 0007](0007-user-configured-learning-modules.md).
 
 ## Kontext
 

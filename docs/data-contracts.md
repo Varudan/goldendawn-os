@@ -7,9 +7,10 @@
 | Projektphase | `v0.2.0 – Local Dashboard MVP abgeschlossen` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
+| LearningHub-Schema | `2` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale PromptVault- und LearningHub-Katalogverträge implementiert; Sync-Vertrag als Zielzustand dokumentiert |
-| Letzte Aktualisierung | 2026-07-17 |
+| Status | Lokale PromptVault- und LearningHub-Verträge implementiert; Sync-Vertrag als Zielzustand dokumentiert |
+| Letzte Aktualisierung | 2026-07-18 |
 
 Dieses Dokument definiert den implementierten lokalen PromptVault-
 Speichervertrag sowie die maschinenlesbare Sprache zwischen dem
@@ -26,7 +27,7 @@ bleiben.
 ## Vertragsgrenzen der lokalen Module v0.2.1 und v0.2.2
 
 Die lokalen Module `v0.2.1` und `v0.2.2` erweitern die externe
-Aktions-Allowlist dieses Dokuments nicht. Der LearningHub-Katalogvertrag ist
+Aktions-Allowlist dieses Dokuments nicht. Der LearningHub-Schema-2-Vertrag ist
 ein rein interner Datenvertrag und führt weder externe Aktionen noch einen
 Storage-Key oder ein Storage-Schema ein. Die nachfolgenden
 `learningTest.*`-Verträge bleiben
@@ -50,44 +51,79 @@ gekennzeichnet. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
 `TestAgent` und ist nicht mit den geplanten Aktionen `learningTest.create`,
 `learningTest.evaluate` oder `learningTest.result.get` gleichzusetzen.
 
-Der aktuelle fachliche Informationsstand beschreibt genau einen Kurs mit vier
-Modulen. Nur Modul 1 ist bekannt und erfasst; es besitzt zwei Units. Für die
-Module 2 bis 4 werden keine Inhalte oder Binnenstrukturen erfunden. Fortschritt
-wird nur aus tatsächlich bekannten Inhalten berechnet.
+#### Interner LearningHub-Vertrag – Schema 2
 
-#### Interner LearningHub-Katalogvertrag – Schema 1
+Schema 2 beschreibt ausschließlich die Inhaltsstruktur:
 
-Der Katalog-Envelope besitzt `schemaVersion: 1`, eine `dataOrigin` und genau
-ein `course`-Objekt. `dataOrigin` erlaubt ausschließlich `synthetic` oder
-`private`. Der Kurs und seine tatsächlich vorhandenen Module und Units tragen
-jeweils stabile `id`- und `title`-Felder; Module und Units besitzen zusätzlich
-eine positive `position`. Unbekannte Module erhalten keine Platzhalter.
+```json
+{
+  "schemaVersion": 2,
+  "dataOrigin": "synthetic",
+  "modules": [
+    {
+      "id": "demo_module_garden",
+      "title": "Erfundene Ideenwerkstatt",
+      "position": 1,
+      "chapters": [
+        {
+          "id": "demo_chapter_observations",
+          "title": "Neutrale Beobachtungen",
+          "position": 1,
+          "learningNodes": [
+            {
+              "id": "demo_node_perspectives",
+              "title": "Zwei Blickwinkel",
+              "content": "Beschreibe eine erfundene Beobachtung aus zwei Perspektiven.",
+              "position": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
 
-Die sichtbare Haupthierarchie bleibt **Course → Module → Unit → Chapter**.
-Jede Unit besitzt eine flache `learningNodes`-Liste. Ein LearningNode enthält
-mindestens `id`, `nodeType`, `title`, `position`, `parentId` und `isTrackable`.
+Die verbindliche Hierarchie lautet **LearningHub → LearningModule →
+LearningChapter → LearningNode**. `schemaVersion` ist exakt `2`; Schema 1 und
+unbekannte Versionen werden abgelehnt. `dataOrigin` erlaubt ausschließlich
+`synthetic` oder `private`. `modules` ist ein Array, darf für einen neuen Hub
+leer sein und unterstützt mehrere Module. Jedes persistierbare Modul besitzt
+mindestens ein Kapitel. `learningNodes` ist ein Array und darf leer sein.
 
-Schema 1 erlaubt `chapter`, `section` und `subsection`. IDs sind katalogweit
-eindeutig, nicht leer und getrimmt. Titel sind nicht leer und getrimmt;
-Positionen sind positive Ganzzahlen und unter Geschwistern eindeutig.
-`chapter` besitzt `parentId: null`, `section` verweist innerhalb derselben Unit
-auf ein `chapter`, `subsection` entsprechend auf eine `section`. Fehlende,
-typologisch falsche, zyklische oder Unit-übergreifende Verweise sind ungültig.
-Nur `chapter` trägt in Schema 1 `isTrackable: true`; dies bereitet eine spätere
-Fortschrittsdefinition vor, implementiert sie aber nicht.
+IDs, Titel und LearningNode-Inhalte sind nicht leer und bereits getrimmt. IDs
+sind über Module, Kapitel und LearningNodes hinweg global eindeutig.
+`position` ist eine positive Ganzzahl und unter Geschwistern eindeutig; gleiche
+Positionen unter verschiedenen Eltern sind zulässig. Die Validierung
+normalisiert oder verändert Eingaben nicht und sammelt Fehler stabil als
+`{ code, path, message }`.
 
-Die reine Validierung verändert Eingaben nicht und meldet Fehler gesammelt als
-stabile Einträge mit `code`, `path` und `message`. Der öffentliche Demo-Katalog
-ist tief unveränderlich, trägt `dataOrigin: synthetic` und enthält nur
-unabhängig erfundene neutrale Inhalte. Private Laufzeitdaten tragen
-`dataOrigin: private` und bleiben von öffentlichen Demo-Daten und deren
-Datenquellen getrennt.
+Alle Kapitel sind implizit trackbar; `isTrackable` wird nicht gespeichert.
+Course, Unit, `parentId`, rekursive Strukturverweise, Knotentypen, Abschluss-
+und Fortschrittsfelder, UI-Zustände und Aktionen, Testdaten, Zeitstempel und
+Versionshistorien gehören nicht zu Schema 2. Kapitelabschluss, Modulfortschritt
+und Testkompetenz werden später getrennt modelliert.
 
-Dieser Vertrag definiert kein Storage-Modell. Lokale Notizen,
-Zusammenfassungen und Mock-Testversuche werden bei der späteren Implementierung
-hinter Service- und Storage-Grenzen gekapselt. Ein späteres append-only
-Lernereignisprotokoll darf xAPI-inspiriert sein; es beansprucht keine
-xAPI-Konformität, verwendet kein LRS und ist kein Event Sourcing.
+Ein späterer separater Fortschrittsvertrag soll Kapitelzustandswechsel
+append-only als unveränderliche Lernereignisse erfassen, beispielsweise
+`chapter.started`, `chapter.completed` und `chapter.reopened`. Diese Ereignisse
+gehören nicht zum Schema-2-Inhaltsvertrag; Schema 2 implementiert noch kein
+Ereignisprotokoll. Das spätere Modell darf xAPI-inspiriert sein, beansprucht
+aber keine xAPI-Konformität, verwendet noch kein LRS und behauptet kein
+vollständiges Event Sourcing. Aktueller Kapitelstatus und Modulfortschritt
+werden später aus den Lernereignissen abgeleitet oder als überprüfbare
+Projektion bereitgestellt. Testkompetenz bleibt davon getrennt.
+
+Der tief eingefrorene Demo-Hub enthält genau zwei Module, jedes mit mindestens
+einem Kapitel. Mindestens ein Kapitel enthält mehrere LearningNodes und
+mindestens eines noch keine. Seine Inhalte sind unabhängig erfunden und tragen
+`dataOrigin: synthetic`; private Nutzerdaten tragen `dataOrigin: private` und
+verwenden getrennte Datenquellen. Eine Migration ist nicht erforderlich, weil
+keine LearningHub-Nutzerdaten nach Schema 1 persistiert wurden.
+
+Diese Foundation definiert weder UI noch Persistenz oder Storage. Lokale
+Notizen, Fortschritt und Mock-Testversuche benötigen später eigene Service-,
+Storage- und Datenverträge.
 
 ### v0.2.2 – LichtwaldLog Local MVP
 
@@ -674,18 +710,18 @@ nicht die gesamte beliebige Payload zurück.
     "clientVersion": "0.5.0"
   },
   "payload": {
-    "topicId": "topic_big_data_001",
-    "title": "Big Data – Grundlagen",
+    "topicId": "topic_synthetic_patterns_001",
+    "title": "Synthetische Musterkarten",
     "learningContext": {
-      "summary": "Big Data wird unter anderem durch Volumen, Vielfalt, Geschwindigkeit und Vertrauenswürdigkeit beschrieben.",
+      "summary": "Die unabhängig erfundenen Karten beschreiben neutrale Muster und Blickwinkel.",
       "learningObjectives": [
-        "Die vier V erklären können",
-        "Cloud- und Edge-Verarbeitung unterscheiden können"
+        "Zwei erfundene Muster vergleichen können",
+        "Eine neutrale Beobachtung umformulieren können"
       ],
       "sourceRefs": [
         {
-          "id": "course_unit_1_2",
-          "label": "KI-Management – Unit 1.2"
+          "id": "demo_node_perspectives",
+          "label": "Synthetische Textkarte: Zwei Blickwinkel"
         }
       ]
     },

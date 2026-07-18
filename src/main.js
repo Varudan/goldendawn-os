@@ -229,7 +229,7 @@ function renderCommandCenter() {
       <div>
         <span class="eyebrow">Nächster Meilenstein</span>
         <h2 id="milestone-title">v0.2.1 – LearningHub Local MVP</h2>
-        <p>Geplant sind die bekannte Kursstruktur – aktuell Modul 1 von 4 mit zwei Units und Kapiteln – sowie ein deterministischer lokaler Mock-Test mit synthetischen Fragen.</p>
+        <p>Geplant sind nutzerkonfigurierte Lernmodule mit trackbaren Kapiteln, eigenen LearningNodes und lokalem Fortschritt sowie ein deterministischer Mock-Test ohne KI und mit synthetischen Demo-Daten.</p>
       </div>
       <span class="status status--planned">Als Nächstes</span>
     </aside>

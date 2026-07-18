@@ -8,7 +8,7 @@
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
 | Status | Technisch abgeschlossen und geprüft; Release-Kandidat |
-| Letzte Aktualisierung | 2026-07-15 |
+| Letzte Aktualisierung | 2026-07-18 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -47,7 +47,7 @@ nicht starre Kalendertermine.
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert und geprüft | ✅ |
-| `v0.2.1` | LearningHub Local MVP | Bekannte Kursstruktur, lokaler Fortschritt und lokaler Mock-Test | ⬜ |
+| `v0.2.1` | LearningHub Local MVP | Nutzerkonfigurierte Module, später separater Fortschritt und lokaler Mock-Test | ⬜ |
 | `v0.2.2` | LichtwaldLog Local MVP | Lokale Reflexions- und Erkenntniseinträge | ⬜ |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
@@ -149,37 +149,37 @@ bereitstellen. Externe Systeme sind für diese Version nicht erforderlich.
 
 ### Ziel des LearningHub Local MVP
 
-LearningHub als lokal nutzbares Modul für genau den aktuell bekannten Kurs
-bereitstellen. Diese Version bildet den real bekannten Kursstand ab und ist
-noch kein allgemeines Learning-Management-System. Externe Bewertung und echte
-Agentenlogik sind nicht Teil dieses lokalen MVP.
+LearningHub als lokal nutzbares Modul mit nutzerkonfigurierten Modulen,
+trackbaren Kapiteln und selbst erstellten Textkarten bereitstellen. Die
+Schema-2-Foundation definiert zunächst nur Struktur und Validierung. Externe
+Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
 
-### Fachliche Abgrenzung und bekannter Kursstand
+### Fachliche Abgrenzung und Schema-2-Foundation
 
-- Der aktuelle Kurs besteht insgesamt aus vier Modulen.
-- Aktuell ist ausschließlich Modul 1 fachlich bekannt und wird erfasst;
-  der ehrliche sichtbare Status lautet beispielsweise
-  **„Aktuell erfasst: Modul 1 von 4“**.
-- Modul 1 besitzt zwei Units; die Units enthalten Kapitel.
-- Inhalte oder Binnenstrukturen der Module 2 bis 4 werden nicht erfunden,
-  sondern erst ergänzt, wenn sie tatsächlich bekannt sind.
-- Die natürliche fachliche Hierarchie lautet
-  **Course → Module → Unit → Chapter**.
-- Ein späteres Datenmodell kann ein `modules`-Array verwenden. Für `v0.2.1`
-  wird daraus weder ein verbindlicher Datenvertrag noch ein endgültiges
-  Storage-Schema abgeleitet.
-- Eine Verallgemeinerung für weitere Kurse bleibt möglich, wird aber erst bei
-  realem Bedarf entworfen.
-- Echter Kursinhalt bleibt privat und wird nicht in das Repository
-  übernommen. Öffentliche Demo-Daten bestehen ausschließlich aus synthetischen
-  Mock-Inhalten.
+- Die verbindliche Hierarchie lautet **LearningHub → LearningModule →
+  LearningChapter → LearningNode**.
+- Das Schema-2-`modules`-Array unterstützt mehrere Module und darf für einen
+  neuen Hub leer sein. Persistierbare Module besitzen mindestens ein Kapitel.
+- Alle Kapitel sind implizit trackbar und dürfen noch keine LearningNodes
+  enthalten. LearningNodes sind selbst erstellte Textkarten.
+- Course, Unit, Elternverweise, Knotentypen und `isTrackable` sind nicht Teil
+  des Vertrags.
+- Kapitelabschluss und Fortschritt werden später separat modelliert;
+  Modulfortschritt wird aus abgeschlossenen Kapiteln abgeleitet. Abgeschlossene
+  100-%-Module bleiben erhalten und testbar.
+- Fortschritt und spätere Testkompetenz sind getrennte Konzepte.
+- Private Lerninhalte bleiben außerhalb des Repositorys. Die Demo-Daten sind
+  unabhängig erfunden, synthetisch und vollständig tief eingefroren.
+- Diese Foundation enthält keine UI, Persistenz, Storage-, Fortschritts- oder
+  Testlogik.
 
 ### Umfang des LearningHub Local MVP
 
-- ⬜ Lokale Kursnavigation für die tatsächlich bekannte Struktur bereitstellen.
-- ⬜ Fortschritt ausschließlich aus tatsächlich bekannten Modulen, Units und
-  Kapiteln berechnen; unbekannte Inhalte der Module 2 bis 4 fließen nicht in
-  Prozentwerte oder Abschlussstände ein.
+- ✅ Schema-2-Strukturvertrag für mehrere LearningModules, LearningChapters und
+  LearningNodes einschließlich synthetischer Zwei-Modul-Demo bereitstellen.
+- ⬜ Lokale Navigation für nutzerkonfigurierte Module und Kapitel bereitstellen.
+- ⬜ Kapitelabschluss separat speichern und Modulfortschritt daraus ableiten,
+  ohne abgeschlossene Module zu entfernen oder Testkompetenz einzumischen.
 - ⬜ Lokale Notizen und Zusammenfassungen hinter den vorgesehenen Service- und
   Storage-Grenzen speichern.
 - ⬜ Einen vorbereiteten, sichtbaren **„Lokalen Mock-Test“** für bekannte Inhalte
@@ -218,11 +218,12 @@ geplant.
 
 ### Abnahmekriterien für v0.2.1
 
-- LearningHub zeigt genau einen bekannten Kurs und den Erfassungsstand ehrlich
-  an.
-- Modul 1 mit seinen zwei Units und bekannten Kapiteln ist lokal navigierbar;
-  Module 2 bis 4 enthalten keine erfundenen Inhalte oder Strukturen.
-- Fortschritt berücksichtigt nur tatsächlich bekannte Lerninhalte.
+- LearningHub unterstützt mehrere nutzerkonfigurierte Module mit mindestens
+  einem Kapitel; Kapitel dürfen ohne LearningNodes bestehen.
+- Alle Kapitel sind trackbar. Kapitelabschluss und daraus abgeleiteter
+  Modulfortschritt bleiben vom Inhaltsvertrag und von Testkompetenz getrennt.
+- LearningNodes sind selbst erstellte Textkarten innerhalb eines Kapitels;
+  Aktionen darauf bleiben Controller- und UI-Fähigkeiten.
 - Notizen, Zusammenfassungen und Testversuche bleiben lokal und verwenden die
   vorgesehenen Service- und Storage-Grenzen.
 - Der lokale Mock-Test ist eindeutig gekennzeichnet, reproduzierbar und ohne
@@ -233,8 +234,9 @@ geplant.
 
 ### Portfolio-Nachweis für v0.2.1
 
-- synthetische Demo der bekannten Kurshierarchie;
-- nachvollziehbare Fortschrittsberechnung nur über bekannte Inhalte;
+- tief eingefrorener synthetischer Demo-Hub mit zwei Modulen;
+- umfassende Schema-2-Vertragstests ohne UI, Storage oder Persistenz;
+- später nachvollziehbare Ableitung des Modulfortschritts aus Kapiteln;
 - reproduzierbarer lokaler Mock-Test ohne behauptete KI-Funktion.
 
 ## v0.2.2 – LichtwaldLog Local MVP

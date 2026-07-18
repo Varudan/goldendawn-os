@@ -69,7 +69,7 @@ Accepted architecture decisions and their rationale are indexed in
 | --- | --- | --- | --- |
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
-| LearningHub | Bounded local course progress and deterministic synthetic mock tests | `v0.2.1` | Planned; not implemented |
+| LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, and deterministic synthetic mock tests | `v0.2.1` | Schema 2 foundation implemented; full local MVP planned |
 | LichtwaldLog | Local text journal with search and filters | `v0.2.2` | Planned; not implemented |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
@@ -126,12 +126,13 @@ automatic cloud backup are not implemented.
 ### LearningHub Local MVP (planned for v0.2.1)
 
 LearningHub is a bounded local learning module, not a general-purpose LMS. Its
-planned content hierarchy is `Course → Module → Unit → Chapter`. Four modules
-are intended, but only Module 1 is currently known; it contains two known units
-made up of chapters. Modules 2–4 will not be invented, and progress will cover
-known content only. Local notes and summaries will remain behind the planned
-service and storage boundaries. Private course content and synthetic portfolio
-demo content will remain separate.
+implemented Schema 2 foundation uses the hierarchy
+`LearningHub → LearningModule → LearningChapter → LearningNode`. A new hub may
+contain no modules, while every persisted module contains at least one chapter.
+Chapters are implicitly trackable and may contain no LearningNodes;
+LearningNodes are user-created text cards. Progress, UI, storage, persistence,
+and test logic are not part of this structure contract. Private learning data
+and independently invented synthetic portfolio data remain strictly separate.
 
 The planned local test path is:
 
@@ -202,7 +203,7 @@ Detailed milestones and acceptance criteria are maintained in
 | --- | --- | --- |
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete and verified as a release candidate |
-| v0.2.1 | LearningHub Local MVP | Planned local course view, known-content progress, and deterministic synthetic mock tests |
+| v0.2.1 | LearningHub Local MVP | Schema 2 structure foundation implemented; local UI, separate progress model, persistence, and deterministic synthetic mock tests remain planned |
 | v0.2.2 | LichtwaldLog Local MVP | Planned local text-entry CRUD, search, and filters |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
