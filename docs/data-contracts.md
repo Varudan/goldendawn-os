@@ -9,21 +9,25 @@
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
 | LearningHub-Persistenznamespace | `v1` |
+| LearningProgress-Schema | `1` |
+| LearningProgress-Persistenznamespace | `v1` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale PromptVault-Verträge sowie vollständiger LearningHub-Inhaltsfluss implementiert; Sync-Vertrag als Zielzustand dokumentiert |
+| Status | Lokale PromptVault-Verträge, vollständiger LearningHub-Inhaltsfluss und Progress-Foundation ohne UI-Verdrahtung implementiert; Sync-Vertrag als Zielzustand dokumentiert |
 | Letzte Aktualisierung | 2026-07-18 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
-PromptVault und LearningHub-Inhalte sowie die maschinenlesbare Sprache zwischen
-dem GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und dem TestAgent. Es
-konkretisiert die Grenzen aus `AGENTS.md`, `docs/architecture.md` und
-`docs/security.md`.
+PromptVault, LearningHub-Inhalte und LearningHub-Fortschritt sowie die
+maschinenlesbare Sprache zwischen dem GoldenDawn-OS-Frontend, dem SyncAgent,
+dem DataAgent und dem TestAgent. Es konkretisiert die Grenzen aus `AGENTS.md`,
+`docs/architecture.md` und `docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
 In `v0.2.1` sind die LearningHub-Schema-2-Foundation, die lokale
-Inhaltspersistenz sowie Controller und Inhaltsoberfläche implementiert; der
-vollständige LearningHub Local MVP ist noch in Arbeit. Die externen Sync- und
-Agentenverträge beschreiben weiterhin
+Inhaltspersistenz sowie Controller und Inhaltsoberfläche implementiert. Der
+separate Schema-1-Fortschrittsvertrag, seine Projektion, sein Service und seine
+lokale Persistenz sind ebenfalls implementiert, aber noch nicht an View,
+Controller oder `src/main.js` angebunden. Der vollständige LearningHub Local
+MVP ist weiterhin in Arbeit. Die externen Sync- und Agentenverträge beschreiben
 den geplanten Zielzustand späterer Versionen. Solange eine externe Aktion noch
 nicht implementiert ist, muss sie in UI und Dokumentation als geplant
 gekennzeichnet bleiben.
@@ -31,14 +35,16 @@ gekennzeichnet bleiben.
 ## Vertragsgrenzen der lokalen Module v0.2.1 und v0.2.2
 
 Die lokalen Module `v0.2.1` und `v0.2.2` erweitern die externe
-Aktions-Allowlist dieses Dokuments nicht. Der LearningHub-Schema-2-Vertrag ist
-ein rein interner Datenvertrag und führt keine externe Aktion ein. Seine lokale
-Inhaltspersistenz verwendet den festen Namespace
-`goldendawn.learningHub.content.v1`; das `v1` im Key ist keine Schemaversion,
-und der gespeicherte Inhaltsvertrag bleibt bei `schemaVersion: 2`. Die
-nachfolgenden `learningTest.*`-Verträge bleiben
-ausdrücklich ein Zielzustand für `v0.5.0`; die internen `DataAgent`-Verträge
-sind Zielzustände für `v0.4.0` und, im Lernfluss, `v0.5.0`.
+Aktions-Allowlist dieses Dokuments nicht. Der LearningHub-Schema-2-Inhaltsvertrag
+und der LearningProgress-Schema-1-Vertrag sind rein interne Datenverträge und
+führen keine externe Aktion ein. Ihre lokalen Persistenzen verwenden die
+getrennten festen Namespaces `goldendawn.learningHub.content.v1` und
+`goldendawn.learningHub.progress.v1`. Das jeweilige `v1` im Key bezeichnet
+keine Schemaversion: Der Inhaltsvertrag bleibt bei `schemaVersion: 2`, der
+Fortschrittsvertrag verwendet unabhängig davon `schemaVersion: 1`. Die
+nachfolgenden `learningTest.*`-Verträge bleiben ausdrücklich ein Zielzustand
+für `v0.5.0`; die internen `DataAgent`-Verträge sind Zielzustände für `v0.4.0`
+und, im Lernfluss, `v0.5.0`.
 
 ### v0.2.1 – LearningHub Local MVP
 
@@ -61,6 +67,13 @@ sowie `createLearningHubStorage` mit `loadLearningHub` und
 `saveLearningHub`. Modulauswahl, Accordion-Zustände, Node-Auswahl und
 Formularzustände bleiben flüchtig im Controller beziehungsweise in der View
 und werden nicht in den Inhaltsvertrag geschrieben.
+
+Daneben ist die lokale Progress-Foundation über
+`validateLearningProgress`, `projectLearningProgress`,
+`createLearningProgressService` und `createLearningProgressStorage`
+implementiert. Sie besitzt noch keine View, keinen Controller und keine
+Verdrahtung in `src/main.js`; Kapitel-Checkboxen und sichtbare
+Fortschrittsanzeigen sind daher nicht als umgesetzt zu verstehen.
 
 Davon getrennt bleibt der lokale Mock-Testfluss geplant:
 
@@ -128,18 +141,9 @@ normalisiert oder verändert Eingaben nicht und sammelt Fehler stabil als
 Alle Kapitel sind implizit trackbar; `isTrackable` wird nicht gespeichert.
 Course, Unit, `parentId`, rekursive Strukturverweise, Knotentypen, Abschluss-
 und Fortschrittsfelder, UI-Zustände und Aktionen, Testdaten, Zeitstempel und
-Versionshistorien gehören nicht zu Schema 2. Kapitelabschluss, Modulfortschritt
-und Testkompetenz werden später getrennt modelliert.
-
-Ein späterer separater Fortschrittsvertrag soll Kapitelzustandswechsel
-append-only als unveränderliche Lernereignisse erfassen, beispielsweise
-`chapter.started`, `chapter.completed` und `chapter.reopened`. Diese Ereignisse
-gehören nicht zum Schema-2-Inhaltsvertrag; Schema 2 implementiert noch kein
-Ereignisprotokoll. Das spätere Modell darf xAPI-inspiriert sein, beansprucht
-aber keine xAPI-Konformität, verwendet noch kein LRS und behauptet kein
-vollständiges Event Sourcing. Aktueller Kapitelstatus und Modulfortschritt
-werden später aus den Lernereignissen abgeleitet oder als überprüfbare
-Projektion bereitgestellt. Testkompetenz bleibt davon getrennt.
+Versionshistorien gehören nicht zu Schema 2. Kapitelabschluss und
+Modulfortschritt verwenden den nachfolgend dokumentierten separaten
+LearningProgress-Vertrag. Testkompetenz bleibt davon getrennt.
 
 Der tief eingefrorene Demo-Hub enthält genau zwei Module, jedes mit mindestens
 einem Kapitel. Mindestens ein Kapitel enthält mehrere LearningNodes und
@@ -171,9 +175,11 @@ Migration. Der gespeicherte Wert ist unmittelbar ein LearningHub mit
 Serialisierungslogik wird nicht eingeführt.
 
 Der Key enthält ausschließlich LearningHub-Inhalte. Kapitelabschluss und
-Fortschritt, Notizen, Zusammenfassungen sowie spätere Testversuche gehören nicht
-in diesen Wert und erhalten eigene Verträge und eigene Storage-Keys. Konkrete
-Keys für diese späteren Daten werden in diesem Schritt nicht vorweggenommen.
+Fortschritt gehören in den getrennten Vertrag unter
+`goldendawn.learningHub.progress.v1`. Notizen, Zusammenfassungen sowie spätere
+Testversuche gehören weder in den Inhalts- noch in den Progress-Wert und
+benötigen eigene Verträge und eigene Storage-Keys, die hier noch nicht
+vorweggenommen werden.
 
 `dataOrigin` klassifiziert die Herkunft als `synthetic` oder `private`. Das Feld
 ist keine Verschlüsselungs-, Authentifizierungs- oder Sicherheitsfunktion.
@@ -278,6 +284,314 @@ oder Speicherung fehl, wird kein teilweise veränderter Hub geschrieben.
 Löschen, Archivieren, Umsortieren, Schema-Migrationen und garantierte
 Multi-Tab-Synchronisierung oder Transaktionssperren gehören nicht zu diesem
 Vertrag.
+
+#### Lokaler LearningHub-Fortschrittsvertrag – Schema 1
+
+##### Trennung vom Inhaltsvertrag
+
+Der Fortschrittsvertrag erweitert den LearningHub-Inhaltsvertrag nicht. Ein
+Kapitel erhält insbesondere kein veränderliches `completed`-Feld. Inhalt und
+Fortschritt besitzen getrennte Schemaversionen, Validierungen, Services und
+Storage-Keys:
+
+| Belang | Vertrag | Storage-Key |
+| --- | --- | --- |
+| Module, Kapitel und LearningNodes | LearningHub `schemaVersion: 2` | `goldendawn.learningHub.content.v1` |
+| Kapitelzustandswechsel und daraus abgeleiteter Modulfortschritt | LearningProgress `schemaVersion: 1` | `goldendawn.learningHub.progress.v1` |
+
+Die identische Zahl `1` in Progress-Schema und Progress-Key ist zufällig. Das
+`v1` im Key versioniert den Persistenz-Namespace; `schemaVersion: 1`
+versioniert unabhängig davon die Struktur des gespeicherten Fortschrittslogs.
+
+##### Struktur und Validierung
+
+```json
+{
+  "schemaVersion": 1,
+  "dataOrigin": "synthetic",
+  "events": [
+    {
+      "id": "learning-progress-event-synthetic-example",
+      "type": "chapter.completed",
+      "moduleId": "module-synthetic-atlas",
+      "chapterId": "chapter-synthetic-compass",
+      "occurredAt": "2026-07-18T12:00:00.000Z"
+    },
+    {
+      "id": "learning-progress-event-synthetic-reopen",
+      "type": "chapter.reopened",
+      "moduleId": "module-synthetic-atlas",
+      "chapterId": "chapter-synthetic-compass",
+      "occurredAt": "2026-07-18T12:05:00.000Z"
+    }
+  ]
+}
+```
+
+| Feld | Typ | Regel |
+| --- | --- | --- |
+| `schemaVersion` | Ganzzahl | exakt `1` |
+| `dataOrigin` | String | ausschließlich `synthetic` oder `private` |
+| `events` | Array | darf leer sein; Reihenfolge ist autoritativ |
+| `events[].id` | String | nicht leer, bereits getrimmt und im vollständigen Log eindeutig |
+| `events[].type` | String | `chapter.completed` oder `chapter.reopened` |
+| `events[].moduleId` | String | nicht leer und bereits getrimmt |
+| `events[].chapterId` | String | nicht leer und bereits getrimmt |
+| `events[].occurredAt` | String | gültiger kanonischer ISO-8601-UTC-Zeitstempel im Format mit Millisekunden und `Z` |
+
+Root und jedes Ereignis müssen Objekte sein; Arrays oder `null` sind an diesen
+Stellen ungültig. Zeitstempel müssen weder eindeutig noch monoton sein. Der
+Vertrag sortiert nicht nach `occurredAt`: Die persistierte Reihenfolge im
+`events`-Array bestimmt die Zustandsableitung.
+
+`validateLearningProgress` sammelt alle strukturell auffindbaren Fehler als
+stabile Einträge `{ code, path, message }` und verändert die Eingabe nicht. Die
+Implementierung exportiert `LEARNING_PROGRESS_SCHEMA_VERSION`,
+`LEARNING_PROGRESS_DATA_ORIGINS`, `LEARNING_PROGRESS_EVENT_TYPES`,
+`LEARNING_PROGRESS_ERROR_CODES` und `validateLearningProgress`. Die
+exportierten Fehlercodes sind:
+
+| Code | Bedeutung |
+| --- | --- |
+| `invalidLearningProgress` | Root ist kein Objekt |
+| `unsupportedSchemaVersion` | `schemaVersion` ist nicht exakt `1` |
+| `invalidDataOrigin` | Herkunft ist weder `synthetic` noch `private` |
+| `invalidEvents` | `events` ist kein Array |
+| `invalidEvent` | ein Ereigniseintrag ist kein Objekt |
+| `invalidId` | Ereignis-ID oder Referenz ist leer, ungetrimmt oder kein String |
+| `duplicateEventId` | Ereignis-ID kommt im vollständigen Log mehrfach vor |
+| `invalidEventType` | Ereignistyp gehört nicht zu Schema 1 |
+| `invalidOccurredAt` | Zeitstempel ist ungültig oder nicht kanonisch |
+
+Die strukturelle Validierung prüft bewusst nicht, ob `moduleId` oder
+`chapterId` im aktuellen LearningHub existieren oder ob das Kapitel zum Modul
+gehört. Diese referenzielle Prüfung benötigt den aktuellen Inhaltsstand und
+liegt im `LearningProgressService`.
+
+Schema 1 unterstützt kein `chapter.started`. Eine spätere Einführung dieses
+oder eines anderen Ereignistyps ist keine stille Enum-Erweiterung, sondern eine
+versionierte Vertragsänderung mit angepasster Validierung, Projektion,
+Persistenzdokumentation und Tests.
+
+##### Reine Fortschrittsprojektion
+
+`projectLearningProgress(learningHub, progressLog)` erhält einen validen
+LearningHub und einen validen Fortschrittslog, verändert beide Eingaben nicht
+und persistiert nichts. Die Funktion gibt direkt ein Modul-Array zurück:
+
+```json
+[
+  {
+    "moduleId": "module-synthetic-atlas",
+    "completedChapterCount": 1,
+    "totalChapterCount": 3,
+    "progressPercent": 33,
+    "isCompleted": false,
+    "chapters": [
+      {
+        "chapterId": "chapter-synthetic-compass",
+        "isCompleted": true
+      },
+      {
+        "chapterId": "chapter-synthetic-map",
+        "isCompleted": false
+      },
+      {
+        "chapterId": "chapter-synthetic-route",
+        "isCompleted": false
+      }
+    ]
+  }
+]
+```
+
+Die Ereignisreihenfolge ist autoritativ. `chapter.completed` setzt das
+referenzierte Kapitel auf abgeschlossen, `chapter.reopened` wieder auf offen;
+das letzte Array-Ereignis derselben Modul- und Kapitelreferenz gewinnt.
+`occurredAt` beeinflusst die Reihenfolge nicht.
+
+Module und Kapitel werden ohne Eingabemutation aufsteigend nach ihrer
+`position` aus dem Inhaltsvertrag projiziert. Titel und LearningNode-Inhalte
+werden nicht kopiert. `progressPercent` ist
+`Math.round(completedChapterCount / totalChapterCount * 100)`; bei exakt `.5`
+gilt für die nicht negativen Werte die aufwärts gerichtete `Math.round`-Regel.
+Bei null Kapiteln ist der Prozentwert `0`. `isCompleted` ist nur wahr, wenn das
+Modul mindestens ein Kapitel besitzt und alle Kapitel abgeschlossen sind. Ein
+leerer Hub ergibt `[]`; Module mit 100 Prozent bleiben vollständig im Ergebnis.
+
+##### Datenfluss und referenzielle Integrität
+
+```text
+LearningProgressService
+  ├→ LearningHubService
+  │   → LearningHubStorage
+  │   → StorageAdapter
+  │
+  └→ LearningProgressStorage
+      → StorageAdapter
+      → localStorage
+```
+
+`LearningProgressService` verwendet `LearningHubService` ausschließlich zum
+Laden des aktuellen Inhaltsstands und zur Prüfung von Modul-, Kapitel- und
+Eigentumsreferenzen. Es gibt keine Rückabhängigkeit vom Inhaltsservice und
+keine zirkuläre Service-Abhängigkeit. Der Progress-Service stellt
+`loadProgress`, `completeChapter({ moduleId, chapterId })` und
+`reopenChapter({ moduleId, chapterId })` bereit.
+
+Die stabilen Erfolgsstatus lauten:
+
+| Operation und Fall | `status` | `changed` |
+| --- | --- | --- |
+| `loadProgress`, fehlender Progress-Key | `empty` | `false` |
+| `loadProgress`, vorhandener valider Log | `loaded` | `false` |
+| echte Änderung durch `completeChapter` | `chapterCompleted` | `true` |
+| `completeChapter` bei abgeschlossenem Kapitel | `chapterAlreadyCompleted` | `false` |
+| echte Änderung durch `reopenChapter` | `chapterReopened` | `true` |
+| `reopenChapter` bei offenem Kapitel | `chapterAlreadyOpen` | `false` |
+
+Jeder Erfolg enthält defensive Kopien von `progressLog` und dem direkten
+Modul-Array `projection`. Fehler enthalten immer `ok: false`, `changed: false`
+und einen stabilen `error`; der letzte valide Log und seine Projektion werden
+nur mitgeliefert, soweit der Fehlerfall einen sicheren aktuellen Zustand
+besitzt.
+
+Wichtige stabile Service-Fehlercodes sind:
+
+| Code | Bedeutung |
+| --- | --- |
+| `invalidLearningProgressInput` | Ziel-IDs sind formal ungültig; `fieldErrors` benennt die Felder |
+| `moduleNotFound` | Zielmodul existiert nicht |
+| `chapterNotFound` | Zielkapitel existiert nicht |
+| `chapterModuleMismatch` | Zielkapitel gehört nicht zum angegebenen Modul |
+| `orphanedProgressModuleReference` | gespeichertes Ereignis verweist auf kein vorhandenes Modul |
+| `orphanedProgressChapterReference` | gespeichertes Ereignis verweist auf kein vorhandenes Kapitel |
+| `progressChapterModuleMismatch` | gespeichertes Ereignis besitzt eine falsche Modul-Kapitel-Zuordnung |
+| `learningProgressEventIdGenerationFailed` | in höchstens fünf Versuchen entstand keine gültige eindeutige Ereignis-ID |
+| `learningProgressClockFailed` | injizierte Uhr ist fehlgeschlagen |
+| `invalidLearningProgressTimestamp` | Uhrwert ist kein kanonischer UTC-Zeitstempel |
+| `invalidLearningProgressState` | vollständiger neuer Log ist nicht vertragsgültig |
+| `invalidStoredLearningHub` | geladener Inhaltszustand ist nicht der gültige private Schema-2-Hub |
+| `invalidStoredLearningProgress` | geladener Fortschrittszustand ist nicht der gültige private Schema-1-Log |
+| `learningProgressStorageUnavailable` | Progress-Storage-Schnittstelle fehlt |
+| `learningProgressStorageReadFailed` | Progress-Log konnte nicht gelesen werden |
+| `learningProgressStorageWriteFailed` | Progress-Log konnte nicht geschrieben werden |
+| `unexpectedLearningHubResult` | Inhaltsservice lieferte kein verwertbares Ergebnis |
+| `unexpectedStorageResult` | Progress-Storage lieferte kein verwertbares Ergebnis |
+| `learningProgressProjectionFailed` | Projektion konnte nicht sicher erzeugt werden |
+
+Kontrollierte Abhängigkeitsfehler werden mit ihrem stabilen Status und Code
+weitergereicht. Kein Fehlerfall löst einen Reparatur-, Lösch- oder
+Ersatzschreibzugriff aus.
+
+Jede Mutation:
+
+1. lädt den aktuellen LearningHub über `LearningHubService`;
+2. lädt den aktuellen Fortschrittslog;
+3. validiert beide vollständigen Zustände;
+4. prüft sämtliche bereits gespeicherten Ereignisreferenzen;
+5. prüft Existenz und Eigentum der Zielreferenz;
+6. leitet den aktuellen Kapitelzustand ausschließlich aus der Arrayreihenfolge
+   ab;
+7. hängt bei einer echten Zustandsänderung genau ein neues Ereignis an;
+8. validiert den vollständigen neuen Log;
+9. speichert genau einmal;
+10. gibt die neue Projektion zurück.
+
+`moduleId` muss ein vorhandenes LearningModule bezeichnen, `chapterId` ein
+vorhandenes LearningChapter, und das Kapitel muss zum angegebenen Modul
+gehören. Verwaiste oder falsch zugeordnete gespeicherte Ereignisse führen zu
+einem kontrollierten Fehler. Ungültige Daten werden nicht repariert, gelöscht
+oder überschrieben.
+
+| Ausgangszustand und Operation | Ergebnis |
+| --- | --- |
+| offenes Kapitel + `completeChapter` | genau ein `chapter.completed`, `changed: true`, genau ein Save |
+| abgeschlossenes Kapitel + `completeChapter` | erfolgreicher No-op, `changed: false`, kein Save |
+| abgeschlossenes Kapitel + `reopenChapter` | genau ein `chapter.reopened`, `changed: true`, genau ein Save |
+| offenes oder nie abgeschlossenes Kapitel + `reopenChapter` | erfolgreicher No-op, `changed: false`, kein Save |
+| nach `chapter.reopened` erneut `completeChapter` | neues `chapter.completed`, `changed: true`, genau ein Save |
+
+No-ops erzeugen weder Ereignis-ID noch Zeitstempel, speichern nicht und
+verändern keine Eingaben. Service-Ergebnisse folgen den bestehenden lokalen
+Konventionen und liefern je nach Fall strukturierte `ok`-, `status`-,
+`changed`-, `error`-, `progressLog`- und `projection`-Informationen.
+
+Neue Ereignis-IDs verwenden im Produktionsdefault das fachliche Präfix
+`learning-progress-event` und müssen im vollständigen Log eindeutig sein. Der
+injizierbare Generator erhält höchstens fünf Versuche;
+Fehler, leere oder ungetrimmte Werte und Kollisionen führen nach der Begrenzung
+zu einem kontrollierten Ergebnis ohne Schreibzugriff. Eine injizierbare Uhr
+muss einen kanonischen ISO-UTC-Zeitstempel liefern. Auch eine fehlschlagende
+oder ungültige Uhr führt zu keinem Save. `occurredAt` bleibt beschreibend; die
+Append-Reihenfolge ist fachlich autoritativ.
+
+Es gibt keine öffentlichen Operationen zum Bearbeiten, Entfernen oder
+Umsortieren vorhandener Fortschrittsereignisse.
+
+##### Lokale Persistenz und Fehlergrenzen
+
+`createLearningProgressStorage` erhält ausschließlich den gemeinsamen
+`StorageAdapter` und stellt `loadLearningProgress` sowie
+`saveLearningProgress` unter diesem festen, nicht nutzerkontrollierten Key
+bereit:
+
+```text
+goldendawn.learningHub.progress.v1
+```
+
+Fehlt der Key, liefert ein Lesevorgang jeweils einen frischen privaten, leeren
+Log, ohne ihn sofort zu speichern:
+
+```json
+{
+  "schemaVersion": 1,
+  "dataOrigin": "private",
+  "events": []
+}
+```
+
+Ein erfolgreicher Lesevorgang liefert `status: missing` oder `status: found`
+und den defensiv geklonten Wert im Feld `progressLog`. Ein erfolgreicher
+Schreibvorgang liefert `status: saved`. Fehlende oder unbrauchbare
+Adapter-Schnittstellen und formal unerwartete Adapterresultate werden von
+Vertrags-, Herkunfts-, Lese-, Schreib- und Quota-Fehlern kontrolliert
+unterschieden.
+
+Laden und Speichern validieren den vollständigen Vertrag. Der private
+Storage-Pfad akzeptiert ausschließlich `dataOrigin: private`. Synthetische,
+beschädigte oder nicht unterstützte gespeicherte Werte werden nicht gelöscht,
+überschrieben, repariert oder durch den leeren Initialzustand ersetzt. Es gibt
+weder Demo-Import noch Netzwerkzugriff. Rückgaben und an den Adapter übergebene
+Werte werden defensiv geklont.
+
+Adapter-Ausnahmen, unerwartete Adapterergebnisse, Verfügbarkeits-, Lese-,
+Schreib- und Quota-Fehler werden in kontrollierte stabile Ergebnisse übersetzt.
+Fehlermeldungen enthalten keine privaten Modul- oder Kapiteltitel,
+LearningNode-Inhalte, vollständigen Logs oder Rohdaten.
+
+##### Append-only-Grenzen und spätere Inhaltslebenszyklen
+
+Append-only ist eine Anwendungsregel des `LearningProgressService`. Technisch
+wird bei jeder echten Zustandsänderung der vollständige JSON-Log als Snapshot
+in `localStorage` geschrieben. Es gibt keine kryptografische Verkettung,
+Signatur oder Manipulationssperre; andere Skripte derselben Origin könnten den
+Wert lesen oder verändern. GoldenDawn OS beansprucht damit kein vollständiges
+Event Sourcing. Das Modell ist xAPI-inspiriert, aber nicht xAPI-konform, und es
+gibt kein LRS.
+
+Multi-Tab-Rennen, Browser-Quota, fehlende Transaktionssperren, fehlende
+Verschlüsselung und fehlende Synchronisierung bleiben bekannte Grenzen. Lokale
+Browserpersistenz ist weder Cloud-Sicherung noch geräteübergreifende
+Speicherung; das Löschen des Browserprofils kann den Log entfernen.
+
+Archivieren und dauerhaftes Löschen sind nicht implementiert. Eine spätere
+Archivierung von Modulen oder Kapiteln muss verknüpfte Ereignisse erhalten und
+deren Projektionssichtbarkeit festlegen. Dauerhaftes Löschen benötigt zuvor
+eine gesonderte Referenz- und Löschrichtlinie für verbundene Ereignisse,
+mögliche Tombstones und historische Nachvollziehbarkeit. Stilles
+kaskadierendes Löschen oder das bewusste Erzeugen verwaister Ereignisse wird
+nicht vorweggenommen.
 
 ### v0.2.2 – LichtwaldLog Local MVP
 

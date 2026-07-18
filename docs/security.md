@@ -125,6 +125,9 @@ wird.
 - `dataOrigin: private` ist nur eine fachliche Klassifikation. Das Feld
   verschlüsselt Daten nicht, authentifiziert keine Person und bildet keine
   technische Zugriffsgrenze.
+- Ein fachlich append-only geführter Log ist in `localStorage` technisch ein
+  überschreibbarer JSON-Snapshot. Append-only ersetzt weder kryptografische
+  Integrität noch eine Signatur oder Manipulationssperre.
 - Lokale Browserdaten sind keine Cloud-Sicherung, keine geräteübergreifende
   Synchronisierung und kein Schutz vor dem Löschen des Browserprofils.
 - Eine spätere Browser-Authentifizierung benötigt eine eigene serverseitige
@@ -146,6 +149,17 @@ Controller greifen nicht direkt auf `localStorage` zu.
   den festen, nicht nutzerkontrollierten Key
   `goldendawn.learningHub.content.v1` und akzeptiert im privaten Speicherpfad
   nur Hubs mit `dataOrigin: private`.
+- Der davon getrennte Progress-Pfad verläuft über
+  `LearningProgressService`, `LearningHubService`,
+  `LearningProgressStorage` und den gemeinsamen `StorageAdapter`. Der
+  Progress-Service verwendet den Inhaltsservice nur zum Laden und zur
+  Referenzprüfung; es gibt keine Rückabhängigkeit. Fortschritt liegt unter dem
+  festen Key `goldendawn.learningHub.progress.v1`, während der Inhaltsvertrag
+  unverändert unter `goldendawn.learningHub.content.v1` bleibt.
+- Die Progress-Foundation besitzt noch keine View, keinen Controller und keine
+  Verdrahtung in `src/main.js`. Kapitel-Checkboxen und Fortschrittsanzeigen
+  sind nicht implementiert; der lokale Progress-Pfad überträgt keine Daten an
+  Webhooks, Agenten, Airtable oder andere Netzwerke.
 - Private LearningModules, Kapitel und LearningNodes sowie spätere Lernnotizen,
   Zusammenfassungen und lokale Testversuche werden weder in das Repository
   übernommen noch in öffentlichen Demo-Daten oder unnötigen Logs verwendet.
@@ -158,22 +172,54 @@ Controller greifen nicht direkt auf `localStorage` zu.
   ungültige Schema-Daten oder Adapterfehler werden davon unterschieden und
   niemals stillschweigend gelöscht, überschrieben oder durch den leeren Hub
   ersetzt.
+- Entsprechend liefert ein fehlender Progress-Key einen frischen privaten Log
+  mit leerem `events`-Array ohne Initialisierungsschreibzugriff. Der private
+  Progress-Storage akzeptiert ausschließlich `dataOrigin: private`.
+  Synthetische, beschädigte oder nicht unterstützte gespeicherte Logs bleiben
+  unverändert und werden weder als leerer privater Log ausgegeben noch durch
+  ihn überschrieben.
 - Der `LearningHubService` trimmt Eingabetexte vor der Längenprüfung und
   begrenzt Titel auf 120 sowie LearningNode-Inhalte auf 10.000 Zeichen. Diese
   Eingabegrenzen reduzieren versehentlich übergroße einzelne Werte, ersetzen
   aber weder Quota-Behandlung noch eine allgemeine Größenbegrenzung des
   vollständigen Hubs. Der persistierte Vertrag bleibt bei
   `schemaVersion: 2`; Schema 3 wird dadurch nicht eingeführt.
-- Fehlermeldungen und Logs enthalten keine privaten Titel, LearningNode-Texte
-  oder vollständigen Payloads. Rohe `DOMException`- und Storage-Fehler werden
-  nicht unkontrolliert an höhere Schichten weitergereicht.
+- Fehlermeldungen und Logs enthalten keine privaten Titel, LearningNode-Texte,
+  vollständigen Fortschrittslogs oder sonstigen Rohdaten. Rohe `DOMException`-
+  und Storage-Fehler werden nicht unkontrolliert an höhere Schichten
+  weitergereicht.
 - Die Oberfläche weist sichtbar darauf hin, dass Inhalte nur im aktuellen
   Browserprofil ohne Cloud-Sicherung oder geräteübergreifende Synchronisierung
   liegen und von anderen Skripten derselben Origin grundsätzlich aus dem
   unverschlüsselten `localStorage` gelesen werden könnten.
-- Schema 2 speichert keine Abschluss- oder Fortschrittsdaten. Späterer
-  Kapitelabschluss, daraus abgeleiteter Modulfortschritt und Testkompetenz
-  bleiben voneinander getrennte Konzepte.
+- Schema 2 speichert keine Abschluss- oder Fortschrittsdaten. Kapitelabschluss
+  und daraus abgeleiteter Modulfortschritt verwenden den separaten
+  LearningProgress-Schema-1-Vertrag; Testkompetenz bleibt ein davon getrenntes
+  Konzept.
+- Der Progress-Vertrag speichert ausschließlich Ereignis-ID, Ereignistyp,
+  Modul- und Kapitelreferenz sowie UTC-Zeitstempel. Titel und
+  LearningNode-Inhalte werden nicht in Ereignisse oder Projektionen kopiert.
+  IDs und Nutzungszeitpunkte können dennoch private Metadaten sein und werden
+  nicht unnötig protokolliert oder in öffentliche Demo-Daten übernommen.
+- Vor einer Progress-Mutation werden der vollständige Hub und Log validiert,
+  alle gespeicherten Referenzen gegen den aktuellen Inhaltsstand geprüft und
+  verwaiste oder falsch zugeordnete Ereignisse kontrolliert abgelehnt. Diese
+  Prüfung schützt vor versehentlicher Weiterverarbeitung inkonsistenter Daten,
+  beweist aber weder Urheberschaft noch Manipulationsfreiheit.
+- Append-only gilt ausschließlich für die öffentlichen Operationen des
+  `LearningProgressService`. Der vollständige Log wird technisch bei jeder
+  echten Änderung als neuer JSON-Snapshot geschrieben. Es gibt keine
+  kryptografische Verkettung, Signatur oder Manipulationssperre; andere Skripte
+  derselben Origin könnten den Wert lesen, überschreiben oder umsortieren. Das
+  Modell ist xAPI-inspiriert, aber nicht xAPI-konform, verwendet kein LRS und
+  beansprucht kein vollständiges Event Sourcing.
+- `chapter.started` ist in Schema 1 nicht erlaubt. Seine spätere Einführung
+  benötigt eine versionierte Vertrags- und Sicherheitsprüfung, weil zusätzliche
+  Zeit- und Nutzungsmetadaten entstehen würden.
+- Eine spätere Archivierung muss Fortschrittsereignisse erhalten. Dauerhaftes
+  Löschen von Modulen oder Kapiteln benötigt vor der Implementierung eine
+  gesonderte Referenz- und Löschrichtlinie; verknüpfte Ereignisse dürfen nicht
+  stillschweigend entfernt oder verwaist werden.
 - Der noch nicht implementierte Mock-Test soll lokal und deterministisch mit
   vorbereiteten Fragen arbeiten. Er muss sichtbar als **„Lokaler Mock-Test“**
   gekennzeichnet werden und darf weder eine KI-Auswertung noch eine semantische
@@ -183,13 +229,18 @@ Controller greifen nicht direkt auf `localStorage` zu.
   Storage-Adapter-Grenzen gespeichert werden.
 - Der lokale MVP garantiert noch keine Multi-Tab-Konsistenz und verwendet keine
   Transaktionssperre. Gleichzeitige Änderungen in mehreren Tabs können sich
-  überholen; eine spätere Lösung benötigt einen eigenen Vertrag.
+  überholen; Browser-Quota, fehlende Verschlüsselung und fehlende
+  Synchronisierung bleiben ebenfalls offene Grenzen. Eine spätere Lösung
+  benötigt einen eigenen Vertrag.
 
 Schema 2 bleibt der verbindliche interne Inhalts- und Validierungsvertrag. Der
-Storage-Key `v1` bezeichnet davon getrennt nur den Persistenz-Namespace. Die
-View, Controller, Service und Storage für private Inhalte sind implementiert;
-Fortschrittslogik, Notizen, Zusammenfassungen und Testversuche sind in diesem
-Arbeitspaket noch nicht umgesetzt.
+Storage-Key `content.v1` bezeichnet davon getrennt nur dessen
+Persistenz-Namespace. Der Fortschrittsvertrag verwendet unabhängig
+`schemaVersion: 1` und den Persistenznamespace `progress.v1`. View, Controller,
+Service und Storage für private Inhalte sowie Vertrag, Projektion, Service und
+Storage der Progress-Foundation sind implementiert. Progress-UI, Notizen,
+Zusammenfassungen und Testversuche sind in diesem Arbeitspaket noch nicht
+umgesetzt; `v0.2.1` bleibt in Arbeit.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
@@ -458,7 +509,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | --- | --- |
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
-| `v0.2.1` | sichere lokale Inhalts-UI und validierte private Persistenz ohne Demo-Seeding; später Notizen, Testversuche und deterministischer lokaler Mock-Test |
+| `v0.2.1` | sichere lokale Inhalts-UI, getrennte validierte Inhalts- und Progress-Persistenz ohne Demo-Seeding sowie kontrollierte Referenzprüfung; später Progress-UI, Notizen, Testversuche und deterministischer lokaler Mock-Test |
 | `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
 | `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
