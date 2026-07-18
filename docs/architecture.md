@@ -4,9 +4,9 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.0 – Local Dashboard MVP abgeschlossen` |
+| Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; lokale Erweiterungen geplant |
+| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhaltspersistenz implementiert, MVP noch nicht vollständig |
 | Letzte Aktualisierung | 2026-07-18 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -121,23 +121,33 @@ Services koordinieren die Anwendungslogik eines Moduls. Sie:
 - validieren Eingaben für den lokalen Anwendungsfall;
 - rufen Storage-Adapter oder den Sync-Service auf;
 - übersetzen technische Fehler in verständliche Anwendungszustände;
-- halten UI-Komponenten unabhängig von konkreten Datenquellen.
+- halten UI-Komponenten unabhängig von konkreten Datenquellen;
+- verwenden bei persistenten Modulen den Storage als autoritative Quelle und
+  führen keine zweite dauerhaft veränderliche In-Memory-Wahrheit.
 
 ### Storage-Adapter
 
-Storage-Adapter kapseln die lokale Speicherung. Sie:
+Fachliche Storage-Schichten kapseln die lokale Speicherung einer Domäne. Sie
+besitzen feste, nicht nutzerkontrollierte `localStorage`-Keys, validieren
+Domänenobjekte und stellen fachlich benannte Lade- und Speicherfunktionen
+bereit. Der gemeinsame `StorageAdapter` wird per Dependency Injection
+bereitgestellt und übernimmt ausschließlich den technischen JSON-Lese- und
+Schreibzugriff.
 
-- besitzen die verwendeten `localStorage`-Keys;
-- serialisieren und deserialisieren Daten;
-- liefern bei fehlenden oder beschädigten Daten sichere Fallback-Werte;
-- enthalten spätere lokale Datenmigrationen;
-- stellen fachlich benannte Funktionen bereit.
+Fehlende Daten werden von beschädigtem JSON, ungültigen Domänendaten und
+Adapterfehlern unterschieden. Ein fachlicher leerer Initialzustand darf nur für
+einen fehlenden Key geliefert werden. Beschädigte oder ungültige gespeicherte
+Daten werden nicht stillschweigend gelöscht, überschrieben oder durch
+Fallback-Daten ersetzt. Migrationen werden erst nach einer eigenen
+dokumentierten Entscheidung eingeführt.
 
 Beispiel:
 
 ```js
 loadPrompts()
 savePrompt(prompt)
+loadLearningHub()
+saveLearningHub(learningHub)
 loadLearningProgress()
 saveLearningProgress(progress)
 ```
@@ -217,7 +227,7 @@ Eigenschaften:
 - vollständige lokale Nutzbarkeit des jeweiligen MVP-Moduls;
 - keine Fehlermeldung allein wegen einer fehlenden Webhook-Konfiguration.
 
-### Geplante lokale Module der Reihe v0.2.x
+### Lokale Module der Reihe v0.2.x
 
 Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
 Alle Datenzugriffe bleiben hinter Modulservices und Storage-Adaptern. Erst
@@ -244,20 +254,58 @@ sind selbst erstellte Textkarten innerhalb genau eines Kapitels. Course, Unit,
 normalisierte Knotentypen, `parentId` und `isTrackable` gehören nicht zum
 Vertrag.
 
+Der vollständige Zielpfad für lokale LearningHub-Inhalte lautet:
+
+```text
+LearningHubView
+  → LearningHubController
+  → LearningHubService
+  → LearningHubStorage
+  → StorageAdapter
+  → localStorage
+```
+
+Aktuell implementiert sind `createLearningHubService` mit `loadHub`,
+`createModule`, `renameModule`, `addChapter`, `renameChapter`,
+`addLearningNode` und `updateLearningNode` sowie `createLearningHubStorage`
+mit `loadLearningHub` und `saveLearningHub`. `LearningHubView` und
+`LearningHubController` folgen in einem späteren Arbeitspaket; der vollständige
+Zielpfad darf deshalb noch nicht als durchgängiger UI-Fluss dargestellt werden.
+
+Der Service verwendet den persistenten Hub als autoritative Quelle. Jede
+Mutation lädt den aktuellen Zustand, prüft Ziel und Eingaben, erzeugt einen
+neuen Zustand ohne Mutation des geladenen Hubs, validiert den vollständigen
+Schema-2-Vertrag und speichert genau einmal. `createModule` legt ein Modul und
+sein erstes Kapitel atomar an, weil ein persistierbares LearningModule niemals
+ohne Kapitel gespeichert werden darf. Neue IDs entstehen ausschließlich im
+Service; neue Positionen werden robust hinter der höchsten vorhandenen
+Geschwisterposition vergeben.
+
 Kapitelabschluss und Fortschritt werden später getrennt von der Inhaltsstruktur
 modelliert. Modulfortschritt wird dann aus abgeschlossenen Kapiteln abgeleitet;
 auch zu 100 Prozent abgeschlossene Module bleiben erhalten und später testbar.
 Fortschritt und Testkompetenz sind getrennte Konzepte. LearningNode-Aktionen
-wie Erstellen, Bearbeiten, Löschen oder Umsortieren sind spätere Controller-
-und UI-Fähigkeiten, keine Datenfelder.
+sind Service-, Controller- und UI-Fähigkeiten, keine Datenfelder. Der aktuelle
+Service unterstützt Hinzufügen und Bearbeiten; Löschen, Archivieren und
+Umsortieren sind noch nicht implementiert.
 
-Diese Foundation implementiert ausschließlich Struktur und Validierung, keine
-UI, Persistenz, Storage- oder Fortschrittslogik. Der öffentliche Demo-Hub trägt
-`dataOrigin: synthetic`, ist tief unveränderlich und enthält ausschließlich
-unabhängig erfundene Inhalte. Private Nutzerdaten tragen `dataOrigin: private`
+Die Schema-2-Foundation definiert weiterhin die Inhaltsstruktur und deren
+Validierung. Die nun implementierten Service- und Storage-Schichten persistieren
+ausschließlich private Schema-2-Inhalte unter dem festen Key
+`goldendawn.learningHub.content.v1`. Ein fehlender Key liefert nur im
+Arbeitsspeicher einen frischen leeren privaten Hub und löst keinen
+Schreibzugriff aus. Der öffentliche Demo-Hub trägt `dataOrigin: synthetic`, ist
+tief unveränderlich und wird weder automatisch importiert noch als privater
+Initialzustand gespeichert. Private Nutzerdaten tragen `dataOrigin: private`
 und bleiben von Repository-Demos und deren Datenquellen getrennt.
 
-Der vorbereitete Testmodus verwendet diesen ausschließlich lokalen Pfad:
+Fortschritt, Notizen und spätere Testversuche benötigen eigene Verträge und
+Storage-Keys. Für LearningHub-Inhalte werden in diesem Schritt weder Löschung,
+Migration noch garantierte Multi-Tab-Synchronisierung oder Transaktionssperren
+eingeführt.
+
+Der weiterhin geplante Testmodus soll diesen ausschließlich lokalen Pfad
+verwenden:
 
 ```text
 LearningHubView
@@ -266,12 +314,13 @@ LearningHubView
   → MockLearningTestProvider
 ```
 
-Der `MockLearningTestProvider` liefert vorbereitete synthetische Fragen
-deterministisch und testbar. Die Oberfläche kennzeichnet den Ablauf sichtbar
-als „Lokaler Mock-Test“ und behauptet weder KI-Auswertung noch Agentenlogik.
-Zunächst sind Single-Choice-, Selbstkontroll- oder andere eindeutig
-auswertbare Aufgaben vorgesehen. Lokale Testversuche dürfen nur über die
-vorgesehenen Service- und Storage-Grenzen gespeichert werden.
+Der noch nicht implementierte `MockLearningTestProvider` soll vorbereitete
+synthetische Fragen deterministisch und testbar liefern. Die spätere Oberfläche
+soll den Ablauf sichtbar als „Lokaler Mock-Test“ kennzeichnen und weder
+KI-Auswertung noch Agentenlogik behaupten. Zunächst sind Single-Choice-,
+Selbstkontroll- oder andere eindeutig auswertbare Aufgaben vorgesehen. Lokale
+Testversuche dürfen nach ihrer späteren Einführung nur über die vorgesehenen
+Service- und Storage-Grenzen gespeichert werden.
 
 Der spätere Zielpfad bleibt:
 
@@ -380,7 +429,8 @@ Fehler werden an der Schicht behandelt, die genügend Kontext dafür besitzt:
 | Fehlerart | Verantwortliche Schicht |
 | --- | --- |
 | Ungültige Formulareingabe | UI oder Modulservice |
-| Beschädigte lokale JSON-Daten | Storage-Adapter |
+| Beschädigte lokale JSON-Daten oder Browser-Storage-Fehler | StorageAdapter |
+| Ungültige lokale Domänendaten oder falsche Datenherkunft | fachliche Storage-Schicht und Modulservice |
 | Netzwerkfehler oder Timeout | Sync-Service |
 | Ungültiger Request-Vertrag | SyncAgent |
 | Fehlerhafte Prüfungsantwort | TestAgent |
@@ -418,8 +468,11 @@ src/
 ├── components/
 ├── modules/
 ├── services/
+│   ├── learningHubService.js
 │   └── syncService.js
 ├── storage/
+│   ├── learningHubStorage.js
+│   └── storageAdapter.js
 ├── contracts/
 ├── data/
 │   └── mock/
@@ -450,7 +503,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | --- | --- |
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
-| `v0.2.1` | Als Nächstes geplant: LearningHub Local MVP mit vorbereitetem lokalem Mock-Testmodus |
+| `v0.2.1` | In Arbeit: Schema-2-Foundation und lokale Inhaltsservice-/Persistenzschichten umgesetzt; UI, Controller und weitere MVP-Bausteine geplant |
 | `v0.2.2` | LichtwaldLog Local MVP ohne Synchronisierung oder Agentenlogik |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
@@ -477,6 +530,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0005](decisions/0005-v1-three-agent-scope.md) | Begrenzung von Version 1 auf drei Agenten | Angenommen |
 | [0006](decisions/0006-learning-catalog-hierarchy-and-nodes.md) | Feste LearningHub-Hierarchie mit normalisierten LearningNodes | Ersetzt |
 | [0007](decisions/0007-user-configured-learning-modules.md) | Nutzerkonfigurierte LearningModules mit trackbaren Kapiteln und LearningNodes | Angenommen |
+| [0008](decisions/0008-learning-hub-local-content-persistence.md) | Lokale LearningHub-Inhaltsverwaltung und -Persistenz | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).

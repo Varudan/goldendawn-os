@@ -4,39 +4,62 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.0 – Local Dashboard MVP abgeschlossen` |
+| Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
+| LearningHub-Persistenznamespace | `v1` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale PromptVault- und LearningHub-Verträge implementiert; Sync-Vertrag als Zielzustand dokumentiert |
+| Status | Lokale PromptVault-Verträge sowie LearningHub-Struktur und -Inhaltspersistenz implementiert; Sync-Vertrag als Zielzustand dokumentiert |
 | Letzte Aktualisierung | 2026-07-18 |
 
-Dieses Dokument definiert den implementierten lokalen PromptVault-
-Speichervertrag sowie die maschinenlesbare Sprache zwischen dem
-GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und dem TestAgent. Es
+Dieses Dokument definiert die implementierten lokalen Speicherverträge für
+PromptVault und LearningHub-Inhalte sowie die maschinenlesbare Sprache zwischen
+dem GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und dem TestAgent. Es
 konkretisiert die Grenzen aus `AGENTS.md`, `docs/architecture.md` und
 `docs/security.md`.
 
-Der lokale PromptVault-Vertrag gilt für den aktuellen Stand von `v0.2.0`. Die
-externen Sync- und Agentenverträge beschreiben weiterhin den geplanten
-Zielzustand späterer Versionen. Solange eine externe Aktion noch nicht
-implementiert ist, muss sie in UI und Dokumentation als geplant gekennzeichnet
-bleiben.
+Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
+In `v0.2.1` sind die LearningHub-Schema-2-Foundation und die lokale
+Inhaltspersistenz implementiert; der vollständige LearningHub Local MVP ist
+noch in Arbeit. Die externen Sync- und Agentenverträge beschreiben weiterhin
+den geplanten Zielzustand späterer Versionen. Solange eine externe Aktion noch
+nicht implementiert ist, muss sie in UI und Dokumentation als geplant
+gekennzeichnet bleiben.
 
 ## Vertragsgrenzen der lokalen Module v0.2.1 und v0.2.2
 
 Die lokalen Module `v0.2.1` und `v0.2.2` erweitern die externe
 Aktions-Allowlist dieses Dokuments nicht. Der LearningHub-Schema-2-Vertrag ist
-ein rein interner Datenvertrag und führt weder externe Aktionen noch einen
-Storage-Key oder ein Storage-Schema ein. Die nachfolgenden
-`learningTest.*`-Verträge bleiben
+ein rein interner Datenvertrag und führt keine externe Aktion ein. Seine lokale
+Inhaltspersistenz verwendet den festen Namespace
+`goldendawn.learningHub.content.v1`; das `v1` im Key ist keine Schemaversion,
+und der gespeicherte Inhaltsvertrag bleibt bei `schemaVersion: 2`. Die
+nachfolgenden `learningTest.*`-Verträge bleiben
 ausdrücklich ein Zielzustand für `v0.5.0`; die internen `DataAgent`-Verträge
 sind Zielzustände für `v0.4.0` und, im Lernfluss, `v0.5.0`.
 
 ### v0.2.1 – LearningHub Local MVP
 
-Der geplante LearningHub-Datenfluss bleibt vollständig lokal:
+Der vollständige Zielpfad für die lokale Inhaltsverwaltung bleibt vollständig
+lokal:
+
+```text
+LearningHubView
+  → LearningHubController
+  → LearningHubService
+  → LearningHubStorage
+  → StorageAdapter
+  → localStorage
+```
+
+Aktuell implementiert sind `createLearningHubService` mit `loadHub`,
+`createModule`, `renameModule`, `addChapter`, `renameChapter`,
+`addLearningNode` und `updateLearningNode` sowie `createLearningHubStorage`
+mit `loadLearningHub` und `saveLearningHub`. `LearningHubView` und
+`LearningHubController` folgen später.
+
+Davon getrennt bleibt der lokale Mock-Testfluss geplant:
 
 ```text
 LearningHubView
@@ -45,11 +68,12 @@ LearningHubView
   → MockLearningTestProvider
 ```
 
-Der `MockLearningTestProvider` verwendet vorbereitete synthetische Fragen,
-arbeitet deterministisch und wird sichtbar als „Lokaler Mock-Test“
-gekennzeichnet. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
-`TestAgent` und ist nicht mit den geplanten Aktionen `learningTest.create`,
-`learningTest.evaluate` oder `learningTest.result.get` gleichzusetzen.
+Der noch nicht implementierte `MockLearningTestProvider` soll vorbereitete
+synthetische Fragen verwenden, deterministisch arbeiten und sichtbar als
+„Lokaler Mock-Test“ gekennzeichnet werden. Dieser geplante lokale Ablauf
+verwendet weder `SyncAgent` noch `TestAgent` und ist nicht mit den geplanten
+Aktionen `learningTest.create`, `learningTest.evaluate` oder
+`learningTest.result.get` gleichzusetzen.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -121,9 +145,136 @@ mindestens eines noch keine. Seine Inhalte sind unabhängig erfunden und tragen
 verwenden getrennte Datenquellen. Eine Migration ist nicht erforderlich, weil
 keine LearningHub-Nutzerdaten nach Schema 1 persistiert wurden.
 
-Diese Foundation definiert weder UI noch Persistenz oder Storage. Lokale
-Notizen, Fortschritt und Mock-Testversuche benötigen später eigene Service-,
-Storage- und Datenverträge.
+Schema 2 bleibt ein reiner Inhaltsvertrag. Die lokale Persistenz speichert
+genau diesen Vertrag, ergänzt ihn aber nicht um UI-, Fortschritts-, Notiz- oder
+Testfelder. Diese getrennten Belange benötigen eigene Service-, Storage- und
+Datenverträge.
+
+#### Lokaler LearningHub-Inhaltsspeichervertrag
+
+##### Storage-Key und Versionssemantik
+
+LearningHub-Inhalte verwenden ausschließlich diesen festen, nicht
+nutzergesteuerten Storage-Key:
+
+```text
+goldendawn.learningHub.content.v1
+```
+
+Das `v1` im Storage-Key bezeichnet den Persistenz-Namespace. Es ist weder die
+Schemaversion des gespeicherten Hubs noch ein Hinweis auf eine Schema-1-
+Migration. Der gespeicherte Wert ist unmittelbar ein LearningHub mit
+`schemaVersion: 2`; ein zusätzlicher Storage-Envelope oder eine zweite
+Serialisierungslogik wird nicht eingeführt.
+
+Der Key enthält ausschließlich LearningHub-Inhalte. Kapitelabschluss und
+Fortschritt, Notizen, Zusammenfassungen sowie spätere Testversuche gehören nicht
+in diesen Wert und erhalten eigene Verträge und eigene Storage-Keys. Konkrete
+Keys für diese späteren Daten werden in diesem Schritt nicht vorweggenommen.
+
+`dataOrigin` klassifiziert die Herkunft als `synthetic` oder `private`. Das Feld
+ist keine Verschlüsselungs-, Authentifizierungs- oder Sicherheitsfunktion.
+
+##### Initialzustand und Demo-Trennung
+
+Fehlt der Storage-Key, liefert das Laden im Arbeitsspeicher einen neuen leeren
+privaten Hub:
+
+```json
+{
+  "schemaVersion": 2,
+  "dataOrigin": "private",
+  "modules": []
+}
+```
+
+Dieser reine Lesevorgang schreibt nichts. Erst eine erfolgreiche fachliche
+Mutation persistiert den vollständigen neuen Hub. Die synthetischen Demo-Daten
+aus `learningHubDemo.js` werden weder automatisch importiert noch als privater
+Initialzustand gespeichert. Ein bewusst leerer privater Hub bleibt damit von
+der öffentlichen Demo-Datenquelle getrennt.
+
+Fehlende Daten sind ausdrücklich von ungültigem JSON, ungültigen Schema-Daten,
+einer falschen Datenherkunft und Adapterfehlern zu unterscheiden. Beschädigte
+oder ungültige gespeicherte Daten werden nicht automatisch gelöscht,
+überschrieben oder durch den leeren privaten Initialzustand ersetzt. Es wird
+keine Migration für nicht vorhandene Schema-1-Nutzerdaten erfunden.
+
+##### LearningHubStorage
+
+`createLearningHubStorage` erhält den gemeinsamen `StorageAdapter` per
+Dependency Injection und stellt ausschließlich `loadLearningHub` und
+`saveLearningHub` bereit. Beide Operationen verwenden nur den festen
+LearningHub-Key.
+
+Geladene und zu speichernde Werte werden vollständig mit
+`validateLearningHub` validiert. Der private Persistenzpfad verlangt zusätzlich
+`dataOrigin: 'private'`. Der Storage unterscheidet einen fehlenden Key von
+beschädigten oder ungültigen Daten und von technischen Lese-, Schreib-,
+Verfügbarkeits- und Quota-Fehlern. Technische Fehler werden in stabile lokale
+Fehlerergebnisse übersetzt; rohe `DOMException`- oder Storage-Objekte und
+private Titel oder LearningNode-Texte werden nicht an höhere Schichten oder
+Logs weitergereicht.
+
+Die JSON-Serialisierung verbleibt beim gemeinsamen `StorageAdapter`.
+`LearningHubStorage` erzeugt keine zweite Serialisierungslogik und führt bei
+Fehlern weder automatische Löschungen noch Reparaturwrites aus.
+
+##### LearningHubService und Mutationen
+
+`createLearningHubService` verwendet den Storage als persistente Quelle und
+stellt diese öffentlichen Operationen bereit:
+
+| Operation | Fachliche Wirkung |
+| --- | --- |
+| `loadHub()` | aktuellen privaten Hub laden oder bei fehlendem Key den unpersistierten leeren Initialzustand liefern |
+| `createModule({ title, firstChapterTitle })` | Modul und erstes Kapitel atomar am Ende der jeweiligen Listen anlegen |
+| `renameModule({ moduleId, title })` | Modultitel ändern und Identität, Position sowie Kapitel erhalten |
+| `addChapter({ moduleId, title })` | Kapitel im angegebenen Modul ergänzen |
+| `renameChapter({ moduleId, chapterId, title })` | Kapiteltitel ändern und Identität, Position sowie LearningNodes erhalten |
+| `addLearningNode({ moduleId, chapterId, title, content })` | Textkarte im angegebenen Kapitel ergänzen |
+| `updateLearningNode({ moduleId, chapterId, learningNodeId, title, content })` | Titel und Inhalt einer Textkarte ändern; Identität und Position erhalten |
+
+Jede Mutation folgt derselben Reihenfolge:
+
+1. aktuellen Hub laden;
+2. Zielzuordnung und Eingaben prüfen;
+3. einen neuen Zustand ohne Mutation des geladenen Hubs oder des
+   Eingabeobjekts erzeugen;
+4. den vollständigen neuen Hub mit `validateLearningHub` validieren;
+5. genau einmal über `saveLearningHub` speichern;
+6. nur nach erfolgreicher Speicherung den aktualisierten Zustand zurückgeben.
+
+Eingabetexte werden vor der fachlichen Prüfung und damit vor der Längenprüfung
+an den Rändern getrimmt. Der `LearningHubService` begrenzt alle Modul-, Kapitel-
+und LearningNode-Titel auf maximal 120 Zeichen sowie LearningNode-Inhalte auf
+maximal 10.000 Zeichen. Leere Titel und leere LearningNode-Inhalte werden vor
+jedem Schreibzugriff abgelehnt. Nicht gefundene oder falsch zugeordnete Modul-,
+Kapitel- und LearningNode-IDs erzeugen kontrollierte Fehler und keinen
+Schreibzugriff.
+
+Diese Werte sind Eingabegrenzen der Anwendungsschicht. Der persistierte
+Inhaltsvertrag bleibt unverändert bei `schemaVersion: 2`; es wird weder ein
+neues Vertragsfeld noch eine Schema-3-Erweiterung eingeführt. Die Grenzen
+reduzieren versehentlich übergroße einzelne Eingaben, ersetzen aber weder die
+kontrollierte Quota-Behandlung noch eine allgemeine Größenbegrenzung des
+vollständigen LearningHubs.
+
+Neue IDs werden ausschließlich im Service über einen injizierbaren Generator
+erzeugt. Sie müssen getrimmt, nicht leer und im gesamten Hub eindeutig sein;
+Kollisionen oder fehlerhafte Generatoren werden mit einer begrenzten Zahl von
+Versuchen behandelt. Bestehende IDs ändern sich bei Mutationen nicht. Neue
+Positionen liegen hinter der höchsten vorhandenen Geschwisterposition und
+werden nicht nur aus der Array-Länge abgeleitet.
+
+`createModule` speichert Modul und erstes Kapitel atomar, sodass zu keinem
+Zeitpunkt ein vertragswidriges Modul ohne Kapitel persistiert wird. Schlägt
+Zielprüfung, Eingabevalidierung, ID-Erzeugung, vollständige Vertragsvalidierung
+oder Speicherung fehl, wird kein teilweise veränderter Hub geschrieben.
+
+Löschen, Archivieren, Umsortieren, Schema-Migrationen und garantierte
+Multi-Tab-Synchronisierung oder Transaktionssperren gehören nicht zu diesem
+Vertrag.
 
 ### v0.2.2 – LichtwaldLog Local MVP
 
@@ -155,7 +306,7 @@ Der Vertrag soll:
 ### Externe Aktionen des Dashboards
 
 Die folgenden Aktionen gehören zum Zielvertrag für spätere Versionen. Sie sind
-in `v0.2.0` noch nicht implementiert.
+auch im aktuellen Arbeitsstand von `v0.2.1` noch nicht implementiert.
 
 | Aktion | Zweck | Primärer Handler | Schreibend |
 | --- | --- | --- | --- |
