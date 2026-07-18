@@ -139,9 +139,11 @@ Controller greifen nicht direkt auf `localStorage` zu.
 
 #### LearningHub Local MVP in v0.2.1
 
-- Die aktuell implementierte lokale Inhaltspersistenz verläuft ausschließlich
-  über `LearningHubService`, `LearningHubStorage` und den gemeinsamen
-  `StorageAdapter`. Sie verwendet den festen, nicht nutzerkontrollierten Key
+- Der implementierte lokale Inhaltsfluss verläuft ausschließlich über
+  `LearningHubView`, `LearningHubController`, `LearningHubService`,
+  `LearningHubStorage` und den gemeinsamen `StorageAdapter`. View und
+  Controller greifen nicht direkt auf `localStorage` zu. Der Storage verwendet
+  den festen, nicht nutzerkontrollierten Key
   `goldendawn.learningHub.content.v1` und akzeptiert im privaten Speicherpfad
   nur Hubs mit `dataOrigin: private`.
 - Private LearningModules, Kapitel und LearningNodes sowie spätere Lernnotizen,
@@ -165,6 +167,10 @@ Controller greifen nicht direkt auf `localStorage` zu.
 - Fehlermeldungen und Logs enthalten keine privaten Titel, LearningNode-Texte
   oder vollständigen Payloads. Rohe `DOMException`- und Storage-Fehler werden
   nicht unkontrolliert an höhere Schichten weitergereicht.
+- Die Oberfläche weist sichtbar darauf hin, dass Inhalte nur im aktuellen
+  Browserprofil ohne Cloud-Sicherung oder geräteübergreifende Synchronisierung
+  liegen und von anderen Skripten derselben Origin grundsätzlich aus dem
+  unverschlüsselten `localStorage` gelesen werden könnten.
 - Schema 2 speichert keine Abschluss- oder Fortschrittsdaten. Späterer
   Kapitelabschluss, daraus abgeleiteter Modulfortschritt und Testkompetenz
   bleiben voneinander getrennte Konzepte.
@@ -181,9 +187,9 @@ Controller greifen nicht direkt auf `localStorage` zu.
 
 Schema 2 bleibt der verbindliche interne Inhalts- und Validierungsvertrag. Der
 Storage-Key `v1` bezeichnet davon getrennt nur den Persistenz-Namespace. Die
-Service- und Storage-Schichten für private Inhalte sind implementiert;
-LearningHub-UI, Controller, Fortschrittslogik, Notizen und Testversuche sind in
-diesem Arbeitspaket noch nicht umgesetzt.
+View, Controller, Service und Storage für private Inhalte sind implementiert;
+Fortschrittslogik, Notizen, Zusammenfassungen und Testversuche sind in diesem
+Arbeitspaket noch nicht umgesetzt.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
@@ -199,9 +205,9 @@ diesem Arbeitspaket noch nicht umgesetzt.
 ### Sichere Darstellung
 
 - Unvertrauenswürdige Texte werden standardmäßig über `textContent` dargestellt.
-- LearningNode-Titel und -Inhalte sind nicht vertrauenswürdiger Klartext. Eine
-  spätere LearningHub-UI muss sie über `textContent` oder sichere DOM-Erzeugung
-  ausgeben; in diesem Arbeitspaket findet noch kein Rendering statt.
+- LearningModule-, Kapitel- und LearningNode-Titel sowie LearningNode-Inhalte
+  sind nicht vertrauenswürdiger Klartext. Die implementierte LearningHub-View
+  gibt sie über `textContent`, `createTextNode` und sichere DOM-Erzeugung aus.
 - `innerHTML` wird für Nutzereingaben und Agentenoutput nicht verwendet.
 - Markdown oder Rich Text benötigt vor HTML-Ausgabe eine dokumentierte
   Sanitization-Lösung.
@@ -452,7 +458,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | --- | --- |
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
-| `v0.2.1` | validierte private Inhaltspersistenz ohne Demo-Seeding; später lokale Notizen und Testversuche, ausschließlich synthetische Demo-Daten und deterministischer lokaler Mock-Test |
+| `v0.2.1` | sichere lokale Inhalts-UI und validierte private Persistenz ohne Demo-Seeding; später Notizen, Testversuche und deterministischer lokaler Mock-Test |
 | `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
 | `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |

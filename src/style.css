@@ -9,6 +9,9 @@
   --gold: #d5ad5c;
   --gold-soft: #f0d696;
   --green: #73b68e;
+  --danger: #d98275;
+  --danger-soft: #f3b7ad;
+  --danger-surface: rgb(117 52 45 / 18%);
   --s1: .375rem;
   --s2: .75rem;
   --s3: 1rem;
@@ -43,7 +46,7 @@ h1, h2, h3, p {
 
 h1 {
   margin-top: var(--s1);
-  font-size: clamp(1.75rem,3vw,2.6rem);
+  font-size: clamp(1.75rem,2.6vw,2.25rem);
   line-height: 1.12;
   letter-spacing: -.035em
 }
@@ -62,17 +65,84 @@ p {
   line-height: 1.65
 }
 
+.form-control {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: .8rem .9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  background: rgb(6 15 11 / 48%);
+  font: inherit;
+  font-size: .9rem;
+  line-height: 1.55;
+}
+
+textarea.form-control {
+  resize: vertical;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.form-control:hover {
+  border-color: #52665b;
+}
+
+.form-control[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.button {
+  min-height: 2.55rem;
+  padding: .65rem .9rem;
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font: inherit;
+  font-size: .78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.button:disabled {
+  cursor: wait;
+  opacity: .58;
+}
+
+.button--secondary {
+  border-color: var(--border);
+  color: var(--text);
+  background: #12231c;
+}
+
+.button--secondary:hover {
+  border-color: #52665b;
+  background: #192d24;
+}
+
+.button--primary {
+  border-color: #e5c77f;
+  color: #102019;
+  background: var(--gold-soft);
+}
+
+.button--primary:hover {
+  border-color: #f6dfa6;
+  background: #f6dfa6;
+}
+
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 17rem minmax(0,1fr)
+  grid-template-columns: 15.5rem minmax(0,1fr)
 }
 
 .sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
-  padding: var(--s5) var(--s4);
+  padding: var(--s4) 1.25rem;
   display: flex;
   flex-direction: column;
   border-right: 1px solid var(--border);
@@ -84,6 +154,10 @@ p {
   display: flex;
   align-items: center;
   gap: var(--s3)
+}
+
+.brand > div {
+  min-width: 0
 }
 
 .brand-mark {
@@ -105,16 +179,28 @@ p {
 
 .brand strong {
   font-family: Georgia,serif;
-  font-size: 1.1rem;
-  color: var(--gold-soft)
+  color: var(--gold-soft);
+  font-size: 1.05rem;
+  white-space: nowrap
 }
 
 .brand div span {
-  margin-top: .15rem;
-  color: var(--muted);
-  font-size: .75rem;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: .25rem;
+  padding: .2rem .4rem;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgb(213 173 92 / 40%);
+  border-radius: 999px;
+  color: #b9dfc7;
+  background: rgb(39 88 59 / 68%);
+  font-size: .6rem;
+  font-weight: 700;
+  line-height: 1;
   letter-spacing: .08em;
-  text-transform: uppercase
+  text-transform: uppercase;
+  white-space: nowrap
 }
 
 .brand .mobile-mode-status {
@@ -214,7 +300,7 @@ nav ul {
 .main-content {
   width: min(100%,92rem);
   margin: 0 auto;
-  padding: var(--s5) clamp(1.25rem,4vw,4rem) var(--s6)
+  padding: var(--s4) clamp(1.25rem,3vw,3rem) var(--s5)
 }
 
 .topbar, .section-heading, .module-card__heading, .progress-meta {
@@ -231,11 +317,11 @@ nav ul {
 }
 
 .focus-panel {
-  margin-top: var(--s5);
-  padding: clamp(1.5rem,4vw,3rem);
+  margin-top: var(--s4);
+  padding: clamp(1.25rem,2.5vw,2.25rem);
   display: grid;
-  grid-template-columns: minmax(0,1.2fr) minmax(17rem,.8fr);
-  gap: var(--s6);
+  grid-template-columns: minmax(0,1.2fr) minmax(15rem,.8fr);
+  gap: 2.25rem;
   align-items: center;
   border: 1px solid #3d503f;
   border-radius: var(--r-lg);
@@ -244,19 +330,19 @@ nav ul {
 }
 
 .focus-panel h2 {
-  margin: var(--s2) 0;
+  margin: .5rem 0;
   color: var(--gold-soft)
 }
 
 .phase-progress {
-  padding: var(--s4);
+  padding: 1.125rem;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: rgb(6 15 11 / 38%)
 }
 
 .progress-meta {
-  margin-bottom: var(--s3);
+  margin-bottom: var(--s2);
   font-size: .78rem;
   color: var(--muted)
 }
@@ -287,12 +373,12 @@ nav ul {
 }
 
 .modules-section {
-  margin-top: var(--s6)
+  margin-top: var(--s5)
 }
 
 .section-heading {
   align-items: end;
-  margin-bottom: var(--s4)
+  margin-bottom: var(--s3)
 }
 
 .section-heading h2 {
@@ -310,8 +396,8 @@ nav ul {
 }
 
 .module-card {
-  min-height: 10rem;
-  padding: var(--s4);
+  min-height: 8.5rem;
+  padding: 1.25rem;
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: rgb(16 32 25 / 82%)
@@ -323,7 +409,7 @@ nav ul {
 }
 
 .module-card p {
-  margin-top: var(--s4);
+  margin-top: var(--s3);
   font-size: .85rem
 }
 
@@ -355,12 +441,12 @@ nav ul {
 }
 
 .milestone {
-  margin-top: var(--s5);
-  padding: var(--s4);
+  margin-top: var(--s3);
+  padding: .875rem var(--s3);
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0,1fr) auto;
   align-items: center;
-  gap: var(--s4);
+  gap: .875rem;
   border: 1px solid #554b33;
   border-radius: var(--r-md);
   background: #171e17
@@ -369,21 +455,26 @@ nav ul {
 .milestone-icon {
   display: grid;
   place-items: center;
-  width: 2.8rem;
-  height: 2.8rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 50%;
   background: rgb(213 173 92 / 12%);
   color: var(--gold-soft);
-  font-size: 1.25rem
+  font-size: 1rem
+}
+
+.milestone .eyebrow {
+  font-size: .62rem
 }
 
 .milestone h2 {
-  margin: .2rem 0;
-  font-size: 1.15rem
+  margin: .1rem 0;
+  font-size: 1rem
 }
 
 .milestone p {
-  font-size: .83rem
+  font-size: .83rem;
+  line-height: 1.5
 }
 
 :focus-visible {
@@ -428,6 +519,13 @@ nav ul {
     width: max-content
   }
 
+  nav[aria-label='Hauptnavigation'] ul::before,
+  nav[aria-label='Hauptnavigation'] ul::after {
+    content: '';
+    width: .5rem;
+    flex: none
+  }
+
   .nav-item {
     border: 1px solid var(--border);
     white-space: nowrap
@@ -448,6 +546,7 @@ nav ul {
 }
 
 @media(max-width:620px) {
+
   .brand {
     gap: var(--s2)
   }
@@ -516,7 +615,7 @@ nav ul {
   }
 
   .milestone {
-    grid-template-columns: auto 1fr
+    grid-template-columns: auto minmax(0,1fr)
   }
 
   .milestone>.status {

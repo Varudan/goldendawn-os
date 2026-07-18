@@ -1,14 +1,24 @@
 import './style.css'
 import './modules/prompt-vault/promptVault.css'
+import './modules/learning-hub/learningHub.css'
 
+import { createLearningHubController } from './modules/learning-hub/learningHubController.js'
+import { createLearningHubView } from './modules/learning-hub/learningHubView.js'
 import { createPromptVaultController } from './modules/prompt-vault/promptVaultController.js'
 import { createPromptVaultView } from './modules/prompt-vault/promptVaultView.js'
+import { createLearningHubService } from './services/learningHubService.js'
 import { createPromptService } from './services/promptService.js'
+import { createLearningHubStorage } from './storage/learningHubStorage.js'
 import { createPromptStorage } from './storage/promptStorage.js'
 import { createStorageAdapter } from './storage/storageAdapter.js'
+import {
+  ensureNavigationItemVisible,
+  findActiveNavigationElements,
+} from './navigationVisibility.js'
 
 const VIEW_COMMAND_CENTER = 'command-center'
 const VIEW_PROMPT_VAULT = 'prompt-vault'
+const VIEW_LEARNING_HUB = 'learning-hub'
 
 const modules = [
   {
@@ -30,11 +40,14 @@ const modules = [
     isNavigable: true,
   },
   {
-    id: 'learning-hub',
+    id: VIEW_LEARNING_HUB,
     name: 'LearningHub',
-    description: 'Bekannte Kursstruktur und Lernfortschritt lokal abbilden',
-    status: 'Geplant',
-    statusClass: 'planned',
+    description:
+      'Eigene Lernmodule, Kapitel und LearningNodes lokal verwalten',
+    status: 'In Arbeit',
+    statusClass: 'next',
+    navigationState: 'In Arbeit',
+    isNavigable: true,
   },
   {
     id: 'agent-hub',
@@ -172,6 +185,13 @@ const promptVaultController = createPromptVaultController({
   promptService,
   promptVaultView,
 })
+const learningHubStorage = createLearningHubStorage(storageAdapter)
+const learningHubService = createLearningHubService({ learningHubStorage })
+const learningHubView = createLearningHubView(viewOutlet)
+const learningHubController = createLearningHubController({
+  learningHubService,
+  learningHubView,
+})
 
 function renderCommandCenter() {
   viewOutlet.innerHTML = `
@@ -189,27 +209,27 @@ function renderCommandCenter() {
     <section class="focus-panel" aria-labelledby="focus-title">
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
-        <h2 id="focus-title">v0.2.0 – Local Dashboard MVP abgeschlossen</h2>
-        <p>Command Center und PromptVault sind lokal nutzbar; alle fünf geplanten PromptVault-Ausbauschritte sind umgesetzt. Die Daten bleiben ausschließlich im aktuellen Browserprofil; Synchronisierung und automatische Cloud-Sicherung sind nicht umgesetzt.</p>
+        <h2 id="focus-title">v0.2.1 – LearningHub Local MVP in Arbeit</h2>
+        <p>Command Center und PromptVault bleiben lokal nutzbar. Im LearningHub ist die private Inhaltsverwaltung für Module, Kapitel und LearningNodes jetzt bedienbar; Fortschritt, Notizen, Zusammenfassungen und der lokale Mock-Test folgen in weiteren Arbeitsschritten.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
-          <span>Fortschritt der Phase</span>
-          <strong>5 von 5 Ausbauschritten</strong>
+          <span>Aktueller Teilstand</span>
+          <strong>Lokale Inhalte bedienbar</strong>
         </div>
-        <div
-          class="progress-track"
-          role="progressbar"
-          aria-label="Fortschritt der aktuellen Phase"
-          aria-valuemin="0"
-          aria-valuemax="5"
-          aria-valuenow="5"
-        >
-          <span></span>
-        </div>
-        <small>Command Center aktiv · PromptVault als lokales MVP abgeschlossen · 5 von 5 PromptVault-Ausbauschritten abgeschlossen</small>
+        <small>LearningHub-Inhalte bleiben im aktuellen Browserprofil. Es gibt noch keine Cloud-Sicherung oder geräteübergreifende Synchronisierung.</small>
       </div>
     </section>
+
+    <aside class="milestone" aria-labelledby="milestone-title">
+      <span class="milestone-icon" aria-hidden="true">→</span>
+      <div>
+        <span class="eyebrow">Nächster Ausbauschritt</span>
+        <h2 id="milestone-title">Kapitelabschluss und Lernfortschritt</h2>
+        <p>Als Nächstes ergänzen wir Kapitelabschluss und daraus abgeleiteten Modulfortschritt. Notizen, Zusammenfassungen und der lokale Mock-Test folgen in getrennten Schritten.</p>
+      </div>
+      <span class="status status--next">Als Nächstes</span>
+    </aside>
 
     <section class="modules-section" aria-labelledby="modules-title">
       <div class="section-heading">
@@ -223,17 +243,38 @@ function renderCommandCenter() {
         ${moduleCards}
       </div>
     </section>
-
-    <aside class="milestone" aria-labelledby="milestone-title">
-      <span class="milestone-icon" aria-hidden="true">→</span>
-      <div>
-        <span class="eyebrow">Nächster Meilenstein</span>
-        <h2 id="milestone-title">v0.2.1 – LearningHub Local MVP</h2>
-        <p>Geplant sind nutzerkonfigurierte Lernmodule mit trackbaren Kapiteln, eigenen LearningNodes und lokalem Fortschritt sowie ein deterministischer Mock-Test ohne KI und mit synthetischen Demo-Daten.</p>
-      </div>
-      <span class="status status--planned">Als Nächstes</span>
-    </aside>
   `
+}
+
+let pendingNavigationVisibilityFrame = null
+
+function scheduleActiveNavigationVisibility() {
+  const runVisibilityCheck = () => {
+    pendingNavigationVisibilityFrame = null
+    const { navigationElement, activeItem } =
+      findActiveNavigationElements(document)
+    const prefersReducedMotion =
+      typeof globalThis.matchMedia === 'function' &&
+      globalThis.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+    ensureNavigationItemVisible(navigationElement, activeItem, {
+      prefersReducedMotion,
+    })
+  }
+
+  if (
+    pendingNavigationVisibilityFrame !== null &&
+    typeof globalThis.cancelAnimationFrame === 'function'
+  ) {
+    globalThis.cancelAnimationFrame(pendingNavigationVisibilityFrame)
+  }
+
+  if (typeof globalThis.requestAnimationFrame === 'function') {
+    pendingNavigationVisibilityFrame =
+      globalThis.requestAnimationFrame(runVisibilityCheck)
+  } else {
+    runVisibilityCheck()
+  }
 }
 
 function updateNavigation(activeView) {
@@ -247,6 +288,8 @@ function updateNavigation(activeView) {
       button.removeAttribute('aria-current')
     }
   })
+
+  scheduleActiveNavigationVisibility()
 }
 
 function focusViewHeading() {
@@ -265,18 +308,22 @@ function showView(viewName, { moveFocus = false } = {}) {
   }
 
   promptVaultController.close()
+  learningHubController.close()
   activeView = viewName
   updateNavigation(activeView)
 
   if (activeView === VIEW_PROMPT_VAULT) {
     document.title = 'GoldenDawn OS – PromptVault'
     promptVaultController.open()
+  } else if (activeView === VIEW_LEARNING_HUB) {
+    document.title = 'GoldenDawn OS – LearningHub'
+    learningHubController.open()
   } else {
     document.title = 'GoldenDawn OS – Command Center'
     renderCommandCenter()
   }
 
-  if (moveFocus && activeView !== VIEW_PROMPT_VAULT) {
+  if (moveFocus && activeView === VIEW_COMMAND_CENTER) {
     focusViewHeading()
   }
 }
