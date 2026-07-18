@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhaltspersistenz implementiert, MVP noch nicht vollständig |
+| Status | Verbindliche Zielarchitektur; lokaler LearningHub-Inhaltsfluss bis zur UI implementiert, MVP noch nicht vollständig |
 | Letzte Aktualisierung | 2026-07-18 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -254,7 +254,7 @@ sind selbst erstellte Textkarten innerhalb genau eines Kapitels. Course, Unit,
 normalisierte Knotentypen, `parentId` und `isTrackable` gehören nicht zum
 Vertrag.
 
-Der vollständige Zielpfad für lokale LearningHub-Inhalte lautet:
+Der implementierte vollständige Pfad für lokale LearningHub-Inhalte lautet:
 
 ```text
 LearningHubView
@@ -265,12 +265,15 @@ LearningHubView
   → localStorage
 ```
 
-Aktuell implementiert sind `createLearningHubService` mit `loadHub`,
+`LearningHubView` rendert Lade-, Leer-, Inhalts-, Mutations-, Erfolgs- und
+Fehlerzustände mit sicheren DOM-Text-APIs. `LearningHubController` hält
+Modulauswahl, geöffnete Kapitel, Node-Auswahl und Formularzustände flüchtig,
+fängt Servicefehler kontrolliert ab und reicht persistente Mutationen
+ausschließlich an `LearningHubService` weiter. Der Service stellt `loadHub`,
 `createModule`, `renameModule`, `addChapter`, `renameChapter`,
-`addLearningNode` und `updateLearningNode` sowie `createLearningHubStorage`
-mit `loadLearningHub` und `saveLearningHub`. `LearningHubView` und
-`LearningHubController` folgen in einem späteren Arbeitspaket; der vollständige
-Zielpfad darf deshalb noch nicht als durchgängiger UI-Fluss dargestellt werden.
+`addLearningNode` und `updateLearningNode` bereit; `LearningHubStorage`
+kapselt `loadLearningHub` und `saveLearningHub`. View und Controller greifen
+nicht direkt auf `localStorage` zu.
 
 Der Service verwendet den persistenten Hub als autoritative Quelle. Jede
 Mutation lädt den aktuellen Zustand, prüft Ziel und Eingaben, erzeugt einen
@@ -289,9 +292,10 @@ sind Service-, Controller- und UI-Fähigkeiten, keine Datenfelder. Der aktuelle
 Service unterstützt Hinzufügen und Bearbeiten; Löschen, Archivieren und
 Umsortieren sind noch nicht implementiert.
 
-Die Schema-2-Foundation definiert weiterhin die Inhaltsstruktur und deren
-Validierung. Die nun implementierten Service- und Storage-Schichten persistieren
-ausschließlich private Schema-2-Inhalte unter dem festen Key
+Die Schema-2-Foundation definiert weiterhin nur die Inhaltsstruktur und deren
+Validierung. Die getrennt implementierten View-, Controller-, Service- und
+Storage-Schichten machen private Schema-2-Inhalte bedienbar und persistieren
+sie unter dem festen Key
 `goldendawn.learningHub.content.v1`. Ein fehlender Key liefert nur im
 Arbeitsspeicher einen frischen leeren privaten Hub und löst keinen
 Schreibzugriff aus. Der öffentliche Demo-Hub trägt `dataOrigin: synthetic`, ist
@@ -503,7 +507,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | --- | --- |
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
-| `v0.2.1` | In Arbeit: Schema-2-Foundation und lokale Inhaltsservice-/Persistenzschichten umgesetzt; UI, Controller und weitere MVP-Bausteine geplant |
+| `v0.2.1` | In Arbeit: Schema 2, lokaler Inhaltsservice, Persistenz, Controller und Inhalts-UI umgesetzt; weitere MVP-Bausteine geplant |
 | `v0.2.2` | LichtwaldLog Local MVP ohne Synchronisierung oder Agentenlogik |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |

@@ -8,19 +8,22 @@
 
 ## Project status
 
-**Current phase:** `v0.2.0 — Local Dashboard MVP complete`
+**Current phase:** `v0.2.1 — LearningHub Local MVP in progress`
 
-The `v0.2.0` implementation is technically complete and verified as a release
-candidate with the automated test suite and production build. The responsive
+The `v0.2.0` implementation is complete, verified with the automated test
+suite and production build, and published as tag `v0.2.0` with its
+corresponding GitHub Release. The responsive
 Command Center shell is implemented on top of the Vite and Vanilla JavaScript
 foundation. PromptVault supports local viewing, creation, editing, permanent
 deletion, search, category filters, persistent favorites, immutable version
-history, and restoration as a new version. No published `v0.2.0` tag or release
-is claimed; those Git and release steps remain manual.
+history, and restoration as a new version. Git actions for future releases
+remain entirely manual with Jan.
 
-LearningHub `v0.2.1` is the next planned development step. LichtwaldLog
-`v0.2.2` remains planned after it. Neither module is implemented as part of the
-completed `v0.2.0` scope.
+LearningHub `v0.2.1` is now in progress. Its Schema 2 content contract, local
+service and storage path, controller, and private content UI are implemented.
+Progress, notes, summaries, and the deterministic local mock test remain
+planned before the milestone is complete. LichtwaldLog `v0.2.2` follows after
+it and is not implemented yet.
 
 ## Vision
 
@@ -69,7 +72,7 @@ Accepted architecture decisions and their rationale are indexed in
 | --- | --- | --- | --- |
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
-| LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, and deterministic synthetic mock tests | `v0.2.1` | Schema 2 foundation implemented; full local MVP planned |
+| LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, and deterministic synthetic mock tests | `v0.2.1` | Local content UI and persistence implemented; milestone in progress |
 | LichtwaldLog | Local text journal with search and filters | `v0.2.2` | Planned; not implemented |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
@@ -123,16 +126,34 @@ devices, and can be lost when local browser data is cleared. Import/export,
 webhooks, synchronization, Airtable, a backend, agent logic, user accounts, and
 automatic cloud backup are not implemented.
 
-### LearningHub Local MVP (planned for v0.2.1)
+### LearningHub Local MVP (in progress for v0.2.1)
 
 LearningHub is a bounded local learning module, not a general-purpose LMS. Its
 implemented Schema 2 foundation uses the hierarchy
 `LearningHub → LearningModule → LearningChapter → LearningNode`. A new hub may
 contain no modules, while every persisted module contains at least one chapter.
 Chapters are implicitly trackable and may contain no LearningNodes;
-LearningNodes are user-created text cards. Progress, UI, storage, persistence,
-and test logic are not part of this structure contract. Private learning data
-and independently invented synthetic portfolio data remain strictly separate.
+LearningNodes are user-created text cards. The separate local UI now supports
+creating and renaming modules and chapters as well as creating and editing
+LearningNodes. It uses this implemented data flow:
+
+```text
+LearningHubView
+  → LearningHubController
+  → LearningHubService
+  → LearningHubStorage
+  → StorageAdapter
+  → localStorage
+```
+
+The view and controller never access `localStorage` directly. Selection, open
+accordions, and form state remain transient; persistent content stays at
+`schemaVersion: 2` under `goldendawn.learningHub.content.v1`. User text is
+rendered through safe DOM text APIs. Content remains in the current browser
+profile without cloud backup or cross-device synchronization, and same-origin
+scripts could read the unencrypted local storage. Private learning data and
+independently invented synthetic portfolio data remain strictly separate.
+Progress, notes, summaries, and test logic are not part of this content step.
 
 The planned local test path is:
 
@@ -202,8 +223,8 @@ Detailed milestones and acceptance criteria are maintained in
 | Version | Milestone | Outcome |
 | --- | --- | --- |
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
-| v0.2.0 | Command Center and PromptVault Local MVP | Complete and verified as a release candidate |
-| v0.2.1 | LearningHub Local MVP | Schema 2 structure foundation implemented; local UI, separate progress model, persistence, and deterministic synthetic mock tests remain planned |
+| v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
+| v0.2.1 | LearningHub Local MVP | Local Schema 2 content UI and persistence implemented; progress, notes, summaries, and deterministic mock tests remain planned |
 | v0.2.2 | LichtwaldLog Local MVP | Planned local text-entry CRUD, search, and filters |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
@@ -244,14 +265,14 @@ process are documented in [the Git workflow guide](docs/git-workflows.md).
 
 ## Verification
 
-The completed `v0.2.0` release candidate was verified with:
+The published `v0.2.0` release was verified with:
 
 ```bash
 npm test
 npm run build
 ```
 
-Both commands complete successfully for the documented release candidate.
+Both commands completed successfully for the published release.
 
 ## Security and privacy
 
@@ -269,8 +290,8 @@ Detailed security rules are maintained in
 - **2026-07-11:** GoldenDawn OS started as a clean, modular repository based on
   lessons learned from the original KI-Manager-Dashboard prototype.
 - **2026-07-15:** The `v0.2.0` Local Dashboard MVP was completed and verified
-  with its automated tests and production build. No published tag or release is
-  claimed; those steps remain manual.
+  with its automated tests and production build, and published as tag `v0.2.0`
+  with the corresponding GitHub Release.
 
 ## Author and collaboration
 

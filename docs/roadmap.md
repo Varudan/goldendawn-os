@@ -7,7 +7,7 @@
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | In Arbeit; Schema-2-Foundation und lokale LearningHub-Inhaltsservice-/Persistenzschichten umgesetzt |
+| Status | In Arbeit; Schema 2 sowie lokaler LearningHub-Inhaltsfluss bis zur UI umgesetzt |
 | Letzte Aktualisierung | 2026-07-18 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
@@ -27,8 +27,9 @@ nicht starre Kalendertermine.
 - Version 1 bleibt auf `SyncAgent`, `DataAgent` und `TestAgent` begrenzt.
 - Neue Abhängigkeiten, Agenten oder Infrastruktur benötigen eine dokumentierte
   Entscheidung.
-- Git-Commits, Pushes, Pull Requests, Merges, Tags und Releases bleiben manuell
-  bei Jan.
+- Git-Aktionen einschließlich Commits, Pushes, Pull Requests, Merges sowie
+  aller Tags und Releases bleiben auch für zukünftige Releases vollständig
+  manuell bei Jan.
 - Dokumentation beschreibt immer den tatsächlichen Stand und kennzeichnet
   geplante Funktionen ausdrücklich.
 
@@ -46,7 +47,7 @@ nicht starre Kalendertermine.
 | Version | Schwerpunkt | Ergebnis | Status |
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
-| `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert und geprüft | ✅ |
+| `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Nutzerkonfigurierte Inhaltsverwaltung, später separater Fortschritt und lokaler Mock-Test | 🟡 |
 | `v0.2.2` | LichtwaldLog Local MVP | Lokale Reflexions- und Erkenntniseinträge | ⬜ |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
@@ -171,9 +172,9 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
 - Private Lerninhalte bleiben außerhalb des Repositorys. Die Demo-Daten sind
   unabhängig erfunden, synthetisch und vollständig tief eingefroren.
 - Die abgeschlossene Schema-2-Foundation selbst enthält keine UI, Persistenz,
-  Storage-, Fortschritts- oder Testlogik. Das nachfolgende Arbeitspaket ergänzt
-  Service und Storage für private lokale Inhalte, ohne diese Vertragsgrenzen zu
-  vermischen.
+  Storage-, Fortschritts- oder Testlogik. Getrennte nachfolgende Arbeitspakete
+  haben Service, Storage, Controller und Inhalts-UI ergänzt, ohne diese
+  Vertragsgrenzen zu vermischen.
 
 ### Umfang des LearningHub Local MVP
 
@@ -191,7 +192,11 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
 - ✅ Immutable und atomare Inhaltsmutationen mit vollständiger Schema-2-
   Validierung, injizierbarer begrenzter ID-Erzeugung und kontrollierten
   Storage-Fehlern automatisiert prüfen.
-- ⬜ Lokale Navigation für nutzerkonfigurierte Module und Kapitel bereitstellen.
+- ✅ `LearningHubController` und sichere lokale Inhalts-UI für Erstellen und
+  Umbenennen von Modulen und Kapiteln sowie Erstellen und Bearbeiten von
+  LearningNodes bereitstellen.
+- ✅ LearningHub in die bestehende Command-Center-Navigation integrieren und
+  Moduldetail, zugängliches Kapitel-Accordion sowie Node-Auswahl anbieten.
 - ⬜ Kapitelabschluss separat speichern und Modulfortschritt daraus ableiten,
   ohne abgeschlossene Module zu entfernen oder Testkompetenz einzumischen.
 - ⬜ Lokale Notizen und Zusammenfassungen hinter den vorgesehenen Service- und
@@ -202,7 +207,8 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
   mit synthetischen, vorbereiteten Fragen verwenden.
 - ⬜ Lokale Testversuche ausschließlich hinter Service- und Storage-Grenzen
   speichern; Views und Controller greifen nicht direkt auf `localStorage` zu.
-- ⬜ Lade-, Leer-, Fehler- und noch-nicht-bekannt-Zustände zugänglich gestalten.
+- ✅ Lade-, Leer-, Inhalts-, Mutations-, Erfolgs- und Fehlerzustände zugänglich
+  gestalten.
 
 Der geplante lokale Mock-Testfluss lautet:
 
@@ -256,10 +262,12 @@ geplant.
 ### Portfolio-Nachweis für v0.2.1
 
 - tief eingefrorener synthetischer Demo-Hub mit zwei Modulen;
-- umfassende Schema-2-Vertragstests sowie lokale Service- und Storage-Tests
-  ohne vorgetäuschte UI- oder Controller-Integration;
+- umfassende Schema-2-Vertrags-, Service- und Storage-Tests sowie Controller-
+  und View-Tests für den durchgängigen lokalen Inhaltsfluss;
 - dokumentierte Persistenzgrenze mit privatem leeren Initialzustand und ohne
   automatisches Demo-Seeding;
+- sichere Textdarstellung HTML-artiger Eingaben, zugängliche Accordions und
+  responsive Inhaltsverwaltung ohne direkte Storage-Zugriffe aus UI-Schichten;
 - später nachvollziehbare Ableitung des Modulfortschritts aus Kapiteln;
 - reproduzierbarer lokaler Mock-Test ohne behauptete KI-Funktion.
 
@@ -531,25 +539,27 @@ Diese Punkte werden erst nach dem Portfolio Release bewertet und priorisiert.
 
 ## Nächster konkreter Schritt
 
-Die Implementierung von `v0.2.0 – Local Dashboard MVP` ist technisch
-abgeschlossen und mit den automatisierten Tests sowie dem Produktions-Build
-geprüft. PromptVault unterstützt lokal Anzeigen, Erstellen, Bearbeiten,
+Die Implementierung von `v0.2.0 – Local Dashboard MVP` ist abgeschlossen, mit
+den automatisierten Tests sowie dem Produktions-Build geprüft und als Tag
+`v0.2.0` mit dem zugehörigen GitHub Release veröffentlicht. PromptVault
+unterstützt lokal Anzeigen, Erstellen, Bearbeiten,
 Löschen, Durchsuchen, Kategorie- und Favoritenfilter, persistente Favoriten,
 unveränderliche Versionierung und Wiederherstellung als neue Version. Suchtext
 und Filterzustände bleiben flüchtig. Die Daten liegen ausschließlich im
 aktuellen Browserprofil; dies ist keine Cloud-Sicherung.
 
-Tag und GitHub Release für `v0.2.0` bleiben manuelle Schritte bei Jan; ein
-veröffentlichter Tag oder ein Release wird hier nicht behauptet.
+Git-Aktionen für zukünftige Releases bleiben vollständig manuell bei Jan.
 
 `v0.2.1 – LearningHub Local MVP` ist jetzt in Arbeit. Die Schema-2-Foundation
-sowie `createLearningHubService` und `createLearningHubStorage` für private
-lokale Inhalte sind umgesetzt. Der feste Persistenznamespace lautet
+sowie `LearningHubView`, `LearningHubController`,
+`createLearningHubService` und `createLearningHubStorage` für private lokale
+Inhalte sind umgesetzt. Der feste Persistenznamespace lautet
 `goldendawn.learningHub.content.v1`; ein fehlender Key liefert ohne
 Schreibzugriff einen leeren privaten Hub, und die synthetische Demo wird nicht
-automatisch übernommen. `LearningHubView`, `LearningHubController`, Navigation,
-Fortschritt, Notizen, Zusammenfassungen und der lokale Mock-Test bleiben weitere
-Arbeitspakete von `v0.2.1`. Der Meilenstein ist damit noch nicht abgeschlossen.
+automatisch übernommen. Die Inhaltsoberfläche ist über die bestehende Navigation
+bedienbar. Fortschritt, Notizen, Zusammenfassungen und der lokale Mock-Test
+bleiben weitere Arbeitspakete von `v0.2.1`; der Meilenstein ist damit noch nicht
+abgeschlossen.
 
 `v0.2.2 – LichtwaldLog Local MVP` folgt anschließend als weiteres rein lokales
 Modul und ist noch nicht implementiert.

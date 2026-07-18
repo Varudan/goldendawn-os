@@ -10,7 +10,7 @@
 | LearningHub-Schema | `2` |
 | LearningHub-Persistenznamespace | `v1` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale PromptVault-Verträge sowie LearningHub-Struktur und -Inhaltspersistenz implementiert; Sync-Vertrag als Zielzustand dokumentiert |
+| Status | Lokale PromptVault-Verträge sowie vollständiger LearningHub-Inhaltsfluss implementiert; Sync-Vertrag als Zielzustand dokumentiert |
 | Letzte Aktualisierung | 2026-07-18 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
@@ -20,9 +20,10 @@ konkretisiert die Grenzen aus `AGENTS.md`, `docs/architecture.md` und
 `docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
-In `v0.2.1` sind die LearningHub-Schema-2-Foundation und die lokale
-Inhaltspersistenz implementiert; der vollständige LearningHub Local MVP ist
-noch in Arbeit. Die externen Sync- und Agentenverträge beschreiben weiterhin
+In `v0.2.1` sind die LearningHub-Schema-2-Foundation, die lokale
+Inhaltspersistenz sowie Controller und Inhaltsoberfläche implementiert; der
+vollständige LearningHub Local MVP ist noch in Arbeit. Die externen Sync- und
+Agentenverträge beschreiben weiterhin
 den geplanten Zielzustand späterer Versionen. Solange eine externe Aktion noch
 nicht implementiert ist, muss sie in UI und Dokumentation als geplant
 gekennzeichnet bleiben.
@@ -41,8 +42,8 @@ sind Zielzustände für `v0.4.0` und, im Lernfluss, `v0.5.0`.
 
 ### v0.2.1 – LearningHub Local MVP
 
-Der vollständige Zielpfad für die lokale Inhaltsverwaltung bleibt vollständig
-lokal:
+Der implementierte vollständige Pfad für die lokale Inhaltsverwaltung bleibt
+vollständig lokal:
 
 ```text
 LearningHubView
@@ -53,11 +54,13 @@ LearningHubView
   → localStorage
 ```
 
-Aktuell implementiert sind `createLearningHubService` mit `loadHub`,
-`createModule`, `renameModule`, `addChapter`, `renameChapter`,
-`addLearningNode` und `updateLearningNode` sowie `createLearningHubStorage`
-mit `loadLearningHub` und `saveLearningHub`. `LearningHubView` und
-`LearningHubController` folgen später.
+Implementiert sind `LearningHubView`, `LearningHubController`,
+`createLearningHubService` mit `loadHub`, `createModule`, `renameModule`,
+`addChapter`, `renameChapter`, `addLearningNode` und `updateLearningNode`
+sowie `createLearningHubStorage` mit `loadLearningHub` und
+`saveLearningHub`. Modulauswahl, Accordion-Zustände, Node-Auswahl und
+Formularzustände bleiben flüchtig im Controller beziehungsweise in der View
+und werden nicht in den Inhaltsvertrag geschrieben.
 
 Davon getrennt bleibt der lokale Mock-Testfluss geplant:
 

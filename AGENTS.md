@@ -19,9 +19,9 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.2.0 – Local Dashboard MVP abgeschlossen`
+Aktueller Stand: `v0.2.1 – LearningHub Local MVP in Arbeit`
 
-Dieser abgeschlossene Stand umfasst:
+Die abgeschlossene Basis `v0.2.0` umfasst:
 
 - die umgesetzte responsive Command-Center-Shell;
 - die umgesetzte PromptVault-Modulstruktur und den gemeinsamen
@@ -31,11 +31,15 @@ Dieser abgeschlossene Stand umfasst:
   persistenten Favoriten, unveränderlicher Versionierung und
   Wiederherstellung als neue Version.
 
-`v0.2.0` ist als technischer Release-Kandidat abgeschlossen und mit den
-relevanten automatisierten Tests sowie dem Produktions-Build geprüft. Ein
-veröffentlichter Tag oder ein Release wird damit nicht behauptet; die
-zugehörigen Git- und Release-Schritte bleiben manuell bei Jan. Der nächste
-geplante Entwicklungsschritt ist `v0.2.1 – LearningHub Local MVP`.
+`v0.2.0` ist abgeschlossen, mit den relevanten automatisierten Tests sowie dem
+Produktions-Build geprüft und als Tag `v0.2.0` mit dem zugehörigen GitHub
+Release veröffentlicht. Git-Aktionen für zukünftige Releases bleiben
+vollständig manuell bei Jan. Der Meilenstein
+`v0.2.1 – LearningHub Local MVP` ist in Arbeit. Schema 2, lokale
+Inhaltsservices und Persistenz sowie `LearningHubController` und die lokale
+Inhaltsoberfläche für Module, Kapitel und LearningNodes sind umgesetzt.
+Fortschritt, Notizen, Zusammenfassungen und der lokale Mock-Test bleiben offen;
+`v0.2.1` ist deshalb noch nicht abgeschlossen.
 
 Noch nicht Teil von `v0.2.0` sind:
 

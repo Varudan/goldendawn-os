@@ -1,9 +1,3 @@
-:root {
-  --danger: #d98275;
-  --danger-soft: #f3b7ad;
-  --danger-surface: rgb(117 52 45 / 18%);
-}
-
 .app-shell,
 .sidebar,
 .main-content,
@@ -346,34 +340,6 @@ select.prompt-filter-control {
   font-weight: 600;
   letter-spacing: .04em;
   text-transform: uppercase;
-}
-
-.form-control {
-  width: 100%;
-  max-width: 100%;
-  min-width: 0;
-  padding: .8rem .9rem;
-  border: 1px solid var(--border);
-  border-radius: var(--r-sm);
-  color: var(--text);
-  background: rgb(6 15 11 / 48%);
-  font: inherit;
-  font-size: .9rem;
-  line-height: 1.55;
-}
-
-textarea.form-control {
-  resize: vertical;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.form-control:hover {
-  border-color: #52665b;
-}
-
-.form-control[aria-invalid='true'] {
-  border-color: var(--danger);
 }
 
 .form-field__error {
@@ -970,45 +936,15 @@ textarea.form-control {
   font-size: .78rem;
 }
 
-.button {
-  min-height: 2.55rem;
-  padding: .65rem .9rem;
-  appearance: none;
-  border: 1px solid transparent;
-  border-radius: var(--r-sm);
-  font: inherit;
-  font-size: .78rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.button:disabled {
-  cursor: wait;
-  opacity: .58;
-}
-
-.button--delete,
-.button--secondary {
+.button--delete {
   border-color: var(--border);
   color: var(--text);
   background: #12231c;
 }
 
-.button--delete:hover,
-.button--secondary:hover {
+.button--delete:hover {
   border-color: #52665b;
   background: #192d24;
-}
-
-.button--primary {
-  border-color: #e5c77f;
-  color: #102019;
-  background: var(--gold-soft);
-}
-
-.button--primary:hover {
-  border-color: #f6dfa6;
-  background: #f6dfa6;
 }
 
 .prompt-create-trigger:disabled {
