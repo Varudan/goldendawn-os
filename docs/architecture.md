@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; lokaler LearningHub-Inhaltsfluss bis zur UI implementiert, MVP noch nicht vollständig |
+| Status | Verbindliche Zielarchitektur; lokaler LearningHub-Inhaltsfluss bis zur UI und Progress-Foundation ohne UI-Verdrahtung implementiert, MVP noch nicht vollständig |
 | Letzte Aktualisierung | 2026-07-18 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -275,7 +275,7 @@ ausschließlich an `LearningHubService` weiter. Der Service stellt `loadHub`,
 kapselt `loadLearningHub` und `saveLearningHub`. View und Controller greifen
 nicht direkt auf `localStorage` zu.
 
-Der Service verwendet den persistenten Hub als autoritative Quelle. Jede
+Der Inhaltsservice verwendet den persistenten Hub als autoritative Quelle. Jede
 Mutation lädt den aktuellen Zustand, prüft Ziel und Eingaben, erzeugt einen
 neuen Zustand ohne Mutation des geladenen Hubs, validiert den vollständigen
 Schema-2-Vertrag und speichert genau einmal. `createModule` legt ein Modul und
@@ -284,13 +284,9 @@ ohne Kapitel gespeichert werden darf. Neue IDs entstehen ausschließlich im
 Service; neue Positionen werden robust hinter der höchsten vorhandenen
 Geschwisterposition vergeben.
 
-Kapitelabschluss und Fortschritt werden später getrennt von der Inhaltsstruktur
-modelliert. Modulfortschritt wird dann aus abgeschlossenen Kapiteln abgeleitet;
-auch zu 100 Prozent abgeschlossene Module bleiben erhalten und später testbar.
-Fortschritt und Testkompetenz sind getrennte Konzepte. LearningNode-Aktionen
-sind Service-, Controller- und UI-Fähigkeiten, keine Datenfelder. Der aktuelle
-Service unterstützt Hinzufügen und Bearbeiten; Löschen, Archivieren und
-Umsortieren sind noch nicht implementiert.
+LearningNode-Aktionen sind Service-, Controller- und UI-Fähigkeiten, keine
+Datenfelder. Der aktuelle Inhaltsservice unterstützt Hinzufügen und Bearbeiten;
+Löschen, Archivieren und Umsortieren sind noch nicht implementiert.
 
 Die Schema-2-Foundation definiert weiterhin nur die Inhaltsstruktur und deren
 Validierung. Die getrennt implementierten View-, Controller-, Service- und
@@ -303,10 +299,74 @@ tief unveränderlich und wird weder automatisch importiert noch als privater
 Initialzustand gespeichert. Private Nutzerdaten tragen `dataOrigin: private`
 und bleiben von Repository-Demos und deren Datenquellen getrennt.
 
-Fortschritt, Notizen und spätere Testversuche benötigen eigene Verträge und
-Storage-Keys. Für LearningHub-Inhalte werden in diesem Schritt weder Löschung,
-Migration noch garantierte Multi-Tab-Synchronisierung oder Transaktionssperren
-eingeführt.
+Kapitelabschluss und daraus abgeleiteter Modulfortschritt sind in einer davon
+getrennten, implementierten Progress-Foundation vorbereitet. Sie erweitert den
+Inhaltsvertrag nicht um veränderliche `completed`-Felder und verwendet diesen
+Datenfluss:
+
+```text
+LearningProgressService
+  ├→ LearningHubService
+  │   → LearningHubStorage
+  │   → StorageAdapter
+  │
+  └→ LearningProgressStorage
+      → StorageAdapter
+      → localStorage
+```
+
+Der Progress-Vertrag besitzt `schemaVersion: 1`, `dataOrigin` und ein
+`events`-Array. Schema 1 unterstützt ausschließlich `chapter.completed` und
+`chapter.reopened`; `chapter.started` ist bewusst noch nicht implementiert und
+würde eine versionierte Vertragsänderung erfordern. Die Arrayreihenfolge ist
+für den Kapitelstatus autoritativ, das jeweils letzte Ereignis eines Kapitels
+gewinnt und `occurredAt` wird niemals zum Sortieren verwendet.
+
+`LearningProgressService` stellt `loadProgress`, `completeChapter` und
+`reopenChapter` bereit. Er verwendet `LearningHubService` ausschließlich zum
+Laden des aktuellen validen Inhaltsstands und zur Prüfung der Modul-, Kapitel-
+und Eigentumsreferenzen; der Inhaltsservice besitzt keine Rückabhängigkeit.
+Damit entsteht keine gegenseitige oder zirkuläre Service-Abhängigkeit.
+Verwaiste oder falsch zugeordnete gespeicherte Ereignisse werden kontrolliert
+abgelehnt und nicht repariert. Eine echte Zustandsänderung hängt genau ein
+Ereignis an und speichert den vollständig validierten Log genau einmal. Ein
+bereits erreichter Zielzustand ist ein erfolgreicher, schreibfreier No-op mit
+`changed: false` und erzeugt weder ID noch Zeitstempel.
+
+Die reine Progress-Projektion kopiert keine Titel oder LearningNode-Inhalte.
+Sie folgt der Modul- und Kapitelreihenfolge des aktuellen Inhaltsvertrags und
+liefert je Modul Kapitelstatus, abgeschlossene und gesamte Kapitel,
+ganzzahligen Prozentfortschritt sowie den abgeleiteten Abschlussstatus. Ein
+leerer Hub ergibt eine leere Modulprojektion. Module mit 100 Prozent bleiben
+vollständig erhalten. Fortschritt und spätere Testkompetenz bleiben getrennte
+Konzepte.
+
+`LearningProgressStorage` kapselt `loadLearningProgress` und
+`saveLearningProgress` unter dem festen Key
+`goldendawn.learningHub.progress.v1`. Das `v1` des Persistenznamespace und
+`schemaVersion: 1` des Vertrags sind getrennte Versionen. Der private
+Storage-Pfad akzeptiert nur `dataOrigin: private`; ein fehlender Key liefert
+ohne Initialisierungsschreibzugriff einen frischen leeren privaten Log.
+Synthetische, beschädigte und nicht unterstützte gespeicherte Werte bleiben
+unangetastet.
+
+Append-only ist eine Anwendungsregel des Progress-Service. Technisch wird der
+vollständige JSON-Log bei einer Änderung als Snapshot in `localStorage`
+geschrieben. Es gibt keine kryptografische Verkettung, Signatur oder
+Manipulationssperre; andere Skripte derselben Origin könnten den Speicher
+verändern. Das Modell ist xAPI-inspiriert, aber nicht xAPI-konform, verwendet
+kein LRS und beansprucht kein vollständiges Event Sourcing. Multi-Tab-Rennen,
+Browser-Quota, fehlende Verschlüsselung und fehlende Synchronisierung bleiben
+bekannte Grenzen.
+
+Die Progress-Foundation besitzt in diesem Arbeitspaket keine View, keinen
+Controller und keine Verdrahtung in `src/main.js`. Kapitel-Checkboxen oder
+Fortschrittsanzeigen sind deshalb noch nicht implementiert. Eine spätere
+Archivierung muss bestehende Ereignisse erhalten; dauerhaftes Löschen benötigt
+zuvor eine gesonderte Referenz- und Löschrichtlinie. Notizen,
+Zusammenfassungen und spätere Testversuche benötigen weiterhin eigene Verträge
+und Storage-Keys. Für LearningHub-Inhalte werden weder Löschung, Migration noch
+garantierte Multi-Tab-Synchronisierung oder Transaktionssperren eingeführt.
 
 Der weiterhin geplante Testmodus soll diesen ausschließlich lokalen Pfad
 verwenden:
@@ -471,11 +531,16 @@ src/
 ├── app/
 ├── components/
 ├── modules/
+│   └── learning-hub/
+│       ├── learningProgressContract.js
+│       └── learningProgressProjection.js
 ├── services/
 │   ├── learningHubService.js
+│   ├── learningProgressService.js
 │   └── syncService.js
 ├── storage/
 │   ├── learningHubStorage.js
+│   ├── learningProgressStorage.js
 │   └── storageAdapter.js
 ├── contracts/
 ├── data/
@@ -507,7 +572,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | --- | --- |
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
-| `v0.2.1` | In Arbeit: Schema 2, lokaler Inhaltsservice, Persistenz, Controller und Inhalts-UI umgesetzt; weitere MVP-Bausteine geplant |
+| `v0.2.1` | In Arbeit: Schema 2, lokaler Inhaltsfluss bis zur UI sowie Progress-Vertrag, -Projektion, -Service und -Storage ohne UI-Verdrahtung umgesetzt; weitere MVP-Bausteine geplant |
 | `v0.2.2` | LichtwaldLog Local MVP ohne Synchronisierung oder Agentenlogik |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
@@ -535,6 +600,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0006](decisions/0006-learning-catalog-hierarchy-and-nodes.md) | Feste LearningHub-Hierarchie mit normalisierten LearningNodes | Ersetzt |
 | [0007](decisions/0007-user-configured-learning-modules.md) | Nutzerkonfigurierte LearningModules mit trackbaren Kapiteln und LearningNodes | Angenommen |
 | [0008](decisions/0008-learning-hub-local-content-persistence.md) | Lokale LearningHub-Inhaltsverwaltung und -Persistenz | Angenommen |
+| [0009](decisions/0009-append-only-learning-progress-events.md) | Separater Lernfortschritt als append-only Ereignislog | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).

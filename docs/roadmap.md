@@ -7,7 +7,7 @@
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | In Arbeit; Schema 2 sowie lokaler LearningHub-Inhaltsfluss bis zur UI umgesetzt |
+| Status | In Arbeit; Schema 2, lokaler LearningHub-Inhaltsfluss bis zur UI und Progress-Foundation ohne UI-Verdrahtung umgesetzt |
 | Letzte Aktualisierung | 2026-07-18 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
@@ -48,7 +48,7 @@ nicht starre Kalendertermine.
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
-| `v0.2.1` | LearningHub Local MVP | Nutzerkonfigurierte Inhaltsverwaltung, später separater Fortschritt und lokaler Mock-Test | 🟡 |
+| `v0.2.1` | LearningHub Local MVP | Nutzerkonfigurierte Inhaltsverwaltung und separate Progress-Foundation; Progress-UI, Notizen und lokaler Mock-Test folgen | 🟡 |
 | `v0.2.2` | LichtwaldLog Local MVP | Lokale Reflexions- und Erkenntniseinträge | ⬜ |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
@@ -165,16 +165,18 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
   enthalten. LearningNodes sind selbst erstellte Textkarten.
 - Course, Unit, Elternverweise, Knotentypen und `isTrackable` sind nicht Teil
   des Vertrags.
-- Kapitelabschluss und Fortschritt werden später separat modelliert;
-  Modulfortschritt wird aus abgeschlossenen Kapiteln abgeleitet. Abgeschlossene
-  100-%-Module bleiben erhalten und testbar.
+- Kapitelabschluss und Fortschritt sind in einem separaten
+  LearningProgress-Schema-1-Vertrag modelliert; Modulfortschritt wird aus der
+  Ereignisreihenfolge der Kapitel abgeleitet. Abgeschlossene 100-%-Module
+  bleiben erhalten und testbar.
 - Fortschritt und spätere Testkompetenz sind getrennte Konzepte.
 - Private Lerninhalte bleiben außerhalb des Repositorys. Die Demo-Daten sind
   unabhängig erfunden, synthetisch und vollständig tief eingefroren.
 - Die abgeschlossene Schema-2-Foundation selbst enthält keine UI, Persistenz,
   Storage-, Fortschritts- oder Testlogik. Getrennte nachfolgende Arbeitspakete
-  haben Service, Storage, Controller und Inhalts-UI ergänzt, ohne diese
-  Vertragsgrenzen zu vermischen.
+  haben Service, Storage, Controller und Inhalts-UI sowie die weiterhin
+  eigenständige Progress-Foundation ergänzt, ohne diese Vertragsgrenzen zu
+  vermischen.
 
 ### Umfang des LearningHub Local MVP
 
@@ -197,8 +199,11 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
   LearningNodes bereitstellen.
 - ✅ LearningHub in die bestehende Command-Center-Navigation integrieren und
   Moduldetail, zugängliches Kapitel-Accordion sowie Node-Auswahl anbieten.
-- ⬜ Kapitelabschluss separat speichern und Modulfortschritt daraus ableiten,
-  ohne abgeschlossene Module zu entfernen oder Testkompetenz einzumischen.
+- ✅ Separaten append-only LearningProgress-Schema-1-Vertrag, lokale
+  Progress-Persistenz, referenzprüfenden Service und reine Modulprojektion
+  bereitstellen, ohne Schema 2 zu verändern oder Testkompetenz einzumischen.
+- ⬜ Progress-Service in LearningHubController und LearningHubView anbinden und
+  Kapitelabschluss sowie Modulfortschritt zugänglich darstellen.
 - ⬜ Lokale Notizen und Zusammenfassungen hinter den vorgesehenen Service- und
   Storage-Grenzen speichern.
 - ⬜ Einen vorbereiteten, sichtbaren **„Lokalen Mock-Test“** für bekannte Inhalte
@@ -209,6 +214,35 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
   speichern; Views und Controller greifen nicht direkt auf `localStorage` zu.
 - ✅ Lade-, Leer-, Inhalts-, Mutations-, Erfolgs- und Fehlerzustände zugänglich
   gestalten.
+
+Der implementierte Progress-Datenfluss lautet:
+
+```text
+LearningProgressService
+  ├→ LearningHubService
+  │   → LearningHubStorage
+  │   → StorageAdapter
+  │
+  └→ LearningProgressStorage
+      → StorageAdapter
+      → localStorage
+```
+
+Der Inhaltsvertrag bleibt bei `schemaVersion: 2` und
+`goldendawn.learningHub.content.v1`. Der Fortschrittsvertrag verwendet getrennt
+`schemaVersion: 1` und `goldendawn.learningHub.progress.v1`. Unterstützt sind
+nur `chapter.completed` und `chapter.reopened`; `chapter.started` bleibt offen
+und benötigt später eine versionierte Vertragsänderung. Die Projektion folgt
+der Ereignisreihenfolge, behält 100-%-Module bei und kopiert keine Titel oder
+LearningNode-Inhalte.
+
+Diese Foundation besitzt noch keine View, keinen Controller und keine
+Verdrahtung in `src/main.js`. Append-only ist eine Service-Regel über technisch
+vollständig geschriebene `localStorage`-Snapshots, keine kryptografische
+Manipulationssperre. Das Modell ist xAPI-inspiriert, aber nicht xAPI-konform;
+es gibt weder ein LRS noch vollständiges Event Sourcing. Eine spätere
+Archivierung muss Ereignisse erhalten, und dauerhaftes Löschen benötigt eine
+gesonderte Referenz- und Löschrichtlinie.
 
 Der geplante lokale Mock-Testfluss lautet:
 
@@ -249,6 +283,12 @@ geplant.
   Teilzustände.
 - Alle Kapitel sind trackbar. Kapitelabschluss und daraus abgeleiteter
   Modulfortschritt bleiben vom Inhaltsvertrag und von Testkompetenz getrennt.
+- Der Progress-Service prüft alle gespeicherten und angeforderten Modul- und
+  Kapitelreferenzen gegen den jeweils aktuellen LearningHub; verwaiste oder
+  falsch zugeordnete Ereignisse werden ohne Reparaturwrite abgelehnt.
+- Eine echte Zustandsänderung hängt genau ein Ereignis an und speichert genau
+  einmal. Ein bereits erreichter Zielzustand bleibt ein erfolgreicher
+  schreibfreier No-op ohne neue ID oder Uhrabfrage.
 - LearningNodes sind selbst erstellte Textkarten innerhalb eines Kapitels;
   Aktionen darauf bleiben Controller- und UI-Fähigkeiten.
 - Notizen, Zusammenfassungen und Testversuche bleiben lokal und verwenden die
@@ -266,9 +306,13 @@ geplant.
   und View-Tests für den durchgängigen lokalen Inhaltsfluss;
 - dokumentierte Persistenzgrenze mit privatem leeren Initialzustand und ohne
   automatisches Demo-Seeding;
+- Vertrags-, Projektions-, Storage- und Service-Tests der separaten
+  Progress-Foundation einschließlich Referenzfehlern, No-ops und
+  unveränderlichen Eingaben;
 - sichere Textdarstellung HTML-artiger Eingaben, zugängliche Accordions und
   responsive Inhaltsverwaltung ohne direkte Storage-Zugriffe aus UI-Schichten;
-- später nachvollziehbare Ableitung des Modulfortschritts aus Kapiteln;
+- nachvollziehbare, deterministische Ableitung des Modulfortschritts aus der
+  Ereignisreihenfolge ohne Progress-UI-Verdrahtung;
 - reproduzierbarer lokaler Mock-Test ohne behauptete KI-Funktion.
 
 ## v0.2.2 – LichtwaldLog Local MVP
@@ -553,13 +597,20 @@ Git-Aktionen für zukünftige Releases bleiben vollständig manuell bei Jan.
 `v0.2.1 – LearningHub Local MVP` ist jetzt in Arbeit. Die Schema-2-Foundation
 sowie `LearningHubView`, `LearningHubController`,
 `createLearningHubService` und `createLearningHubStorage` für private lokale
-Inhalte sind umgesetzt. Der feste Persistenznamespace lautet
+Inhalte sind umgesetzt. Der feste Inhaltsnamespace lautet
 `goldendawn.learningHub.content.v1`; ein fehlender Key liefert ohne
 Schreibzugriff einen leeren privaten Hub, und die synthetische Demo wird nicht
-automatisch übernommen. Die Inhaltsoberfläche ist über die bestehende Navigation
-bedienbar. Fortschritt, Notizen, Zusammenfassungen und der lokale Mock-Test
-bleiben weitere Arbeitspakete von `v0.2.1`; der Meilenstein ist damit noch nicht
-abgeschlossen.
+automatisch übernommen. Die Inhaltsoberfläche ist über die bestehende
+Navigation bedienbar.
+
+Zusätzlich sind LearningProgress-Vertrag, reine Projektion, lokaler Storage und
+Service unter dem getrennten Namespace
+`goldendawn.learningHub.progress.v1` umgesetzt. Der Service validiert Hub und
+Log, prüft Referenzen, hängt Abschluss- und Wiederöffnungsereignisse append-only
+an und behandelt bereits erreichte Zielzustände ohne Schreibzugriff. Diese
+Foundation ist noch nicht in View, Controller oder `src/main.js` verdrahtet.
+Progress-UI, Notizen, Zusammenfassungen und der lokale Mock-Test bleiben weitere
+Arbeitspakete von `v0.2.1`; der Meilenstein ist damit noch nicht abgeschlossen.
 
 `v0.2.2 – LichtwaldLog Local MVP` folgt anschließend als weiteres rein lokales
 Modul und ist noch nicht implementiert.
