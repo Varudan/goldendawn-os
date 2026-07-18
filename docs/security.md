@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.0 – Local Dashboard MVP abgeschlossen` |
+| Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
 | Status | Verbindliche Sicherheitsbasis |
 | Letzte Aktualisierung | 2026-07-18 |
@@ -116,9 +116,17 @@ wird.
 ### Browser-Speicher
 
 - `localStorage`, `sessionStorage` und IndexedDB sind keine Secret-Stores.
+- `localStorage` speichert Werte unverschlüsselt und kann von JavaScript
+  derselben Origin gelesen werden. Eingeschleuster oder kompromittierter
+  Same-Origin-Code kann daher auch lokale private Inhalte erreichen.
 - Tokens und Passwörter werden dort nicht gespeichert.
 - Lokale private Inhalte werden auf das notwendige Minimum begrenzt.
 - Beschädigte oder manipulierte Werte werden nicht ungeprüft verwendet.
+- `dataOrigin: private` ist nur eine fachliche Klassifikation. Das Feld
+  verschlüsselt Daten nicht, authentifiziert keine Person und bildet keine
+  technische Zugriffsgrenze.
+- Lokale Browserdaten sind keine Cloud-Sicherung, keine geräteübergreifende
+  Synchronisierung und kein Schutz vor dem Löschen des Browserprofils.
 - Eine spätere Browser-Authentifizierung benötigt eine eigene serverseitige
   Architekturentscheidung.
 
@@ -131,24 +139,51 @@ Controller greifen nicht direkt auf `localStorage` zu.
 
 #### LearningHub Local MVP in v0.2.1
 
-- Private LearningModules, Kapitel, LearningNodes, Lernnotizen,
+- Die aktuell implementierte lokale Inhaltspersistenz verläuft ausschließlich
+  über `LearningHubService`, `LearningHubStorage` und den gemeinsamen
+  `StorageAdapter`. Sie verwendet den festen, nicht nutzerkontrollierten Key
+  `goldendawn.learningHub.content.v1` und akzeptiert im privaten Speicherpfad
+  nur Hubs mit `dataOrigin: private`.
+- Private LearningModules, Kapitel und LearningNodes sowie spätere Lernnotizen,
   Zusammenfassungen und lokale Testversuche werden weder in das Repository
   übernommen noch in öffentlichen Demo-Daten oder unnötigen Logs verwendet.
 - Der Demo-Hub verwendet ausschließlich unabhängig erfundene synthetische
   Inhalte mit `dataOrigin: synthetic`. Private Nutzerdaten tragen
-  `dataOrigin: private` und verwenden getrennte Datenquellen.
+  `dataOrigin: private` und verwenden getrennte Datenquellen. Die Demo wird
+  weder automatisch importiert noch als privater Initialzustand gespeichert.
+- Ein fehlender Storage-Key liefert nur im Arbeitsspeicher einen leeren
+  privaten Hub und löst beim Laden keinen Schreibzugriff aus. Beschädigtes JSON,
+  ungültige Schema-Daten oder Adapterfehler werden davon unterschieden und
+  niemals stillschweigend gelöscht, überschrieben oder durch den leeren Hub
+  ersetzt.
+- Der `LearningHubService` trimmt Eingabetexte vor der Längenprüfung und
+  begrenzt Titel auf 120 sowie LearningNode-Inhalte auf 10.000 Zeichen. Diese
+  Eingabegrenzen reduzieren versehentlich übergroße einzelne Werte, ersetzen
+  aber weder Quota-Behandlung noch eine allgemeine Größenbegrenzung des
+  vollständigen Hubs. Der persistierte Vertrag bleibt bei
+  `schemaVersion: 2`; Schema 3 wird dadurch nicht eingeführt.
+- Fehlermeldungen und Logs enthalten keine privaten Titel, LearningNode-Texte
+  oder vollständigen Payloads. Rohe `DOMException`- und Storage-Fehler werden
+  nicht unkontrolliert an höhere Schichten weitergereicht.
 - Schema 2 speichert keine Abschluss- oder Fortschrittsdaten. Späterer
   Kapitelabschluss, daraus abgeleiteter Modulfortschritt und Testkompetenz
   bleiben voneinander getrennte Konzepte.
-- Der Mock-Test arbeitet lokal und deterministisch mit vorbereiteten Fragen. Er
-  wird sichtbar als **„Lokaler Mock-Test“** gekennzeichnet und behauptet weder
-  eine KI-Auswertung noch eine semantische Freitextbewertung.
-- Notizen, Zusammenfassungen und Testversuche werden ausschließlich hinter den
-  vorgesehenen Service- und Storage-Adapter-Grenzen gespeichert.
+- Der noch nicht implementierte Mock-Test soll lokal und deterministisch mit
+  vorbereiteten Fragen arbeiten. Er muss sichtbar als **„Lokaler Mock-Test“**
+  gekennzeichnet werden und darf weder eine KI-Auswertung noch eine semantische
+  Freitextbewertung behaupten.
+- Notizen, Zusammenfassungen und Testversuche dürfen nach ihrer späteren
+  Einführung ausschließlich hinter den vorgesehenen Service- und
+  Storage-Adapter-Grenzen gespeichert werden.
+- Der lokale MVP garantiert noch keine Multi-Tab-Konsistenz und verwendet keine
+  Transaktionssperre. Gleichzeitige Änderungen in mehreren Tabs können sich
+  überholen; eine spätere Lösung benötigt einen eigenen Vertrag.
 
-Schema 2 ist ein verbindlicher interner Struktur- und Validierungsvertrag,
-aber ausdrücklich kein Storage- oder Persistenzschema. Die Foundation speichert
-keine privaten Nutzerdaten und implementiert weder UI noch Fortschrittslogik.
+Schema 2 bleibt der verbindliche interne Inhalts- und Validierungsvertrag. Der
+Storage-Key `v1` bezeichnet davon getrennt nur den Persistenz-Namespace. Die
+Service- und Storage-Schichten für private Inhalte sind implementiert;
+LearningHub-UI, Controller, Fortschrittslogik, Notizen und Testversuche sind in
+diesem Arbeitspaket noch nicht umgesetzt.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
@@ -164,6 +199,9 @@ keine privaten Nutzerdaten und implementiert weder UI noch Fortschrittslogik.
 ### Sichere Darstellung
 
 - Unvertrauenswürdige Texte werden standardmäßig über `textContent` dargestellt.
+- LearningNode-Titel und -Inhalte sind nicht vertrauenswürdiger Klartext. Eine
+  spätere LearningHub-UI muss sie über `textContent` oder sichere DOM-Erzeugung
+  ausgeben; in diesem Arbeitspaket findet noch kein Rendering statt.
 - `innerHTML` wird für Nutzereingaben und Agentenoutput nicht verwendet.
 - Markdown oder Rich Text benötigt vor HTML-Ausgabe eine dokumentierte
   Sanitization-Lösung.
@@ -414,7 +452,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | --- | --- |
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
-| `v0.2.1` | private Lerninhalte und lokale Testversuche, ausschließlich synthetische Demo-Daten, deterministischer lokaler Mock-Test |
+| `v0.2.1` | validierte private Inhaltspersistenz ohne Demo-Seeding; später lokale Notizen und Testversuche, ausschließlich synthetische Demo-Daten und deterministischer lokaler Mock-Test |
 | `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
 | `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
