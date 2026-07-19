@@ -37,8 +37,10 @@ Release veröffentlicht. Git-Aktionen für zukünftige Releases bleiben
 vollständig manuell bei Jan. Der Meilenstein
 `v0.2.1 – LearningHub Local MVP` ist in Arbeit. Schema 2, lokale
 Inhaltsservices und Persistenz sowie `LearningHubController` und die lokale
-Inhaltsoberfläche für Module, Kapitel und LearningNodes sind umgesetzt.
-Fortschritt, Notizen, Zusammenfassungen und der lokale Mock-Test bleiben offen;
+Inhaltsoberfläche für Module, Kapitel und LearningNodes sind umgesetzt. Der
+getrennte Fortschrittsvertrag, seine Persistenz und Projektion sowie die
+bedienbare Oberfläche für Kapitelabschluss und Modulfortschritt sind ebenfalls
+umgesetzt. Notizen, Zusammenfassungen und der lokale Mock-Test bleiben offen;
 `v0.2.1` ist deshalb noch nicht abgeschlossen.
 
 Noch nicht Teil von `v0.2.0` sind:
@@ -92,9 +94,10 @@ dokumentiert wurde.
 - Alle Kapitel sind implizit trackbar. LearningNodes sind selbst erstellte
   Textkarten; Course, Unit, Elternverweise, Knotentypen und `isTrackable` sind
   nicht Teil des Vertrags.
-- Kapitelabschluss, daraus abgeleiteter Modulfortschritt und Testkompetenz
-  werden später in getrennten Verträgen modelliert. 100-%-Module bleiben
-  erhalten und später testbar.
+- Kapitelabschluss und daraus abgeleiteter Modulfortschritt verwenden einen vom
+  Inhaltsvertrag getrennten Fortschrittsvertrag und sind lokal bedienbar.
+  Testkompetenz bleibt ein eigenes späteres Konzept. 100-%-Module bleiben
+  erhalten und bedienbar sowie später testbar.
 - Lokale Notizen und Zusammenfassungen gehören zum LearningHub-MVP und bleiben
   hinter den vorgesehenen Service- und Storage-Grenzen.
 - Private Lerninhalte und synthetische Portfolio-Demos bleiben klar getrennt.

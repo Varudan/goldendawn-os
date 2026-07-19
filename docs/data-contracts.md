@@ -12,7 +12,7 @@
 | LearningProgress-Schema | `1` |
 | LearningProgress-Persistenznamespace | `v1` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale PromptVault-Verträge, vollständiger LearningHub-Inhaltsfluss und Progress-Foundation ohne UI-Verdrahtung implementiert; Sync-Vertrag als Zielzustand dokumentiert |
+| Status | Lokale PromptVault-Verträge sowie vollständige getrennte LearningHub-Inhalts- und Progress-Pfade bis zur UI implementiert; Sync-Vertrag als Zielzustand dokumentiert |
 | Letzte Aktualisierung | 2026-07-18 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
@@ -25,12 +25,13 @@ Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
 In `v0.2.1` sind die LearningHub-Schema-2-Foundation, die lokale
 Inhaltspersistenz sowie Controller und Inhaltsoberfläche implementiert. Der
 separate Schema-1-Fortschrittsvertrag, seine Projektion, sein Service und seine
-lokale Persistenz sind ebenfalls implementiert, aber noch nicht an View,
-Controller oder `src/main.js` angebunden. Der vollständige LearningHub Local
-MVP ist weiterhin in Arbeit. Die externen Sync- und Agentenverträge beschreiben
-den geplanten Zielzustand späterer Versionen. Solange eine externe Aktion noch
-nicht implementiert ist, muss sie in UI und Dokumentation als geplant
-gekennzeichnet bleiben.
+lokale Persistenz sind ebenfalls implementiert und über den vorhandenen
+Controller und die View bedienbar. Die UI-Integration verändert keinen der
+beiden Verträge. Der vollständige LearningHub Local MVP ist weiterhin in
+Arbeit. Die externen Sync- und Agentenverträge beschreiben den geplanten
+Zielzustand späterer Versionen. Solange eine externe Aktion noch nicht
+implementiert ist, muss sie in UI und Dokumentation als geplant gekennzeichnet
+bleiben.
 
 ## Vertragsgrenzen der lokalen Module v0.2.1 und v0.2.2
 
@@ -71,9 +72,10 @@ und werden nicht in den Inhaltsvertrag geschrieben.
 Daneben ist die lokale Progress-Foundation über
 `validateLearningProgress`, `projectLearningProgress`,
 `createLearningProgressService` und `createLearningProgressStorage`
-implementiert. Sie besitzt noch keine View, keinen Controller und keine
-Verdrahtung in `src/main.js`; Kapitel-Checkboxen und sichtbare
-Fortschrittsanzeigen sind daher nicht als umgesetzt zu verstehen.
+implementiert. `src/main.js` injiziert den Progress-Service in den bestehenden
+`LearningHubController`; Kapitel-Checkboxen sowie sichtbare Modulzähler,
+Prozentwerte und Fortschrittsbalken verwenden ausschließlich die validierte
+Projektion. Es gibt keinen separaten Progress-Controller.
 
 Davon getrennt bleibt der lokale Mock-Testfluss geplant:
 
@@ -528,6 +530,36 @@ Append-Reihenfolge ist fachlich autoritativ.
 
 Es gibt keine öffentlichen Operationen zum Bearbeiten, Entfernen oder
 Umsortieren vorhandener Fortschrittsereignisse.
+
+##### UI-Projektion und Fehlerisolation
+
+Der Controller akzeptiert beim Laden ausschließlich die Erfolgsstatus `empty`
+und `loaded`. Für Fortschrittsmutationen akzeptiert er exakt
+`chapterCompleted` und `chapterReopened` mit `changed: true` sowie
+`chapterAlreadyCompleted` und `chapterAlreadyOpen` mit `changed: false`. Ein
+gültiger Erfolg wird ohne weiteren Schreibzugriff aus der zurückgegebenen
+`projection` übernommen. Obwohl Service-Ergebnisse für andere
+Anwendungsschichten auch `progressLog` enthalten, hält oder rendert die
+LearningHub-UI ausschließlich die Projektion; Ereignis-IDs und Zeitstempel
+gelangen nicht in ihren Zustand.
+
+Vor der Darstellung wird die Projektion anhand stabiler `moduleId`- und
+`chapterId`-Zuordnungen vollständig gegen den aktuellen Hub geprüft. Zähler und
+Abschlussstatus müssen exakt zu den Kapitelstatus passen. Der Prozentwert muss
+eine plausible Ganzzahl zwischen 0 und 100 mit konsistenten 0- und
+100-Prozent-Endpunkten sein; der Controller berechnet oder rundet ihn nicht
+selbst neu. Arrayindizes verbinden keine Progress- und Inhaltsobjekte.
+Ungültige oder unvollständige Projektionen gelten als nicht verfügbar und
+werden weder als 0 Prozent dargestellt noch zur Mutation verwendet.
+
+Ein Progress-Fehler blockiert den gültigen Inhaltszustand nicht. Die UI
+deaktiviert Fortschrittsaktionen, bietet `loadProgress` als gezielten Retry an
+und führt keinen Reparatur-, Lösch- oder Ersatzschreibzugriff aus. Die letzte
+valide Projektion bleibt bei einer fehlgeschlagenen Mutation unverändert. Nach
+`createModule` und `addChapter` wird sie neu geladen; scheitert dieser Refresh
+nach erfolgreicher Inhaltsmutation, bleibt der Inhaltserfolg bestehen und die
+vorherige Projektion wird nicht mehr als aktuell ausgegeben. Umbenennungen und
+LearningNode-Mutationen verändern die Projektion nicht.
 
 ##### Lokale Persistenz und Fehlergrenzen
 

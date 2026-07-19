@@ -7,16 +7,21 @@
 .learning-hub-section-heading > *,
 .learning-hub-module-grid,
 .learning-hub-module-card,
+.learning-hub-module-progress,
 .learning-hub-detail,
 .learning-hub-detail__header,
 .learning-hub-detail__header > *,
 .learning-hub-detail__actions,
+.learning-hub-detail__progress,
+.learning-hub-progress-bar,
 .learning-hub-chapters,
 .learning-hub-chapter-list,
 .learning-hub-chapter,
 .learning-hub-chapter__header,
 .learning-hub-chapter__heading,
 .learning-hub-chapter__toggle,
+.learning-hub-chapter__actions,
+.learning-hub-chapter__completion,
 .learning-hub-chapter__panel,
 .learning-hub-node-grid,
 .learning-hub-node-card,
@@ -31,6 +36,7 @@
 .learning-hub-form__label,
 .learning-hub-form__actions,
 .learning-hub-privacy,
+.learning-hub-progress-feedback,
 .learning-hub-state {
   min-width: 0;
 }
@@ -40,6 +46,7 @@
 .learning-hub-detail__header,
 .learning-hub-detail__actions,
 .learning-hub-chapter__header,
+.learning-hub-chapter__actions,
 .learning-hub-node-card__header,
 .learning-hub-node-card__actions,
 .learning-hub-form__header,
@@ -98,6 +105,31 @@
   background: rgb(117 52 45 / 18%);
 }
 
+.learning-hub-progress-feedback {
+  margin-top: var(--s3);
+  padding: .875rem var(--s3);
+  border: 1px solid rgb(115 182 142 / 32%);
+  border-radius: var(--r-sm);
+  color: #b9dfc7;
+  background: rgb(74 139 96 / 13%);
+}
+
+.learning-hub-progress-feedback--error {
+  border-color: rgb(217 130 117 / 38%);
+  color: #f3b7ad;
+  background: rgb(117 52 45 / 18%);
+}
+
+.learning-hub-progress-feedback__title {
+  color: inherit;
+  font-size: 1rem;
+}
+
+.learning-hub-progress-feedback p,
+.learning-hub-progress-feedback .button {
+  margin-top: var(--s2);
+}
+
 .learning-hub-overview,
 .learning-hub-detail {
   margin-top: var(--s4);
@@ -143,6 +175,29 @@
 
 .learning-hub-module-card__count {
   font-size: .82rem;
+}
+
+.learning-hub-module-progress {
+  display: grid;
+  gap: var(--s1);
+}
+
+.learning-hub-module-progress__count,
+.learning-hub-module-progress__unavailable {
+  color: var(--muted);
+  font-size: .8rem;
+  overflow-wrap: anywhere;
+}
+
+.learning-hub-module-progress__complete {
+  width: fit-content;
+  padding: .3rem .55rem;
+  border: 1px solid rgb(115 182 142 / 36%);
+  border-radius: 999px;
+  color: #b9dfc7;
+  background: rgb(74 139 96 / 14%);
+  font-size: .7rem;
+  font-weight: 700;
 }
 
 .learning-hub-module-card .button {
@@ -227,14 +282,43 @@
   gap: var(--s2);
 }
 
-.learning-hub-detail__progress-notice {
+.learning-hub-detail__progress {
   margin-top: var(--s2);
-  padding: var(--s2);
+  padding: var(--s3);
   border: 1px solid #554b33;
   border-radius: var(--r-sm);
-  color: var(--gold-soft);
   background: rgb(213 173 92 / 8%);
-  font-size: .82rem;
+}
+
+.learning-hub-detail__progress-label {
+  margin-bottom: var(--s1);
+  color: var(--gold-soft);
+  font-size: .76rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.learning-hub-detail__progress .learning-hub-module-progress__complete {
+  margin-top: var(--s2);
+}
+
+.learning-hub-progress-bar {
+  width: 100%;
+  height: .7rem;
+  margin-top: var(--s2);
+  overflow: hidden;
+  border: 1px solid #56665b;
+  border-radius: 999px;
+  background: rgb(6 15 11 / 55%);
+}
+
+.learning-hub-progress-bar__value {
+  display: block;
+  height: 100%;
+  max-width: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #8e743d, var(--gold));
 }
 
 .learning-hub-chapters {
@@ -267,6 +351,45 @@
 
 .learning-hub-chapter__heading {
   flex: 1 1 24rem;
+}
+
+.learning-hub-chapter__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s2);
+}
+
+.learning-hub-chapter__completion {
+  min-height: 2.75rem;
+  padding: .45rem .65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .55rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  background: rgb(6 15 11 / 28%);
+  cursor: pointer;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.learning-hub-chapter__completion:has(.learning-hub-chapter__checkbox:disabled) {
+  cursor: not-allowed;
+  opacity: .62;
+}
+
+.learning-hub-chapter__checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  accent-color: var(--gold);
+}
+
+.learning-hub-chapter__checkbox:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
 }
 
 .learning-hub-chapter__toggle {
@@ -553,7 +676,9 @@
   .learning-hub-section-heading > .button,
   .learning-hub-detail__actions,
   .learning-hub-detail__actions .button,
-  .learning-hub-chapter__header > .button {
+  .learning-hub-chapter__actions,
+  .learning-hub-chapter__actions .button,
+  .learning-hub-chapter__completion {
     width: 100%;
   }
 
@@ -565,6 +690,15 @@
   .learning-hub-chapter__header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .learning-hub-chapter__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .learning-hub-chapter__completion {
+    justify-content: flex-start;
   }
 
   .learning-hub-chapter__panel,
@@ -603,6 +737,36 @@
 
   .learning-hub-chapter__indicator {
     grid-column: auto;
+  }
+}
+
+@media(max-width: 390px) {
+  .learning-hub-section-heading .button,
+  .learning-hub-module-card .button,
+  .learning-hub-detail .button,
+  .learning-hub-chapter__toggle,
+  .learning-hub-chapter__completion,
+  .learning-hub-node-card .button,
+  .learning-hub-form .button,
+  .learning-hub-progress-feedback .button,
+  .learning-hub-state .button,
+  .learning-hub-form__control {
+    min-height: 44px;
+  }
+
+  .learning-hub-chapter__title,
+  .learning-hub-module-card h3,
+  .learning-hub-detail__header h2,
+  .learning-hub-module-progress__count,
+  .learning-hub-module-progress__unavailable {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .learning-hub-detail__progress,
+  .learning-hub-progress-bar {
+    width: 100%;
+    max-width: 100%;
   }
 }
 

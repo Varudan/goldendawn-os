@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; lokaler LearningHub-Inhaltsfluss bis zur UI und Progress-Foundation ohne UI-Verdrahtung implementiert, MVP noch nicht vollständig |
+| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhalts- und Progress-UI implementiert, MVP noch nicht vollständig |
 | Letzte Aktualisierung | 2026-07-18 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -268,12 +268,13 @@ LearningHubView
 `LearningHubView` rendert Lade-, Leer-, Inhalts-, Mutations-, Erfolgs- und
 Fehlerzustände mit sicheren DOM-Text-APIs. `LearningHubController` hält
 Modulauswahl, geöffnete Kapitel, Node-Auswahl und Formularzustände flüchtig,
-fängt Servicefehler kontrolliert ab und reicht persistente Mutationen
+fängt Servicefehler kontrolliert ab und reicht persistente Inhaltsmutationen
 ausschließlich an `LearningHubService` weiter. Der Service stellt `loadHub`,
 `createModule`, `renameModule`, `addChapter`, `renameChapter`,
 `addLearningNode` und `updateLearningNode` bereit; `LearningHubStorage`
-kapselt `loadLearningHub` und `saveLearningHub`. View und Controller greifen
-nicht direkt auf `localStorage` zu.
+kapselt `loadLearningHub` und `saveLearningHub`. Fortschrittsmutationen gehen
+getrennt an `LearningProgressService`. View und Controller greifen nicht direkt
+auf `localStorage` zu.
 
 Der Inhaltsservice verwendet den persistenten Hub als autoritative Quelle. Jede
 Mutation lädt den aktuellen Zustand, prüft Ziel und Eingaben, erzeugt einen
@@ -300,9 +301,9 @@ Initialzustand gespeichert. Private Nutzerdaten tragen `dataOrigin: private`
 und bleiben von Repository-Demos und deren Datenquellen getrennt.
 
 Kapitelabschluss und daraus abgeleiteter Modulfortschritt sind in einer davon
-getrennten, implementierten Progress-Foundation vorbereitet. Sie erweitert den
-Inhaltsvertrag nicht um veränderliche `completed`-Felder und verwendet diesen
-Datenfluss:
+getrennten, implementierten Progress-Foundation modelliert und über dieselbe
+View sowie denselben Controller bedienbar. Sie erweitert den Inhaltsvertrag
+nicht um veränderliche `completed`-Felder und verwendet diesen Datenfluss:
 
 ```text
 LearningProgressService
@@ -341,6 +342,42 @@ leerer Hub ergibt eine leere Modulprojektion. Module mit 100 Prozent bleiben
 vollständig erhalten. Fortschritt und spätere Testkompetenz bleiben getrennte
 Konzepte.
 
+`src/main.js` injiziert `LearningProgressService` zusätzlich zum
+`LearningHubService` in den vorhandenen `LearningHubController`; ein eigener
+Progress-Controller oder eine Rückabhängigkeit vom Inhaltsservice entsteht
+nicht. Beim Öffnen lädt der Controller zuerst den Hub und anschließend den
+Fortschritt. Im UI-Zustand hält er nur die defensiv gegen Modul- und
+Kapitel-IDs sowie Zähler und Prozentwerte geprüfte Projektion, nie den rohen
+Ereignislog. Die View verbindet Inhalt und Projektion ausschließlich über
+stabile IDs und berechnet den Prozentwert nicht neu.
+
+Ein isolierter Progress-Ladefehler lässt die Inhaltsverwaltung bedienbar,
+kennzeichnet Fortschritt ohne falsche 0-Prozent-Anzeige als nicht verfügbar,
+deaktiviert Abschlussfelder und bietet einen nicht destruktiven Retry. Der
+Controller löscht, repariert oder überschreibt dabei keine beschädigten oder
+verwaisten Progress-Daten. Fehlgeschlagene Progress-Mutationen erhalten die
+letzte valide Projektion; es gibt keine dauerhafte optimistische Änderung.
+Während einer Mutation werden konkurrierende Inhalts- und Progress-Aktionen
+gesperrt. Auswahl, Accordions, LearningNode und Formularwerte bleiben erhalten,
+und der Fokus kehrt nach Erfolg oder Fehler zum betroffenen Markierungsfeld
+zurück.
+
+Nach `createModule` und `addChapter` lädt der Controller die Projektion neu,
+weil sich ihre Modul- und Kapitelmenge geändert hat. Scheitert dieser Refresh
+nach einer bereits erfolgreichen Inhaltsmutation, wird die Inhaltsänderung
+nicht zurückgerollt; die alte Projektion wird stattdessen als nicht mehr
+verfügbar beziehungsweise veraltet behandelt und kann erneut geladen werden.
+Umbenennungen und LearningNode-Mutationen erhalten die aktuelle Projektion.
+
+Die View zeigt auf Modulkarten und im Moduldetail den gelieferten Zähler und
+Prozentwert, im Detail zusätzlich einen zugänglich benannten Fortschrittsbalken.
+Jedes Kapitel besitzt ein natives Markierungsfeld mit sichtbarem Label, getrennt
+vom Accordion-Toggle. Fortschritt wird damit nicht nur über Farbe vermittelt.
+Erfolgsmeldungen verwenden `role="status"`, Fehler `role="alert"`; Busy- und
+Disabled-Zustände verhindern Mehrfachauslösungen. Private Titel und Inhalte
+werden weiterhin nur über sichere DOM-Text-APIs gerendert. Abgeschlossene
+Module bleiben sichtbar und bedienbar.
+
 `LearningProgressStorage` kapselt `loadLearningProgress` und
 `saveLearningProgress` unter dem festen Key
 `goldendawn.learningHub.progress.v1`. Das `v1` des Persistenznamespace und
@@ -359,14 +396,14 @@ kein LRS und beansprucht kein vollständiges Event Sourcing. Multi-Tab-Rennen,
 Browser-Quota, fehlende Verschlüsselung und fehlende Synchronisierung bleiben
 bekannte Grenzen.
 
-Die Progress-Foundation besitzt in diesem Arbeitspaket keine View, keinen
-Controller und keine Verdrahtung in `src/main.js`. Kapitel-Checkboxen oder
-Fortschrittsanzeigen sind deshalb noch nicht implementiert. Eine spätere
+Die UI-Integration verändert weder den Schema-2-Inhaltsvertrag noch den
+Schema-1-Fortschrittsvertrag oder ihre getrennten Storage-Keys. Eine spätere
 Archivierung muss bestehende Ereignisse erhalten; dauerhaftes Löschen benötigt
 zuvor eine gesonderte Referenz- und Löschrichtlinie. Notizen,
 Zusammenfassungen und spätere Testversuche benötigen weiterhin eigene Verträge
-und Storage-Keys. Für LearningHub-Inhalte werden weder Löschung, Migration noch
-garantierte Multi-Tab-Synchronisierung oder Transaktionssperren eingeführt.
+und Storage-Keys. Für LearningHub-Inhalte und -Fortschritt werden weder
+Löschung, Migration noch garantierte Multi-Tab-Synchronisierung oder
+Transaktionssperren eingeführt.
 
 Der weiterhin geplante Testmodus soll diesen ausschließlich lokalen Pfad
 verwenden:
@@ -572,7 +609,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | --- | --- |
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
-| `v0.2.1` | In Arbeit: Schema 2, lokaler Inhaltsfluss bis zur UI sowie Progress-Vertrag, -Projektion, -Service und -Storage ohne UI-Verdrahtung umgesetzt; weitere MVP-Bausteine geplant |
+| `v0.2.1` | In Arbeit: Schema 2 sowie getrennte lokale Inhalts- und Progress-Pfade bis zur bedienbaren UI umgesetzt; Notizen, Zusammenfassungen und lokaler Mock-Test folgen |
 | `v0.2.2` | LichtwaldLog Local MVP ohne Synchronisierung oder Agentenlogik |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |

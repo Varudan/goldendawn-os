@@ -7,8 +7,10 @@ import { createLearningHubView } from './modules/learning-hub/learningHubView.js
 import { createPromptVaultController } from './modules/prompt-vault/promptVaultController.js'
 import { createPromptVaultView } from './modules/prompt-vault/promptVaultView.js'
 import { createLearningHubService } from './services/learningHubService.js'
+import { createLearningProgressService } from './services/learningProgressService.js'
 import { createPromptService } from './services/promptService.js'
 import { createLearningHubStorage } from './storage/learningHubStorage.js'
+import { createLearningProgressStorage } from './storage/learningProgressStorage.js'
 import { createPromptStorage } from './storage/promptStorage.js'
 import { createStorageAdapter } from './storage/storageAdapter.js'
 import {
@@ -43,7 +45,7 @@ const modules = [
     id: VIEW_LEARNING_HUB,
     name: 'LearningHub',
     description:
-      'Eigene Lernmodule, Kapitel und LearningNodes lokal verwalten',
+      'Eigene Lernmodule, Kapitel, LearningNodes und Lernfortschritt lokal verwalten',
     status: 'In Arbeit',
     statusClass: 'next',
     navigationState: 'In Arbeit',
@@ -187,9 +189,15 @@ const promptVaultController = createPromptVaultController({
 })
 const learningHubStorage = createLearningHubStorage(storageAdapter)
 const learningHubService = createLearningHubService({ learningHubStorage })
+const learningProgressStorage = createLearningProgressStorage(storageAdapter)
+const learningProgressService = createLearningProgressService({
+  learningProgressStorage,
+  learningHubService,
+})
 const learningHubView = createLearningHubView(viewOutlet)
 const learningHubController = createLearningHubController({
   learningHubService,
+  learningProgressService,
   learningHubView,
 })
 
@@ -210,14 +218,14 @@ function renderCommandCenter() {
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
         <h2 id="focus-title">v0.2.1 – LearningHub Local MVP in Arbeit</h2>
-        <p>Command Center und PromptVault bleiben lokal nutzbar. Im LearningHub ist die private Inhaltsverwaltung für Module, Kapitel und LearningNodes jetzt bedienbar; Fortschritt, Notizen, Zusammenfassungen und der lokale Mock-Test folgen in weiteren Arbeitsschritten.</p>
+        <p>Command Center und PromptVault bleiben lokal nutzbar. Im LearningHub sind die private Inhaltsverwaltung für Module, Kapitel und LearningNodes sowie Kapitelabschluss und Modulfortschritt jetzt bedienbar. Notizen, Zusammenfassungen und der lokale Mock-Test folgen in weiteren, getrennten Arbeitsschritten.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
           <span>Aktueller Teilstand</span>
-          <strong>Lokale Inhalte bedienbar</strong>
+          <strong>Lokale Inhalte und Fortschritt bedienbar</strong>
         </div>
-        <small>LearningHub-Inhalte bleiben im aktuellen Browserprofil. Es gibt noch keine Cloud-Sicherung oder geräteübergreifende Synchronisierung.</small>
+        <small>LearningHub-Inhalte und -Fortschritt bleiben im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung oder geräteübergreifende Synchronisierung.</small>
       </div>
     </section>
 
@@ -225,8 +233,8 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Ausbauschritt</span>
-        <h2 id="milestone-title">Kapitelabschluss und Lernfortschritt</h2>
-        <p>Als Nächstes ergänzen wir Kapitelabschluss und daraus abgeleiteten Modulfortschritt. Notizen, Zusammenfassungen und der lokale Mock-Test folgen in getrennten Schritten.</p>
+        <h2 id="milestone-title">Notizen und Zusammenfassungen</h2>
+        <p>Als Nächstes ergänzen wir lokale Notizen und Zusammenfassungen hinter eigenen Service- und Storage-Grenzen. Der lokale Mock-Test folgt später und bleibt davon getrennt.</p>
       </div>
       <span class="status status--next">Als Nächstes</span>
     </aside>
