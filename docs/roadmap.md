@@ -7,8 +7,8 @@
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | In Arbeit; Schema 2 sowie getrennte lokale LearningHub-Inhalts- und Progress-Pfade bis zur UI umgesetzt |
-| Letzte Aktualisierung | 2026-07-18 |
+| Status | In Arbeit; Inhalts- und Progress-Pfade bis zur UI sowie getrennte LearningArtifact-Foundation ohne UI umgesetzt |
+| Letzte Aktualisierung | 2026-07-19 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -48,7 +48,7 @@ nicht starre Kalendertermine.
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
-| `v0.2.1` | LearningHub Local MVP | Nutzerkonfigurierte Inhaltsverwaltung und separate Progress-UI; Notizen, Zusammenfassungen und lokaler Mock-Test folgen | 🟡 |
+| `v0.2.1` | LearningHub Local MVP | Inhaltsverwaltung und Progress-UI plus LearningArtifact-Foundation; Artefakt-UI und lokaler Mock-Test folgen | 🟡 |
 | `v0.2.2` | LichtwaldLog Local MVP | Lokale Reflexions- und Erkenntniseinträge | ⬜ |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
@@ -169,14 +169,20 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
   LearningProgress-Schema-1-Vertrag modelliert; Modulfortschritt wird aus der
   Ereignisreihenfolge der Kapitel abgeleitet. Abgeschlossene 100-%-Module
   bleiben erhalten und testbar.
+- Notizen und Zusammenfassungen verwenden einen dritten, getrennten
+  LearningArtifact-Schema-1-Vertrag. Pro LearningNode ist höchstens ein
+  aktueller Arbeitsstand je Typ erlaubt; Artefakte sind editierbar, besitzen
+  noch keine Versionshistorie und verändern nicht das append-only
+  Progress-Modell.
 - Fortschritt und spätere Testkompetenz sind getrennte Konzepte.
 - Private Lerninhalte bleiben außerhalb des Repositorys. Die Demo-Daten sind
   unabhängig erfunden, synthetisch und vollständig tief eingefroren.
 - Die abgeschlossene Schema-2-Foundation selbst enthält keine UI, Persistenz,
   Storage-, Fortschritts- oder Testlogik. Getrennte nachfolgende Arbeitspakete
   haben Service, Storage, Controller und Inhalts-UI sowie die weiterhin
-  eigenständige Progress-Foundation ergänzt, ohne diese Vertragsgrenzen zu
-  vermischen.
+  eigenständige Progress- und LearningArtifact-Foundation ergänzt, ohne diese
+  Vertragsgrenzen zu vermischen. Die Artifact-Foundation besitzt noch keine
+  Controller- oder UI-Anbindung.
 
 ### Umfang des LearningHub Local MVP
 
@@ -204,8 +210,12 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
   bereitstellen, ohne Schema 2 zu verändern oder Testkompetenz einzumischen.
 - ✅ Progress-Service in LearningHubController und LearningHubView anbinden und
   Kapitelabschluss sowie Modulfortschritt zugänglich darstellen.
-- ⬜ Lokale Notizen und Zusammenfassungen hinter den vorgesehenen Service- und
-  Storage-Grenzen speichern.
+- ✅ Getrennten LearningArtifact-Schema-1-Vertrag, privaten lokalen Storage
+  unter `goldendawn.learningHub.artifacts.v1` und referenzprüfenden Service für
+  aktuelle Notizen und Zusammenfassungen bereitstellen.
+- ⬜ LearningArtifactService in `LearningHubController` und
+  `LearningHubView` anbinden und Notizen sowie Zusammenfassungen lokal
+  bedienbar machen.
 - ⬜ Einen vorbereiteten, sichtbaren **„Lokalen Mock-Test“** für bekannte Inhalte
   anbieten.
 - ⬜ Single-Choice-, Selbstkontroll- oder andere eindeutig auswertbare Aufgaben
@@ -214,6 +224,27 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
   speichern; Views und Controller greifen nicht direkt auf `localStorage` zu.
 - ✅ Lade-, Leer-, Inhalts-, Mutations-, Erfolgs- und Fehlerzustände zugänglich
   gestalten.
+
+Der implementierte LearningArtifact-Foundation-Datenfluss lautet:
+
+```text
+LearningArtifactService
+  ├→ LearningHubService
+  │   → LearningHubStorage
+  │   → StorageAdapter
+  │
+  └→ LearningArtifactStorage
+      → StorageAdapter
+      → localStorage
+```
+
+Der Inhaltsservice besitzt keine Rückabhängigkeit auf den Artifact-Service.
+Der Service prüft die vollständige Modul-, Kapitel- und LearningNode-Kette,
+speichert höchstens je eine aktuelle `note` und `summary` pro LearningNode und
+behandelt identische Saves sowie bereits leere Clear-Ziele ohne ID-, Zeit- oder
+Schreibzugriff. Artefakttexte sind auf 10.000 Zeichen begrenzt; stabile
+Referenz-IDs ersetzen Kopien von Titeln oder LearningNode-Inhalten. Diese
+Foundation ist noch nicht an Controller, View oder `src/main.js` angebunden.
 
 Der implementierte Progress-Datenfluss lautet:
 
@@ -295,8 +326,13 @@ geplant.
   schreibfreier No-op ohne neue ID oder Uhrabfrage.
 - LearningNodes sind selbst erstellte Textkarten innerhalb eines Kapitels;
   Aktionen darauf bleiben Controller- und UI-Fähigkeiten.
-- Notizen, Zusammenfassungen und Testversuche bleiben lokal und verwenden die
-  vorgesehenen Service- und Storage-Grenzen.
+- Notizen und Zusammenfassungen bleiben im getrennten
+  LearningArtifact-Schema-1-Store lokal; pro LearningNode existiert höchstens
+  ein aktueller Stand je Typ, und jede Mutation prüft die vollständige
+  Quellenreferenzkette.
+- Die spätere Artefakt-UI und lokale Testversuche verwenden ausschließlich die
+  vorgesehenen Service- und Storage-Grenzen; Views und Controller greifen nicht
+  direkt auf `localStorage` zu.
 - Der lokale Mock-Test ist eindeutig gekennzeichnet, reproduzierbar und ohne
   KI-Auswertung eindeutig auswertbar.
 - Private Kursinhalte gelangen nicht in das Repository; eine öffentliche Demo
@@ -313,6 +349,9 @@ geplant.
 - Vertrags-, Projektions-, Storage- und Service-Tests der separaten
   Progress-Foundation einschließlich Referenzfehlern, No-ops und
   unveränderlichen Eingaben;
+- Vertrags-, Storage- und Service-Tests der separaten Artifact-Foundation
+  einschließlich Typ- und Eindeutigkeitsregeln, vollständiger Referenzprüfung,
+  Generatorgrenzen, No-ops und unveränderlichen Eingaben;
 - sichere Textdarstellung HTML-artiger Eingaben, zugängliche Accordions und
   responsive Inhaltsverwaltung ohne direkte Storage-Zugriffe aus UI-Schichten;
 - nachvollziehbare, deterministische Ableitung des Modulfortschritts aus der
@@ -615,9 +654,18 @@ Log, prüft Referenzen, hängt Abschluss- und Wiederöffnungsereignisse append-o
 an und behandelt bereits erreichte Zielzustände ohne Schreibzugriff. Die
 validierte Projektion ist über den vorhandenen Controller und die View als
 Kapitelabschluss und Modulfortschritt bedienbar; Progress-Fehler bleiben vom
-Inhaltsfluss isoliert. Als Nächstes folgen Notizen und Zusammenfassungen. Der
-lokale Mock-Test bleibt ein späteres, getrenntes Arbeitspaket; der Meilenstein
-ist damit noch nicht abgeschlossen.
+Inhaltsfluss isoliert.
+
+Außerdem sind LearningArtifact-Vertrag, privater lokaler Storage und Service
+unter `goldendawn.learningHub.artifacts.v1` umgesetzt. Notiz und
+Zusammenfassung bleiben als höchstens ein editierbarer aktueller Stand je
+LearningNode und Typ vom Inhalt und vom append-only Progress getrennt. Der
+Service prüft die vollständige Quellenreferenzkette, behandelt identische
+Speicherungen und leere Clear-Ziele schreibfrei und kopiert keine Titel oder
+LearningNode-Inhalte in den Artifact-Store. Controller, View und `src/main.js`
+sind bewusst noch nicht angebunden. Als Nächstes folgt deshalb die bedienbare
+Artefakt-UI über diese Foundation. Der lokale Mock-Test bleibt ein späteres,
+getrenntes Arbeitspaket; der Meilenstein ist damit noch nicht abgeschlossen.
 
 `v0.2.2 – LichtwaldLog Local MVP` folgt anschließend als weiteres rein lokales
 Modul und ist noch nicht implementiert.

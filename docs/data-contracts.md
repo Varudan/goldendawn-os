@@ -11,15 +11,17 @@
 | LearningHub-Persistenznamespace | `v1` |
 | LearningProgress-Schema | `1` |
 | LearningProgress-Persistenznamespace | `v1` |
+| LearningArtifact-Schema | `1` |
+| LearningArtifact-Persistenznamespace | `v1` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale PromptVault-Verträge sowie vollständige getrennte LearningHub-Inhalts- und Progress-Pfade bis zur UI implementiert; Sync-Vertrag als Zielzustand dokumentiert |
-| Letzte Aktualisierung | 2026-07-18 |
+| Status | Lokale PromptVault-, LearningHub-Inhalts- und Progress-Verträge sowie LearningArtifact-Foundation ohne UI implementiert; Sync-Vertrag als Zielzustand dokumentiert |
+| Letzte Aktualisierung | 2026-07-19 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
-PromptVault, LearningHub-Inhalte und LearningHub-Fortschritt sowie die
-maschinenlesbare Sprache zwischen dem GoldenDawn-OS-Frontend, dem SyncAgent,
-dem DataAgent und dem TestAgent. Es konkretisiert die Grenzen aus `AGENTS.md`,
-`docs/architecture.md` und `docs/security.md`.
+PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt und LearningArtifacts
+sowie die maschinenlesbare Sprache zwischen dem GoldenDawn-OS-Frontend, dem
+SyncAgent, dem DataAgent und dem TestAgent. Es konkretisiert die Grenzen aus
+`AGENTS.md`, `docs/architecture.md` und `docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
 In `v0.2.1` sind die LearningHub-Schema-2-Foundation, die lokale
@@ -27,8 +29,11 @@ Inhaltspersistenz sowie Controller und Inhaltsoberfläche implementiert. Der
 separate Schema-1-Fortschrittsvertrag, seine Projektion, sein Service und seine
 lokale Persistenz sind ebenfalls implementiert und über den vorhandenen
 Controller und die View bedienbar. Die UI-Integration verändert keinen der
-beiden Verträge. Der vollständige LearningHub Local MVP ist weiterhin in
-Arbeit. Die externen Sync- und Agentenverträge beschreiben den geplanten
+beiden Verträge. Zusätzlich sind der getrennte LearningArtifact-Schema-1-
+Vertrag, sein privater lokaler Storage und sein referenzprüfender Service
+implementiert. Diese Foundation ist noch nicht an Controller, View oder
+`src/main.js` angebunden. Der vollständige LearningHub Local MVP ist weiterhin
+in Arbeit. Die externen Sync- und Agentenverträge beschreiben den geplanten
 Zielzustand späterer Versionen. Solange eine externe Aktion noch nicht
 implementiert ist, muss sie in UI und Dokumentation als geplant gekennzeichnet
 bleiben.
@@ -36,16 +41,17 @@ bleiben.
 ## Vertragsgrenzen der lokalen Module v0.2.1 und v0.2.2
 
 Die lokalen Module `v0.2.1` und `v0.2.2` erweitern die externe
-Aktions-Allowlist dieses Dokuments nicht. Der LearningHub-Schema-2-Inhaltsvertrag
-und der LearningProgress-Schema-1-Vertrag sind rein interne Datenverträge und
+Aktions-Allowlist dieses Dokuments nicht. LearningHub-Inhalt,
+LearningProgress und LearningArtifacts sind rein interne Datenverträge und
 führen keine externe Aktion ein. Ihre lokalen Persistenzen verwenden die
-getrennten festen Namespaces `goldendawn.learningHub.content.v1` und
-`goldendawn.learningHub.progress.v1`. Das jeweilige `v1` im Key bezeichnet
+getrennten festen Namespaces `goldendawn.learningHub.content.v1`,
+`goldendawn.learningHub.progress.v1` und
+`goldendawn.learningHub.artifacts.v1`. Das jeweilige `v1` im Key bezeichnet
 keine Schemaversion: Der Inhaltsvertrag bleibt bei `schemaVersion: 2`, der
-Fortschrittsvertrag verwendet unabhängig davon `schemaVersion: 1`. Die
-nachfolgenden `learningTest.*`-Verträge bleiben ausdrücklich ein Zielzustand
-für `v0.5.0`; die internen `DataAgent`-Verträge sind Zielzustände für `v0.4.0`
-und, im Lernfluss, `v0.5.0`.
+Fortschritts- und der Artefaktvertrag verwenden unabhängig davon jeweils
+`schemaVersion: 1`. Die nachfolgenden `learningTest.*`-Verträge bleiben
+ausdrücklich ein Zielzustand für `v0.5.0`; die internen `DataAgent`-Verträge
+sind Zielzustände für `v0.4.0` und, im Lernfluss, `v0.5.0`.
 
 ### v0.2.1 – LearningHub Local MVP
 
@@ -76,6 +82,14 @@ implementiert. `src/main.js` injiziert den Progress-Service in den bestehenden
 `LearningHubController`; Kapitel-Checkboxen sowie sichtbare Modulzähler,
 Prozentwerte und Fortschrittsbalken verwenden ausschließlich die validierte
 Projektion. Es gibt keinen separaten Progress-Controller.
+
+Die ebenfalls implementierte LearningArtifact-Foundation umfasst
+`validateLearningArtifactStore`, `createLearningArtifactService` und
+`createLearningArtifactStorage`. Sie speichert aktuelle private Notizen und
+Zusammenfassungen getrennt von Inhalt und Fortschritt. Der Artifact-Service
+prüft Referenzen über `LearningHubService`; der Inhaltsservice besitzt keine
+Rückabhängigkeit. Controller, View und `src/main.js` sind in diesem
+Foundation-Schritt bewusst noch nicht angebunden.
 
 Davon getrennt bleibt der lokale Mock-Testfluss geplant:
 
@@ -178,10 +192,10 @@ Serialisierungslogik wird nicht eingeführt.
 
 Der Key enthält ausschließlich LearningHub-Inhalte. Kapitelabschluss und
 Fortschritt gehören in den getrennten Vertrag unter
-`goldendawn.learningHub.progress.v1`. Notizen, Zusammenfassungen sowie spätere
-Testversuche gehören weder in den Inhalts- noch in den Progress-Wert und
-benötigen eigene Verträge und eigene Storage-Keys, die hier noch nicht
-vorweggenommen werden.
+`goldendawn.learningHub.progress.v1`. Notizen und Zusammenfassungen gehören in
+den nachfolgend dokumentierten LearningArtifact-Vertrag unter
+`goldendawn.learningHub.artifacts.v1`. Spätere Testversuche gehören in keinen
+dieser Werte und benötigen weiterhin einen eigenen Vertrag und Storage-Key.
 
 `dataOrigin` klassifiziert die Herkunft als `synthetic` oder `private`. Das Feld
 ist keine Verschlüsselungs-, Authentifizierungs- oder Sicherheitsfunktion.
@@ -286,6 +300,248 @@ oder Speicherung fehl, wird kein teilweise veränderter Hub geschrieben.
 Löschen, Archivieren, Umsortieren, Schema-Migrationen und garantierte
 Multi-Tab-Synchronisierung oder Transaktionssperren gehören nicht zu diesem
 Vertrag.
+
+#### Lokaler LearningArtifact-Vertrag – Schema 1
+
+##### Trennung von Inhalt und Fortschritt
+
+LearningArtifacts bilden private, benutzerverfasste Notizen und
+Zusammenfassungen als aktuelle Arbeitsstände ab. Sie erweitern weder den
+LearningHub-Inhaltsvertrag noch den append-only Progress-Vertrag:
+
+| Belang | Vertrag | Storage-Key | Lebenszyklus |
+| --- | --- | --- | --- |
+| Module, Kapitel und LearningNodes | LearningHub `schemaVersion: 2` | `goldendawn.learningHub.content.v1` | editierbarer Inhalt |
+| Kapitelzustandswechsel und Modulfortschritt | LearningProgress `schemaVersion: 1` | `goldendawn.learningHub.progress.v1` | append-only Ereignisfolge |
+| Notizen und Zusammenfassungen | LearningArtifact `schemaVersion: 1` | `goldendawn.learningHub.artifacts.v1` | editierbarer aktueller Stand ohne Historie |
+
+Die Zahlen in den Storage-Keys versionieren ausschließlich die jeweiligen
+Persistenz-Namespaces. Sie ändern die unabhängig versionierten Verträge nicht.
+Die Artifact-Foundation führt keine Progress-Ereignisse, kein Schema 3 des
+LearningHubs und keine gemeinsame Sammelpersistenz ein.
+
+##### Struktur und Validierung
+
+Der Root enthält ausschließlich die Vertragsversion, die
+Herkunftsklassifikation und das Artefakt-Array. Jedes Artefakt enthält
+ausschließlich seine Identität, seinen Typ, die drei stabilen
+Quellenreferenzen, den privaten Text und zwei Zeitstempel. Alle aufgeführten
+Felder sind eigene Pflichtfelder; fehlende und unbekannte Felder werden
+abgelehnt.
+
+| Feld | Typ | Regel |
+| --- | --- | --- |
+| `schemaVersion` | Ganzzahl | exakt `1` |
+| `dataOrigin` | String | ausschließlich `synthetic` oder `private` |
+| `artifacts` | Array | darf leer sein |
+| `artifacts[].id` | String | nicht leer, bereits getrimmt und im vollständigen Store global eindeutig |
+| `artifacts[].type` | String | ausschließlich `note` oder `summary` |
+| `artifacts[].moduleId` | String | nicht leer und bereits getrimmt |
+| `artifacts[].chapterId` | String | nicht leer und bereits getrimmt |
+| `artifacts[].learningNodeId` | String | nicht leer und bereits getrimmt |
+| `artifacts[].content` | String | nicht leer, bereits getrimmt und höchstens 10.000 Zeichen |
+| `artifacts[].createdAt` | String | kanonischer UTC-Zeitstempel im exakten Format `YYYY-MM-DDTHH:mm:ss.sssZ` |
+| `artifacts[].updatedAt` | String | dasselbe kanonische UTC-Format und nicht vor `createdAt` |
+
+Die Kombination aus `learningNodeId` und `type` ist im vollständigen Store
+eindeutig. Ein LearningNode besitzt daher höchstens eine aktuelle `note` und
+höchstens eine aktuelle `summary`; beide Typen dürfen gleichzeitig existieren.
+Modul-, Kapitel- und LearningNode-Titel sowie deren vollständige Inhalte werden
+nicht in den Artifact-Store kopiert. Gespeichert werden ausschließlich die
+stabilen Referenz-IDs und der private Artefakttext einschließlich seiner
+Artefaktmetadaten.
+
+`validateLearningArtifactStore` sammelt alle strukturell auffindbaren Fehler als
+stabile Einträge `{ code, path, message }` und verändert die Eingabe nicht. Die
+Implementierung exportiert die fachlich benötigten Vertragskonstanten, die
+kanonische Zeitprüfung und den Validator. Die stabilen Vertragsfehlercodes sind:
+
+| Code | Bedeutung |
+| --- | --- |
+| `invalidLearningArtifactStore` | Root ist kein Objekt |
+| `unsupportedSchemaVersion` | `schemaVersion` ist nicht exakt `1` |
+| `invalidDataOrigin` | Herkunft ist weder `synthetic` noch `private` |
+| `invalidArtifacts` | `artifacts` ist kein Array |
+| `invalidArtifact` | ein Artefakteintrag ist kein Objekt |
+| `unknownProperty` | Root oder Artefakt enthält ein nicht unterstütztes eigenes Feld |
+| `missingProperty` | ein erforderliches eigenes Feld fehlt |
+| `invalidId` | Artefakt-ID oder Referenz-ID ist leer, ungetrimmt oder kein String |
+| `duplicateArtifactId` | eine Artefakt-ID kommt im Store mehrfach vor |
+| `invalidArtifactType` | Typ ist weder `note` noch `summary` |
+| `duplicateLearningNodeArtifactType` | Kombination aus `learningNodeId` und `type` kommt mehrfach vor |
+| `invalidContent` | Artefakttext ist leer, ungetrimmt oder kein String |
+| `contentTooLong` | Artefakttext überschreitet 10.000 Zeichen |
+| `invalidCreatedAt` | `createdAt` ist ungültig oder nicht kanonisch |
+| `invalidUpdatedAt` | `updatedAt` ist ungültig oder nicht kanonisch |
+| `updatedAtBeforeCreatedAt` | `updatedAt` liegt vor `createdAt` |
+
+Die strukturelle Validierung prüft bewusst nicht, ob die Referenz-IDs im
+aktuellen LearningHub existieren und richtig miteinander verknüpft sind. Diese
+Prüfung benötigt den aktuellen Inhaltsstand und liegt im
+`LearningArtifactService`.
+
+##### Datenfluss, Service und Referenzintegrität
+
+```text
+LearningArtifactService
+  ├→ LearningHubService
+  │   → LearningHubStorage
+  │   → StorageAdapter
+  │
+  └→ LearningArtifactStorage
+      → StorageAdapter
+      → localStorage
+```
+
+`LearningArtifactService` verwendet `LearningHubService` ausschließlich zum
+Laden des aktuellen privaten Inhaltsstands und zur Referenzprüfung. Der
+Inhaltsservice besitzt keine Rückabhängigkeit auf den Artifact-Service; eine
+zirkuläre Service-Abhängigkeit entsteht nicht. Controller, View und
+`src/main.js` sind in diesem Foundation-Schritt noch nicht angebunden.
+
+Der Service stellt diese öffentlichen Operationen bereit:
+
+| Operation | Fachliche Wirkung |
+| --- | --- |
+| `loadArtifacts()` | aktuellen privaten Artifact-Store laden oder bei fehlendem Key den unpersistierten leeren Initialzustand liefern |
+| `saveNote({ moduleId, chapterId, learningNodeId, content })` | aktuelle Notiz erstellen oder ihren Text aktualisieren |
+| `saveSummary({ moduleId, chapterId, learningNodeId, content })` | aktuelle Zusammenfassung erstellen oder ihren Text aktualisieren |
+| `clearNote({ moduleId, chapterId, learningNodeId })` | exakt die Notiz der Referenz entfernen |
+| `clearSummary({ moduleId, chapterId, learningNodeId })` | exakt die Zusammenfassung der Referenz entfernen |
+
+Die stabilen Erfolgsstatus lauten:
+
+| Operation und Fall | `status` | `changed` |
+| --- | --- | --- |
+| `loadArtifacts`, fehlender Artifact-Key | `empty` | `false` |
+| `loadArtifacts`, vorhandener valider Store | `loaded` | `false` |
+| erstmaliges Speichern eines Typs | `artifactCreated` | `true` |
+| Aktualisieren eines vorhandenen Typs | `artifactUpdated` | `true` |
+| Speichern eines inhaltlich identischen Texts | `artifactUnchanged` | `false` |
+| Entfernen eines vorhandenen Typs | `artifactCleared` | `true` |
+| Entfernen eines nicht vorhandenen Typs | `artifactAlreadyEmpty` | `false` |
+
+Jeder Service-Erfolg und -Fehler enthält ein konsistentes `changed`. Sichere
+Ergebnisse liefern defensive Kopien des vollständigen `artifactStore`;
+Fehlerfälle verwenden stabile generische Codes und Meldungen ohne private
+Inhalte.
+
+Jede Mutation folgt diesen Grenzen:
+
+1. aktuellen LearningHub über `LearningHubService` laden und vollständig
+   validieren;
+2. Existenz und Eigentum der Zielkette `moduleId` → `chapterId` →
+   `learningNodeId` prüfen;
+3. aktuellen Artifact-Store laden und vollständig validieren;
+4. alle bereits gespeicherten Referenzketten gegen den aktuellen Hub prüfen;
+5. immutable einen neuen vollständigen Zustand erzeugen;
+6. den Ergebniszustand vollständig validieren;
+7. nur bei einer echten Änderung genau einmal speichern.
+
+Ein Modul muss existieren, das Kapitel muss zu diesem Modul und der LearningNode
+zu diesem Kapitel gehören. Eine andernorts global vorhandene ID macht eine
+falsche Elternkette nicht gültig. Verwaiste oder falsch zugeordnete gespeicherte
+Artefakte blockieren Mutationen kontrolliert und werden weder repariert,
+gelöscht noch überschrieben.
+
+`saveNote` und `saveSummary` trimmen `content` vor Leer- und Längenprüfung.
+Leerer Text wird abgelehnt; Entfernen erfolgt ausschließlich über die
+Clear-Operationen. Beim Erstellen entstehen eine neue stabile Artefakt-ID und
+genau ein Zeitwert, der gleichermaßen für `createdAt` und `updatedAt` verwendet
+wird. Beim Aktualisieren bleiben `id` und `createdAt` unverändert; der neue
+`updatedAt`-Wert darf nicht vor dem vorherigen `updatedAt` liegen.
+
+Neue IDs werden über einen injizierbaren Generator erzeugt und im vollständigen
+Store auf Eindeutigkeit geprüft. Nach höchstens fünf ungültigen Werten,
+Generatorfehlern oder Kollisionen bricht die Erzeugung kontrolliert ohne
+Schreibzugriff ab. Die injizierbare Uhr muss einen kanonischen UTC-Zeitstempel
+liefern; Uhrfehler, nicht kanonische Werte und rückläufige Aktualisierungszeiten
+führen ebenfalls zu keinem Save.
+
+Inhaltlich identische Speicheraufrufe sind vollständige No-ops: Sie erzeugen
+weder ID noch Zeitstempel und schreiben nicht. Clear-Operationen erzeugen
+grundsätzlich keine ID oder Uhrabfrage. Sie entfernen nur den exakt
+referenzierten Typ, erhalten das andere Artefakt desselben LearningNodes und
+verändern die Reihenfolge aller übrigen Artefakte nicht. Auch ein bereits leerer
+Typ bleibt ohne Schreibzugriff.
+
+Wichtige stabile Service-Fehlercodes sind:
+
+| Code | Bedeutung |
+| --- | --- |
+| `invalidLearningArtifactInput` | Ziel-IDs oder Artefakttext sind formal ungültig |
+| `moduleNotFound` | Zielmodul existiert nicht |
+| `chapterNotFound` | Zielkapitel existiert nicht |
+| `chapterModuleMismatch` | Zielkapitel gehört nicht zum angegebenen Modul |
+| `learningNodeNotFound` | Ziel-LearningNode existiert nicht |
+| `learningNodeChapterMismatch` | Ziel-LearningNode gehört nicht zur angegebenen Elternkette |
+| `orphanedArtifactModuleReference` | gespeichertes Artefakt verweist auf kein vorhandenes Modul |
+| `orphanedArtifactChapterReference` | gespeichertes Artefakt verweist auf kein vorhandenes Kapitel |
+| `artifactChapterModuleMismatch` | gespeichertes Artefakt besitzt eine falsche Modul-Kapitel-Zuordnung |
+| `orphanedArtifactLearningNodeReference` | gespeichertes Artefakt verweist auf keinen vorhandenen LearningNode |
+| `artifactLearningNodeChapterMismatch` | gespeichertes Artefakt besitzt eine falsche vollständige Elternkette |
+| `learningArtifactIdGenerationFailed` | in höchstens fünf Versuchen entstand keine gültige eindeutige Artefakt-ID |
+| `learningArtifactClockFailed` | injizierte Uhr ist fehlgeschlagen |
+| `invalidLearningArtifactTimestamp` | Uhrwert ist kein kanonischer UTC-Zeitstempel |
+| `learningArtifactTimestampMovedBackward` | Aktualisierungszeitpunkt liegt vor dem vorherigen `updatedAt` |
+| `invalidLearningArtifactState` | vollständiger neuer Artifact-Store ist nicht vertragsgültig |
+| `invalidStoredLearningHub` | geladener Inhaltszustand ist kein gültiger privater Schema-2-Hub |
+| `invalidStoredLearningArtifacts` | geladener Artefaktzustand ist kein gültiger privater Schema-1-Store |
+| `learningArtifactStorageUnavailable` | Artifact-Storage-Schnittstelle fehlt |
+| `learningArtifactStorageReadFailed` | Artifact-Store konnte nicht gelesen werden |
+| `learningArtifactStorageWriteFailed` | Artifact-Store konnte nicht geschrieben werden |
+| `unexpectedLearningHubResult` | Inhaltsservice lieferte kein verwertbares Ergebnis |
+| `unexpectedStorageResult` | Artifact-Storage lieferte kein verwertbares Ergebnis |
+
+##### Lokale Persistenz und Sicherheitsgrenzen
+
+`createLearningArtifactStorage` erhält ausschließlich den gemeinsamen
+`StorageAdapter` und stellt `loadLearningArtifacts` sowie
+`saveLearningArtifacts` unter diesem festen, nicht nutzerkontrollierten Key
+bereit:
+
+```text
+goldendawn.learningHub.artifacts.v1
+```
+
+Fehlt der Key, liefert jeder Lesevorgang ohne Initialisierungsschreibzugriff
+einen frischen Store mit `schemaVersion: 1`, `dataOrigin: private` und leerem
+`artifacts`-Array. Ein erfolgreicher Lesevorgang liefert `status: missing` oder
+`status: found` und den defensiv geklonten Wert in `artifactStore`; ein
+erfolgreicher Schreibvorgang liefert `status: saved`.
+
+Vor jedem Schreibzugriff liest der Storage denselben festen Key erneut und
+wendet auf einen vorhandenen Wert dieselbe vollständige Vertrags- und
+Herkunftsprüfung an. Ein synthetischer, beschädigter, nicht unterstützter oder
+nicht sicher lesbarer Bestand blockiert den Save; erst ein fehlender Key oder
+ein gültiger privater Bestand erlaubt den anschließenden Schreibzugriff. Dieser
+Read-Preflight verhindert ein bewusstes Überschreiben erkennbar unsicherer
+Bestände, ist aber keine Transaktion und schließt Multi-Tab-Rennen nicht aus.
+
+Laden und Speichern validieren den vollständigen Vertrag. Der private Pfad
+akzeptiert ausschließlich `dataOrigin: private`. Synthetische, beschädigte und
+nicht unterstützte gespeicherte Werte werden weder gelöscht, überschrieben noch
+durch den leeren Initialzustand ersetzt. Auch an den Adapter übergebene
+Schreibwerte werden defensiv geklont.
+
+Adapter-, Verfügbarkeits-, Lese-, Schreib- und Quota-Fehler werden kontrolliert
+in stabile Ergebnisse übersetzt. Fehler und Konsolenausgaben enthalten keine
+privaten Texte, IDs, Referenzketten, Rohwerte oder Zeitstempel. Es gibt keinen
+Demo-Import, Netzwerkzugriff und keine Telemetrie.
+
+`dataOrigin` ist nur eine Klassifikation und kein technischer Schutz.
+`localStorage` ist unverschlüsselt und für JavaScript derselben Origin
+grundsätzlich zugänglich. Die lokale Ablage ist keine Cloud-Sicherung und keine
+geräteübergreifende Synchronisierung; Browserdaten können gelöscht werden.
+Browser-Quota, Multi-Tab-Rennen und fehlende Transaktionssperren bleiben
+Grenzen. Die 10.000-Zeichen-Grenze gilt je Artefakt und ersetzt keine
+Gesamtgrößenbegrenzung des Stores. Eine spätere UI muss private Artefakttexte
+über `textContent` oder gleichwertige sichere DOM-Erzeugung ausgeben.
+
+Schema 1 enthält keine Artefakt-Versionshistorie. Eine spätere Historie,
+Migration, Import/Export, Synchronisierung sowie Archivierungs- oder
+Löschregeln für referenzierte LearningHub-Inhalte benötigen jeweils eine
+gesonderte Vertrags- und Architekturentscheidung.
 
 #### Lokaler LearningHub-Fortschrittsvertrag – Schema 1
 
