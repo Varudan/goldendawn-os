@@ -156,10 +156,12 @@ Controller greifen nicht direkt auf `localStorage` zu.
   Referenzprüfung; es gibt keine Rückabhängigkeit. Fortschritt liegt unter dem
   festen Key `goldendawn.learningHub.progress.v1`, während der Inhaltsvertrag
   unverändert unter `goldendawn.learningHub.content.v1` bleibt.
-- Die Progress-Foundation besitzt noch keine View, keinen Controller und keine
-  Verdrahtung in `src/main.js`. Kapitel-Checkboxen und Fortschrittsanzeigen
-  sind nicht implementiert; der lokale Progress-Pfad überträgt keine Daten an
-  Webhooks, Agenten, Airtable oder andere Netzwerke.
+- `src/main.js` injiziert den Progress-Service in den vorhandenen
+  `LearningHubController`. View und Controller halten und rendern nur die
+  validierte Projektion, nicht Ereignis-IDs, Zeitstempel oder den vollständigen
+  Log. Kapitel-Checkboxen und Fortschrittsanzeigen bleiben vollständig lokal
+  und übertragen keine Daten an Webhooks, Agenten, Airtable oder andere
+  Netzwerke.
 - Private LearningModules, Kapitel und LearningNodes sowie spätere Lernnotizen,
   Zusammenfassungen und lokale Testversuche werden weder in das Repository
   übernommen noch in öffentlichen Demo-Daten oder unnötigen Logs verwendet.
@@ -188,10 +190,11 @@ Controller greifen nicht direkt auf `localStorage` zu.
   vollständigen Fortschrittslogs oder sonstigen Rohdaten. Rohe `DOMException`-
   und Storage-Fehler werden nicht unkontrolliert an höhere Schichten
   weitergereicht.
-- Die Oberfläche weist sichtbar darauf hin, dass Inhalte nur im aktuellen
-  Browserprofil ohne Cloud-Sicherung oder geräteübergreifende Synchronisierung
-  liegen und von anderen Skripten derselben Origin grundsätzlich aus dem
-  unverschlüsselten `localStorage` gelesen werden könnten.
+- Die Oberfläche weist sichtbar darauf hin, dass Inhalte und Fortschritt nur im
+  aktuellen Browserprofil ohne Cloud-Sicherung oder geräteübergreifende
+  Synchronisierung liegen und von anderen Skripten derselben Origin
+  grundsätzlich aus dem unverschlüsselten `localStorage` gelesen werden
+  könnten. Sie behauptet weder Echtzeit- noch Multi-Tab-Konsistenz.
 - Schema 2 speichert keine Abschluss- oder Fortschrittsdaten. Kapitelabschluss
   und daraus abgeleiteter Modulfortschritt verwenden den separaten
   LearningProgress-Schema-1-Vertrag; Testkompetenz bleibt ein davon getrenntes
@@ -206,6 +209,15 @@ Controller greifen nicht direkt auf `localStorage` zu.
   verwaiste oder falsch zugeordnete Ereignisse kontrolliert abgelehnt. Diese
   Prüfung schützt vor versehentlicher Weiterverarbeitung inkonsistenter Daten,
   beweist aber weder Urheberschaft noch Manipulationsfreiheit.
+- Kann Progress nicht sicher geladen oder gegen den aktuellen Hub projiziert
+  werden, bleibt die Inhaltsverwaltung bedienbar. Die Oberfläche zeigt keine
+  falschen 0-Prozent-Werte, deaktiviert Fortschrittsaktionen und bietet einen
+  nicht destruktiven Retry. Beschädigte oder verwaiste Progress-Daten werden
+  weder gelöscht, repariert noch überschrieben.
+- Fortschrittsfehler und sichtbare Statusmeldungen enthalten keine privaten
+  Titel, LearningNode-Inhalte, Modul- oder Kapitel-IDs, Ereignis-IDs,
+  Zeitstempel oder Roh-Payloads. Private Nutzereingaben werden weiterhin nur
+  über sichere DOM-Text-APIs gerendert.
 - Append-only gilt ausschließlich für die öffentlichen Operationen des
   `LearningProgressService`. Der vollständige Log wird technisch bei jeder
   echten Änderung als neuer JSON-Snapshot geschrieben. Es gibt keine
@@ -238,9 +250,9 @@ Storage-Key `content.v1` bezeichnet davon getrennt nur dessen
 Persistenz-Namespace. Der Fortschrittsvertrag verwendet unabhängig
 `schemaVersion: 1` und den Persistenznamespace `progress.v1`. View, Controller,
 Service und Storage für private Inhalte sowie Vertrag, Projektion, Service und
-Storage der Progress-Foundation sind implementiert. Progress-UI, Notizen,
-Zusammenfassungen und Testversuche sind in diesem Arbeitspaket noch nicht
-umgesetzt; `v0.2.1` bleibt in Arbeit.
+Storage einschließlich der zugänglichen Progress-UI sind implementiert.
+Notizen, Zusammenfassungen und Testversuche sind in diesem Arbeitspaket noch
+nicht umgesetzt; `v0.2.1` bleibt in Arbeit.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
@@ -509,7 +521,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | --- | --- |
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
-| `v0.2.1` | sichere lokale Inhalts-UI, getrennte validierte Inhalts- und Progress-Persistenz ohne Demo-Seeding sowie kontrollierte Referenzprüfung; später Progress-UI, Notizen, Testversuche und deterministischer lokaler Mock-Test |
+| `v0.2.1` | sichere lokale Inhalts- und Progress-UI, getrennte validierte Persistenz ohne Demo-Seeding, kontrollierte Referenzprüfung und isolierte Progress-Fehler; später Notizen, Zusammenfassungen, Testversuche und deterministischer lokaler Mock-Test |
 | `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
 | `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |

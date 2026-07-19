@@ -153,6 +153,110 @@ function getLearningNodeCountLabel(count) {
   return formatCount(count, 'LearningNode', 'LearningNodes')
 }
 
+function isModuleProgressValid(learningModule, moduleProgress) {
+  if (
+    !moduleProgress ||
+    moduleProgress.moduleId !== learningModule.id ||
+    !Number.isInteger(moduleProgress.completedChapterCount) ||
+    !Number.isInteger(moduleProgress.totalChapterCount) ||
+    moduleProgress.completedChapterCount < 0 ||
+    moduleProgress.totalChapterCount !== learningModule.chapters.length ||
+    moduleProgress.completedChapterCount > moduleProgress.totalChapterCount ||
+    !Number.isInteger(moduleProgress.progressPercent) ||
+    moduleProgress.progressPercent < 0 ||
+    moduleProgress.progressPercent > 100 ||
+    typeof moduleProgress.isCompleted !== 'boolean' ||
+    !Array.isArray(moduleProgress.chapters) ||
+    moduleProgress.chapters.length !== learningModule.chapters.length
+  ) {
+    return false
+  }
+
+  const chapterProgressById = new Map()
+
+  for (const chapterProgress of moduleProgress.chapters) {
+    if (
+      !chapterProgress ||
+      typeof chapterProgress.chapterId !== 'string' ||
+      typeof chapterProgress.isCompleted !== 'boolean' ||
+      chapterProgressById.has(chapterProgress.chapterId)
+    ) {
+      return false
+    }
+
+    chapterProgressById.set(chapterProgress.chapterId, chapterProgress)
+  }
+
+  const completedChapterCount = learningModule.chapters.reduce(
+    (count, chapter) => {
+      const chapterProgress = chapterProgressById.get(chapter.id)
+      return chapterProgress?.isCompleted ? count + 1 : count
+    },
+    0
+  )
+  const totalChapterCount = learningModule.chapters.length
+  const expectedProgressPercent = totalChapterCount === 0
+    ? 0
+    : Math.round((completedChapterCount / totalChapterCount) * 100)
+  const expectedIsCompleted =
+    totalChapterCount > 0 && completedChapterCount === totalChapterCount
+
+  return (
+    learningModule.chapters.every((chapter) =>
+      chapterProgressById.has(chapter.id)
+    ) &&
+    moduleProgress.totalChapterCount === totalChapterCount &&
+    completedChapterCount === moduleProgress.completedChapterCount &&
+    moduleProgress.progressPercent === expectedProgressPercent &&
+    moduleProgress.isCompleted === expectedIsCompleted
+  )
+}
+
+function getModuleProgress(viewState, learningModule) {
+  if (
+    !['ready', 'mutating'].includes(viewState.progress?.phase) ||
+    !Array.isArray(viewState.progress?.projection)
+  ) {
+    return null
+  }
+
+  const matchingProgress = viewState.progress.projection.filter(
+    (moduleProgress) => moduleProgress?.moduleId === learningModule.id
+  )
+
+  if (
+    matchingProgress.length !== 1 ||
+    !isModuleProgressValid(learningModule, matchingProgress[0])
+  ) {
+    return null
+  }
+
+  return matchingProgress[0]
+}
+
+function getChapterProgress(moduleProgress, chapterId) {
+  return moduleProgress?.chapters.find(
+    (chapterProgress) => chapterProgress.chapterId === chapterId
+  ) ?? null
+}
+
+function getUnavailableProgressText(progressPhase) {
+  switch (progressPhase) {
+    case 'loading':
+      return 'Fortschritt wird geladen.'
+    case 'stale':
+      return 'Fortschritt ist derzeit veraltet.'
+    case 'mutating':
+      return 'Fortschritt wird aktualisiert.'
+    default:
+      return 'Fortschritt ist derzeit nicht verfügbar.'
+  }
+}
+
+function getProgressCountText(moduleProgress) {
+  return `${moduleProgress.completedChapterCount} von ${moduleProgress.totalChapterCount} Kapiteln abgeschlossen · ${moduleProgress.progressPercent} %`
+}
+
 function getContentPreview(content) {
   if (content.length <= 220) return content
   return `${content.slice(0, 219)}…`
@@ -174,6 +278,7 @@ function createFocusReferences() {
     formFields: new Map(),
     formTriggers: new Map(),
     chapterToggles: new Map(),
+    chapterCompletions: new Map(),
     learningNodeHeadings: new Map(),
   }
 }
@@ -236,7 +341,7 @@ function createHeader(moduleCount, isMutating, focusReferences) {
     createElement(
       'p',
       '',
-      'Verwalte Lernmodule, Kapitel und LearningNodes lokal. Fortschritt und Tests folgen in getrennten Arbeitsschritten.'
+      'Verwalte Lernmodule, Kapitel, LearningNodes und Kapitel-/Modulfortschritt lokal. Notizen und Zusammenfassungen folgen als nächster Ausbauschritt; der lokale Mock-Test bleibt davon getrennt.'
     )
   )
   const count = createElement('p', 'learning-hub-count')
@@ -261,7 +366,7 @@ function createPrivacyNotice() {
   const text = createElement(
     'p',
     '',
-    'Deine Inhalte bleiben im aktuellen Browserprofil. Eine Cloud-Sicherung oder geräteübergreifende Synchronisierung gibt es noch nicht. Andere Skripte derselben Origin (Website-Adresse) könnten grundsätzlich auf das unverschlüsselte localStorage zugreifen.'
+    'Deine Inhalte und dein Fortschritt bleiben ausschließlich im aktuellen Browserprofil. Eine Cloud-Sicherung oder geräteübergreifende Synchronisierung gibt es nicht. Das localStorage ist unverschlüsselt und für andere Skripte derselben Origin (Website-Adresse) grundsätzlich lesbar.'
   )
   notice.append(title, text)
   return notice
@@ -292,6 +397,197 @@ function createFeedback(viewState, focusReferences) {
   }
 
   return null
+}
+
+function createProgressFeedback(
+  viewState,
+  actions,
+  isInteractionBlocked
+) {
+  const progressPhase = viewState.progress?.phase
+
+  if (progressPhase === 'loading') {
+    const status = createElement(
+      'p',
+      'learning-hub-progress-feedback learning-hub-progress-feedback--loading',
+      'Fortschritt wird aus dem lokalen Browserprofil geladen.'
+    )
+    status.setAttribute('role', 'status')
+    status.setAttribute('aria-live', 'polite')
+    status.setAttribute('aria-busy', 'true')
+    return status
+  }
+
+  if (progressPhase === 'ready' && viewState.progress?.errorMessage) {
+    const alert = createElement(
+      'p',
+      'learning-hub-progress-feedback learning-hub-progress-feedback--error',
+      viewState.progress.errorMessage
+    )
+    alert.setAttribute('role', 'alert')
+    return alert
+  }
+
+  if (!['unavailable', 'stale'].includes(progressPhase)) {
+    return null
+  }
+
+  const feedback = createElement(
+    'section',
+    'learning-hub-progress-feedback learning-hub-progress-feedback--error'
+  )
+  feedback.setAttribute('role', 'alert')
+  const heading = createElement(
+    'h2',
+    'learning-hub-progress-feedback__title',
+    progressPhase === 'stale'
+      ? 'Fortschritt ist nicht aktuell'
+      : 'Fortschritt ist nicht verfügbar'
+  )
+  const message = createElement(
+    'p',
+    '',
+    viewState.progress.errorMessage ||
+      (progressPhase === 'stale'
+        ? 'Die Inhaltsänderung wurde gespeichert, der Fortschritt konnte danach aber nicht neu geladen werden.'
+        : 'Der lokale Fortschritt konnte nicht geladen werden. Deine Lerninhalte bleiben weiterhin bedienbar.')
+  )
+  const retryButton = createButton(
+    'Fortschritt erneut laden',
+    'button button--secondary',
+    () => actions.onRetryProgressLoad?.(),
+    { disabled: isInteractionBlocked }
+  )
+  feedback.append(heading, message, retryButton)
+  return feedback
+}
+
+function createModuleProgressSummary(
+  moduleProgress,
+  progressPhase
+) {
+  const summary = createElement(
+    'div',
+    'learning-hub-module-progress learning-hub-module-card__progress'
+  )
+  summary.setAttribute(
+    'aria-busy',
+    String(['loading', 'mutating'].includes(progressPhase))
+  )
+
+  if (!moduleProgress) {
+    summary.append(
+      createElement(
+        'p',
+        'learning-hub-module-progress__unavailable',
+        getUnavailableProgressText(progressPhase)
+      )
+    )
+    return summary
+  }
+
+  summary.append(
+    createElement(
+      'p',
+      'learning-hub-module-progress__count',
+      getProgressCountText(moduleProgress)
+    )
+  )
+
+  if (moduleProgress.isCompleted) {
+    summary.append(
+      createElement(
+        'p',
+        'learning-hub-module-progress__complete',
+        'Modul abgeschlossen'
+      )
+    )
+  }
+
+  return summary
+}
+
+function createModuleProgressDetail(
+  moduleProgress,
+  progressPhase
+) {
+  const detail = createElement('div', 'learning-hub-detail__progress')
+  detail.setAttribute(
+    'aria-busy',
+    String(['loading', 'mutating'].includes(progressPhase))
+  )
+  const progressLabel = createElement(
+    'p',
+    'learning-hub-detail__progress-label',
+    'Modulfortschritt'
+  )
+  progressLabel.id = 'learning-hub-module-progress-label'
+  detail.append(progressLabel)
+
+  if (!moduleProgress) {
+    detail.append(
+      createElement(
+        'p',
+        'learning-hub-module-progress__unavailable',
+        getUnavailableProgressText(progressPhase)
+      )
+    )
+    return detail
+  }
+
+  const progressText = getProgressCountText(moduleProgress)
+  const progressBar = createElement(
+    'div',
+    'learning-hub-progress-bar'
+  )
+  progressBar.setAttribute('role', 'progressbar')
+  progressBar.setAttribute(
+    'aria-labelledby',
+    `${progressLabel.id} learning-hub-module-heading`
+  )
+  progressBar.setAttribute('aria-valuemin', '0')
+  progressBar.setAttribute(
+    'aria-valuemax',
+    String(moduleProgress.totalChapterCount)
+  )
+  progressBar.setAttribute(
+    'aria-valuenow',
+    String(moduleProgress.completedChapterCount)
+  )
+  progressBar.setAttribute(
+    'aria-valuetext',
+    `${moduleProgress.completedChapterCount} von ${moduleProgress.totalChapterCount} Kapiteln abgeschlossen, ${moduleProgress.progressPercent} Prozent`
+  )
+  const progressBarValue = createElement(
+    'span',
+    'learning-hub-progress-bar__value'
+  )
+  progressBarValue.setAttribute('aria-hidden', 'true')
+  progressBarValue.setAttribute(
+    'style',
+    `width: ${moduleProgress.progressPercent}%`
+  )
+  progressBar.append(progressBarValue)
+  detail.append(
+    createElement(
+      'p',
+      'learning-hub-module-progress__count',
+      progressText
+    ),
+    progressBar
+  )
+
+  if (moduleProgress.isCompleted) {
+    detail.append(
+      createElement(
+        'p',
+        'learning-hub-module-progress__complete',
+        'Modul abgeschlossen'
+      )
+    )
+  }
+
+  return detail
 }
 
 function createLoadingState() {
@@ -343,7 +639,8 @@ function createField(
   fieldConfig,
   actions,
   focusReferences,
-  formIndex
+  formIndex,
+  isInteractionBlocked
 ) {
   const field = createElement('div', 'learning-hub-form__field')
   const inputId = `learning-hub-form-${formIndex}-${fieldConfig.name}`
@@ -364,7 +661,7 @@ function createField(
   control.name = fieldConfig.name
   control.required = true
   control.maxLength = fieldConfig.maxLength
-  control.disabled = form.isSubmitting
+  control.disabled = form.isSubmitting || isInteractionBlocked
   control.autocomplete = 'off'
   control.value = form.values[fieldConfig.name] ?? ''
   control.setAttribute('required', '')
@@ -397,6 +694,7 @@ function createField(
 
   control.setAttribute('aria-describedby', describedBy.join(' '))
   control.addEventListener('input', () => {
+    if (isInteractionBlocked) return
     actions.onUpdateFormField?.(fieldConfig.name, control.value)
   })
   focusReferences.formFields.set(fieldConfig.name, control)
@@ -415,7 +713,13 @@ function createField(
   return { element: field, control }
 }
 
-function createForm(viewState, actions, focusReferences, formIndex) {
+function createForm(
+  viewState,
+  actions,
+  focusReferences,
+  formIndex,
+  isInteractionBlocked
+) {
   const formState = viewState.form
   const config = FORM_CONFIGS[formState?.type]
   if (!formState || !config) return null
@@ -423,7 +727,10 @@ function createForm(viewState, actions, focusReferences, formIndex) {
   const form = createElement('form', 'learning-hub-form')
   form.noValidate = true
   form.setAttribute('autocomplete', 'off')
-  form.setAttribute('aria-busy', String(formState.isSubmitting))
+  form.setAttribute(
+    'aria-busy',
+    String(formState.isSubmitting || isInteractionBlocked)
+  )
   const header = createElement('div', 'learning-hub-form__header')
   const headingLevel = [
     'renameChapter',
@@ -444,7 +751,8 @@ function createForm(viewState, actions, focusReferences, formIndex) {
       fieldConfig,
       actions,
       focusReferences,
-      formIndex
+      formIndex,
+      isInteractionBlocked
     )
     controls.set(fieldConfig.name, field.control)
     fields.append(field.element)
@@ -469,7 +777,7 @@ function createForm(viewState, actions, focusReferences, formIndex) {
     'Abbrechen',
     'button button--secondary',
     () => actions.onCancelForm?.(),
-    { disabled: formState.isSubmitting }
+    { disabled: formState.isSubmitting || isInteractionBlocked }
   )
   const submitButton = createElement(
     'button',
@@ -477,13 +785,13 @@ function createForm(viewState, actions, focusReferences, formIndex) {
     formState.isSubmitting ? 'Wird gespeichert …' : config.submitLabel
   )
   submitButton.type = 'submit'
-  submitButton.disabled = formState.isSubmitting
+  submitButton.disabled = formState.isSubmitting || isInteractionBlocked
   actionsElement.append(cancelButton, submitButton)
   form.append(actionsElement)
 
   form.addEventListener('submit', (event) => {
     event.preventDefault()
-    if (formState.isSubmitting) return
+    if (formState.isSubmitting || isInteractionBlocked) return
 
     const submission = {
       type: formState.type,
@@ -530,6 +838,8 @@ function createEmptyOverview() {
 function createModuleCard(
   learningModule,
   moduleIndex,
+  moduleProgress,
+  progressPhase,
   actions,
   isMutating
 ) {
@@ -542,6 +852,10 @@ function createModuleCard(
     'learning-hub-module-card__count',
     getChapterCountLabel(learningModule.chapters.length)
   )
+  const progressSummary = createModuleProgressSummary(
+    moduleProgress,
+    progressPhase
+  )
   const openButton = createButton(
     'Modul öffnen',
     'button button--secondary',
@@ -549,7 +863,7 @@ function createModuleCard(
     { disabled: isMutating }
   )
   openButton.setAttribute('aria-describedby', titleId)
-  card.append(title, chapterCount, openButton)
+  card.append(title, chapterCount, progressSummary, openButton)
   return card
 }
 
@@ -587,7 +901,15 @@ function createOverview(
   section.append(header)
 
   if (viewState.form?.type === 'createModule') {
-    section.append(createForm(viewState, actions, focusReferences, 0))
+    section.append(
+      createForm(
+        viewState,
+        actions,
+        focusReferences,
+        0,
+        isMutating
+      )
+    )
   }
 
   const modules = sortByPosition(viewState.hub.modules)
@@ -602,6 +924,8 @@ function createOverview(
       createModuleCard(
         learningModule,
         moduleIndex,
+        getModuleProgress(viewState, learningModule),
+        viewState.progress?.phase,
         actions,
         isMutating
       )
@@ -727,10 +1051,23 @@ function createChapter(
   viewState,
   actions,
   focusReferences,
+  moduleProgress,
   isMutating
 ) {
   const isExpanded = viewState.expandedChapterIds.includes(chapter.id)
+  const chapterProgress = getChapterProgress(moduleProgress, chapter.id)
+  const canToggleCompletion =
+    viewState.progress?.phase === 'ready' &&
+    Boolean(chapterProgress) &&
+    !isMutating
   const article = createElement('article', 'learning-hub-chapter')
+  article.setAttribute(
+    'aria-busy',
+    String(
+      viewState.progress?.phase === 'mutating' &&
+        viewState.progress.mutatingChapterId === chapter.id
+    )
+  )
   const toggleId = `learning-hub-chapter-toggle-${chapterIndex}`
   const titleId = `learning-hub-chapter-title-${chapterIndex}`
   const panelId = `learning-hub-chapter-panel-${chapterIndex}`
@@ -780,6 +1117,34 @@ function createChapter(
     { disabled: isMutating }
   )
   renameButton.setAttribute('aria-describedby', titleId)
+  const completionActions = createElement(
+    'div',
+    'learning-hub-chapter__actions'
+  )
+  const completionLabel = createElement(
+    'label',
+    'learning-hub-chapter__completion'
+  )
+  const completionCheckbox = createElement(
+    'input',
+    'learning-hub-chapter__checkbox'
+  )
+  completionCheckbox.type = 'checkbox'
+  completionCheckbox.id = `${toggleId}-completion`
+  completionCheckbox.checked = chapterProgress?.isCompleted === true
+  completionCheckbox.disabled = !canToggleCompletion
+  completionCheckbox.indeterminate = chapterProgress === null
+  completionCheckbox.setAttribute('aria-describedby', titleId)
+  completionCheckbox.addEventListener('change', () => {
+    if (!canToggleCompletion) return
+    actions.onToggleChapterCompletion?.(learningModule.id, chapter.id)
+  })
+  completionLabel.setAttribute('for', completionCheckbox.id)
+  completionLabel.append(
+    completionCheckbox,
+    createElement('span', '', 'Kapitel abgeschlossen')
+  )
+  focusReferences.chapterCompletions.set(chapter.id, completionCheckbox)
   registerFormTrigger(
     focusReferences,
     {
@@ -789,7 +1154,8 @@ function createChapter(
     },
     renameButton
   )
-  header.append(heading, renameButton)
+  completionActions.append(completionLabel, renameButton)
+  header.append(heading, completionActions)
   article.append(header)
 
   if (
@@ -801,7 +1167,8 @@ function createChapter(
         viewState,
         actions,
         focusReferences,
-        `chapter-${chapterIndex}`
+        `chapter-${chapterIndex}`,
+        isMutating
       )
     )
   }
@@ -892,7 +1259,8 @@ function createChapter(
         viewState,
         actions,
         focusReferences,
-        `node-${chapterIndex}`
+        `node-${chapterIndex}`,
+        isMutating
       )
     )
   }
@@ -909,6 +1277,7 @@ function createModuleDetail(
   isMutating
 ) {
   const section = createElement('section', 'learning-hub-detail')
+  const moduleProgress = getModuleProgress(viewState, learningModule)
   section.setAttribute('aria-labelledby', 'learning-hub-module-heading')
   const backButton = createButton(
     '← Zur Modulübersicht',
@@ -958,17 +1327,24 @@ function createModuleDetail(
   )
   actionsElement.append(renameButton, addChapterButton)
   header.append(titleGroup, actionsElement)
-  const progressNotice = createElement(
-    'p',
-    'learning-hub-detail__progress-notice',
-    'Kapitelabschluss und Modulfortschritt werden in einem nächsten LearningHub-Schritt ergänzt.'
+  const progressDetail = createModuleProgressDetail(
+    moduleProgress,
+    viewState.progress?.phase
   )
-  section.append(backButton, header, progressNotice)
+  section.append(backButton, header, progressDetail)
 
   if (
     ['renameModule', 'addChapter'].includes(viewState.form?.type)
   ) {
-    section.append(createForm(viewState, actions, focusReferences, 'module'))
+    section.append(
+      createForm(
+        viewState,
+        actions,
+        focusReferences,
+        'module',
+        isMutating
+      )
+    )
   }
 
   const chaptersSection = createElement(
@@ -990,6 +1366,7 @@ function createModuleDetail(
         viewState,
         actions,
         focusReferences,
+        moduleProgress,
         isMutating
       )
     )
@@ -1023,6 +1400,10 @@ function resolveFocusTarget(focusTarget, focusReferences) {
       return focusReferences.chapterToggles.get(
         createReferenceKey(focusTarget.moduleId, focusTarget.chapterId)
       )
+    case 'chapterCompletion':
+      return focusReferences.chapterCompletions.get(
+        focusTarget.chapterId
+      )
     case 'learningNodeHeading':
       return focusReferences.learningNodeHeadings.get(
         createReferenceKey(
@@ -1049,7 +1430,15 @@ export function createLearningHubView(rootElement) {
     const modules = Array.isArray(viewState.hub?.modules)
       ? viewState.hub.modules
       : []
-    const isMutating = viewState.phase === 'mutating'
+    const isContentMutating = viewState.phase === 'mutating'
+    const hasContentView = !['loading', 'loadError'].includes(
+      viewState.phase
+    )
+    const isProgressMutating =
+      hasContentView && viewState.progress?.phase === 'mutating'
+    const isProgressLoading =
+      hasContentView && viewState.progress?.phase === 'loading'
+    const isMutating = isContentMutating || isProgressMutating
     const header = createHeader(
       modules.length,
       isMutating,
@@ -1065,6 +1454,13 @@ export function createLearningHubView(rootElement) {
     } else if (viewState.phase === 'loadError') {
       fragment.append(createLoadErrorState(viewState, actions))
     } else {
+      const progressFeedback = createProgressFeedback(
+        viewState,
+        actions,
+        isMutating
+      )
+      if (progressFeedback) fragment.append(progressFeedback)
+
       const selectedModule = modules.find(
         (learningModule) =>
           learningModule.id === viewState.selectedModuleId
@@ -1095,7 +1491,11 @@ export function createLearningHubView(rootElement) {
     fragment.append(createPrivacyNotice())
     rootElement.setAttribute(
       'aria-busy',
-      String(viewState.phase === 'loading' || isMutating)
+      String(
+        viewState.phase === 'loading' ||
+          isMutating ||
+          isProgressLoading
+      )
     )
     rootElement.replaceChildren(fragment)
     focusElement(

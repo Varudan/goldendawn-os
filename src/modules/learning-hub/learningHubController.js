@@ -54,6 +54,29 @@ const SUCCESS_MESSAGES = Object.freeze({
   [FORM_TYPES.UPDATE_LEARNING_NODE]: 'LearningNode wurde lokal aktualisiert.',
 })
 
+const PROGRESS_SUCCESS_RESULTS = Object.freeze({
+  completeChapter: Object.freeze({
+    chapterCompleted: true,
+    chapterAlreadyCompleted: false,
+  }),
+  reopenChapter: Object.freeze({
+    chapterReopened: true,
+    chapterAlreadyOpen: false,
+  }),
+})
+
+const PROGRESS_SUCCESS_MESSAGES = Object.freeze({
+  completeChapter: 'Kapitel wurde als abgeschlossen markiert.',
+  reopenChapter: 'Kapitel wurde wieder geöffnet.',
+})
+
+const PROGRESS_LOAD_ERROR_MESSAGE =
+  'Der Kapitel- und Modulfortschritt ist derzeit nicht verfügbar. Inhalte können weiterhin bearbeitet werden.'
+const PROGRESS_STALE_ERROR_MESSAGE =
+  'Der Fortschritt ist nach der Inhaltsänderung nicht aktuell. Bitte lade ihn erneut.'
+const PROGRESS_MUTATION_ERROR_MESSAGE =
+  'Der Kapitelstatus konnte nicht gespeichert werden. Bitte versuche es erneut.'
+
 function scheduleAfterPaint(callback) {
   if (
     typeof globalThis.requestAnimationFrame !== 'function' ||
@@ -120,6 +143,36 @@ function cloneHub(learningHub) {
   }
 }
 
+function cloneProgressProjection(projection) {
+  return projection.map((moduleProgress) => ({
+    moduleId: moduleProgress.moduleId,
+    completedChapterCount: moduleProgress.completedChapterCount,
+    totalChapterCount: moduleProgress.totalChapterCount,
+    progressPercent: moduleProgress.progressPercent,
+    isCompleted: moduleProgress.isCompleted,
+    chapters: moduleProgress.chapters.map((chapterProgress) => ({
+      chapterId: chapterProgress.chapterId,
+      isCompleted: chapterProgress.isCompleted,
+    })),
+  }))
+}
+
+function createInitialProgressState() {
+  return {
+    phase: 'loading',
+    projection: [],
+    errorMessage: '',
+    mutatingChapterId: null,
+  }
+}
+
+function cloneProgressState(progress) {
+  return {
+    ...progress,
+    projection: cloneProgressProjection(progress.projection),
+  }
+}
+
 function createEmptyHub() {
   return {
     ...EMPTY_PRIVATE_HUB,
@@ -137,6 +190,7 @@ function createInitialState() {
     form: null,
     statusMessage: '',
     errorMessage: '',
+    progress: createInitialProgressState(),
   }
 }
 
@@ -188,6 +242,18 @@ function getLearningNode(chapter, learningNodeId) {
   ) ?? null
 }
 
+function getModuleProgress(projection, moduleId) {
+  return projection.find(
+    (moduleProgress) => moduleProgress.moduleId === moduleId
+  ) ?? null
+}
+
+function getChapterProgress(moduleProgress, chapterId) {
+  return moduleProgress?.chapters.find(
+    (chapterProgress) => chapterProgress.chapterId === chapterId
+  ) ?? null
+}
+
 function getLearningNodeLocation(learningModule, learningNodeId) {
   for (const chapter of learningModule?.chapters ?? []) {
     const learningNode = getLearningNode(chapter, learningNodeId)
@@ -202,6 +268,102 @@ function getLearningNodeLocation(learningModule, learningNodeId) {
 
 function getReadyPhase(learningHub) {
   return learningHub.modules.length === 0 ? 'empty' : 'ready'
+}
+
+function hasPlausibleModuleProgress(moduleProgress, learningModule) {
+  if (
+    !Number.isInteger(moduleProgress.completedChapterCount) ||
+    !Number.isInteger(moduleProgress.totalChapterCount) ||
+    !Number.isInteger(moduleProgress.progressPercent) ||
+    moduleProgress.totalChapterCount !== learningModule.chapters.length ||
+    moduleProgress.completedChapterCount < 0 ||
+    moduleProgress.completedChapterCount > moduleProgress.totalChapterCount ||
+    moduleProgress.progressPercent < 0 ||
+    moduleProgress.progressPercent > 100 ||
+    typeof moduleProgress.isCompleted !== 'boolean' ||
+    !Array.isArray(moduleProgress.chapters) ||
+    moduleProgress.chapters.length !== learningModule.chapters.length
+  ) {
+    return false
+  }
+
+  const chapterProgressById = new Map()
+
+  for (const chapterProgress of moduleProgress.chapters) {
+    if (
+      !isObjectRecord(chapterProgress) ||
+      !isEntityId(chapterProgress.chapterId) ||
+      typeof chapterProgress.isCompleted !== 'boolean' ||
+      chapterProgressById.has(chapterProgress.chapterId)
+    ) {
+      return false
+    }
+
+    chapterProgressById.set(chapterProgress.chapterId, chapterProgress)
+  }
+
+  let completedChapterCount = 0
+
+  for (const chapter of learningModule.chapters) {
+    const chapterProgress = chapterProgressById.get(chapter.id)
+
+    if (!chapterProgress) return false
+
+    if (chapterProgress.isCompleted) {
+      completedChapterCount += 1
+    }
+  }
+
+  const totalChapterCount = learningModule.chapters.length
+  const expectedProgressPercent = totalChapterCount === 0
+    ? 0
+    : Math.round((completedChapterCount / totalChapterCount) * 100)
+  const expectedIsCompleted =
+    totalChapterCount > 0 && completedChapterCount === totalChapterCount
+
+  return (
+    chapterProgressById.size === totalChapterCount &&
+    moduleProgress.totalChapterCount === totalChapterCount &&
+    moduleProgress.completedChapterCount === completedChapterCount &&
+    moduleProgress.progressPercent === expectedProgressPercent &&
+    moduleProgress.isCompleted === expectedIsCompleted
+  )
+}
+
+function isProgressProjectionForHub(projection, learningHub) {
+  if (
+    !Array.isArray(projection) ||
+    projection.length !== learningHub.modules.length
+  ) {
+    return false
+  }
+
+  const moduleProgressById = new Map()
+
+  for (const moduleProgress of projection) {
+    if (
+      !isObjectRecord(moduleProgress) ||
+      !isEntityId(moduleProgress.moduleId) ||
+      moduleProgressById.has(moduleProgress.moduleId)
+    ) {
+      return false
+    }
+
+    moduleProgressById.set(moduleProgress.moduleId, moduleProgress)
+  }
+
+  for (const learningModule of learningHub.modules) {
+    const moduleProgress = moduleProgressById.get(learningModule.id)
+
+    if (
+      !moduleProgress ||
+      !hasPlausibleModuleProgress(moduleProgress, learningModule)
+    ) {
+      return false
+    }
+  }
+
+  return moduleProgressById.size === learningHub.modules.length
 }
 
 function formTargetExists(form, learningHub) {
@@ -394,6 +556,7 @@ function getSubmission(form, submittedValues) {
 
 export function createLearningHubController({
   learningHubService,
+  learningProgressService,
   learningHubView,
   scheduleTask = scheduleAfterPaint,
 } = {}) {
@@ -402,10 +565,12 @@ export function createLearningHubController({
   let viewState = createInitialState()
 
   const actions = Object.freeze({
-    onRetryLoad: loadHub,
+    onRetryLoad: retryHubLoad,
+    onRetryProgressLoad: retryProgressLoad,
     onSelectModule: selectModule,
     onBackToOverview: backToOverview,
     onToggleChapter: toggleChapter,
+    onToggleChapterCompletion: toggleChapterCompletion,
     onSelectLearningNode: selectLearningNode,
     onOpenCreateModuleForm: openCreateModuleForm,
     onOpenRenameModuleForm: openRenameModuleForm,
@@ -427,6 +592,7 @@ export function createLearningHubController({
         hub: cloneHub(viewState.hub),
         expandedChapterIds: [...viewState.expandedChapterIds],
         form: cloneForm(viewState.form),
+        progress: cloneProgressState(viewState.progress),
         focusTarget,
       },
       actions
@@ -439,6 +605,55 @@ export function createLearningHubController({
     }
 
     cancelScheduledLoad = null
+  }
+
+  function readProgressProjection() {
+    try {
+      const result = learningProgressService?.loadProgress?.()
+
+      if (
+        result?.ok !== true ||
+        !['empty', 'loaded'].includes(result.status) ||
+        !isProgressProjectionForHub(result.projection, viewState.hub)
+      ) {
+        return null
+      }
+
+      return cloneProgressProjection(result.projection)
+    } catch {
+      return null
+    }
+  }
+
+  function finishProgressLoading(failurePhase) {
+    const projection = readProgressProjection()
+
+    if (projection) {
+      viewState = {
+        ...viewState,
+        progress: {
+          phase: 'ready',
+          projection,
+          errorMessage: '',
+          mutatingChapterId: null,
+        },
+      }
+      return true
+    }
+
+    viewState = {
+      ...viewState,
+      progress: {
+        phase: failurePhase,
+        projection: [],
+        errorMessage:
+          failurePhase === 'stale'
+            ? PROGRESS_STALE_ERROR_MESSAGE
+            : PROGRESS_LOAD_ERROR_MESSAGE,
+        mutatingChapterId: null,
+      },
+    }
+    return false
   }
 
   function finishLoading() {
@@ -465,6 +680,8 @@ export function createLearningHubController({
         },
         result.hub
       )
+      render()
+      finishProgressLoading('unavailable')
       render({ type: 'heading' })
       return
     }
@@ -473,6 +690,12 @@ export function createLearningHubController({
       ...createInitialState(),
       phase: 'loadError',
       errorMessage: getLoadErrorMessage(result),
+      progress: {
+        phase: 'unavailable',
+        projection: [],
+        errorMessage: '',
+        mutatingChapterId: null,
+      },
     }
     render({ type: 'heading' })
   }
@@ -486,12 +709,36 @@ export function createLearningHubController({
     cancelScheduledLoad = scheduleTask(finishLoading)
   }
 
+  function retryHubLoad() {
+    if (!isActive || viewState.phase !== 'loadError') return
+
+    loadHub()
+  }
+
   function canUseReadyView() {
     return (
       isActive &&
       ['empty', 'ready'].includes(viewState.phase) &&
-      !viewState.form?.isSubmitting
+      !viewState.form?.isSubmitting &&
+      viewState.progress.phase !== 'mutating'
     )
+  }
+
+  function retryProgressLoad() {
+    if (
+      !canUseReadyView() ||
+      !['unavailable', 'stale'].includes(viewState.progress.phase)
+    ) {
+      return
+    }
+
+    viewState = {
+      ...viewState,
+      progress: createInitialProgressState(),
+    }
+    render()
+    finishProgressLoading('unavailable')
+    render()
   }
 
   function selectModule(moduleId) {
@@ -556,6 +803,109 @@ export function createLearningHubController({
       errorMessage: '',
     }
     render({ type: 'chapterToggle', moduleId, chapterId })
+  }
+
+  function toggleChapterCompletion(moduleId, chapterId) {
+    if (
+      !canUseReadyView() ||
+      viewState.progress.phase !== 'ready' ||
+      moduleId !== viewState.selectedModuleId
+    ) {
+      return
+    }
+
+    const learningModule = getModule(viewState.hub, moduleId)
+    const chapter = getChapter(learningModule, chapterId)
+    const moduleProgress = getModuleProgress(
+      viewState.progress.projection,
+      moduleId
+    )
+    const chapterProgress = getChapterProgress(
+      moduleProgress,
+      chapterId
+    )
+
+    if (!chapter || !chapterProgress) return
+
+    const serviceMethod = chapterProgress.isCompleted
+      ? 'reopenChapter'
+      : 'completeChapter'
+    const previousProjection = cloneProgressProjection(
+      viewState.progress.projection
+    )
+
+    viewState = {
+      ...viewState,
+      statusMessage: '',
+      progress: {
+        phase: 'mutating',
+        projection: previousProjection,
+        errorMessage: '',
+        mutatingChapterId: chapterId,
+      },
+    }
+    render()
+
+    let result
+    let nextProjection = null
+
+    try {
+      result = learningProgressService?.[serviceMethod]?.({
+        moduleId,
+        chapterId,
+      })
+      const expectedResults = PROGRESS_SUCCESS_RESULTS[serviceMethod]
+
+      if (
+        result?.ok === true &&
+        Object.hasOwn(expectedResults, result.status) &&
+        result.changed === expectedResults[result.status] &&
+        isProgressProjectionForHub(result.projection, viewState.hub)
+      ) {
+        const nextModuleProgress = getModuleProgress(
+          result.projection,
+          moduleId
+        )
+        const nextChapterProgress = getChapterProgress(
+          nextModuleProgress,
+          chapterId
+        )
+        const expectedIsCompleted = serviceMethod === 'completeChapter'
+
+        if (nextChapterProgress?.isCompleted === expectedIsCompleted) {
+          nextProjection = cloneProgressProjection(result.projection)
+        }
+      }
+    } catch {
+      result = null
+    }
+
+    if (!nextProjection) {
+      viewState = {
+        ...viewState,
+        progress: {
+          phase: 'ready',
+          projection: previousProjection,
+          errorMessage: PROGRESS_MUTATION_ERROR_MESSAGE,
+          mutatingChapterId: null,
+        },
+      }
+      render({ type: 'chapterCompletion', chapterId })
+      return
+    }
+
+    viewState = {
+      ...viewState,
+      statusMessage: PROGRESS_SUCCESS_MESSAGES[serviceMethod],
+      errorMessage: '',
+      progress: {
+        phase: 'ready',
+        projection: nextProjection,
+        errorMessage: '',
+        mutatingChapterId: null,
+      },
+    }
+    render({ type: 'chapterCompletion', chapterId })
   }
 
   function selectLearningNode(moduleId, chapterId, learningNodeId) {
@@ -780,6 +1130,18 @@ export function createLearningHubController({
 
     nextState = reconcileStateWithHub(nextState, result.hub)
     viewState = nextState
+
+    if (
+      [FORM_TYPES.CREATE_MODULE, FORM_TYPES.ADD_CHAPTER].includes(form.type)
+    ) {
+      viewState = {
+        ...viewState,
+        progress: createInitialProgressState(),
+      }
+      render()
+      finishProgressLoading('stale')
+    }
+
     render({ type: 'status' })
   }
 

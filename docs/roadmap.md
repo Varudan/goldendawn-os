@@ -7,7 +7,7 @@
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | In Arbeit; Schema 2, lokaler LearningHub-Inhaltsfluss bis zur UI und Progress-Foundation ohne UI-Verdrahtung umgesetzt |
+| Status | In Arbeit; Schema 2 sowie getrennte lokale LearningHub-Inhalts- und Progress-Pfade bis zur UI umgesetzt |
 | Letzte Aktualisierung | 2026-07-18 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
@@ -48,7 +48,7 @@ nicht starre Kalendertermine.
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
-| `v0.2.1` | LearningHub Local MVP | Nutzerkonfigurierte Inhaltsverwaltung und separate Progress-Foundation; Progress-UI, Notizen und lokaler Mock-Test folgen | 🟡 |
+| `v0.2.1` | LearningHub Local MVP | Nutzerkonfigurierte Inhaltsverwaltung und separate Progress-UI; Notizen, Zusammenfassungen und lokaler Mock-Test folgen | 🟡 |
 | `v0.2.2` | LichtwaldLog Local MVP | Lokale Reflexions- und Erkenntniseinträge | ⬜ |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
@@ -202,7 +202,7 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
 - ✅ Separaten append-only LearningProgress-Schema-1-Vertrag, lokale
   Progress-Persistenz, referenzprüfenden Service und reine Modulprojektion
   bereitstellen, ohne Schema 2 zu verändern oder Testkompetenz einzumischen.
-- ⬜ Progress-Service in LearningHubController und LearningHubView anbinden und
+- ✅ Progress-Service in LearningHubController und LearningHubView anbinden und
   Kapitelabschluss sowie Modulfortschritt zugänglich darstellen.
 - ⬜ Lokale Notizen und Zusammenfassungen hinter den vorgesehenen Service- und
   Storage-Grenzen speichern.
@@ -236,13 +236,17 @@ und benötigt später eine versionierte Vertragsänderung. Die Projektion folgt
 der Ereignisreihenfolge, behält 100-%-Module bei und kopiert keine Titel oder
 LearningNode-Inhalte.
 
-Diese Foundation besitzt noch keine View, keinen Controller und keine
-Verdrahtung in `src/main.js`. Append-only ist eine Service-Regel über technisch
-vollständig geschriebene `localStorage`-Snapshots, keine kryptografische
-Manipulationssperre. Das Modell ist xAPI-inspiriert, aber nicht xAPI-konform;
-es gibt weder ein LRS noch vollständiges Event Sourcing. Eine spätere
-Archivierung muss Ereignisse erhalten, und dauerhaftes Löschen benötigt eine
-gesonderte Referenz- und Löschrichtlinie.
+Der bestehende `LearningHubController` und die View verwenden davon
+ausschließlich die validierte Projektion. Kapitelabschluss und Wiederöffnung
+sind über native Markierungsfelder bedienbar; Modulübersicht und -detail zeigen
+Zähler, Prozentwert und Abschlussstatus. Ein isolierter Progress-Fehler lässt
+die Inhaltsverwaltung verfügbar, zeigt keine falschen 0-Prozent-Werte und kann
+nicht destruktiv erneut geladen werden. Append-only ist eine Service-Regel über
+technisch vollständig geschriebene `localStorage`-Snapshots, keine
+kryptografische Manipulationssperre. Das Modell ist xAPI-inspiriert, aber nicht
+xAPI-konform; es gibt weder ein LRS noch vollständiges Event Sourcing. Eine
+spätere Archivierung muss Ereignisse erhalten, und dauerhaftes Löschen benötigt
+eine gesonderte Referenz- und Löschrichtlinie.
 
 Der geplante lokale Mock-Testfluss lautet:
 
@@ -312,7 +316,8 @@ geplant.
 - sichere Textdarstellung HTML-artiger Eingaben, zugängliche Accordions und
   responsive Inhaltsverwaltung ohne direkte Storage-Zugriffe aus UI-Schichten;
 - nachvollziehbare, deterministische Ableitung des Modulfortschritts aus der
-  Ereignisreihenfolge ohne Progress-UI-Verdrahtung;
+  Ereignisreihenfolge sowie zugängliche Kapitel-Markierungsfelder,
+  Fortschrittsanzeigen und isolierte Retry-Zustände;
 - reproduzierbarer lokaler Mock-Test ohne behauptete KI-Funktion.
 
 ## v0.2.2 – LichtwaldLog Local MVP
@@ -607,10 +612,12 @@ Zusätzlich sind LearningProgress-Vertrag, reine Projektion, lokaler Storage und
 Service unter dem getrennten Namespace
 `goldendawn.learningHub.progress.v1` umgesetzt. Der Service validiert Hub und
 Log, prüft Referenzen, hängt Abschluss- und Wiederöffnungsereignisse append-only
-an und behandelt bereits erreichte Zielzustände ohne Schreibzugriff. Diese
-Foundation ist noch nicht in View, Controller oder `src/main.js` verdrahtet.
-Progress-UI, Notizen, Zusammenfassungen und der lokale Mock-Test bleiben weitere
-Arbeitspakete von `v0.2.1`; der Meilenstein ist damit noch nicht abgeschlossen.
+an und behandelt bereits erreichte Zielzustände ohne Schreibzugriff. Die
+validierte Projektion ist über den vorhandenen Controller und die View als
+Kapitelabschluss und Modulfortschritt bedienbar; Progress-Fehler bleiben vom
+Inhaltsfluss isoliert. Als Nächstes folgen Notizen und Zusammenfassungen. Der
+lokale Mock-Test bleibt ein späteres, getrenntes Arbeitspaket; der Meilenstein
+ist damit noch nicht abgeschlossen.
 
 `v0.2.2 – LichtwaldLog Local MVP` folgt anschließend als weiteres rein lokales
 Modul und ist noch nicht implementiert.
