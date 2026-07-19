@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 
 import { createLearningHubView } from '../src/modules/learning-hub/learningHubView.js'
 import {
   createFakeDom,
+  findAll,
   findByClass,
   findByTag,
 } from './helpers/fakeDom.js'
@@ -138,6 +140,27 @@ function createProgressState(hub, overrides = {}) {
   }
 }
 
+function createArtifactState(overrides = {}) {
+  return {
+    phase: 'ready',
+    values: {
+      note: null,
+      summary: null,
+    },
+    activeType: null,
+    mode: 'view',
+    draft: '',
+    dirty: false,
+    fieldError: '',
+    errorMessage: '',
+    statusMessage: '',
+    feedbackType: null,
+    mutatingType: null,
+    interactionDisabled: false,
+    ...overrides,
+  }
+}
+
 function createViewState(overrides = {}) {
   const hub = overrides.hub ?? createEmptyHub()
 
@@ -149,6 +172,7 @@ function createViewState(overrides = {}) {
     selectedLearningNodeId: null,
     form: null,
     progress: createProgressState(hub),
+    artifacts: createArtifactState(),
     statusMessage: '',
     errorMessage: '',
     focusTarget: null,
@@ -204,6 +228,18 @@ function withLearningHubView(runTest) {
   } finally {
     fakeDom.restore()
   }
+}
+
+function createSelectedArtifactViewState(artifactOverrides = {}) {
+  const hub = createHubFixture()
+  return createViewState({
+    phase: 'ready',
+    hub,
+    selectedModuleId: 'module-orbit',
+    expandedChapterIds: ['chapter-signals'],
+    selectedLearningNodeId: 'node-first',
+    artifacts: createArtifactState(artifactOverrides),
+  })
 }
 
 test('rendert Lade-, Fehler- und Leerzustand mit zugänglichen Rückmeldungen', () => {
@@ -286,6 +322,9 @@ test('zeigt den sachlichen Datenschutzhinweis in allen LearningHub-Zuständen', 
       view.render(viewState)
       const privacyNotice = findByClass(root, 'learning-hub-privacy')[0]
       assert.ok(privacyNotice.textContent.includes('Inhalte und dein Fortschritt'))
+      assert.ok(
+        privacyNotice.textContent.includes('Notizen und Zusammenfassungen')
+      )
       assert.ok(privacyNotice.textContent.includes('aktuellen Browserprofil'))
       assert.ok(privacyNotice.textContent.includes('Cloud-Sicherung'))
       assert.ok(
@@ -954,6 +993,427 @@ test('zeigt leere Kapitel und mehrere Nodes mit richtiger Auswahl- und Aktionsve
   })
 })
 
+test('rendert Notiz und Zusammenfassung getrennt und verdrahtet ihre Aktionen typgenau', () => {
+  withLearningHubView(({ root, view }) => {
+    const openCalls = []
+    const clearCalls = []
+    const summaryContent =
+      'Synthetische Zusammenfassung mit\nzweiter Zeile.'
+
+    view.render(
+      createSelectedArtifactViewState({
+        values: {
+          note: null,
+          summary: summaryContent,
+        },
+      }),
+      {
+        onOpenArtifactEditor(type) {
+          openCalls.push(type)
+        },
+        onOpenArtifactClearConfirmation(type) {
+          clearCalls.push(type)
+        },
+      }
+    )
+
+    const section = findByClass(root, 'learning-hub-artifacts')[0]
+    assert.equal(section.getAttribute('aria-labelledby'), 'learning-hub-artifacts-title')
+    assert.equal(section.getAttribute('aria-busy'), 'false')
+    assert.equal(findByTag(section, 'h5')[0].textContent, 'Lernartefakte')
+    const cards = findByClass(section, 'learning-hub-artifact-card')
+    assert.equal(cards.length, 2)
+    assert.deepEqual(
+      cards.map((card) => findByTag(card, 'h6')[0].textContent),
+      ['Notiz', 'Zusammenfassung']
+    )
+    assert.ok(cards[0].textContent.includes('Noch keine Notiz gespeichert.'))
+    assert.ok(cards[0].textContent.includes('Nicht vorhanden'))
+    assert.ok(cards[1].textContent.includes(summaryContent))
+    assert.ok(cards[1].textContent.includes('Vorhanden'))
+    assert.equal(findByClass(cards[1], 'learning-hub-artifact-card__content')[0].textContent, summaryContent)
+
+    findButton(cards[0], 'Notiz erstellen').click()
+    findButton(cards[1], 'Zusammenfassung bearbeiten').click()
+    findButton(cards[1], 'Zusammenfassung leeren').click()
+
+    assert.deepEqual(openCalls, ['note', 'summary'])
+    assert.deepEqual(clearCalls, ['summary'])
+  })
+})
+
+test('isoliert Laden und Ladefehler der Lernartefakte mit gezieltem Retry', () => {
+  withLearningHubView(({ document, root, view }) => {
+    view.render(
+      createSelectedArtifactViewState({
+        phase: 'loading',
+      })
+    )
+
+    const loadingSection = findByClass(root, 'learning-hub-artifacts')[0]
+    const loadingState = findByClass(
+      loadingSection,
+      'learning-hub-artifacts__load-state'
+    )[0]
+    assert.equal(root.getAttribute('aria-busy'), 'true')
+    assert.equal(loadingSection.getAttribute('aria-busy'), 'true')
+    assert.equal(loadingState.getAttribute('role'), 'status')
+    assert.equal(loadingState.getAttribute('aria-live'), 'polite')
+    assert.ok(root.textContent.includes('Frei erfundener erster Inhalt'))
+    assert.equal(findCompletionCheckboxes(root).length, 2)
+
+    let retryCalls = 0
+    view.render(
+      {
+        ...createSelectedArtifactViewState({
+          phase: 'unavailable',
+          errorMessage:
+            'Die synthetischen Lernartefakte konnten nicht geladen werden.',
+        }),
+        focusTarget: { type: 'artifactLoadAlert' },
+      },
+      {
+        onRetryArtifactLoad() {
+          retryCalls += 1
+        },
+      }
+    )
+
+    const unavailableSection = findByClass(root, 'learning-hub-artifacts')[0]
+    const alert = findByClass(
+      unavailableSection,
+      'learning-hub-artifacts__load-state--error'
+    )[0]
+    assert.equal(root.getAttribute('aria-busy'), 'false')
+    assert.equal(unavailableSection.getAttribute('aria-busy'), 'false')
+    assert.equal(alert.getAttribute('role'), 'alert')
+    assert.equal(document.activeElement, alert)
+    assert.ok(root.textContent.includes('Frei erfundener erster Inhalt'))
+    findButton(alert, 'Lernartefakte erneut laden').click()
+    assert.equal(retryCalls, 1)
+  })
+})
+
+test('Artefaktformular ist zugänglich, begrenzt und blockiert reinen Leerraum', () => {
+  withLearningHubView(({ document, root, view }) => {
+    const updates = []
+    const saves = []
+    const cancellations = []
+    const actions = {
+      onUpdateArtifactDraft(type, value) {
+        updates.push([type, value])
+      },
+      onSaveArtifact(submission) {
+        saves.push(submission)
+      },
+      onCancelArtifactEditor(type) {
+        cancellations.push(type)
+      },
+    }
+
+    view.render(
+      {
+        ...createSelectedArtifactViewState({
+          activeType: 'note',
+          mode: 'editing',
+          draft: 'Synthetischer Notizentwurf',
+          dirty: true,
+        }),
+        focusTarget: {
+          type: 'artifactField',
+          artifactType: 'note',
+        },
+      },
+      actions
+    )
+
+    const form = findByClass(root, 'learning-hub-artifact-form')[0]
+    const control = findControl(root, 'noteContent')
+    const label = findByTag(form, 'label')[0]
+    assert.equal(document.activeElement, control)
+    assert.equal(label.getAttribute('for'), control.id)
+    assert.equal(control.required, true)
+    assert.equal(control.maxLength, 10000)
+    assert.equal(control.getAttribute('maxlength'), '10000')
+    assert.equal(control.getAttribute('autocomplete'), 'off')
+    assert.equal(control.rows, 8)
+    assert.ok(control.getAttribute('aria-describedby').includes('-hint'))
+    const submitButton = findButton(form, 'Notiz speichern')
+    control.value = '   '
+    control.dispatchEvent({ type: 'input' })
+    assert.equal(submitButton.disabled, true)
+    control.value = 'x'.repeat(10001)
+    control.dispatchEvent({ type: 'input' })
+    assert.equal(submitButton.disabled, true)
+    control.value = 'Aktualisierte synthetische Notiz\nmit zweiter Zeile.'
+    control.dispatchEvent({ type: 'input' })
+    assert.equal(submitButton.disabled, false)
+    form.dispatchEvent({ type: 'submit' })
+    findButton(form, 'Abbrechen').click()
+    assert.equal(updates.length, 3)
+    assert.deepEqual(updates.at(-1), [
+      'note',
+      'Aktualisierte synthetische Notiz\nmit zweiter Zeile.',
+    ])
+    assert.deepEqual(saves, [
+      {
+        type: 'note',
+        content: 'Aktualisierte synthetische Notiz\nmit zweiter Zeile.',
+      },
+    ])
+    assert.deepEqual(cancellations, ['note'])
+
+    view.render(
+      createSelectedArtifactViewState({
+        activeType: 'summary',
+        mode: 'editing',
+        draft: '   \n  ',
+      }),
+      actions
+    )
+    const whitespaceForm = findByClass(
+      root,
+      'learning-hub-artifact-form'
+    )[0]
+    const whitespaceSubmit = findButton(
+      whitespaceForm,
+      'Zusammenfassung speichern'
+    )
+    assert.equal(whitespaceSubmit.disabled, true)
+    whitespaceForm.dispatchEvent({ type: 'submit' })
+    assert.equal(saves.length, 1)
+
+    view.render({
+      ...createSelectedArtifactViewState({
+        activeType: 'summary',
+        mode: 'editing',
+        draft: 'Ungültiger synthetischer Entwurf',
+        fieldError: 'Bitte gib einen Inhalt ein.',
+      }),
+      focusTarget: {
+        type: 'artifactField',
+        artifactType: 'summary',
+      },
+    })
+    const invalidControl = findControl(root, 'summaryContent')
+    assert.equal(invalidControl.getAttribute('aria-invalid'), 'true')
+    assert.ok(invalidControl.getAttribute('aria-describedby').includes('-error'))
+    assert.equal(document.activeElement, invalidControl)
+  })
+})
+
+test('bewahrt einen Dirty-Draft bei gewöhnlichem Progress-Rerender', () => {
+  withLearningHubView(({ root, view }) => {
+    const dirtyDraft =
+      'Synthetischer Dirty-Draft\nmit unveränderter zweiter Zeile.'
+    const readyState = createSelectedArtifactViewState({
+      activeType: 'summary',
+      mode: 'editing',
+      draft: dirtyDraft,
+      dirty: true,
+    })
+
+    view.render(readyState)
+    assert.equal(findControl(root, 'summaryContent').value, dirtyDraft)
+    assert.equal(
+      findByClass(
+        root,
+        'learning-hub-artifact-form__draft-status'
+      )[0].textContent,
+      'Ungespeicherte Änderungen.'
+    )
+
+    view.render({
+      ...readyState,
+      progress: {
+        ...readyState.progress,
+        phase: 'mutating',
+        mutatingChapterId: 'chapter-signals',
+      },
+    })
+    const rerenderedControl = findControl(root, 'summaryContent')
+    assert.equal(rerenderedControl.value, dirtyDraft)
+    assert.equal(rerenderedControl.disabled, true)
+    assert.equal(
+      findButton(root, 'Zusammenfassung speichern').disabled,
+      true
+    )
+  })
+})
+
+test('Clear-Bestätigung bleibt privat, nicht blockierend und zeigt Busy-Feedback', () => {
+  withLearningHubView(({ document, root, view }) => {
+    const privateSentinel =
+      '<script>private-artifact-sentinel</script>'
+    const cancelCalls = []
+    const confirmCalls = []
+    const actions = {
+      onCancelArtifactClearConfirmation(type) {
+        cancelCalls.push(type)
+      },
+      onConfirmArtifactClear(type) {
+        confirmCalls.push(type)
+      },
+    }
+
+    view.render(
+      {
+        ...createSelectedArtifactViewState({
+          values: {
+            note: privateSentinel,
+            summary: null,
+          },
+          activeType: 'note',
+          mode: 'confirmClear',
+        }),
+        focusTarget: {
+          type: 'artifactConfirmation',
+          artifactType: 'note',
+        },
+      },
+      actions
+    )
+
+    const confirmation = findByClass(
+      root,
+      'learning-hub-artifact-confirmation'
+    )[0]
+    const cancelButton = findButton(confirmation, 'Nicht leeren')
+    assert.equal(findByTag(confirmation, 'fieldset').length, 1)
+    assert.equal(findByTag(confirmation, 'legend')[0].textContent, 'Notiz wirklich leeren?')
+    assert.equal(confirmation.textContent.includes(privateSentinel), false)
+    assert.equal(document.activeElement, cancelButton)
+    assert.equal(cancelButton.disabled, false)
+    assert.equal(
+      findButton(root, '← Zur Modulübersicht').disabled,
+      true
+    )
+    assert.ok(
+      findCompletionCheckboxes(root).every(
+        (checkbox) => checkbox.disabled
+      )
+    )
+    for (const element of findAll(
+      confirmation,
+      (node) => node.nodeType === 1
+    )) {
+      for (const attributeValue of element.attributes.values()) {
+        assert.equal(attributeValue.includes(privateSentinel), false)
+      }
+    }
+    cancelButton.click()
+    findButton(confirmation, 'Notiz leeren').click()
+    assert.deepEqual(cancelCalls, ['note'])
+    assert.deepEqual(confirmCalls, ['note'])
+
+    view.render(
+      createSelectedArtifactViewState({
+        phase: 'mutating',
+        values: {
+          note: privateSentinel,
+          summary: null,
+        },
+        activeType: 'note',
+        mode: 'confirmClear',
+        mutatingType: 'note',
+      }),
+      actions
+    )
+    const busyCard = findByClass(root, 'learning-hub-artifact-card')[0]
+    const busyConfirmation = findByClass(
+      busyCard,
+      'learning-hub-artifact-confirmation'
+    )[0]
+    assert.equal(root.getAttribute('aria-busy'), 'true')
+    assert.equal(busyCard.getAttribute('aria-busy'), 'true')
+    assert.equal(busyConfirmation.getAttribute('aria-busy'), 'true')
+    assert.ok(
+      findByTag(busyConfirmation, 'button').every(
+        (button) => button.disabled
+      )
+    )
+    assert.ok(busyCard.textContent.includes('Wird geleert'))
+  })
+})
+
+test('Artefaktstatus und alle Fokusziele bleiben typbezogen', () => {
+  withLearningHubView(({ document, root, view }) => {
+    const values = {
+      note: 'Synthetische Notiz',
+      summary: 'Synthetische Zusammenfassung',
+    }
+
+    const cases = [
+      {
+        state: createSelectedArtifactViewState({ values }),
+        focusTarget: { type: 'artifactHeading' },
+        findExpected: () => findByTag(
+          findByClass(root, 'learning-hub-artifacts')[0],
+          'h5'
+        )[0],
+      },
+      {
+        state: createSelectedArtifactViewState({ values }),
+        focusTarget: {
+          type: 'artifactTrigger',
+          artifactType: 'summary',
+        },
+        findExpected: () => findButton(root, 'Zusammenfassung bearbeiten'),
+      },
+      {
+        state: createSelectedArtifactViewState({ values }),
+        focusTarget: {
+          type: 'artifactClearTrigger',
+          artifactType: 'note',
+        },
+        findExpected: () => findButton(root, 'Notiz leeren'),
+      },
+    ]
+
+    for (const focusCase of cases) {
+      view.render({
+        ...focusCase.state,
+        focusTarget: focusCase.focusTarget,
+      })
+      assert.equal(document.activeElement, focusCase.findExpected())
+    }
+
+    view.render({
+      ...createSelectedArtifactViewState({
+        values,
+        errorMessage:
+          'Die synthetische Zusammenfassung konnte nicht gespeichert werden.',
+        feedbackType: 'summary',
+      }),
+      focusTarget: {
+        type: 'artifactAlert',
+        artifactType: 'summary',
+      },
+    })
+    const alert = findByClass(
+      root,
+      'learning-hub-artifact-feedback--error'
+    )[0]
+    assert.equal(alert.getAttribute('role'), 'alert')
+    assert.equal(document.activeElement, alert)
+
+    view.render(
+      createSelectedArtifactViewState({
+        values,
+        statusMessage: 'Keine Änderungen an der Notiz.',
+        feedbackType: 'note',
+      })
+    )
+    const status = findByClass(
+      root,
+      'learning-hub-artifact-feedback--success'
+    )[0]
+    assert.equal(status.getAttribute('role'), 'status')
+    assert.equal(status.getAttribute('aria-live'), 'polite')
+    assert.equal(status.textContent, 'Keine Änderungen an der Notiz.')
+  })
+})
+
 test('Create-Formular besitzt Labels, Hilfen, Grenzen und reicht aktuelle Werte weiter', () => {
   withLearningHubView(({ document, root, view }) => {
     const updates = []
@@ -1493,6 +1953,10 @@ test('HTML-artige private Eingaben bleiben auf allen Ebenen sichtbarer Text', ()
     const nodeTitle = '<strong>Nur Text</strong>'
     const nodeContent =
       '<img src=x onerror=alert(3)>\n<script>alert(4)</script>'
+    const noteContent =
+      '<svg onload=alert(5)>Private synthetische Notiz</svg>'
+    const summaryContent =
+      '<a href=https://example.invalid/private>Private Zusammenfassung</a>\nmit zweiter Zeile'
     const hub = createHubFixture()
     const learningModule = hub.modules.find(
       (module) => module.id === 'module-orbit'
@@ -1512,6 +1976,12 @@ test('HTML-artige private Eingaben bleiben auf allen Ebenen sichtbarer Text', ()
         selectedModuleId: 'module-orbit',
         expandedChapterIds: ['chapter-signals'],
         selectedLearningNodeId: chapter.learningNodes[0].id,
+        artifacts: createArtifactState({
+          values: {
+            note: noteContent,
+            summary: summaryContent,
+          },
+        }),
       })
     )
 
@@ -1520,12 +1990,16 @@ test('HTML-artige private Eingaben bleiben auf allen Ebenen sichtbarer Text', ()
       chapterTitle,
       nodeTitle,
       nodeContent,
+      noteContent,
+      summaryContent,
     ]) {
       assert.ok(root.textContent.includes(privateText))
     }
 
     assert.equal(findByTag(root, 'script').length, 0)
     assert.equal(findByTag(root, 'img').length, 0)
+    assert.equal(findByTag(root, 'svg').length, 0)
+    assert.equal(findByTag(root, 'a').length, 0)
     assert.equal(findByTag(root, 'strong').some(
       (element) => element.textContent === 'Nur Text'
     ), false)
@@ -1540,6 +2014,24 @@ test('unmount entfernt den transienten Root-Status idempotent', () => {
     view.unmount()
     assert.equal(root.hasAttribute('aria-busy'), false)
 
+    view.unmount()
+    assert.equal(root.hasAttribute('aria-busy'), false)
+
+    view.render(
+      createSelectedArtifactViewState({
+        phase: 'mutating',
+        values: {
+          note: 'Synthetische Notiz',
+          summary: null,
+        },
+        activeType: 'note',
+        mode: 'editing',
+        draft: 'Synthetischer Entwurf',
+        mutatingType: 'note',
+      })
+    )
+    assert.equal(root.getAttribute('aria-busy'), 'true')
+    view.unmount()
     view.unmount()
     assert.equal(root.hasAttribute('aria-busy'), false)
   })
@@ -1619,5 +2111,110 @@ test('wiederholtes Rendern registriert keine mehrfach wirksamen Handler', () => 
     currentCheckbox.dispatchEvent({ type: 'change' })
     assert.equal(oldCompletionCalls, 0)
     assert.equal(currentCompletionCalls, 1)
+
+    let oldArtifactOpenCalls = 0
+    let currentArtifactOpenCalls = 0
+    const artifactState = createSelectedArtifactViewState()
+    view.render(artifactState, {
+      onOpenArtifactEditor() {
+        oldArtifactOpenCalls += 1
+      },
+    })
+    view.render(artifactState, {
+      onOpenArtifactEditor() {
+        currentArtifactOpenCalls += 1
+      },
+    })
+    const currentArtifactButton = findButton(root, 'Notiz erstellen')
+    assert.equal(
+      currentArtifactButton.eventListeners.get('click').length,
+      1
+    )
+    currentArtifactButton.click()
+    assert.equal(oldArtifactOpenCalls, 0)
+    assert.equal(currentArtifactOpenCalls, 1)
+
+    let oldArtifactSaveCalls = 0
+    let currentArtifactSaveCalls = 0
+    let currentArtifactUpdateCalls = 0
+    const artifactFormState = createSelectedArtifactViewState({
+      activeType: 'note',
+      mode: 'editing',
+      draft: 'Synthetischer Entwurf',
+    })
+    view.render(artifactFormState, {
+      onSaveArtifact() {
+        oldArtifactSaveCalls += 1
+      },
+    })
+    view.render(artifactFormState, {
+      onSaveArtifact() {
+        currentArtifactSaveCalls += 1
+      },
+      onUpdateArtifactDraft() {
+        currentArtifactUpdateCalls += 1
+      },
+    })
+    const currentArtifactForm = findByClass(
+      root,
+      'learning-hub-artifact-form'
+    )[0]
+    const currentArtifactControl = findControl(root, 'noteContent')
+    assert.equal(
+      currentArtifactForm.eventListeners.get('submit').length,
+      1
+    )
+    assert.equal(
+      currentArtifactControl.eventListeners.get('input').length,
+      1
+    )
+    currentArtifactControl.dispatchEvent({ type: 'input' })
+    currentArtifactForm.dispatchEvent({ type: 'submit' })
+    assert.equal(oldArtifactSaveCalls, 0)
+    assert.equal(currentArtifactSaveCalls, 1)
+    assert.equal(currentArtifactUpdateCalls, 1)
   })
+})
+
+test('Artefakt-CSS definiert Zwei-Spalten-, Text- und 390px-Regeln', () => {
+  const stylesheet = readFileSync(
+    new URL(
+      '../src/modules/learning-hub/learningHub.css',
+      import.meta.url
+    ),
+    'utf8'
+  )
+  const tabletStart = stylesheet.indexOf('@media(max-width: 760px)')
+  const mobileStart = stylesheet.indexOf('@media(max-width: 390px)')
+  const reducedMotionStart = stylesheet.indexOf(
+    '@media(prefers-reduced-motion: reduce)'
+  )
+  const tabletRules = stylesheet.slice(tabletStart, mobileStart)
+  const mobileRules = stylesheet.slice(mobileStart, reducedMotionStart)
+
+  assert.match(
+    stylesheet,
+    /\.learning-hub-artifact-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)/s
+  )
+  assert.match(
+    stylesheet,
+    /\.learning-hub-artifact-card__content,[^{]*\{[^}]*white-space:\s*pre-wrap;[^}]*overflow-wrap:\s*anywhere;[^}]*word-break:\s*break-word;/s
+  )
+  assert.ok(tabletStart >= 0)
+  assert.match(tabletRules, /\.learning-hub-artifact-grid/)
+  assert.match(
+    tabletRules,
+    /grid-template-columns:\s*minmax\(0,\s*1fr\);/
+  )
+  assert.ok(mobileStart >= 0)
+  assert.match(mobileRules, /\.learning-hub-artifacts \.button/)
+  assert.match(
+    mobileRules,
+    /\.learning-hub-artifact-form__control/
+  )
+  assert.match(mobileRules, /min-height:\s*44px;/)
+  assert.match(
+    mobileRules,
+    /\.learning-hub-artifact-confirmation[^}]*max-width:\s*100%;/s
+  )
 })

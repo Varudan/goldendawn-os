@@ -6,9 +6,11 @@ import { createLearningHubController } from './modules/learning-hub/learningHubC
 import { createLearningHubView } from './modules/learning-hub/learningHubView.js'
 import { createPromptVaultController } from './modules/prompt-vault/promptVaultController.js'
 import { createPromptVaultView } from './modules/prompt-vault/promptVaultView.js'
+import { createLearningArtifactService } from './services/learningArtifactService.js'
 import { createLearningHubService } from './services/learningHubService.js'
 import { createLearningProgressService } from './services/learningProgressService.js'
 import { createPromptService } from './services/promptService.js'
+import { createLearningArtifactStorage } from './storage/learningArtifactStorage.js'
 import { createLearningHubStorage } from './storage/learningHubStorage.js'
 import { createLearningProgressStorage } from './storage/learningProgressStorage.js'
 import { createPromptStorage } from './storage/promptStorage.js'
@@ -45,7 +47,7 @@ const modules = [
     id: VIEW_LEARNING_HUB,
     name: 'LearningHub',
     description:
-      'Eigene Lernmodule, Kapitel, LearningNodes und Lernfortschritt lokal verwalten',
+      'Eigene Lernmodule, Kapitel, LearningNodes, Lernfortschritt, Notizen und Zusammenfassungen lokal verwalten',
     status: 'In Arbeit',
     statusClass: 'next',
     navigationState: 'In Arbeit',
@@ -194,10 +196,16 @@ const learningProgressService = createLearningProgressService({
   learningProgressStorage,
   learningHubService,
 })
+const learningArtifactStorage = createLearningArtifactStorage(storageAdapter)
+const learningArtifactService = createLearningArtifactService({
+  learningArtifactStorage,
+  learningHubService,
+})
 const learningHubView = createLearningHubView(viewOutlet)
 const learningHubController = createLearningHubController({
   learningHubService,
   learningProgressService,
+  learningArtifactService,
   learningHubView,
 })
 
@@ -218,14 +226,14 @@ function renderCommandCenter() {
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
         <h2 id="focus-title">v0.2.1 – LearningHub Local MVP in Arbeit</h2>
-        <p>Command Center und PromptVault bleiben lokal nutzbar. Im LearningHub sind die private Inhaltsverwaltung für Module, Kapitel und LearningNodes sowie Kapitelabschluss und Modulfortschritt jetzt bedienbar. Notizen, Zusammenfassungen und der lokale Mock-Test folgen in weiteren, getrennten Arbeitsschritten.</p>
+        <p>Command Center und PromptVault bleiben lokal nutzbar. Im LearningHub sind die private Inhaltsverwaltung für Module, Kapitel und LearningNodes, der Kapitelabschluss und Modulfortschritt sowie lokale Notizen und Zusammenfassungen jetzt bedienbar. Nur der lokale Mock-Test bleibt als nächster getrennter Arbeitsschritt offen.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
           <span>Aktueller Teilstand</span>
-          <strong>Lokale Inhalte und Fortschritt bedienbar</strong>
+          <strong>Lokale Inhalte, Fortschritt und Lernartefakte bedienbar</strong>
         </div>
-        <small>LearningHub-Inhalte und -Fortschritt bleiben im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung oder geräteübergreifende Synchronisierung.</small>
+        <small>LearningHub-Inhalte, -Fortschritt und -Artefakte bleiben im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung oder geräteübergreifende Synchronisierung.</small>
       </div>
     </section>
 
@@ -233,8 +241,8 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Ausbauschritt</span>
-        <h2 id="milestone-title">Notizen und Zusammenfassungen</h2>
-        <p>Als Nächstes ergänzen wir lokale Notizen und Zusammenfassungen hinter eigenen Service- und Storage-Grenzen. Der lokale Mock-Test folgt später und bleibt davon getrennt.</p>
+        <h2 id="milestone-title">Lokaler Mock-Test</h2>
+        <p>Als Nächstes folgt der lokale, deterministische Mock-Test mit ausschließlich synthetischen Testdaten. Er verwendet keine KI und bleibt von privaten Lernartefakten getrennt.</p>
       </div>
       <span class="status status--next">Als Nächstes</span>
     </aside>
@@ -315,8 +323,17 @@ function showView(viewName, { moveFocus = false } = {}) {
     return
   }
 
-  promptVaultController.close()
-  learningHubController.close()
+  if (
+    activeView === VIEW_LEARNING_HUB &&
+    learningHubController.close() === false
+  ) {
+    return
+  }
+
+  if (activeView === VIEW_PROMPT_VAULT) {
+    promptVaultController.close()
+  }
+
   activeView = viewName
   updateNavigation(activeView)
 

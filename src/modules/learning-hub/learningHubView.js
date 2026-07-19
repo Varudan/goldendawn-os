@@ -1,6 +1,19 @@
 const TITLE_MAX_LENGTH = 120
 const CONTENT_MAX_LENGTH = 10000
 
+const ARTIFACT_CONFIGS = Object.freeze({
+  note: Object.freeze({
+    label: 'Notiz',
+    contentLabel: 'Notizinhalt',
+    emptyText: 'Noch keine Notiz gespeichert.',
+  }),
+  summary: Object.freeze({
+    label: 'Zusammenfassung',
+    contentLabel: 'Zusammenfassungsinhalt',
+    emptyText: 'Noch keine Zusammenfassung gespeichert.',
+  }),
+})
+
 const FORM_CONFIGS = Object.freeze({
   createModule: Object.freeze({
     heading: 'Neues Lernmodul erstellen',
@@ -280,6 +293,13 @@ function createFocusReferences() {
     chapterToggles: new Map(),
     chapterCompletions: new Map(),
     learningNodeHeadings: new Map(),
+    artifactHeading: null,
+    artifactFields: new Map(),
+    artifactTriggers: new Map(),
+    artifactClearTriggers: new Map(),
+    artifactConfirmations: new Map(),
+    artifactAlerts: new Map(),
+    artifactLoadAlert: null,
   }
 }
 
@@ -341,7 +361,7 @@ function createHeader(moduleCount, isMutating, focusReferences) {
     createElement(
       'p',
       '',
-      'Verwalte Lernmodule, Kapitel, LearningNodes und Kapitel-/Modulfortschritt lokal. Notizen und Zusammenfassungen folgen als nächster Ausbauschritt; der lokale Mock-Test bleibt davon getrennt.'
+      'Verwalte Lernmodule, Kapitel, LearningNodes, Kapitel-/Modulfortschritt sowie Notizen und Zusammenfassungen lokal. Der deterministische lokale Mock-Test folgt als nächster Ausbauschritt.'
     )
   )
   const count = createElement('p', 'learning-hub-count')
@@ -366,7 +386,7 @@ function createPrivacyNotice() {
   const text = createElement(
     'p',
     '',
-    'Deine Inhalte und dein Fortschritt bleiben ausschließlich im aktuellen Browserprofil. Eine Cloud-Sicherung oder geräteübergreifende Synchronisierung gibt es nicht. Das localStorage ist unverschlüsselt und für andere Skripte derselben Origin (Website-Adresse) grundsätzlich lesbar.'
+    'Deine Inhalte und dein Fortschritt sowie deine Notizen und Zusammenfassungen bleiben ausschließlich im aktuellen Browserprofil. Eine Cloud-Sicherung oder geräteübergreifende Synchronisierung gibt es nicht. Das localStorage ist unverschlüsselt und für andere Skripte derselben Origin (Website-Adresse) grundsätzlich lesbar.'
   )
   notice.append(title, text)
   return notice
@@ -1015,10 +1035,541 @@ function createLearningNodeCard(
   return card
 }
 
+function getArtifactType(value) {
+  return Object.hasOwn(ARTIFACT_CONFIGS, value) ? value : null
+}
+
+function getArtifactState(viewState) {
+  const artifacts = viewState.artifacts
+  const phase = ['loading', 'ready', 'unavailable', 'mutating'].includes(
+    artifacts?.phase
+  )
+    ? artifacts.phase
+    : 'unavailable'
+  const getPersistedValue = (type) => {
+    const value = artifacts?.values?.[type]
+    return typeof value === 'string' && value.length > 0 ? value : null
+  }
+
+  return {
+    phase,
+    values: {
+      note: getPersistedValue('note'),
+      summary: getPersistedValue('summary'),
+    },
+    activeType: getArtifactType(artifacts?.activeType),
+    mode: ['view', 'editing', 'confirmClear'].includes(artifacts?.mode)
+      ? artifacts.mode
+      : 'view',
+    draft: typeof artifacts?.draft === 'string' ? artifacts.draft : '',
+    dirty: artifacts?.dirty === true,
+    fieldError:
+      typeof artifacts?.fieldError === 'string' ? artifacts.fieldError : '',
+    errorMessage:
+      typeof artifacts?.errorMessage === 'string'
+        ? artifacts.errorMessage
+        : '',
+    statusMessage:
+      typeof artifacts?.statusMessage === 'string'
+        ? artifacts.statusMessage
+        : '',
+    feedbackType: getArtifactType(artifacts?.feedbackType),
+    mutatingType: getArtifactType(artifacts?.mutatingType),
+    interactionDisabled: artifacts?.interactionDisabled === true,
+  }
+}
+
+function createArtifactEditor(
+  type,
+  config,
+  artifactState,
+  actions,
+  focusReferences,
+  isBlocked,
+  titleId
+) {
+  const form = createElement('form', 'learning-hub-artifact-form')
+  const controlId = `learning-hub-artifact-${type}-content`
+  const hintId = `${controlId}-hint`
+  const errorId = `${controlId}-error`
+  const isMutating =
+    artifactState.phase === 'mutating' &&
+    artifactState.mutatingType === type
+  const field = createElement('div', 'learning-hub-artifact-form__field')
+  const label = createElement(
+    'label',
+    'learning-hub-artifact-form__label',
+    config.contentLabel
+  )
+  label.setAttribute('for', controlId)
+  label.append(
+    createElement(
+      'span',
+      'learning-hub-artifact-form__requirement',
+      'Pflichtfeld'
+    )
+  )
+  const control = createElement(
+    'textarea',
+    'form-control learning-hub-artifact-form__control'
+  )
+  control.id = controlId
+  control.name = `${type}Content`
+  control.required = true
+  control.maxLength = CONTENT_MAX_LENGTH
+  control.rows = 8
+  control.autocomplete = 'off'
+  control.value = artifactState.draft
+  control.disabled = isBlocked
+  control.setAttribute('required', '')
+  control.setAttribute('maxlength', String(CONTENT_MAX_LENGTH))
+  control.setAttribute('autocomplete', 'off')
+  const hint = createElement(
+    'small',
+    'learning-hub-artifact-form__hint',
+    'Maximal 10.000 Zeichen. Reiner Leerraum kann nicht gespeichert werden.'
+  )
+  hint.id = hintId
+  const describedBy = [hintId]
+
+  if (artifactState.fieldError) {
+    control.setAttribute('aria-invalid', 'true')
+    describedBy.push(errorId)
+  }
+
+  control.setAttribute('aria-describedby', describedBy.join(' '))
+  focusReferences.artifactFields.set(type, control)
+  field.append(label, control, hint)
+
+  if (artifactState.fieldError) {
+    const fieldError = createElement(
+      'span',
+      'learning-hub-artifact-form__field-error',
+      artifactState.fieldError
+    )
+    fieldError.id = errorId
+    field.append(fieldError)
+  }
+
+  const formActions = createElement(
+    'div',
+    'learning-hub-artifact-form__actions'
+  )
+  const persistedContent = artifactState.values[type]
+  if (typeof persistedContent === 'string') {
+    const clearButton = createButton(
+      `${config.label} leeren`,
+      'button button--secondary',
+      () => {
+        if (isBlocked) return
+        actions.onOpenArtifactClearConfirmation?.(type)
+      },
+      { disabled: isBlocked }
+    )
+    clearButton.setAttribute('aria-describedby', titleId)
+    focusReferences.artifactClearTriggers.set(type, clearButton)
+    formActions.append(clearButton)
+  }
+  const cancelButton = createButton(
+    'Abbrechen',
+    'button button--secondary',
+    () => {
+      if (isBlocked) return
+      actions.onCancelArtifactEditor?.(type)
+    },
+    { disabled: isBlocked }
+  )
+  const submitButton = createElement(
+    'button',
+    'button button--primary',
+    isMutating ? 'Wird gespeichert …' : `${config.label} speichern`
+  )
+  submitButton.type = 'submit'
+  const draftStatus = createElement(
+    'p',
+    'learning-hub-artifact-form__draft-status',
+    artifactState.dirty
+      ? 'Ungespeicherte Änderungen.'
+      : 'Keine ungespeicherten Änderungen.'
+  )
+  const updateDraftStatus = () => {
+    const persistedValue =
+      typeof persistedContent === 'string' ? persistedContent : ''
+    draftStatus.textContent =
+      control.value.trim() === persistedValue
+        ? 'Keine ungespeicherten Änderungen.'
+        : 'Ungespeicherte Änderungen.'
+  }
+  const updateSubmitAvailability = () => {
+    submitButton.disabled =
+      isBlocked ||
+      control.value.trim().length === 0 ||
+      control.value.length > CONTENT_MAX_LENGTH
+  }
+  updateSubmitAvailability()
+  control.addEventListener('input', () => {
+    updateSubmitAvailability()
+    updateDraftStatus()
+    if (isBlocked) return
+    actions.onUpdateArtifactDraft?.(type, control.value)
+  })
+  formActions.append(cancelButton, submitButton)
+  form.noValidate = true
+  form.setAttribute('autocomplete', 'off')
+  form.setAttribute('aria-labelledby', titleId)
+  form.setAttribute('aria-busy', String(isMutating))
+  form.append(field, draftStatus, formActions)
+  form.addEventListener('submit', (event) => {
+    event.preventDefault()
+    if (
+      isBlocked ||
+      control.value.trim().length === 0 ||
+      control.value.length > CONTENT_MAX_LENGTH
+    ) {
+      return
+    }
+    actions.onSaveArtifact?.({ type, content: control.value })
+  })
+  return form
+}
+
+function createArtifactClearConfirmation(
+  type,
+  config,
+  artifactState,
+  actions,
+  focusReferences,
+  isBlocked
+) {
+  const confirmation = createElement(
+    'fieldset',
+    'learning-hub-artifact-confirmation'
+  )
+  const isMutating =
+    artifactState.phase === 'mutating' &&
+    artifactState.mutatingType === type
+  confirmation.setAttribute('aria-busy', String(isMutating))
+  const legend = createElement(
+    'legend',
+    '',
+    `${config.label} wirklich leeren?`
+  )
+  const explanation = createElement(
+    'p',
+    '',
+    'Nur dieses gespeicherte Lernartefakt wird geleert. Der LearningNode und das andere Lernartefakt bleiben unverändert.'
+  )
+  const confirmationActions = createElement(
+    'div',
+    'learning-hub-artifact-confirmation__actions'
+  )
+  const cancelButton = createButton(
+    'Nicht leeren',
+    'button button--secondary',
+    () => {
+      if (isBlocked) return
+      actions.onCancelArtifactClearConfirmation?.(type)
+    },
+    { disabled: isBlocked }
+  )
+  const confirmButton = createButton(
+    isMutating ? 'Wird geleert …' : `${config.label} leeren`,
+    'button learning-hub-artifact-confirmation__confirm',
+    () => {
+      if (isBlocked) return
+      actions.onConfirmArtifactClear?.(type)
+    },
+    { disabled: isBlocked }
+  )
+  focusReferences.artifactConfirmations.set(type, cancelButton)
+  confirmationActions.append(cancelButton, confirmButton)
+  confirmation.append(legend, explanation, confirmationActions)
+  return confirmation
+}
+
+function createArtifactFeedback(
+  type,
+  artifactState,
+  focusReferences
+) {
+  if (artifactState.feedbackType !== type) return null
+
+  if (artifactState.errorMessage) {
+    const alert = createElement(
+      'p',
+      'learning-hub-artifact-feedback learning-hub-artifact-feedback--error',
+      artifactState.errorMessage
+    )
+    alert.setAttribute('role', 'alert')
+    alert.tabIndex = -1
+    focusReferences.artifactAlerts.set(type, alert)
+    return alert
+  }
+
+  if (artifactState.statusMessage) {
+    const status = createElement(
+      'p',
+      'learning-hub-artifact-feedback learning-hub-artifact-feedback--success',
+      artifactState.statusMessage
+    )
+    status.setAttribute('role', 'status')
+    status.setAttribute('aria-live', 'polite')
+    return status
+  }
+
+  return null
+}
+
+function createArtifactCard(
+  type,
+  artifactState,
+  actions,
+  focusReferences
+) {
+  const config = ARTIFACT_CONFIGS[type]
+  const persistedContent = artifactState.values[type]
+  const hasContent = typeof persistedContent === 'string'
+  const isActive = artifactState.activeType === type
+  const isMutating =
+    artifactState.phase === 'mutating' &&
+    artifactState.mutatingType === type
+  const hasOtherActiveMode =
+    artifactState.activeType !== null &&
+    artifactState.activeType !== type &&
+    artifactState.mode !== 'view'
+  const isBlocked =
+    artifactState.interactionDisabled ||
+    artifactState.phase === 'mutating' ||
+    hasOtherActiveMode
+  const titleId = `learning-hub-artifact-${type}-title`
+  const card = createElement('article', 'learning-hub-artifact-card')
+  card.setAttribute('aria-labelledby', titleId)
+  card.setAttribute('aria-busy', String(isMutating))
+  const header = createElement(
+    'div',
+    'learning-hub-artifact-card__header'
+  )
+  const title = createElement('h6', '', config.label)
+  title.id = titleId
+  const availabilityText = isMutating
+    ? artifactState.mode === 'confirmClear'
+      ? 'Wird geleert'
+      : 'Wird gespeichert'
+    : isActive && artifactState.mode === 'editing'
+      ? 'Wird bearbeitet'
+      : isActive && artifactState.mode === 'confirmClear'
+        ? 'Leerung bestätigen'
+        : hasContent
+          ? 'Vorhanden'
+          : 'Nicht vorhanden'
+  const availability = createElement(
+    'span',
+    'learning-hub-artifact-card__availability',
+    availabilityText
+  )
+  header.append(title, availability)
+  card.append(header)
+
+  if (isActive && artifactState.mode === 'editing') {
+    card.append(
+      createArtifactEditor(
+        type,
+        config,
+        artifactState,
+        actions,
+        focusReferences,
+        isBlocked,
+        titleId
+      )
+    )
+  } else {
+    card.append(
+      createElement(
+        'p',
+        hasContent
+          ? 'learning-hub-artifact-card__content'
+          : 'learning-hub-artifact-card__empty',
+        hasContent ? persistedContent : config.emptyText
+      )
+    )
+
+    if (isActive && artifactState.mode === 'confirmClear') {
+      card.append(
+        createArtifactClearConfirmation(
+          type,
+          config,
+          artifactState,
+          actions,
+          focusReferences,
+          isBlocked
+        )
+      )
+    } else {
+      const cardActions = createElement(
+        'div',
+        'learning-hub-artifact-card__actions'
+      )
+      const primaryButton = createButton(
+        hasContent
+          ? `${config.label} bearbeiten`
+          : `${config.label} erstellen`,
+        'button button--secondary',
+        () => {
+          if (isBlocked) return
+          actions.onOpenArtifactEditor?.(type)
+        },
+        { disabled: isBlocked }
+      )
+      primaryButton.setAttribute('aria-describedby', titleId)
+      focusReferences.artifactTriggers.set(type, primaryButton)
+      cardActions.append(primaryButton)
+
+      if (hasContent) {
+        const clearButton = createButton(
+          `${config.label} leeren`,
+          'button button--secondary',
+          () => {
+            if (isBlocked) return
+            actions.onOpenArtifactClearConfirmation?.(type)
+          },
+          { disabled: isBlocked }
+        )
+        clearButton.setAttribute('aria-describedby', titleId)
+        focusReferences.artifactClearTriggers.set(type, clearButton)
+        cardActions.append(clearButton)
+      }
+
+      card.append(cardActions)
+    }
+  }
+
+  const feedback = createArtifactFeedback(
+    type,
+    artifactState,
+    focusReferences
+  )
+  if (feedback) card.append(feedback)
+  return card
+}
+
+function createLearningArtifacts(
+  viewState,
+  actions,
+  focusReferences
+) {
+  const normalizedArtifactState = getArtifactState(viewState)
+  const artifactState = {
+    ...normalizedArtifactState,
+    interactionDisabled:
+      normalizedArtifactState.interactionDisabled ||
+      viewState.phase === 'mutating' ||
+      viewState.progress?.phase === 'mutating',
+  }
+  const section = createElement('section', 'learning-hub-artifacts')
+  section.setAttribute('aria-labelledby', 'learning-hub-artifacts-title')
+  section.setAttribute(
+    'aria-busy',
+    String(['loading', 'mutating'].includes(artifactState.phase))
+  )
+  const header = createElement('div', 'learning-hub-artifacts__header')
+  const heading = createElement('h5', '', 'Lernartefakte')
+  heading.id = 'learning-hub-artifacts-title'
+  heading.tabIndex = -1
+  focusReferences.artifactHeading = heading
+  header.append(
+    heading,
+    createElement(
+      'p',
+      '',
+      'Persönliche Notiz und Zusammenfassung zu dieser Textkarte.'
+    )
+  )
+  section.append(header)
+
+  if (artifactState.phase === 'loading') {
+    const loading = createElement(
+      'p',
+      'learning-hub-artifacts__load-state',
+      'Lernartefakte werden aus dem lokalen Browserprofil geladen.'
+    )
+    loading.setAttribute('role', 'status')
+    loading.setAttribute('aria-live', 'polite')
+    loading.setAttribute('aria-busy', 'true')
+    section.append(loading)
+    return section
+  }
+
+  if (artifactState.phase === 'unavailable') {
+    const unavailable = createElement(
+      'div',
+      'learning-hub-artifacts__load-state learning-hub-artifacts__load-state--error'
+    )
+    unavailable.setAttribute('role', 'alert')
+    unavailable.tabIndex = -1
+    focusReferences.artifactLoadAlert = unavailable
+    unavailable.append(
+      createElement(
+        'p',
+        '',
+        artifactState.errorMessage ||
+          'Die lokalen Lernartefakte sind derzeit nicht verfügbar.'
+      ),
+      createButton(
+        'Lernartefakte erneut laden',
+        'button button--secondary',
+        () => {
+          if (artifactState.interactionDisabled) return
+          actions.onRetryArtifactLoad?.()
+        },
+        { disabled: artifactState.interactionDisabled }
+      )
+    )
+    section.append(unavailable)
+    return section
+  }
+
+  if (artifactState.errorMessage && artifactState.feedbackType === null) {
+    const alert = createElement(
+      'p',
+      'learning-hub-artifact-feedback learning-hub-artifact-feedback--error',
+      artifactState.errorMessage
+    )
+    alert.setAttribute('role', 'alert')
+    section.append(alert)
+  }
+
+  if (artifactState.statusMessage && artifactState.feedbackType === null) {
+    const status = createElement(
+      'p',
+      'learning-hub-artifact-feedback learning-hub-artifact-feedback--success',
+      artifactState.statusMessage
+    )
+    status.setAttribute('role', 'status')
+    status.setAttribute('aria-live', 'polite')
+    section.append(status)
+  }
+
+  const grid = createElement('div', 'learning-hub-artifact-grid')
+  for (const type of Object.keys(ARTIFACT_CONFIGS)) {
+    grid.append(
+      createArtifactCard(
+        type,
+        artifactState,
+        actions,
+        focusReferences
+      )
+    )
+  }
+  section.append(grid)
+  return section
+}
+
 function createSelectedLearningNode(
   learningModule,
   chapter,
   learningNode,
+  viewState,
+  actions,
   focusReferences
 ) {
   const detail = createElement('section', 'learning-hub-node-detail')
@@ -1040,7 +1591,12 @@ function createSelectedLearningNode(
     'learning-hub-node-detail__content',
     learningNode.content
   )
-  detail.append(eyebrow, title, content)
+  detail.append(
+    eyebrow,
+    title,
+    content,
+    createLearningArtifacts(viewState, actions, focusReferences)
+  )
   return detail
 }
 
@@ -1218,6 +1774,8 @@ function createChapter(
           learningModule,
           chapter,
           selectedLearningNode,
+          viewState,
+          actions,
           focusReferences
         )
       )
@@ -1412,6 +1970,30 @@ function resolveFocusTarget(focusTarget, focusReferences) {
           focusTarget.learningNodeId
         )
       )
+    case 'artifactHeading':
+      return focusReferences.artifactHeading
+    case 'artifactField':
+      return focusReferences.artifactFields.get(
+        focusTarget.artifactType
+      )
+    case 'artifactTrigger':
+      return focusReferences.artifactTriggers.get(
+        focusTarget.artifactType
+      )
+    case 'artifactClearTrigger':
+      return focusReferences.artifactClearTriggers.get(
+        focusTarget.artifactType
+      )
+    case 'artifactConfirmation':
+      return focusReferences.artifactConfirmations.get(
+        focusTarget.artifactType
+      )
+    case 'artifactAlert':
+      return focusReferences.artifactAlerts.get(
+        focusTarget.artifactType
+      )
+    case 'artifactLoadAlert':
+      return focusReferences.artifactLoadAlert
     default:
       return null
   }
@@ -1438,7 +2020,19 @@ export function createLearningHubView(rootElement) {
       hasContentView && viewState.progress?.phase === 'mutating'
     const isProgressLoading =
       hasContentView && viewState.progress?.phase === 'loading'
-    const isMutating = isContentMutating || isProgressMutating
+    const hasArtifactContext =
+      hasContentView &&
+      typeof viewState.selectedLearningNodeId === 'string'
+    const artifactViewState = hasArtifactContext
+      ? getArtifactState(viewState)
+      : null
+    const artifactPhase = artifactViewState?.phase ?? null
+    const isArtifactMutating = artifactPhase === 'mutating'
+    const isArtifactLoading = artifactPhase === 'loading'
+    const isMutating =
+      isContentMutating || isProgressMutating || isArtifactMutating
+    const isInteractionBlocked =
+      isMutating || artifactViewState?.mode === 'confirmClear'
     const header = createHeader(
       modules.length,
       isMutating,
@@ -1457,7 +2051,7 @@ export function createLearningHubView(rootElement) {
       const progressFeedback = createProgressFeedback(
         viewState,
         actions,
-        isMutating
+        isInteractionBlocked
       )
       if (progressFeedback) fragment.append(progressFeedback)
 
@@ -1473,7 +2067,7 @@ export function createLearningHubView(rootElement) {
             viewState,
             actions,
             focusReferences,
-            isMutating
+            isInteractionBlocked
           )
         )
       } else {
@@ -1482,7 +2076,7 @@ export function createLearningHubView(rootElement) {
             viewState,
             actions,
             focusReferences,
-            isMutating
+            isInteractionBlocked
           )
         )
       }
@@ -1494,7 +2088,8 @@ export function createLearningHubView(rootElement) {
       String(
         viewState.phase === 'loading' ||
           isMutating ||
-          isProgressLoading
+          isProgressLoading ||
+          isArtifactLoading
       )
     )
     rootElement.replaceChildren(fragment)

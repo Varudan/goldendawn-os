@@ -164,6 +164,72 @@ function createProgressMutationSuccess(
   }
 }
 
+function createArtifactHubFixture() {
+  const hub = createHubFixture()
+
+  hub.modules[0].chapters[0].learningNodes.push({
+    id: 'node-echo',
+    title: 'Synthetisches Echo',
+    content: 'Ein frei erfundener Text über ein ruhiges Echo.',
+    position: 6,
+  })
+  hub.modules[1].chapters[0].learningNodes.push({
+    id: 'node-facet',
+    title: 'Synthetische Facette',
+    content: 'Ein frei erfundener Text über eine Glasfacette.',
+    position: 2,
+  })
+
+  return hub
+}
+
+function createArtifact(overrides = {}) {
+  return {
+    id: 'artifact-pulse-note',
+    type: 'note',
+    moduleId: 'module-orbit',
+    chapterId: 'chapter-signals',
+    learningNodeId: 'node-pulse',
+    content: 'Synthetische Notiz zum Pulsmuster.',
+    createdAt: '2026-07-19T10:00:00.000Z',
+    updatedAt: '2026-07-19T10:00:00.000Z',
+    ...overrides,
+  }
+}
+
+function createArtifactStore(artifacts = []) {
+  return {
+    schemaVersion: 1,
+    dataOrigin: 'private',
+    artifacts,
+  }
+}
+
+function createArtifactLoadSuccess(
+  artifactStore = createArtifactStore(),
+  status = artifactStore.artifacts.length === 0 ? 'empty' : 'loaded'
+) {
+  return {
+    ok: true,
+    status,
+    changed: false,
+    artifactStore: cloneValue(artifactStore),
+  }
+}
+
+function createArtifactMutationSuccess(
+  status,
+  changed,
+  artifactStore
+) {
+  return {
+    ok: true,
+    status,
+    changed,
+    artifactStore: cloneValue(artifactStore),
+  }
+}
+
 function cloneValue(value) {
   return structuredClone(value)
 }
@@ -300,11 +366,58 @@ function createProgressServiceDouble({
   return { calls, service }
 }
 
+function createArtifactServiceDouble({
+  loadResults,
+  mutationHandlers = {},
+}) {
+  const loadQueue = Array.isArray(loadResults)
+    ? [...loadResults]
+    : [loadResults]
+  const calls = {
+    loadArtifacts: [],
+    saveNote: [],
+    saveSummary: [],
+    clearNote: [],
+    clearSummary: [],
+  }
+  const service = {
+    loadArtifacts() {
+      calls.loadArtifacts.push(undefined)
+      const result = loadQueue.length > 1
+        ? loadQueue.shift()
+        : loadQueue[0]
+      return typeof result === 'function' ? result() : cloneValue(result)
+    },
+  }
+
+  for (const methodName of [
+    'saveNote',
+    'saveSummary',
+    'clearNote',
+    'clearSummary',
+  ]) {
+    service[methodName] = (input) => {
+      calls[methodName].push(cloneValue(input))
+      const handler = mutationHandlers[methodName]
+
+      if (typeof handler === 'function') {
+        return handler(cloneValue(input))
+      }
+
+      return cloneValue(handler)
+    }
+  }
+
+  return { calls, service }
+}
+
 function createControllerSystem({
   loadResults,
   mutationHandlers,
   progressLoadResults,
   progressMutationHandlers,
+  artifactLoadResults,
+  artifactMutationHandlers,
 } = {}) {
   const scheduler = createManualScheduler()
   const viewRecorder = createViewRecorder()
@@ -328,9 +441,16 @@ function createControllerSystem({
       createProgressLoadSuccess(initialProgressHub),
     mutationHandlers: progressMutationHandlers,
   })
+  const artifactServiceDouble = createArtifactServiceDouble({
+    loadResults:
+      artifactLoadResults ??
+      createArtifactLoadSuccess(),
+    mutationHandlers: artifactMutationHandlers,
+  })
   const controller = createLearningHubController({
     learningHubService: serviceDouble.service,
     learningProgressService: progressServiceDouble.service,
+    learningArtifactService: artifactServiceDouble.service,
     learningHubView: viewRecorder.view,
     scheduleTask: scheduler.scheduleTask,
   })
@@ -340,6 +460,7 @@ function createControllerSystem({
     scheduler,
     serviceDouble,
     progressServiceDouble,
+    artifactServiceDouble,
     viewRecorder,
   }
 }
@@ -350,6 +471,23 @@ function openReadyController(system) {
   assert.equal(system.serviceDouble.calls.loadHub.length, 0)
   system.scheduler.runNext()
   return system.viewRecorder.actions
+}
+
+function selectArtifactNode(
+  actions,
+  {
+    moduleId = 'module-orbit',
+    chapterId = 'chapter-signals',
+    learningNodeId = 'node-pulse',
+  } = {}
+) {
+  actions.onSelectModule(moduleId)
+  actions.onToggleChapter(moduleId, chapterId)
+  actions.onSelectLearningNode(
+    moduleId,
+    chapterId,
+    learningNodeId
+  )
 }
 
 function createMutationSuccess(status, hub, extra = {}) {
@@ -1967,4 +2105,1371 @@ test('erhält die Progress-Projektion bei Rename- und LearningNode-Mutationen oh
     initialProjection
   )
   assert.equal(system.progressServiceDouble.calls.loadProgress.length, 1)
+})
+
+test('projiziert leere und vorhandene Lernartefakte ohne Rohstore, IDs oder Zeitstempel', () => {
+  const emptySystem = createControllerSystem()
+  const emptyActions = openReadyController(emptySystem)
+  selectArtifactNode(emptyActions)
+
+  assert.equal(emptySystem.viewRecorder.lastState.artifacts.phase, 'ready')
+  assert.deepEqual(emptySystem.viewRecorder.lastState.artifacts.values, {
+    note: null,
+    summary: null,
+  })
+  assert.equal(
+    Object.hasOwn(
+      emptySystem.viewRecorder.lastState.artifacts,
+      'artifactStore'
+    ),
+    false
+  )
+  assert.equal(
+    emptySystem.artifactServiceDouble.calls.loadArtifacts.length,
+    1
+  )
+
+  const note = createArtifact()
+  const summary = createArtifact({
+    id: 'artifact-pulse-summary',
+    type: 'summary',
+    content: 'Synthetische Zusammenfassung zum Pulsmuster.',
+    createdAt: '2026-07-19T10:05:00.000Z',
+    updatedAt: '2026-07-19T10:05:00.000Z',
+  })
+  const loadedSystem = createControllerSystem({
+    artifactLoadResults: createArtifactLoadSuccess(
+      createArtifactStore([note, summary])
+    ),
+  })
+  const loadedActions = openReadyController(loadedSystem)
+  selectArtifactNode(loadedActions)
+
+  assert.equal(loadedSystem.viewRecorder.lastState.artifacts.phase, 'ready')
+  assert.deepEqual(loadedSystem.viewRecorder.lastState.artifacts.values, {
+    note: note.content,
+    summary: summary.content,
+  })
+  assert.deepEqual(
+    Object.keys(loadedSystem.viewRecorder.lastState.artifacts).sort(),
+    [
+      'activeType',
+      'dirty',
+      'draft',
+      'errorMessage',
+      'feedbackType',
+      'fieldError',
+      'interactionDisabled',
+      'mode',
+      'mutatingType',
+      'phase',
+      'statusMessage',
+      'values',
+    ].sort()
+  )
+
+  const serializedProjection = JSON.stringify(
+    loadedSystem.viewRecorder.lastState.artifacts
+  )
+  assert.equal(serializedProjection.includes(note.id), false)
+  assert.equal(serializedProjection.includes(summary.id), false)
+  assert.equal(serializedProjection.includes(note.createdAt), false)
+  assert.equal(serializedProjection.includes(summary.updatedAt), false)
+})
+
+test('ordnet Notiz und Zusammenfassung dem ausgewählten LearningNode ohne Cross-Node-Leak zu', () => {
+  const hub = createArtifactHubFixture()
+  const artifacts = [
+    createArtifact(),
+    createArtifact({
+      id: 'artifact-pulse-summary',
+      type: 'summary',
+      content: 'Zusammenfassung nur für den synthetischen Puls.',
+      createdAt: '2026-07-19T10:01:00.000Z',
+      updatedAt: '2026-07-19T10:01:00.000Z',
+    }),
+    createArtifact({
+      id: 'artifact-echo-note',
+      learningNodeId: 'node-echo',
+      content: 'Notiz nur für das synthetische Echo.',
+      createdAt: '2026-07-19T10:02:00.000Z',
+      updatedAt: '2026-07-19T10:02:00.000Z',
+    }),
+    createArtifact({
+      id: 'artifact-echo-summary',
+      type: 'summary',
+      learningNodeId: 'node-echo',
+      content: 'Zusammenfassung nur für das synthetische Echo.',
+      createdAt: '2026-07-19T10:03:00.000Z',
+      updatedAt: '2026-07-19T10:03:00.000Z',
+    }),
+  ]
+  const system = createControllerSystem({
+    loadResults: { ok: true, status: 'loaded', hub },
+    artifactLoadResults: createArtifactLoadSuccess(
+      createArtifactStore(artifacts)
+    ),
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+
+  assert.deepEqual(system.viewRecorder.lastState.artifacts.values, {
+    note: 'Synthetische Notiz zum Pulsmuster.',
+    summary: 'Zusammenfassung nur für den synthetischen Puls.',
+  })
+
+  actions.onSelectLearningNode(
+    'module-orbit',
+    'chapter-signals',
+    'node-echo'
+  )
+  assert.deepEqual(system.viewRecorder.lastState.artifacts.values, {
+    note: 'Notiz nur für das synthetische Echo.',
+    summary: 'Zusammenfassung nur für das synthetische Echo.',
+  })
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState.artifacts).includes(
+      'nur für den synthetischen Puls'
+    ),
+    false
+  )
+
+  actions.onSelectModule('module-garden')
+  actions.onToggleChapter('module-garden', 'chapter-facets')
+  actions.onSelectLearningNode(
+    'module-garden',
+    'chapter-facets',
+    'node-facet'
+  )
+  assert.deepEqual(system.viewRecorder.lastState.artifacts.values, {
+    note: null,
+    summary: null,
+  })
+})
+
+test('akzeptiert Create, Update und Unchanged für Notiz und Zusammenfassung mit exakten Serviceeingaben', () => {
+  const saveCases = [
+    {
+      status: 'artifactCreated',
+      changed: true,
+      statusSuffix: 'wurde lokal erstellt.',
+    },
+    {
+      status: 'artifactUpdated',
+      changed: true,
+      statusSuffix: 'wurde lokal aktualisiert.',
+    },
+    {
+      status: 'artifactUnchanged',
+      changed: false,
+      statusSuffix: 'ist bereits aktuell.',
+    },
+  ]
+  const typeCases = [
+    {
+      type: 'note',
+      label: 'Notiz',
+      saveMethod: 'saveNote',
+      otherSaveMethod: 'saveSummary',
+    },
+    {
+      type: 'summary',
+      label: 'Zusammenfassung',
+      saveMethod: 'saveSummary',
+      otherSaveMethod: 'saveNote',
+    },
+  ]
+
+  for (const typeCase of typeCases) {
+    for (const saveCase of saveCases) {
+      const persistedContent =
+        `Persistierter synthetischer ${typeCase.type}-Text.`
+      const submittedContent = saveCase.status === 'artifactUnchanged'
+        ? persistedContent
+        : `Neuer synthetischer ${typeCase.type}-Text.`
+      const targetBefore = createArtifact({
+        id: `artifact-pulse-${typeCase.type}`,
+        type: typeCase.type,
+        content: persistedContent,
+      })
+      const counterpartType =
+        typeCase.type === 'note' ? 'summary' : 'note'
+      const counterpart = createArtifact({
+        id: `artifact-pulse-${counterpartType}`,
+        type: counterpartType,
+        content: `Persistierter synthetischer ${counterpartType}-Text.`,
+        createdAt: '2026-07-19T10:05:00.000Z',
+        updatedAt: '2026-07-19T10:05:00.000Z',
+      })
+      const initialArtifacts = saveCase.status === 'artifactCreated'
+        ? [counterpart]
+        : [targetBefore, counterpart]
+      const targetAfter = createArtifact({
+        ...targetBefore,
+        content: submittedContent,
+        createdAt: saveCase.status === 'artifactCreated'
+          ? '2026-07-19T11:00:00.000Z'
+          : targetBefore.createdAt,
+        updatedAt: saveCase.status === 'artifactUpdated'
+          ? '2026-07-19T11:00:00.000Z'
+          : saveCase.status === 'artifactCreated'
+            ? '2026-07-19T11:00:00.000Z'
+            : targetBefore.updatedAt,
+      })
+      const resultArtifacts =
+        saveCase.status === 'artifactCreated'
+          ? [...initialArtifacts, targetAfter]
+          : saveCase.status === 'artifactUpdated'
+            ? [targetAfter, counterpart]
+            : initialArtifacts
+      const system = createControllerSystem({
+        artifactLoadResults: createArtifactLoadSuccess(
+          createArtifactStore(initialArtifacts)
+        ),
+        artifactMutationHandlers: {
+          [typeCase.saveMethod]: createArtifactMutationSuccess(
+            saveCase.status,
+            saveCase.changed,
+            createArtifactStore(resultArtifacts)
+          ),
+        },
+      })
+      const actions = openReadyController(system)
+      selectArtifactNode(actions)
+
+      actions.onOpenArtifactEditor(typeCase.type)
+      assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+        type: 'artifactField',
+        artifactType: typeCase.type,
+      })
+      actions.onSaveArtifact({
+        type: typeCase.type,
+        content: submittedContent,
+      })
+
+      assert.deepEqual(
+        system.artifactServiceDouble.calls[typeCase.saveMethod],
+        [
+          {
+            moduleId: 'module-orbit',
+            chapterId: 'chapter-signals',
+            learningNodeId: 'node-pulse',
+            content: submittedContent,
+          },
+        ]
+      )
+      assert.equal(
+        system.artifactServiceDouble.calls[
+          typeCase.otherSaveMethod
+        ].length,
+        0
+      )
+      assert.ok(
+        system.viewRecorder.renders.some(
+          (viewState) =>
+            viewState.artifacts.phase === 'mutating' &&
+            viewState.artifacts.mutatingType === typeCase.type
+        )
+      )
+      assert.equal(
+        system.viewRecorder.lastState.artifacts.values[typeCase.type],
+        submittedContent
+      )
+      assert.equal(
+        system.viewRecorder.lastState.artifacts.values[counterpartType],
+        counterpart.content
+      )
+      assert.equal(system.viewRecorder.lastState.artifacts.mode, 'view')
+      assert.equal(system.viewRecorder.lastState.artifacts.dirty, false)
+      assert.equal(
+        system.viewRecorder.lastState.artifacts.statusMessage,
+        `${typeCase.label} ${saveCase.statusSuffix}`
+      )
+      assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+        type: 'artifactTrigger',
+        artifactType: typeCase.type,
+      })
+    }
+  }
+})
+
+test('weist Whitespace und überlange Artefaktentwürfe ohne Serviceaufruf zurück', () => {
+  const system = createControllerSystem()
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+
+  actions.onOpenArtifactEditor('note')
+  actions.onSaveArtifact({
+    type: 'note',
+    content: '   \n\t ',
+  })
+
+  assert.equal(system.artifactServiceDouble.calls.saveNote.length, 0)
+  assert.match(
+    system.viewRecorder.lastState.artifacts.fieldError,
+    /Text ein/
+  )
+  assert.equal(system.viewRecorder.lastState.artifacts.mode, 'editing')
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'artifactField',
+    artifactType: 'note',
+  })
+
+  actions.onCancelArtifactEditor('note')
+  actions.onOpenArtifactEditor('summary')
+  actions.onSaveArtifact({
+    type: 'summary',
+    content: 'S'.repeat(10001),
+  })
+
+  assert.equal(system.artifactServiceDouble.calls.saveSummary.length, 0)
+  assert.match(
+    system.viewRecorder.lastState.artifacts.fieldError,
+    /10\.000/
+  )
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.draft.length,
+    10001
+  )
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'artifactField',
+    artifactType: 'summary',
+  })
+})
+
+test('verwirft Cancel ausschließlich den Entwurf und stellt beide persistierten Texte wieder her', () => {
+  const note = createArtifact()
+  const summary = createArtifact({
+    id: 'artifact-pulse-summary',
+    type: 'summary',
+    content: 'Persistierte synthetische Zusammenfassung.',
+    createdAt: '2026-07-19T10:05:00.000Z',
+    updatedAt: '2026-07-19T10:05:00.000Z',
+  })
+  const system = createControllerSystem({
+    artifactLoadResults: createArtifactLoadSuccess(
+      createArtifactStore([note, summary])
+    ),
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+
+  for (const artifact of [note, summary]) {
+    actions.onOpenArtifactEditor(artifact.type)
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.draft,
+      artifact.content
+    )
+    actions.onUpdateArtifactDraft(
+      artifact.type,
+      `Ungespeicherter ${artifact.type}-Entwurf.`
+    )
+    actions.onCancelArtifactEditor(artifact.type)
+
+    assert.equal(system.viewRecorder.lastState.artifacts.mode, 'view')
+    assert.equal(system.viewRecorder.lastState.artifacts.draft, '')
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.values[artifact.type],
+      artifact.content
+    )
+    assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+      type: 'artifactTrigger',
+      artifactType: artifact.type,
+    })
+
+    actions.onOpenArtifactEditor(artifact.type)
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.draft,
+      artifact.content
+    )
+    actions.onCancelArtifactEditor(artifact.type)
+  }
+
+  assert.equal(system.artifactServiceDouble.calls.saveNote.length, 0)
+  assert.equal(system.artifactServiceDouble.calls.saveSummary.length, 0)
+})
+
+test('leert beide Artefakttypen erst nach Inline-Bestätigung und erhält Entwürfe beim Abbruch', () => {
+  const typeCases = [
+    {
+      type: 'note',
+      clearMethod: 'clearNote',
+      otherClearMethod: 'clearSummary',
+      label: 'Notiz',
+    },
+    {
+      type: 'summary',
+      clearMethod: 'clearSummary',
+      otherClearMethod: 'clearNote',
+      label: 'Zusammenfassung',
+    },
+  ]
+
+  for (const typeCase of typeCases) {
+    const counterpartType =
+      typeCase.type === 'note' ? 'summary' : 'note'
+    const target = createArtifact({
+      id: `artifact-pulse-${typeCase.type}`,
+      type: typeCase.type,
+      content: `Persistierter ${typeCase.type}-Text.`,
+    })
+    const counterpart = createArtifact({
+      id: `artifact-pulse-${counterpartType}`,
+      type: counterpartType,
+      content: `Persistierter ${counterpartType}-Text.`,
+      createdAt: '2026-07-19T10:05:00.000Z',
+      updatedAt: '2026-07-19T10:05:00.000Z',
+    })
+    const system = createControllerSystem({
+      artifactLoadResults: createArtifactLoadSuccess(
+        createArtifactStore([target, counterpart])
+      ),
+      artifactMutationHandlers: {
+        [typeCase.clearMethod]: createArtifactMutationSuccess(
+          'artifactCleared',
+          true,
+          createArtifactStore([counterpart])
+        ),
+      },
+    })
+    const actions = openReadyController(system)
+    selectArtifactNode(actions)
+
+    const dirtyDraft = `Ungespeicherter ${typeCase.type}-Entwurf.`
+    actions.onOpenArtifactEditor(typeCase.type)
+    actions.onUpdateArtifactDraft(typeCase.type, dirtyDraft)
+    actions.onOpenArtifactClearConfirmation(typeCase.type)
+
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.mode,
+      'confirmClear'
+    )
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.draft,
+      dirtyDraft
+    )
+    assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+      type: 'artifactConfirmation',
+      artifactType: typeCase.type,
+    })
+
+    actions.onCancelArtifactClearConfirmation(typeCase.type)
+    assert.equal(
+      system.artifactServiceDouble.calls[typeCase.clearMethod].length,
+      0
+    )
+    assert.equal(system.viewRecorder.lastState.artifacts.mode, 'editing')
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.draft,
+      dirtyDraft
+    )
+    assert.equal(system.viewRecorder.lastState.artifacts.dirty, true)
+    assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+      type: 'artifactClearTrigger',
+      artifactType: typeCase.type,
+    })
+
+    actions.onCancelArtifactEditor(typeCase.type)
+    actions.onOpenArtifactClearConfirmation(typeCase.type)
+    actions.onConfirmArtifactClear(typeCase.type)
+
+    assert.deepEqual(
+      system.artifactServiceDouble.calls[typeCase.clearMethod],
+      [
+        {
+          moduleId: 'module-orbit',
+          chapterId: 'chapter-signals',
+          learningNodeId: 'node-pulse',
+        },
+      ]
+    )
+    assert.equal(
+      system.artifactServiceDouble.calls[
+        typeCase.otherClearMethod
+      ].length,
+      0
+    )
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.values[typeCase.type],
+      null
+    )
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.values[counterpartType],
+      counterpart.content
+    )
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.statusMessage,
+      `${typeCase.label} wurde lokal geleert.`
+    )
+    assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+      type: 'artifactTrigger',
+      artifactType: typeCase.type,
+    })
+  }
+})
+
+test('isoliert Artefakt-Ladefehler, redigiert private Details und lädt nur Artefakte erneut', () => {
+  const privateSentinel =
+    'PRIVATE-ARTEFAKT-LADEMELDUNG-DARF-NICHT-IN-DIE-VIEW'
+  const note = createArtifact()
+  const orphanedArtifact = createArtifact({
+    id: 'artifact-orphan-note',
+    learningNodeId: 'node-does-not-exist',
+    content: privateSentinel,
+  })
+  const system = createControllerSystem({
+    artifactLoadResults: [
+      {
+        ok: false,
+        status: 'readFailed',
+        error: {
+          code: 'readFailed',
+          message: privateSentinel,
+        },
+      },
+      createArtifactLoadSuccess(
+        createArtifactStore([orphanedArtifact])
+      ),
+      createArtifactLoadSuccess(createArtifactStore([note])),
+    ],
+  })
+  const actions = openReadyController(system)
+
+  assert.equal(system.viewRecorder.lastState.phase, 'ready')
+  assert.equal(
+    system.viewRecorder.lastState.progress.phase,
+    'ready'
+  )
+  selectArtifactNode(actions)
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.phase,
+    'unavailable'
+  )
+  assert.match(
+    system.viewRecorder.lastState.artifacts.errorMessage,
+    /nicht gelesen/
+  )
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState).includes(
+      privateSentinel
+    ),
+    false
+  )
+
+  actions.onRetryArtifactLoad()
+
+  assert.equal(system.serviceDouble.calls.loadHub.length, 1)
+  assert.equal(system.progressServiceDouble.calls.loadProgress.length, 1)
+  assert.equal(
+    system.artifactServiceDouble.calls.loadArtifacts.length,
+    2
+  )
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.phase,
+    'unavailable'
+  )
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState).includes(
+      privateSentinel
+    ),
+    false
+  )
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'artifactLoadAlert',
+  })
+
+  actions.onRetryArtifactLoad()
+
+  assert.equal(system.serviceDouble.calls.loadHub.length, 1)
+  assert.equal(system.progressServiceDouble.calls.loadProgress.length, 1)
+  assert.equal(
+    system.artifactServiceDouble.calls.loadArtifacts.length,
+    3
+  )
+  assert.equal(system.viewRecorder.lastState.artifacts.phase, 'ready')
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.values.note,
+    note.content
+  )
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-pulse'
+  )
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'artifactHeading',
+  })
+})
+
+test('bewahrt bei Artefakt-Mutationsfehler den gültigen Snapshot und Entwurf ohne private Fehlerdetails', () => {
+  const privateSentinel =
+    'PRIVATE-ARTEFAKT-SCHREIBFEHLER-DARF-NICHT-IN-DIE-VIEW'
+  const note = createArtifact()
+  const summary = createArtifact({
+    id: 'artifact-pulse-summary',
+    type: 'summary',
+    content: 'Persistierte synthetische Zusammenfassung.',
+    createdAt: '2026-07-19T10:05:00.000Z',
+    updatedAt: '2026-07-19T10:05:00.000Z',
+  })
+  const system = createControllerSystem({
+    artifactLoadResults: createArtifactLoadSuccess(
+      createArtifactStore([note, summary])
+    ),
+    artifactMutationHandlers: {
+      saveNote: {
+        ok: false,
+        status: 'writeFailed',
+        error: {
+          code: 'writeFailed',
+          message: privateSentinel,
+          privateField: privateSentinel,
+        },
+      },
+    },
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+  const dirtyDraft = 'Ungespeicherter synthetischer Notizentwurf.'
+
+  actions.onOpenArtifactEditor('note')
+  actions.onUpdateArtifactDraft('note', dirtyDraft)
+  actions.onSaveArtifact({ type: 'note', content: dirtyDraft })
+
+  assert.equal(system.artifactServiceDouble.calls.saveNote.length, 1)
+  assert.deepEqual(system.viewRecorder.lastState.artifacts.values, {
+    note: note.content,
+    summary: summary.content,
+  })
+  assert.equal(system.viewRecorder.lastState.artifacts.mode, 'editing')
+  assert.equal(system.viewRecorder.lastState.artifacts.draft, dirtyDraft)
+  assert.equal(system.viewRecorder.lastState.artifacts.dirty, true)
+  assert.match(
+    system.viewRecorder.lastState.artifacts.errorMessage,
+    /nicht lokal gespeichert/
+  )
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState).includes(
+      privateSentinel
+    ),
+    false
+  )
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'artifactAlert',
+    artifactType: 'note',
+  })
+})
+
+test('lehnt malformed und widersprüchliche Artefakt-Success-Ergebnisse mit vollständigem UI-Rollback ab', () => {
+  const privateSentinel =
+    'PRIVATE-WIDERSPRUCH-DARF-NICHT-IN-DIE-VIEW'
+  const initialNote = createArtifact()
+  const initialSummary = createArtifact({
+    id: 'artifact-pulse-summary',
+    type: 'summary',
+    content: 'Persistierte synthetische Zusammenfassung.',
+    createdAt: '2026-07-19T10:05:00.000Z',
+    updatedAt: '2026-07-19T10:05:00.000Z',
+  })
+  const initialStore = createArtifactStore([
+    initialNote,
+    initialSummary,
+  ])
+  const cases = [
+    {
+      type: 'note',
+      saveMethod: 'saveNote',
+      result: {
+        ok: true,
+        status: 'artifactUpdated',
+        changed: true,
+        privateResultDetail: privateSentinel,
+      },
+    },
+    {
+      type: 'summary',
+      saveMethod: 'saveSummary',
+      result: createArtifactMutationSuccess(
+        'artifactUpdated',
+        true,
+        createArtifactStore([
+          {
+            ...initialNote,
+            content: privateSentinel,
+            updatedAt: '2026-07-19T11:00:00.000Z',
+          },
+          {
+            ...initialSummary,
+            content: 'Neuer synthetischer summary-Entwurf.',
+            updatedAt: '2026-07-19T11:00:00.000Z',
+          },
+        ])
+      ),
+    },
+  ]
+
+  for (const malformedCase of cases) {
+    const system = createControllerSystem({
+      artifactLoadResults: createArtifactLoadSuccess(initialStore),
+      artifactMutationHandlers: {
+        [malformedCase.saveMethod]: malformedCase.result,
+      },
+    })
+    const actions = openReadyController(system)
+    selectArtifactNode(actions)
+    const dirtyDraft =
+      `Neuer synthetischer ${malformedCase.type}-Entwurf.`
+
+    actions.onOpenArtifactEditor(malformedCase.type)
+    actions.onUpdateArtifactDraft(malformedCase.type, dirtyDraft)
+    actions.onSaveArtifact({
+      type: malformedCase.type,
+      content: dirtyDraft,
+    })
+
+    assert.equal(
+      system.artifactServiceDouble.calls[
+        malformedCase.saveMethod
+      ].length,
+      1
+    )
+    assert.deepEqual(system.viewRecorder.lastState.artifacts.values, {
+      note: initialNote.content,
+      summary: initialSummary.content,
+    })
+    assert.equal(system.viewRecorder.lastState.artifacts.mode, 'editing')
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.draft,
+      dirtyDraft
+    )
+    assert.match(
+      system.viewRecorder.lastState.artifacts.errorMessage,
+      /nicht sicher verarbeitet/
+    )
+    assert.equal(
+      JSON.stringify(system.viewRecorder.lastState).includes(
+        privateSentinel
+      ),
+      false
+    )
+    assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+      type: 'artifactAlert',
+      artifactType: malformedCase.type,
+    })
+  }
+})
+
+test('erhält Dirty-Drafts über Progress-Rerender und blockiert alle verlustreichen Bereichswechsel bis Cancel', () => {
+  const hub = createArtifactHubFixture()
+  const note = createArtifact()
+  const completedProjection = createProgressProjection(
+    hub,
+    ['chapter-signals']
+  )
+  const system = createControllerSystem({
+    loadResults: { ok: true, status: 'loaded', hub },
+    progressLoadResults: createProgressLoadSuccess(hub),
+    progressMutationHandlers: {
+      completeChapter: createProgressMutationSuccess(
+        'chapterCompleted',
+        true,
+        completedProjection
+      ),
+    },
+    artifactLoadResults: createArtifactLoadSuccess(
+      createArtifactStore([note])
+    ),
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+  const dirtyDraft =
+    'Ungespeicherter synthetischer Entwurf über ein ruhiges Signal.'
+
+  actions.onOpenArtifactEditor('note')
+  actions.onUpdateArtifactDraft('note', dirtyDraft)
+  actions.onToggleChapterCompletion(
+    'module-orbit',
+    'chapter-signals'
+  )
+
+  assert.equal(
+    system.progressServiceDouble.calls.completeChapter.length,
+    1
+  )
+  assert.deepEqual(
+    system.viewRecorder.lastState.progress.projection,
+    completedProjection
+  )
+  assert.equal(system.viewRecorder.lastState.artifacts.draft, dirtyDraft)
+  assert.equal(system.viewRecorder.lastState.artifacts.dirty, true)
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.values.note,
+    note.content
+  )
+
+  actions.onSelectLearningNode(
+    'module-orbit',
+    'chapter-signals',
+    'node-echo'
+  )
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-pulse'
+  )
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'artifactField',
+    artifactType: 'note',
+  })
+
+  actions.onToggleChapter('module-orbit', 'chapter-signals')
+  assert.deepEqual(
+    system.viewRecorder.lastState.expandedChapterIds,
+    ['chapter-signals']
+  )
+
+  actions.onBackToOverview()
+  assert.equal(
+    system.viewRecorder.lastState.selectedModuleId,
+    'module-orbit'
+  )
+
+  actions.onOpenAddLearningNodeForm(
+    'module-orbit',
+    'chapter-signals'
+  )
+  assert.equal(system.viewRecorder.lastState.form, null)
+
+  actions.onSelectModule('module-garden')
+  assert.equal(
+    system.viewRecorder.lastState.selectedModuleId,
+    'module-orbit'
+  )
+  assert.match(
+    system.viewRecorder.lastState.artifacts.errorMessage,
+    /ungespeicherten Entwurf/
+  )
+  assert.equal(system.viewRecorder.lastState.artifacts.draft, dirtyDraft)
+
+  assert.equal(system.controller.close(), false)
+  assert.equal(system.viewRecorder.unmountCalls, 0)
+  assert.equal(system.viewRecorder.lastState.artifacts.draft, dirtyDraft)
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'artifactField',
+    artifactType: 'note',
+  })
+
+  actions.onCancelArtifactEditor('note')
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'artifactTrigger',
+    artifactType: 'note',
+  })
+  actions.onSelectLearningNode(
+    'module-orbit',
+    'chapter-signals',
+    'node-echo'
+  )
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-echo'
+  )
+  assert.deepEqual(system.viewRecorder.lastState.artifacts.values, {
+    note: null,
+    summary: null,
+  })
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'learningNodeHeading',
+    moduleId: 'module-orbit',
+    chapterId: 'chapter-signals',
+    learningNodeId: 'node-echo',
+  })
+
+  assert.equal(system.controller.close(), true)
+  assert.equal(system.viewRecorder.unmountCalls, 1)
+})
+
+test('öffnet das Inhaltsformular für Node B atomar nach einem sauberen Artifact-Editor von Node A', () => {
+  const hub = createArtifactHubFixture()
+  const noteA = createArtifact({
+    content: 'Persistierte synthetische Notiz für Node A.',
+  })
+  const noteB = createArtifact({
+    id: 'artifact-echo-note',
+    learningNodeId: 'node-echo',
+    content: 'Persistierte synthetische Notiz für Node B.',
+    createdAt: '2026-07-19T10:05:00.000Z',
+    updatedAt: '2026-07-19T10:05:00.000Z',
+  })
+  const initialStore = createArtifactStore([noteA, noteB])
+  const system = createControllerSystem({
+    loadResults: { ok: true, status: 'loaded', hub },
+    artifactLoadResults: createArtifactLoadSuccess(initialStore),
+    artifactMutationHandlers: {
+      saveNote: createArtifactMutationSuccess(
+        'artifactUnchanged',
+        false,
+        initialStore
+      ),
+    },
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+
+  actions.onOpenArtifactEditor('note')
+  assert.equal(system.viewRecorder.lastState.artifacts.draft, noteA.content)
+
+  actions.onOpenUpdateLearningNodeForm(
+    'module-orbit',
+    'chapter-signals',
+    'node-echo'
+  )
+
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-echo'
+  )
+  assert.equal(
+    system.viewRecorder.lastState.form.type,
+    'updateLearningNode'
+  )
+  assert.equal(
+    system.viewRecorder.lastState.form.learningNodeId,
+    'node-echo'
+  )
+  assert.equal(system.viewRecorder.lastState.artifacts.mode, 'view')
+  assert.equal(system.viewRecorder.lastState.artifacts.activeType, null)
+  assert.equal(system.viewRecorder.lastState.artifacts.draft, '')
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.values.note,
+    noteB.content
+  )
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState.artifacts).includes(
+      noteA.content
+    ),
+    false
+  )
+
+  actions.onSaveArtifact({
+    type: 'note',
+    content: noteA.content,
+  })
+  actions.onConfirmArtifactClear('note')
+
+  assert.equal(system.artifactServiceDouble.calls.saveNote.length, 0)
+  assert.equal(system.artifactServiceDouble.calls.clearNote.length, 0)
+
+  actions.onCancelForm()
+  actions.onOpenArtifactEditor('note')
+  assert.equal(system.viewRecorder.lastState.artifacts.draft, noteB.content)
+  actions.onSaveArtifact({
+    type: 'note',
+    content: noteB.content,
+  })
+  assert.deepEqual(system.artifactServiceDouble.calls.saveNote, [
+    {
+      moduleId: 'module-orbit',
+      chapterId: 'chapter-signals',
+      learningNodeId: 'node-echo',
+      content: noteB.content,
+    },
+  ])
+})
+
+test('blockiert das Inhaltsformular für Node B vollständig bei einem Dirty-Draft von Node A', () => {
+  const hub = createArtifactHubFixture()
+  const noteA = createArtifact()
+  const noteB = createArtifact({
+    id: 'artifact-echo-note',
+    learningNodeId: 'node-echo',
+    content: 'Persistierte synthetische Notiz für Node B.',
+    createdAt: '2026-07-19T10:05:00.000Z',
+    updatedAt: '2026-07-19T10:05:00.000Z',
+  })
+  const system = createControllerSystem({
+    loadResults: { ok: true, status: 'loaded', hub },
+    artifactLoadResults: createArtifactLoadSuccess(
+      createArtifactStore([noteA, noteB])
+    ),
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+  const dirtyDraft =
+    'Ungespeicherter synthetischer Notizentwurf für Node A.'
+
+  actions.onOpenArtifactEditor('note')
+  actions.onUpdateArtifactDraft('note', dirtyDraft)
+  actions.onOpenUpdateLearningNodeForm(
+    'module-orbit',
+    'chapter-signals',
+    'node-echo'
+  )
+
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-pulse'
+  )
+  assert.equal(system.viewRecorder.lastState.form, null)
+  assert.equal(system.viewRecorder.lastState.artifacts.mode, 'editing')
+  assert.equal(system.viewRecorder.lastState.artifacts.draft, dirtyDraft)
+  assert.equal(system.viewRecorder.lastState.artifacts.dirty, true)
+  assert.match(
+    system.viewRecorder.lastState.artifacts.errorMessage,
+    /ungespeicherten Entwurf/
+  )
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'artifactField',
+    artifactType: 'note',
+  })
+  assert.equal(system.serviceDouble.calls.updateLearningNode.length, 0)
+
+  for (const methodName of [
+    'saveNote',
+    'saveSummary',
+    'clearNote',
+    'clearSummary',
+  ]) {
+    assert.equal(
+      system.artifactServiceDouble.calls[methodName].length,
+      0
+    )
+  }
+})
+
+test('verwirft widersprüchliche private Artifact-Ziele vor Save und Clear ohne Snapshot-Mutation', () => {
+  const privateContent =
+    'PRIVATE-NODE-A-NOTIZ-DARF-NICHT-IN-DIE-FEHLERMELDUNG'
+  const hub = createArtifactHubFixture()
+  const noteA = createArtifact({
+    content: privateContent,
+  })
+  const noteB = createArtifact({
+    id: 'artifact-echo-note',
+    learningNodeId: 'node-echo',
+    content: 'Persistierte synthetische Notiz für Node B.',
+    createdAt: '2026-07-19T10:05:00.000Z',
+    updatedAt: '2026-07-19T10:05:00.000Z',
+  })
+  const initialStore = createArtifactStore([noteA, noteB])
+  const unsafeUpdatedNoteB = {
+    ...noteB,
+    content: privateContent,
+    updatedAt: '2026-07-19T11:00:00.000Z',
+  }
+  const system = createControllerSystem({
+    loadResults: { ok: true, status: 'loaded', hub },
+    artifactLoadResults: createArtifactLoadSuccess(initialStore),
+    artifactMutationHandlers: {
+      saveNote: createArtifactMutationSuccess(
+        'artifactUpdated',
+        true,
+        createArtifactStore([noteA, unsafeUpdatedNoteB])
+      ),
+    },
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+  actions.onOpenArtifactEditor('note')
+
+  const reentrantSubmission = { type: 'note' }
+  Object.defineProperty(reentrantSubmission, 'content', {
+    enumerable: true,
+    get() {
+      actions.onSelectLearningNode(
+        'module-orbit',
+        'chapter-signals',
+        'node-echo'
+      )
+      actions.onOpenArtifactEditor('note')
+      return noteA.content
+    },
+  })
+
+  actions.onSaveArtifact(reentrantSubmission)
+
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-echo'
+  )
+  assert.equal(system.artifactServiceDouble.calls.saveNote.length, 0)
+  assert.equal(system.artifactServiceDouble.calls.saveSummary.length, 0)
+  assert.equal(system.viewRecorder.lastState.artifacts.mode, 'view')
+  assert.equal(system.viewRecorder.lastState.artifacts.activeType, null)
+  assert.equal(system.viewRecorder.lastState.artifacts.draft, '')
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.values.note,
+    noteB.content
+  )
+  assert.match(
+    system.viewRecorder.lastState.artifacts.errorMessage,
+    /nicht sicher verarbeitet/
+  )
+
+  for (const privateErrorDetail of [
+    privateContent,
+    'module-orbit',
+    'chapter-signals',
+    'node-pulse',
+    'node-echo',
+  ]) {
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.errorMessage.includes(
+        privateErrorDetail
+      ),
+      false
+    )
+  }
+
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState.artifacts).includes(
+      privateContent
+    ),
+    false
+  )
+
+  actions.onSelectLearningNode(
+    'module-orbit',
+    'chapter-signals',
+    'node-pulse'
+  )
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.values.note,
+    noteA.content
+  )
+
+  actions.onOpenArtifactClearConfirmation('note')
+  const originalArrayFind = Array.prototype.find
+  let selectedNodeLookupCount = 0
+
+  try {
+    Array.prototype.find = function findWithContradictorySelection(
+      predicate,
+      thisArg
+    ) {
+      const isTargetNodeCollection = (
+        Array.isArray(this) &&
+        this.some((entry) => entry?.id === 'node-pulse') &&
+        this.some((entry) => entry?.id === 'node-echo')
+      )
+
+      if (isTargetNodeCollection) {
+        selectedNodeLookupCount += 1
+
+        if (selectedNodeLookupCount === 2) {
+          return originalArrayFind.call(
+            this,
+            (entry) => entry?.id === 'node-echo'
+          )
+        }
+      }
+
+      return originalArrayFind.call(this, predicate, thisArg)
+    }
+
+    actions.onConfirmArtifactClear('note')
+  } finally {
+    Array.prototype.find = originalArrayFind
+  }
+
+  assert.equal(system.artifactServiceDouble.calls.clearNote.length, 0)
+  assert.equal(system.artifactServiceDouble.calls.clearSummary.length, 0)
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-pulse'
+  )
+  assert.equal(system.viewRecorder.lastState.artifacts.mode, 'view')
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.values.note,
+    noteA.content
+  )
+  assert.match(
+    system.viewRecorder.lastState.artifacts.errorMessage,
+    /nicht sicher verarbeitet/
+  )
+})
+
+test('akzeptiert artifactAlreadyEmpty bei ausschließlich zwischenzeitlich entferntem Ziel', () => {
+  const hub = createArtifactHubFixture()
+  const summary = createArtifact({
+    id: 'artifact-pulse-summary',
+    type: 'summary',
+    content: 'Persistierte synthetische Schwesterzusammenfassung.',
+    createdAt: '2026-07-19T10:01:00.000Z',
+    updatedAt: '2026-07-19T10:01:00.000Z',
+  })
+  const target = createArtifact()
+  const echoNote = createArtifact({
+    id: 'artifact-echo-note',
+    learningNodeId: 'node-echo',
+    content: 'Persistierte synthetische Echo-Notiz.',
+    createdAt: '2026-07-19T10:02:00.000Z',
+    updatedAt: '2026-07-19T10:02:00.000Z',
+  })
+  const system = createControllerSystem({
+    loadResults: { ok: true, status: 'loaded', hub },
+    artifactLoadResults: createArtifactLoadSuccess(
+      createArtifactStore([summary, target, echoNote])
+    ),
+    artifactMutationHandlers: {
+      clearNote: createArtifactMutationSuccess(
+        'artifactAlreadyEmpty',
+        false,
+        createArtifactStore([summary, echoNote])
+      ),
+    },
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+
+  actions.onOpenArtifactClearConfirmation('note')
+  actions.onConfirmArtifactClear('note')
+
+  assert.deepEqual(system.artifactServiceDouble.calls.clearNote, [
+    {
+      moduleId: 'module-orbit',
+      chapterId: 'chapter-signals',
+      learningNodeId: 'node-pulse',
+    },
+  ])
+  assert.equal(system.viewRecorder.lastState.artifacts.values.note, null)
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.values.summary,
+    summary.content
+  )
+  assert.equal(system.viewRecorder.lastState.artifacts.mode, 'view')
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.statusMessage,
+    'Notiz war bereits leer.'
+  )
+
+  actions.onSelectLearningNode(
+    'module-orbit',
+    'chapter-signals',
+    'node-echo'
+  )
+  assert.equal(
+    system.viewRecorder.lastState.artifacts.values.note,
+    echoNote.content
+  )
+})
+
+test('lehnt widersprüchliche artifactAlreadyEmpty-Ergebnisse ohne privaten Ergebnis-Leak ab', () => {
+  const privateSentinel =
+    'PRIVATE-ALREADY-EMPTY-ERGEBNISDETAILS-DÜRFEN-NICHT-IN-DIE-VIEW'
+  const hub = createArtifactHubFixture()
+  const target = createArtifact()
+  const sibling = createArtifact({
+    id: 'artifact-pulse-summary',
+    type: 'summary',
+    content: 'Persistierte synthetische Schwesterzusammenfassung.',
+    createdAt: '2026-07-19T10:01:00.000Z',
+    updatedAt: '2026-07-19T10:01:00.000Z',
+  })
+  const initialStore = createArtifactStore([target, sibling])
+  const removedTargetStore = createArtifactStore([sibling])
+  const unsafeCases = [
+    {
+      name: 'weiterhin vorhandenes Ziel',
+      status: 'artifactAlreadyEmpty',
+      changed: false,
+      artifactStore: initialStore,
+    },
+    {
+      name: 'falscher changed-Wert',
+      status: 'artifactAlreadyEmpty',
+      changed: true,
+      artifactStore: removedTargetStore,
+    },
+    {
+      name: 'verändertes Schwesterartefakt',
+      status: 'artifactAlreadyEmpty',
+      changed: false,
+      artifactStore: createArtifactStore([
+        {
+          ...sibling,
+          content: privateSentinel,
+          updatedAt: '2026-07-19T12:00:00.000Z',
+        },
+      ]),
+    },
+    {
+      name: 'falsche Zielreferenz',
+      status: 'artifactAlreadyEmpty',
+      changed: false,
+      artifactStore: createArtifactStore([
+        {
+          ...target,
+          id: 'artifact-facet-note',
+          moduleId: 'module-garden',
+          chapterId: 'chapter-facets',
+          learningNodeId: 'node-facet',
+        },
+        sibling,
+      ]),
+    },
+    {
+      name: 'unbekannter Erfolgsstatus',
+      status: 'artifactDisappeared',
+      changed: false,
+      artifactStore: removedTargetStore,
+    },
+  ]
+
+  for (const unsafeCase of unsafeCases) {
+    const system = createControllerSystem({
+      loadResults: { ok: true, status: 'loaded', hub },
+      artifactLoadResults: createArtifactLoadSuccess(initialStore),
+      artifactMutationHandlers: {
+        clearNote: createArtifactMutationSuccess(
+          unsafeCase.status,
+          unsafeCase.changed,
+          unsafeCase.artifactStore
+        ),
+      },
+    })
+    const actions = openReadyController(system)
+    selectArtifactNode(actions)
+
+    actions.onOpenArtifactClearConfirmation('note')
+    actions.onConfirmArtifactClear('note')
+
+    assert.equal(
+      system.artifactServiceDouble.calls.clearNote.length,
+      1,
+      unsafeCase.name
+    )
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.values.note,
+      target.content,
+      unsafeCase.name
+    )
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.values.summary,
+      sibling.content,
+      unsafeCase.name
+    )
+    assert.equal(
+      system.viewRecorder.lastState.artifacts.mode,
+      'confirmClear',
+      unsafeCase.name
+    )
+    assert.match(
+      system.viewRecorder.lastState.artifacts.errorMessage,
+      /nicht sicher verarbeitet/,
+      unsafeCase.name
+    )
+    assert.deepEqual(
+      system.viewRecorder.lastState.focusTarget,
+      {
+        type: 'artifactAlert',
+        artifactType: 'note',
+      },
+      unsafeCase.name
+    )
+    assert.equal(
+      JSON.stringify(system.viewRecorder.lastState).includes(
+        privateSentinel
+      ),
+      false,
+      unsafeCase.name
+    )
+  }
 })

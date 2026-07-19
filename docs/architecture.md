@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhalts- und Progress-UI sowie LearningArtifact-Foundation ohne UI implementiert, MVP noch nicht vollständig |
+| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhalts-, Progress- und LearningArtifact-UI implementiert, MVP noch nicht vollständig |
 | Letzte Aktualisierung | 2026-07-19 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -389,20 +389,21 @@ ohne Initialisierungsschreibzugriff einen frischen leeren privaten Log.
 Synthetische, beschädigte und nicht unterstützte gespeicherte Werte bleiben
 unangetastet.
 
-Notizen und Zusammenfassungen besitzen zusätzlich eine getrennte, implementierte
-LearningArtifact-Foundation. Sie ist in diesem Arbeitspaket noch nicht mit
-`LearningHubController`, `LearningHubView` oder `src/main.js` verbunden und
-daher noch nicht direkt bedienbar. Ihr lokaler Datenfluss lautet:
+Notizen und Zusammenfassungen besitzen zusätzlich einen getrennten,
+implementierten LearningArtifact-Pfad und sind über den vorhandenen Controller
+und die View lokal bedienbar. Der vollständige Datenfluss lautet:
 
 ```text
-LearningArtifactService
-  ├→ LearningHubService
-  │   → LearningHubStorage
-  │   → StorageAdapter
-  │
-  └→ LearningArtifactStorage
-      → StorageAdapter
-      → localStorage
+LearningHubView
+  → LearningHubController
+  → LearningArtifactService
+      ├→ LearningHubService
+      │   → LearningHubStorage
+      │   → StorageAdapter
+      │
+      └→ LearningArtifactStorage
+          → StorageAdapter
+          → localStorage
 ```
 
 Der Artifact-Service verwendet den Inhaltsservice nur zum Laden des aktuellen
@@ -434,6 +435,24 @@ den vollständigen neuen Store und speichert genau einmal; das Entfernen eines
 Typs erhält das andere Artefakt desselben LearningNodes und die Reihenfolge
 aller übrigen Artefakte.
 
+`src/main.js` injiziert den `LearningArtifactService` zusätzlich zu Inhalts-
+und Progress-Service in den vorhandenen `LearningHubController`; ein eigener
+Artifact-Controller entsteht nicht. Der Controller lädt Artefakte getrennt und
+gibt der View ausschließlich eine defensiv geprüfte UI-Projektion der aktuellen
+Notiz und Zusammenfassung des ausgewählten LearningNodes. Artefakt-IDs,
+Referenzketten und Zeitstempel werden weder gerendert noch als bearbeitbarer
+UI-Zustand verwendet.
+
+Ein isolierter Artifact-Ladefehler lässt Inhaltsverwaltung und Fortschritt
+bedienbar, deaktiviert nur die Artefaktaktionen und bietet einen nicht
+destruktiven Retry. Mutationsfehler erhalten die letzte valide Projektion und
+den bearbeitbaren Text. Identische Saves werden als erfolgreiche No-ops
+sichtbar, ohne einen Schreibzugriff auszulösen; der Service behandelt weiterhin
+auch bereits leere Clear-Ziele schreibfrei. Das Leeren verwendet eine
+zugängliche Inline-Bestätigung statt eines blockierenden Browserdialogs;
+Busy-Zustände verhindern parallele Artefaktmutationen und der Fokus kehrt nach
+Erfolg, No-op oder Fehler zum betroffenen Editor oder Auslöser zurück.
+
 `LearningArtifactStorage` kapselt `loadLearningArtifacts` und
 `saveLearningArtifacts` unter dem festen Key
 `goldendawn.learningHub.artifacts.v1`. Das `v1` des Persistenznamespace und
@@ -452,9 +471,9 @@ Artefakttexte sind nach dem Trimmen nicht leer und auf 10.000 Zeichen pro
 Artefakt begrenzt. Diese Grenze ersetzt keine Gesamtgrößenbegrenzung. Zeitwerte
 verwenden das exakte kanonische UTC-Format `YYYY-MM-DDTHH:mm:ss.sssZ`;
 `updatedAt` darf nicht vor `createdAt` liegen. Fehlermeldungen und Logs enthalten
-keine privaten Texte, IDs, Referenzketten, Rohwerte oder Zeitstempel. Eine
-spätere UI muss Artefakttexte ausschließlich mit `textContent` oder
-gleichwertiger sicherer DOM-Erzeugung darstellen.
+keine privaten Texte, IDs, Referenzketten, Rohwerte oder Zeitstempel. Die
+implementierte View gibt Artefakttexte ausschließlich mit `textContent`,
+Formularwert-Eigenschaften oder gleichwertiger sicherer DOM-Erzeugung aus.
 
 Append-only ist eine Anwendungsregel des Progress-Service. Technisch wird der
 vollständige JSON-Log bei einer Änderung als Snapshot in `localStorage`
@@ -465,7 +484,7 @@ kein LRS und beansprucht kein vollständiges Event Sourcing. Multi-Tab-Rennen,
 Browser-Quota, fehlende Verschlüsselung und fehlende Synchronisierung bleiben
 bekannte Grenzen.
 
-Die bestehenden UI-Integrationen und die neue Artifact-Foundation verändern
+Die Inhalts-, Progress- und Artifact-UI-Integrationen verändern
 weder den Schema-2-Inhaltsvertrag noch den Schema-1-Fortschrittsvertrag oder
 deren Storage-Keys. Eine spätere Archivierung muss bestehende Ereignisse und
 Artefaktreferenzen berücksichtigen; dauerhaftes Löschen benötigt zuvor eine
@@ -681,7 +700,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | --- | --- |
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
-| `v0.2.1` | In Arbeit: Inhalts- und Progress-Pfade bis zur UI sowie getrennte LearningArtifact-Foundation umgesetzt; Artefakt-UI und lokaler Mock-Test folgen |
+| `v0.2.1` | In Arbeit: Inhalts-, Progress- und LearningArtifact-Pfade bis zur bedienbaren UI umgesetzt; der lokale Mock-Test folgt |
 | `v0.2.2` | LichtwaldLog Local MVP ohne Synchronisierung oder Agentenlogik |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
