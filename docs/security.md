@@ -6,8 +6,8 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis |
-| Letzte Aktualisierung | 2026-07-18 |
+| Status | Verbindliche Sicherheitsbasis; LearningArtifact-Foundation ohne UI berücksichtigt |
+| Letzte Aktualisierung | 2026-07-19 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -156,15 +156,24 @@ Controller greifen nicht direkt auf `localStorage` zu.
   Referenzprüfung; es gibt keine Rückabhängigkeit. Fortschritt liegt unter dem
   festen Key `goldendawn.learningHub.progress.v1`, während der Inhaltsvertrag
   unverändert unter `goldendawn.learningHub.content.v1` bleibt.
+- Die getrennte LearningArtifact-Foundation verläuft über
+  `LearningArtifactService`, `LearningHubService`,
+  `LearningArtifactStorage` und den gemeinsamen `StorageAdapter`. Der
+  Artifact-Service verwendet den Inhaltsservice ausschließlich zum Laden und
+  zur vollständigen Referenzprüfung; es gibt keine Rückabhängigkeit. Artefakte
+  liegen unter `goldendawn.learningHub.artifacts.v1`. Controller, View und
+  `src/main.js` sind noch nicht angebunden, daher ist die Foundation noch nicht
+  direkt bedienbar.
 - `src/main.js` injiziert den Progress-Service in den vorhandenen
   `LearningHubController`. View und Controller halten und rendern nur die
   validierte Projektion, nicht Ereignis-IDs, Zeitstempel oder den vollständigen
   Log. Kapitel-Checkboxen und Fortschrittsanzeigen bleiben vollständig lokal
   und übertragen keine Daten an Webhooks, Agenten, Airtable oder andere
   Netzwerke.
-- Private LearningModules, Kapitel und LearningNodes sowie spätere Lernnotizen,
-  Zusammenfassungen und lokale Testversuche werden weder in das Repository
-  übernommen noch in öffentlichen Demo-Daten oder unnötigen Logs verwendet.
+- Private LearningModules, Kapitel, LearningNodes, Lernnotizen,
+  Zusammenfassungen und spätere lokale Testversuche werden weder in das
+  Repository übernommen noch in öffentlichen Demo-Daten oder unnötigen Logs
+  verwendet.
 - Der Demo-Hub verwendet ausschließlich unabhängig erfundene synthetische
   Inhalte mit `dataOrigin: synthetic`. Private Nutzerdaten tragen
   `dataOrigin: private` und verwenden getrennte Datenquellen. Die Demo wird
@@ -180,6 +189,16 @@ Controller greifen nicht direkt auf `localStorage` zu.
   Synthetische, beschädigte oder nicht unterstützte gespeicherte Logs bleiben
   unverändert und werden weder als leerer privater Log ausgegeben noch durch
   ihn überschrieben.
+- Entsprechend liefert ein fehlender Artifact-Key einen frischen privaten
+  Store mit leerem `artifacts`-Array ohne Initialisierungsschreibzugriff. Der
+  Artifact-Storage akzeptiert im privaten Pfad ausschließlich
+  `dataOrigin: private`. Synthetische, beschädigte oder nicht unterstützte
+  gespeicherte Artefaktdaten bleiben unangetastet und werden nicht als leerer
+  Privatbestand ausgegeben oder überschrieben. Lese- und Schreibwerte werden
+  defensiv geklont und vor dem Speichern vollständig validiert. Ein
+  Read-Preflight desselben Keys blockiert jeden Save über einen vorhandenen
+  synthetischen, beschädigten, nicht unterstützten oder nicht sicher lesbaren
+  Bestand; er ist keine Transaktions- oder Multi-Tab-Sperre.
 - Der `LearningHubService` trimmt Eingabetexte vor der Längenprüfung und
   begrenzt Titel auf 120 sowie LearningNode-Inhalte auf 10.000 Zeichen. Diese
   Eingabegrenzen reduzieren versehentlich übergroße einzelne Werte, ersetzen
@@ -187,6 +206,7 @@ Controller greifen nicht direkt auf `localStorage` zu.
   vollständigen Hubs. Der persistierte Vertrag bleibt bei
   `schemaVersion: 2`; Schema 3 wird dadurch nicht eingeführt.
 - Fehlermeldungen und Logs enthalten keine privaten Titel, LearningNode-Texte,
+  Artefakttexte, Artefakt- oder Referenz-IDs, Referenzketten, Zeitstempel,
   vollständigen Fortschrittslogs oder sonstigen Rohdaten. Rohe `DOMException`-
   und Storage-Fehler werden nicht unkontrolliert an höhere Schichten
   weitergereicht.
@@ -199,6 +219,23 @@ Controller greifen nicht direkt auf `localStorage` zu.
   und daraus abgeleiteter Modulfortschritt verwenden den separaten
   LearningProgress-Schema-1-Vertrag; Testkompetenz bleibt ein davon getrenntes
   Konzept.
+- Der getrennte LearningArtifact-Schema-1-Vertrag speichert ausschließlich
+  stabile Modul-, Kapitel- und LearningNode-Referenz-IDs, den privaten
+  Artefakttext sowie Erstellungs- und Änderungszeitpunkt. Er kopiert keine
+  Modul-, Kapitel- oder LearningNode-Titel und keine vollständigen
+  LearningNode-Inhalte. IDs, Referenzketten und Zeitpunkte bleiben dennoch
+  private Metadaten und dürfen nicht unnötig offengelegt werden.
+- Pro LearningNode ist höchstens eine aktuelle Notiz und eine aktuelle
+  Zusammenfassung erlaubt. Diese Texte sind editierbare Arbeitsstände ohne
+  Versionshistorie und ausdrücklich keine append-only Progress-Ereignisse.
+  Vor Mutationen werden Zielkette, vorhandene Artefaktketten und beide
+  vollständigen Stores geprüft; verwaiste oder falsch zugeordnete Daten werden
+  nicht automatisch repariert, gelöscht oder überschrieben.
+- Artefakttexte werden vor der Validierung getrimmt und auf 10.000 Zeichen pro
+  Artefakt begrenzt. Diese Einzelgrenze ersetzt weder eine
+  Gesamtgrößenbegrenzung des Artifact-Stores noch Quota-Behandlung. Browser-
+  Quota und Multi-Tab-Rennen können weiterhin zu kontrollierten Fehlern oder
+  überholten Schreibständen führen.
 - Der Progress-Vertrag speichert ausschließlich Ereignis-ID, Ereignistyp,
   Modul- und Kapitelreferenz sowie UTC-Zeitstempel. Titel und
   LearningNode-Inhalte werden nicht in Ereignisse oder Projektionen kopiert.
@@ -236,9 +273,10 @@ Controller greifen nicht direkt auf `localStorage` zu.
   vorbereiteten Fragen arbeiten. Er muss sichtbar als **„Lokaler Mock-Test“**
   gekennzeichnet werden und darf weder eine KI-Auswertung noch eine semantische
   Freitextbewertung behaupten.
-- Notizen, Zusammenfassungen und Testversuche dürfen nach ihrer späteren
-  Einführung ausschließlich hinter den vorgesehenen Service- und
-  Storage-Adapter-Grenzen gespeichert werden.
+- Die Artifact-Foundation speichert Notizen und Zusammenfassungen bereits
+  ausschließlich hinter Service- und Storage-Adapter-Grenzen. Ihre spätere UI
+  muss diese Grenzen beibehalten. Testversuche benötigen nach ihrer Einführung
+  ebenfalls einen eigenen Service- und Storage-Pfad.
 - Der lokale MVP garantiert noch keine Multi-Tab-Konsistenz und verwendet keine
   Transaktionssperre. Gleichzeitige Änderungen in mehreren Tabs können sich
   überholen; Browser-Quota, fehlende Verschlüsselung und fehlende
@@ -250,9 +288,11 @@ Storage-Key `content.v1` bezeichnet davon getrennt nur dessen
 Persistenz-Namespace. Der Fortschrittsvertrag verwendet unabhängig
 `schemaVersion: 1` und den Persistenznamespace `progress.v1`. View, Controller,
 Service und Storage für private Inhalte sowie Vertrag, Projektion, Service und
-Storage einschließlich der zugänglichen Progress-UI sind implementiert.
-Notizen, Zusammenfassungen und Testversuche sind in diesem Arbeitspaket noch
-nicht umgesetzt; `v0.2.1` bleibt in Arbeit.
+Storage einschließlich der zugänglichen Progress-UI sind implementiert. Für
+Notizen und Zusammenfassungen sind Vertrag, Service und Storage implementiert,
+aber noch nicht an Controller, View oder `src/main.js` angebunden. Der lokale
+Mock-Test und Testversuche sind ebenfalls noch nicht umgesetzt; `v0.2.1`
+bleibt in Arbeit.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
@@ -271,6 +311,10 @@ nicht umgesetzt; `v0.2.1` bleibt in Arbeit.
 - LearningModule-, Kapitel- und LearningNode-Titel sowie LearningNode-Inhalte
   sind nicht vertrauenswürdiger Klartext. Die implementierte LearningHub-View
   gibt sie über `textContent`, `createTextNode` und sichere DOM-Erzeugung aus.
+- Eine spätere LearningArtifact-UI behandelt private Notizen und
+  Zusammenfassungen ebenfalls als nicht vertrauenswürdigen Klartext und gibt
+  sie ausschließlich über `textContent` oder gleichwertige sichere
+  DOM-Erzeugung aus.
 - `innerHTML` wird für Nutzereingaben und Agentenoutput nicht verwendet.
 - Markdown oder Rich Text benötigt vor HTML-Ausgabe eine dokumentierte
   Sanitization-Lösung.
@@ -521,7 +565,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | --- | --- |
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
-| `v0.2.1` | sichere lokale Inhalts- und Progress-UI, getrennte validierte Persistenz ohne Demo-Seeding, kontrollierte Referenzprüfung und isolierte Progress-Fehler; später Notizen, Zusammenfassungen, Testversuche und deterministischer lokaler Mock-Test |
+| `v0.2.1` | sichere lokale Inhalts- und Progress-UI sowie getrennte LearningArtifact-Foundation ohne UI; validierte private Persistenz ohne Demo-Seeding, kontrollierte Referenzprüfung und isolierte Fehler; später Artefakt-UI, Testversuche und deterministischer lokaler Mock-Test |
 | `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
 | `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |

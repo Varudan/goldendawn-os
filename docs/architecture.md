@@ -6,8 +6,8 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhalts- und Progress-UI implementiert, MVP noch nicht vollständig |
-| Letzte Aktualisierung | 2026-07-18 |
+| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhalts- und Progress-UI sowie LearningArtifact-Foundation ohne UI implementiert, MVP noch nicht vollständig |
+| Letzte Aktualisierung | 2026-07-19 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -150,6 +150,8 @@ loadLearningHub()
 saveLearningHub(learningHub)
 loadLearningProgress()
 saveLearningProgress(progress)
+loadLearningArtifacts()
+saveLearningArtifacts(artifactStore)
 ```
 
 ### Sync-Service
@@ -387,6 +389,73 @@ ohne Initialisierungsschreibzugriff einen frischen leeren privaten Log.
 Synthetische, beschädigte und nicht unterstützte gespeicherte Werte bleiben
 unangetastet.
 
+Notizen und Zusammenfassungen besitzen zusätzlich eine getrennte, implementierte
+LearningArtifact-Foundation. Sie ist in diesem Arbeitspaket noch nicht mit
+`LearningHubController`, `LearningHubView` oder `src/main.js` verbunden und
+daher noch nicht direkt bedienbar. Ihr lokaler Datenfluss lautet:
+
+```text
+LearningArtifactService
+  ├→ LearningHubService
+  │   → LearningHubStorage
+  │   → StorageAdapter
+  │
+  └→ LearningArtifactStorage
+      → StorageAdapter
+      → localStorage
+```
+
+Der Artifact-Service verwendet den Inhaltsservice nur zum Laden des aktuellen
+validen privaten Hubs und zur Prüfung der vollständigen Referenzkette
+LearningModule → LearningChapter → LearningNode. Der Inhaltsservice kennt den
+Artifact-Service nicht; es entsteht keine Rückabhängigkeit und kein Zyklus.
+Vor einer Mutation werden sowohl die Zielreferenz als auch alle gespeicherten
+Artefaktreferenzen geprüft. Global vorhandene IDs mit falscher Elternkette und
+verwaiste gespeicherte Referenzen werden kontrolliert abgelehnt, ohne Daten zu
+reparieren oder zu überschreiben.
+
+Der LearningArtifact-Vertrag verwendet `schemaVersion: 1`, `dataOrigin` und ein
+`artifacts`-Array. Zulässige Typen sind ausschließlich `note` und `summary`.
+Artefakt-IDs sind im Store global eindeutig; zusätzlich ist die Kombination aus
+`learningNodeId` und `type` eindeutig. Pro LearningNode kann somit höchstens ein
+aktueller Arbeitsstand je Typ existieren, während Notiz und Zusammenfassung
+nebeneinander erlaubt sind. Gespeichert werden stabile Modul-, Kapitel- und
+LearningNode-Referenz-IDs, der private Artefakttext sowie Erstellungs- und
+Änderungszeitpunkt. Titel und Inhalte des LearningHubs werden nicht kopiert.
+
+LearningArtifacts sind editierbare aktuelle Zustände und kein append-only
+Ereignislog. Sie besitzen in Schema 1 keine Versionshistorie. Der
+`LearningArtifactService` stellt `loadArtifacts`, `saveNote`, `saveSummary`,
+`clearNote` und `clearSummary` bereit. Beim Aktualisieren bleiben ID und
+`createdAt` stabil; `updatedAt` darf nicht zurücklaufen. Inhaltlich identische
+Speicheraufrufe und das Leeren eines nicht vorhandenen Typs sind schreibfreie
+No-ops, die weder ID noch Zeitstempel erzeugen. Eine echte Mutation validiert
+den vollständigen neuen Store und speichert genau einmal; das Entfernen eines
+Typs erhält das andere Artefakt desselben LearningNodes und die Reihenfolge
+aller übrigen Artefakte.
+
+`LearningArtifactStorage` kapselt `loadLearningArtifacts` und
+`saveLearningArtifacts` unter dem festen Key
+`goldendawn.learningHub.artifacts.v1`. Das `v1` des Persistenznamespace und
+`schemaVersion: 1` des Vertrags werden unabhängig versioniert. Der private
+Pfad akzeptiert ausschließlich `dataOrigin: private`; ein fehlender Key liefert
+ohne Schreibzugriff einen frischen leeren privaten Store. Synthetische,
+beschädigte und nicht unterstützte gespeicherte Werte bleiben unangetastet.
+Lese- und Schreibwerte werden defensiv geklont, der vollständige Store wird vor
+jedem Save validiert und Storage- sowie Quota-Fehler werden kontrolliert
+behandelt. Zusätzlich liest der Storage den festen Key unmittelbar vor einem
+Save erneut: Ein vorhandener synthetischer, beschädigter, nicht unterstützter
+oder nicht sicher lesbarer Wert blockiert den Schreibzugriff. Dieser
+Read-Preflight ist keine Transaktion und verhindert keine Multi-Tab-Rennen.
+
+Artefakttexte sind nach dem Trimmen nicht leer und auf 10.000 Zeichen pro
+Artefakt begrenzt. Diese Grenze ersetzt keine Gesamtgrößenbegrenzung. Zeitwerte
+verwenden das exakte kanonische UTC-Format `YYYY-MM-DDTHH:mm:ss.sssZ`;
+`updatedAt` darf nicht vor `createdAt` liegen. Fehlermeldungen und Logs enthalten
+keine privaten Texte, IDs, Referenzketten, Rohwerte oder Zeitstempel. Eine
+spätere UI muss Artefakttexte ausschließlich mit `textContent` oder
+gleichwertiger sicherer DOM-Erzeugung darstellen.
+
 Append-only ist eine Anwendungsregel des Progress-Service. Technisch wird der
 vollständige JSON-Log bei einer Änderung als Snapshot in `localStorage`
 geschrieben. Es gibt keine kryptografische Verkettung, Signatur oder
@@ -396,14 +465,14 @@ kein LRS und beansprucht kein vollständiges Event Sourcing. Multi-Tab-Rennen,
 Browser-Quota, fehlende Verschlüsselung und fehlende Synchronisierung bleiben
 bekannte Grenzen.
 
-Die UI-Integration verändert weder den Schema-2-Inhaltsvertrag noch den
-Schema-1-Fortschrittsvertrag oder ihre getrennten Storage-Keys. Eine spätere
-Archivierung muss bestehende Ereignisse erhalten; dauerhaftes Löschen benötigt
-zuvor eine gesonderte Referenz- und Löschrichtlinie. Notizen,
-Zusammenfassungen und spätere Testversuche benötigen weiterhin eigene Verträge
-und Storage-Keys. Für LearningHub-Inhalte und -Fortschritt werden weder
-Löschung, Migration noch garantierte Multi-Tab-Synchronisierung oder
-Transaktionssperren eingeführt.
+Die bestehenden UI-Integrationen und die neue Artifact-Foundation verändern
+weder den Schema-2-Inhaltsvertrag noch den Schema-1-Fortschrittsvertrag oder
+deren Storage-Keys. Eine spätere Archivierung muss bestehende Ereignisse und
+Artefaktreferenzen berücksichtigen; dauerhaftes Löschen benötigt zuvor eine
+gesonderte Referenz- und Löschrichtlinie. Testversuche benötigen weiterhin
+einen eigenen Vertrag und Storage-Key. Für LearningHub-Inhalte, Fortschritt und
+Artefakte werden weder Migration noch garantierte Multi-Tab-Synchronisierung
+oder Transaktionssperren eingeführt.
 
 Der weiterhin geplante Testmodus soll diesen ausschließlich lokalen Pfad
 verwenden:
@@ -569,13 +638,16 @@ src/
 ├── components/
 ├── modules/
 │   └── learning-hub/
+│       ├── learningArtifactContract.js
 │       ├── learningProgressContract.js
 │       └── learningProgressProjection.js
 ├── services/
+│   ├── learningArtifactService.js
 │   ├── learningHubService.js
 │   ├── learningProgressService.js
 │   └── syncService.js
 ├── storage/
+│   ├── learningArtifactStorage.js
 │   ├── learningHubStorage.js
 │   ├── learningProgressStorage.js
 │   └── storageAdapter.js
@@ -609,7 +681,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | --- | --- |
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
-| `v0.2.1` | In Arbeit: Schema 2 sowie getrennte lokale Inhalts- und Progress-Pfade bis zur bedienbaren UI umgesetzt; Notizen, Zusammenfassungen und lokaler Mock-Test folgen |
+| `v0.2.1` | In Arbeit: Inhalts- und Progress-Pfade bis zur UI sowie getrennte LearningArtifact-Foundation umgesetzt; Artefakt-UI und lokaler Mock-Test folgen |
 | `v0.2.2` | LichtwaldLog Local MVP ohne Synchronisierung oder Agentenlogik |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
@@ -638,6 +710,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0007](decisions/0007-user-configured-learning-modules.md) | Nutzerkonfigurierte LearningModules mit trackbaren Kapiteln und LearningNodes | Angenommen |
 | [0008](decisions/0008-learning-hub-local-content-persistence.md) | Lokale LearningHub-Inhaltsverwaltung und -Persistenz | Angenommen |
 | [0009](decisions/0009-append-only-learning-progress-events.md) | Separater Lernfortschritt als append-only Ereignislog | Angenommen |
+| [0010](decisions/0010-learning-artifacts-for-notes-and-summaries.md) | Getrennte LearningArtifacts für Notizen und Zusammenfassungen | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).
