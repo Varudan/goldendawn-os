@@ -13,15 +13,20 @@
 | LearningProgress-Persistenznamespace | `v1` |
 | LearningArtifact-Schema | `1` |
 | LearningArtifact-Persistenznamespace | `v1` |
+| LearningTestBank-Schema | `1` |
+| LearningTestBank-Persistenznamespace | `v1` |
+| LearningTestAttemptLog-Schema | `1` |
+| LearningTestAttempt-Persistenznamespace | `v1` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale PromptVault-, LearningHub-Inhalts-, Progress- und LearningArtifact-Verträge einschließlich bedienbarer UI implementiert; Sync-Vertrag als Zielzustand dokumentiert |
+| Status | Lokale PromptVault-, LearningHub-Inhalts-, Progress-, LearningArtifact- und LearningTest-Foundation-Verträge implementiert; LearningTest-UI und Sync-Vertrag bleiben Zielzustände |
 | Letzte Aktualisierung | 2026-07-19 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
-PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt und LearningArtifacts
-sowie die maschinenlesbare Sprache zwischen dem GoldenDawn-OS-Frontend, dem
-SyncAgent, dem DataAgent und dem TestAgent. Es konkretisiert die Grenzen aus
-`AGENTS.md`, `docs/architecture.md` und `docs/security.md`.
+PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
+die lokale LearningTestBank und abgeschlossene LearningTestAttempts sowie die
+maschinenlesbare Sprache zwischen dem GoldenDawn-OS-Frontend, dem SyncAgent,
+dem DataAgent und dem TestAgent. Es konkretisiert die Grenzen aus `AGENTS.md`,
+`docs/architecture.md` und `docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
 In `v0.2.1` sind die LearningHub-Schema-2-Foundation, die lokale
@@ -32,26 +37,34 @@ Controller und die View bedienbar. Die UI-Integration verändert keinen der
 beiden Verträge. Zusätzlich sind der getrennte LearningArtifact-Schema-1-
 Vertrag, sein privater lokaler Storage und sein referenzprüfender Service
 implementiert und über den vorhandenen Controller sowie die View bedienbar.
-Die UI-Integration verändert den LearningArtifact-Vertrag nicht. Der
-vollständige LearningHub Local MVP ist weiterhin in Arbeit, weil der lokale
-Mock-Test offen bleibt. Die externen Sync- und Agentenverträge beschreiben den
-geplanten Zielzustand späterer Versionen. Solange eine externe Aktion noch
-nicht implementiert ist, muss sie in UI und Dokumentation als geplant
-gekennzeichnet bleiben.
+Die UI-Integration verändert den LearningArtifact-Vertrag nicht. Zusätzlich
+sind die getrennten Schema-1-Verträge für die veränderbare LearningTestBank und
+den append-only LearningTestAttemptLog, ihre privaten Storages, die reine
+deterministische Engine und der referenzprüfende LearningTestService
+implementiert. Diese Foundation besitzt noch keine Anbindung an
+`LearningHubController`, `LearningHubView` oder `src/main.js`. Der vollständige
+LearningHub Local MVP ist deshalb weiterhin in Arbeit. Die externen Sync- und
+Agentenverträge beschreiben den geplanten Zielzustand späterer Versionen.
+Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
+Dokumentation als geplant gekennzeichnet bleiben.
 
 ## Vertragsgrenzen der lokalen Module v0.2.1 und v0.2.2
 
 Die lokalen Module `v0.2.1` und `v0.2.2` erweitern die externe
 Aktions-Allowlist dieses Dokuments nicht. LearningHub-Inhalt,
-LearningProgress und LearningArtifacts sind rein interne Datenverträge und
-führen keine externe Aktion ein. Ihre lokalen Persistenzen verwenden die
-getrennten festen Namespaces `goldendawn.learningHub.content.v1`,
-`goldendawn.learningHub.progress.v1` und
-`goldendawn.learningHub.artifacts.v1`. Das jeweilige `v1` im Key bezeichnet
-keine Schemaversion: Der Inhaltsvertrag bleibt bei `schemaVersion: 2`, der
-Fortschritts- und der Artefaktvertrag verwenden unabhängig davon jeweils
-`schemaVersion: 1`. Die nachfolgenden `learningTest.*`-Verträge bleiben
-ausdrücklich ein Zielzustand für `v0.5.0`; die internen `DataAgent`-Verträge
+LearningProgress, LearningArtifacts, LearningTestBank und
+LearningTestAttemptLog sind rein interne Datenverträge und führen keine
+externe Aktion ein. Ihre lokalen Persistenzen verwenden die getrennten festen
+Namespaces `goldendawn.learningHub.content.v1`,
+`goldendawn.learningHub.progress.v1`,
+`goldendawn.learningHub.artifacts.v1`,
+`goldendawn.learningHub.testBank.v1` und
+`goldendawn.learningHub.testAttempts.v1`. Das jeweilige `v1` im Key bezeichnet
+keine Schemaversion: Der Inhaltsvertrag bleibt bei `schemaVersion: 2`; die vier
+anderen lokalen Verträge verwenden unabhängig davon jeweils
+`schemaVersion: 1`. Die nachfolgenden externen `learningTest.*`-Verträge
+bleiben ausdrücklich ein Zielzustand für `v0.5.0` und sind nicht mit den
+lokalen Serviceoperationen gleichzusetzen. Die internen `DataAgent`-Verträge
 sind Zielzustände für `v0.4.0` und, im Lernfluss, `v0.5.0`.
 
 ### v0.2.1 – LearningHub Local MVP
@@ -94,21 +107,37 @@ Rückabhängigkeit. `src/main.js` injiziert ihn in den vorhandenen
 Zusammenfassungen lokal bedienbar. Es gibt keinen separaten
 LearningArtifact-Controller.
 
-Davon getrennt bleibt der lokale Mock-Testfluss geplant:
+Davon getrennt ist die lokale LearningTest-Foundation ohne UI-Anbindung
+implementiert:
 
 ```text
-LearningHubView
-  → LearningHubController
-  → LearningTestService
-  → MockLearningTestProvider
+LearningHubView / LearningHubController        noch nicht angebunden
+                    ↓
+LearningTestService
+  ├→ LearningHubService                        Referenzprüfung
+  ├→ LearningTestBankStorage
+  │    → StorageAdapter
+  │    → localStorage
+  ├→ LearningTestAttemptStorage
+  │    → StorageAdapter
+  │    → localStorage
+  └→ LearningTestEngine                        reine Deterministik
 ```
 
-Der noch nicht implementierte `MockLearningTestProvider` soll vorbereitete
-synthetische Fragen verwenden, deterministisch arbeiten und sichtbar als
-„Lokaler Mock-Test“ gekennzeichnet werden. Dieser geplante lokale Ablauf
-verwendet weder `SyncAgent` noch `TestAgent` und ist nicht mit den geplanten
-Aktionen `learningTest.create`, `learningTest.evaluate` oder
-`learningTest.result.get` gleichzusetzen.
+Die reine Engine präzisiert und ersetzt für diese Foundation die frühere
+`MockLearningTestProvider`-Platzhalterplanung. Die nutzergesteuerte Testbank
+ist die getrennte Fragenquelle; die Engine bleibt auf Auswahl, öffentliche
+Projektion und Auswertung ohne Seiteneffekte begrenzt. Dies führt weder eine UI
+noch Agenten- oder externe Providerlogik ein.
+
+Sie verwendet nutzerkonfigurierte Single-Choice-Fragen, arbeitet ohne Zufall
+und speichert ausschließlich abgeschlossene Attempts. Laufende Sessions
+bleiben flüchtig. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
+`TestAgent` und ist nicht mit den geplanten externen Aktionen
+`learningTest.create`, `learningTest.evaluate` oder
+`learningTest.result.get` gleichzusetzen. Die spätere UI muss ihn sichtbar als
+„Lokaler Mock-Test“ kennzeichnen; bis zu ihrer Anbindung bleibt `v0.2.1` in
+Arbeit.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -197,8 +226,10 @@ Der Key enthält ausschließlich LearningHub-Inhalte. Kapitelabschluss und
 Fortschritt gehören in den getrennten Vertrag unter
 `goldendawn.learningHub.progress.v1`. Notizen und Zusammenfassungen gehören in
 den nachfolgend dokumentierten LearningArtifact-Vertrag unter
-`goldendawn.learningHub.artifacts.v1`. Spätere Testversuche gehören in keinen
-dieser Werte und benötigen weiterhin einen eigenen Vertrag und Storage-Key.
+`goldendawn.learningHub.artifacts.v1`. Fragen und abgeschlossene Testversuche
+gehören in keinen dieser Werte; sie verwenden die getrennten Verträge unter
+`goldendawn.learningHub.testBank.v1` und
+`goldendawn.learningHub.testAttempts.v1`.
 
 `dataOrigin` klassifiziert die Herkunft als `synthetic` oder `private`. Das Feld
 ist keine Verschlüsselungs-, Authentifizierungs- oder Sicherheitsfunktion.
@@ -303,6 +334,492 @@ oder Speicherung fehl, wird kein teilweise veränderter Hub geschrieben.
 Löschen, Archivieren, Umsortieren, Schema-Migrationen und garantierte
 Multi-Tab-Synchronisierung oder Transaktionssperren gehören nicht zu diesem
 Vertrag.
+
+#### Lokale LearningTestBank – Schema 1
+
+##### Trennung und Persistenznamespace
+
+Die LearningTestBank speichert nutzerkonfigurierte Single-Choice-Fragen als
+veränderbaren aktuellen Bestand. Sie erweitert weder den LearningHub-Inhalt
+noch Progress, LearningArtifacts oder die abgeschlossene Versuchshistorie:
+
+| Belang | Vertrag | Storage-Key | Lebenszyklus |
+| --- | --- | --- | --- |
+| Module, Kapitel und LearningNodes | LearningHub `schemaVersion: 2` | `goldendawn.learningHub.content.v1` | editierbarer Inhalt |
+| Kapitelzustandswechsel und Modulfortschritt | LearningProgress `schemaVersion: 1` | `goldendawn.learningHub.progress.v1` | append-only Ereignisfolge |
+| Notizen und Zusammenfassungen | LearningArtifact `schemaVersion: 1` | `goldendawn.learningHub.artifacts.v1` | editierbarer aktueller Stand |
+| Single-Choice-Fragen | LearningTestBank `schemaVersion: 1` | `goldendawn.learningHub.testBank.v1` | veränderbarer aktueller Fragenbestand |
+| abgeschlossene Testversuche | LearningTestAttemptLog `schemaVersion: 1` | `goldendawn.learningHub.testAttempts.v1` | append-only Attempts |
+
+Die Zahlen in den Keys versionieren ausschließlich ihre Persistenz-Namespaces.
+Der LearningTestBank-Vertrag wird unabhängig davon durch
+`schemaVersion: 1` versioniert.
+
+##### Struktur und Validierung
+
+```json
+{
+  "schemaVersion": 1,
+  "dataOrigin": "synthetic",
+  "questions": [
+    {
+      "id": "question_synthetic_1",
+      "moduleId": "module_synthetic_1",
+      "chapterId": "chapter_synthetic_1",
+      "learningNodeId": "node_synthetic_1",
+      "type": "singleChoice",
+      "prompt": "Welche erfundene Markierung zeigt nach Norden?",
+      "difficulty": "easy",
+      "position": 1,
+      "revision": 1,
+      "createdAt": "2026-07-19T10:00:00.000Z",
+      "updatedAt": "2026-07-19T10:00:00.000Z",
+      "options": [
+        {
+          "id": "option_synthetic_blue",
+          "label": "Die blaue Raute",
+          "position": 1
+        },
+        {
+          "id": "option_synthetic_gold",
+          "label": "Der goldene Kreis",
+          "position": 2
+        }
+      ],
+      "correctOptionId": "option_synthetic_blue",
+      "explanation": "Im erfundenen Beispiel markiert die blaue Raute Norden."
+    }
+  ]
+}
+```
+
+Root, Fragen und Optionen besitzen jeweils ausschließlich die dokumentierten
+eigenen Pflichtfelder. Vertragsobjekte akzeptieren nur
+`Object.prototype` oder `null` als direkten Prototyp. Arrays oder `null` sind
+an Objektstellen ungültig. Zusätzliche, unbekannte oder geerbte Vertragsfelder
+und benutzerdefinierte Prototypen werden kontrolliert abgelehnt.
+
+| Feld | Typ | Regel |
+| --- | --- | --- |
+| `schemaVersion` | Ganzzahl | exakt `1` |
+| `dataOrigin` | String | ausschließlich `synthetic` oder `private` |
+| `questions` | Array | darf leer sein |
+| `questions[].id` | String | nicht leer, bereits getrimmt und zusammen mit allen Option-IDs bankweit eindeutig |
+| `questions[].moduleId` | String | nicht leer und bereits getrimmt |
+| `questions[].chapterId` | String | nicht leer und bereits getrimmt |
+| `questions[].learningNodeId` | String | nicht leer und bereits getrimmt |
+| `questions[].type` | String | exakt `singleChoice` |
+| `questions[].prompt` | String | nicht leer, bereits getrimmt und höchstens 500 Zeichen |
+| `questions[].difficulty` | String | `easy`, `medium` oder `hard` |
+| `questions[].position` | positive Ganzzahl | innerhalb desselben LearningNodes eindeutig |
+| `questions[].revision` | positive Ganzzahl | steigt bei tatsächlichen Updates |
+| `questions[].createdAt` | String | kanonischer UTC-Zeitstempel im exakten Format `YYYY-MM-DDTHH:mm:ss.sssZ` |
+| `questions[].updatedAt` | String | dasselbe kanonische UTC-Format und nicht vor `createdAt` |
+| `questions[].options` | Array | zwei bis sechs Einträge |
+| `questions[].options[].id` | String | nicht leer, bereits getrimmt und zusammen mit allen Frage- und Option-IDs bankweit eindeutig |
+| `questions[].options[].label` | String | nicht leer, bereits getrimmt und höchstens 300 Zeichen |
+| `questions[].options[].position` | positive Ganzzahl | innerhalb der Frage eindeutig |
+| `questions[].correctOptionId` | String | nicht leer, bereits getrimmt und exakt die ID einer Option derselben Frage |
+| `questions[].explanation` | String | bereits getrimmt, darf leer sein und umfasst höchstens 2.000 Zeichen |
+
+Fragepositionen sind nur innerhalb desselben LearningNodes eindeutig; gleiche
+Positionen an unterschiedlichen LearningNodes sind zulässig. Optionspositionen
+sind nur innerhalb ihrer jeweiligen Frage eindeutig. Die Arrayreihenfolge ist
+nicht die Testreihenfolge: Die Engine verwendet die dokumentierten
+Strukturpositionen.
+
+Der reine Validator sammelt alle strukturell auffindbaren Fehler vollständig
+und stabil als `{ code, path, message }`. Meldungen enthalten keine privaten
+Prompts, Optionslabel, Erklärungen, IDs oder sonstigen Rohwerte. Die Validierung
+verändert oder normalisiert ihre Eingabe nicht. Ob die drei Referenz-IDs im
+aktuellen LearningHub existieren und ihre vollständige Elternkette bilden,
+prüft bewusst erst der `LearningTestService`.
+
+Confidence, Hinweise, Freitext-Rubriken und Kompetenzstände gehören nicht zu
+Schema 1. Sie sind ausschließlich mögliche spätere versionierte Erweiterungen;
+dieser Vertrag reserviert oder erfindet keine Felder dafür.
+
+Die stabilen Bank-Validatorcodes lauten:
+
+| Code | Bedeutung |
+| --- | --- |
+| `invalidLearningTestBank` | Root ist kein unterstütztes Vertragsobjekt |
+| `unsupportedSchemaVersion` | `schemaVersion` ist nicht exakt `1` |
+| `invalidDataOrigin` | Herkunft ist weder `synthetic` noch `private` |
+| `invalidQuestions` | `questions` ist kein Array |
+| `invalidQuestion` | Frage ist kein unterstütztes Vertragsobjekt oder besitzt einen unzulässigen Prototype |
+| `unknownProperty` | ein unterstütztes Root-, Frage- oder Optionsobjekt enthält einen unbekannten eigenen Schlüssel |
+| `missingProperty` | ein erforderliches eigenes Feld fehlt |
+| `invalidId` | ID oder Referenz ist leer, ungetrimmt oder kein String |
+| `duplicateId` | Frage- oder Option-ID ist bankweit nicht eindeutig |
+| `invalidQuestionType` | Fragetyp ist nicht `singleChoice` |
+| `invalidPrompt` | Prompt ist leer, ungetrimmt oder kein String |
+| `promptTooLong` | Prompt überschreitet 500 Zeichen |
+| `invalidDifficulty` | Schwierigkeit ist nicht `easy`, `medium` oder `hard` |
+| `invalidPosition` | Frage- oder Optionsposition ist keine positive Ganzzahl |
+| `duplicateQuestionPosition` | Frageposition ist im LearningNode nicht eindeutig |
+| `invalidRevision` | Revision ist keine positive Ganzzahl |
+| `invalidCreatedAt` | Erstellungszeitpunkt ist nicht kanonisch |
+| `invalidUpdatedAt` | Änderungszeitpunkt ist nicht kanonisch |
+| `updatedAtBeforeCreatedAt` | Änderungszeitpunkt liegt vor dem Erstellungszeitpunkt |
+| `invalidOptions` | `options` ist kein Array |
+| `invalidOptionCount` | Frage besitzt nicht zwei bis sechs Optionen |
+| `invalidOption` | Option ist kein unterstütztes Vertragsobjekt oder besitzt einen unzulässigen Prototype |
+| `duplicateOptionPosition` | Optionsposition ist in der Frage nicht eindeutig |
+| `invalidOptionLabel` | Optionslabel ist leer, ungetrimmt oder kein String |
+| `optionLabelTooLong` | Optionslabel überschreitet 300 Zeichen |
+| `correctOptionNotFound` | `correctOptionId` gehört nicht zu einer Option derselben Frage |
+| `invalidExplanation` | Erklärung ist ungetrimmt oder kein String |
+| `explanationTooLong` | Erklärung überschreitet 2.000 Zeichen |
+
+#### Lokaler LearningTestAttemptLog – Schema 1
+
+##### Struktur abgeschlossener Testversuche
+
+```json
+{
+  "schemaVersion": 1,
+  "dataOrigin": "synthetic",
+  "attempts": [
+    {
+      "id": "attempt_synthetic_1",
+      "moduleId": "module_synthetic_1",
+      "startedAt": "2026-07-19T10:05:00.000Z",
+      "completedAt": "2026-07-19T10:06:00.000Z",
+      "totalQuestionCount": 1,
+      "correctAnswerCount": 1,
+      "scorePercent": 100,
+      "answers": [
+        {
+          "questionId": "question_synthetic_1",
+          "questionRevision": 1,
+          "learningNodeId": "node_synthetic_1",
+          "selectedOptionId": "option_synthetic_blue",
+          "correctOptionId": "option_synthetic_blue",
+          "isCorrect": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+Root, Attempts und Antworten besitzen ausschließlich die dargestellten eigenen
+Pflichtfelder und akzeptieren nur `Object.prototype` oder `null` als direkten
+Prototyp. Zusätzliche, unbekannte oder geerbte Vertragsfelder,
+benutzerdefinierte Prototypen und Nichtobjekte werden abgelehnt.
+
+| Feld | Typ | Regel |
+| --- | --- | --- |
+| `schemaVersion` | Ganzzahl | exakt `1` |
+| `dataOrigin` | String | ausschließlich `synthetic` oder `private` |
+| `attempts` | Array | darf leer sein; Append-Reihenfolge ist autoritativ |
+| `attempts[].id` | String | nicht leer, bereits getrimmt und im Log eindeutig |
+| `attempts[].moduleId` | String | nicht leer und bereits getrimmt |
+| `attempts[].startedAt` | String | kanonischer UTC-Zeitstempel im exakten Format `YYYY-MM-DDTHH:mm:ss.sssZ` |
+| `attempts[].completedAt` | String | dasselbe kanonische UTC-Format und nicht vor `startedAt` |
+| `attempts[].totalQuestionCount` | positive Ganzzahl | exakt `answers.length` |
+| `attempts[].correctAnswerCount` | nicht-negative Ganzzahl | exakt die Zahl der Antworten mit `isCorrect: true` |
+| `attempts[].scorePercent` | Ganzzahl | exakt `Math.round(correctAnswerCount / totalQuestionCount * 100)` |
+| `attempts[].answers` | Array | mindestens eine Antwort in autoritativer Testreihenfolge |
+| `attempts[].answers[].questionId` | String | nicht leer, bereits getrimmt und innerhalb des Attempts eindeutig |
+| `attempts[].answers[].questionRevision` | positive Ganzzahl | eingefrorene Revision der beantworteten Frage |
+| `attempts[].answers[].learningNodeId` | String | nicht leer und bereits getrimmt |
+| `attempts[].answers[].selectedOptionId` | String | nicht leer und bereits getrimmt |
+| `attempts[].answers[].correctOptionId` | String | nicht leer und bereits getrimmt |
+| `attempts[].answers[].isCorrect` | Boolean | exakt `selectedOptionId === correctOptionId` |
+
+Fragen und Antworten erscheinen in der beim Teststart autoritativ bestimmten
+Reihenfolge; jede `questionId` kommt in einem Attempt genau einmal vor. Der Log
+wird weder bei der Validierung noch beim Laden anhand von Zeitstempeln sortiert.
+Zeitstempel beschreiben den Versuch, während die Arrayreihenfolge seine
+persistierte Historie festlegt. Fragen-, Options- und LearningNode-Texte werden
+nicht in Attempts kopiert.
+
+Der Validator prüft alle ableitbaren Zähler, den exakten Prozentwert und jede
+Korrektheitsgleichheit, sammelt strukturell auffindbare Fehler vollständig als
+stabile `{ code, path, message }`-Einträge und verändert seine Eingabe nicht.
+Fehlermeldungen enthalten keine Antworten, IDs, Zeitstempel oder Rohwerte.
+
+Schema 1 enthält keine Confidence-Werte, Hinweise, Freitext-Rubriken,
+semantische Bewertung oder Kompetenzprojektion. Solche Fähigkeiten benötigen
+eine spätere versionierte Erweiterung und werden nicht durch leere optionale
+Felder vorweggenommen.
+
+Die stabilen Attempt-Validatorcodes lauten:
+
+| Code | Bedeutung |
+| --- | --- |
+| `invalidLearningTestAttemptLog` | Root ist kein unterstütztes Vertragsobjekt |
+| `unsupportedSchemaVersion` | `schemaVersion` ist nicht exakt `1` |
+| `invalidDataOrigin` | Herkunft ist weder `synthetic` noch `private` |
+| `invalidAttempts` | `attempts` ist kein Array |
+| `invalidAttempt` | Attempt ist kein unterstütztes Vertragsobjekt oder besitzt einen unzulässigen Prototype |
+| `unknownProperty` | ein unterstütztes Root-, Attempt- oder Antwortobjekt enthält einen unbekannten eigenen Schlüssel |
+| `missingProperty` | ein erforderliches eigenes Feld fehlt |
+| `invalidId` | ID oder Referenz ist leer, ungetrimmt oder kein String |
+| `duplicateAttemptId` | Attempt-ID ist im Log nicht eindeutig |
+| `invalidStartedAt` | Startzeitpunkt ist nicht kanonisch |
+| `invalidCompletedAt` | Abschlusszeitpunkt ist nicht kanonisch |
+| `completedAtBeforeStartedAt` | Abschlusszeitpunkt liegt vor dem Startzeitpunkt |
+| `invalidTotalQuestionCount` | Gesamtzahl ist keine positive Ganzzahl |
+| `invalidCorrectAnswerCount` | Korrektzahl ist keine nicht-negative Ganzzahl |
+| `invalidScorePercent` | Prozentwert ist keine Ganzzahl im gültigen Bereich |
+| `invalidAnswers` | `answers` ist kein Array |
+| `attemptRequiresAnswer` | Attempt enthält keine Antwort |
+| `invalidAnswer` | Antwort ist kein unterstütztes Vertragsobjekt oder besitzt einen unzulässigen Prototype |
+| `duplicateQuestionId` | Frage kommt im Attempt mehrfach vor |
+| `invalidQuestionRevision` | Fragenrevision ist keine positive Ganzzahl |
+| `invalidIsCorrect` | `isCorrect` ist kein Boolean |
+| `inconsistentIsCorrect` | `isCorrect` widerspricht dem strikten ID-Vergleich |
+| `totalQuestionCountMismatch` | Gesamtzahl entspricht nicht `answers.length` |
+| `correctAnswerCountMismatch` | Korrektzahl entspricht nicht den korrekten Antworten |
+| `scorePercentMismatch` | Prozentwert entspricht nicht der exakten `Math.round`-Formel |
+
+#### Lokale LearningTest-Persistenzgrenzen
+
+`createLearningTestBankStorage` erhält ausschließlich den gemeinsamen
+`StorageAdapter` und verwendet den festen, nicht nutzerkontrollierten Key:
+
+```text
+goldendawn.learningHub.testBank.v1
+```
+
+Es stellt `loadLearningTestBank()` und `saveLearningTestBank(testBank)` bereit.
+Ein erfolgreicher Load liefert `status: missing` oder `status: found` und den
+vollständig defensiv geklonten Wert in `testBank`; ein erfolgreicher Save
+liefert `status: saved`. Ein fehlender Key ergibt ohne
+Initialisierungsschreibzugriff diesen frischen privaten Leerzustand:
+
+```json
+{
+  "schemaVersion": 1,
+  "dataOrigin": "private",
+  "questions": []
+}
+```
+
+`createLearningTestAttemptStorage` verwendet getrennt ausschließlich diesen
+festen Key:
+
+```text
+goldendawn.learningHub.testAttempts.v1
+```
+
+Es stellt `loadLearningTestAttempts()` und
+`appendLearningTestAttempt(attempt)` bereit. Ein erfolgreicher Load liefert
+`status: missing` oder `status: found` und den defensiv geklonten Wert in
+`attemptLog`. Ein fehlender Key ergibt schreibfrei einen frischen privaten Log
+mit `schemaVersion: 1`, `dataOrigin: private` und leerem `attempts`-Array. Ein
+erfolgreicher Append liefert `status: appended` und den vollständigen neuen
+defensiv geklonten `attemptLog`.
+
+`LearningTestAttemptStorage` besitzt keinen öffentlichen allgemeinen
+Save-Pfad. Vor dem Schreiben lädt und validiert es den aktuellen vollständigen
+Log und hängt genau einen neuen, validen Attempt an einen unveränderten
+gültigen Präfix. Bestehende Attempts dürfen weder verändert, entfernt noch
+umsortiert werden. Eine doppelte Attempt-ID oder ein abweichender historischer
+Präfix blockiert den Schreibzugriff.
+
+Beide Storages validieren Lese- und Schreibwerte vollständig, klonen sie
+defensiv und akzeptieren im privaten Produktionspfad ausschließlich
+`dataOrigin: private`. Synthetische, beschädigte oder nicht unterstützte Werte
+werden weder gelöscht noch überschrieben oder als private Leerzustände
+ausgegeben. Vor jedem Save beziehungsweise Append liest der Storage seinen
+festen Key erneut. Nur ein fehlender Key oder ein vollständig valider privater
+Bestand erlaubt den Schreibzugriff.
+
+Stabile fachliche Storage-Fehler unterscheiden mindestens ungültige
+Testbankdaten (`invalidLearningTestBankData`), falsche Bankherkunft
+(`privateLearningTestBankRequired`), ungültige Attempt-Logs
+(`invalidLearningTestAttemptLogData`) und falsche Attempt-Herkunft
+(`privateLearningTestAttemptsRequired`) von den bestehenden technischen
+Adapter-, Lese-, Schreib- und Quota-Fehlern. Meldungen geben keine Prompts,
+Optionen, Erklärungen, Antworten, IDs, Rohwerte oder ungefilterten
+Dependency-Fehler weiter. Es gibt keine Console-Ausgaben.
+
+Der Read-Preflight ist keine Transaktion. Zwischen Lesen und Schreiben kann
+sich derselbe Wert ändern; TOCTOU- und Multi-Tab-Rennen werden dadurch nicht
+verhindert. `localStorage` ist unverschlüsselt und für JavaScript derselben
+Origin grundsätzlich lesbar. `dataOrigin` ist nur eine Klassifikation, keine
+Authentifizierung oder technische Geheimhaltungsgrenze. Browser-Quota,
+fehlende Gesamtgrößenlimits, verlorene Änderungen, fehlende Synchronisierung
+und das Löschen des Browserprofils bleiben bekannte Grenzen.
+
+Append-only ist eine Service- und Storage-Regel über vollständig neu
+geschriebene JSON-Snapshots. Es gibt keine kryptografische Verkettung,
+Signatur, Manipulationssperre oder beweisbare Urheberschaft historischer
+Attempts.
+
+#### Reine LearningTestEngine
+
+Die reine Engine exportiert drei Operationen:
+
+| Operation | Wirkung |
+| --- | --- |
+| `selectModuleTestQuestions(learningHub, testBank, moduleId)` | alle Fragen des Moduls nach aktueller Hub-Struktur deterministisch auswählen |
+| `projectPublicTestQuestions(questions)` | defensive öffentliche Fragen ohne Lösung und Erklärung erzeugen |
+| `evaluateLearningTestAnswers(questions, answers)` | vollständige Single-Choice-Antworten mit dem privaten Fragensnapshot auswerten |
+
+Die Auswahl sortiert stabil nach Kapitelposition des aktuellen LearningHubs,
+LearningNode-Position und Frageposition. Optionen werden ausschließlich nach
+ihrer eigenen Position sortiert. Arrayindizes, Zeitstempel und sichtbare Texte
+sind keine Sortierschlüssel. Die Engine verwendet niemals `Math.random`,
+verändert keine Eingabe und besitzt weder Uhr-, ID-, Storage-, Netzwerk- noch
+DOM-Zugriffe.
+
+Eine öffentliche Frage hat exakt diese Form:
+
+```json
+{
+  "id": "question_synthetic_1",
+  "learningNodeId": "node_synthetic_1",
+  "type": "singleChoice",
+  "prompt": "Welche erfundene Markierung zeigt nach Norden?",
+  "difficulty": "easy",
+  "options": [
+    {
+      "id": "option_synthetic_blue",
+      "label": "Die blaue Raute"
+    },
+    {
+      "id": "option_synthetic_gold",
+      "label": "Der goldene Kreis"
+    }
+  ]
+}
+```
+
+`correctOptionId`, `explanation`, Referenzkette, Revision, Positionen und
+Zeitstempel werden vor der Auswertung nicht öffentlich projiziert. Diese
+Reduktion verhindert eine versehentliche Lösungsweitergabe an die spätere
+View, bildet gegenüber lokalem Same-Origin-JavaScript aber keine technische
+Geheimhaltungsgrenze.
+
+Der `LearningTestService` akzeptiert vor dem Engine-Aufruf genau eine bekannte
+Antwort je ausgewählter Frage und weist fehlende, doppelte, zusätzliche und
+unbekannte Fragen oder Optionen ab. Die reine Engine erhält dadurch eine
+vollständige Antwortmenge und vergleicht die Options-IDs strikt. Sie übernimmt
+weder Korrektheitswerte noch Zähler oder Scores vom Aufrufer. Ihr Ergebnis hat
+die Form
+`{ answers, totalQuestionCount, correctAnswerCount, scorePercent }`; die
+einzelnen Antworten entsprechen dem Attempt-Vertrag. Dabei gelten exakt:
+
+```text
+isCorrect = selectedOptionId === correctOptionId
+totalQuestionCount = answers.length
+correctAnswerCount = Anzahl der Antworten mit isCorrect === true
+scorePercent = Math.round(correctAnswerCount / totalQuestionCount * 100)
+```
+
+Fragen und Ergebnisantworten bleiben in der autoritativen Testreihenfolge.
+Nach der Auswertung darf eine Service-Ergebnisprojektion korrekte Option und
+Erklärung als Feedback enthalten; der rohe Fragenbestand wird nicht
+zurückgegeben.
+
+#### LearningTestService und flüchtige Sessions
+
+`LearningTestService` stellt diese öffentlichen Operationen bereit:
+
+| Operation | Fachliche Wirkung |
+| --- | --- |
+| `loadTestBank()` | aktuellen privaten Fragenbestand laden und vollständig gegen den aktuellen Hub prüfen |
+| `createQuestion({ moduleId, chapterId, learningNodeId, prompt, difficulty, options, correctOptionIndex, explanation })` | Single-Choice-Frage am Ende der Fragen desselben LearningNodes erstellen |
+| `updateQuestion({ moduleId, chapterId, learningNodeId, questionId, prompt, difficulty, options, correctOptionIndex, explanation })` | vorhandene Frage ohne unbemerkten Referenzwechsel aktualisieren |
+| `startModuleTest({ moduleId })` | deterministische öffentliche Testsession für ein Modul starten |
+| `submitModuleTest({ testSessionId, answers })` | eingefrorene Session exakt einmal auswerten und Attempt anhängen |
+| `loadAttemptHistory({ moduleId })` | textfreie Attempt-Projektionen eines Moduls in Append-Reihenfolge laden |
+
+Jede Operation lädt zuerst den aktuellen autoritativen LearningHub. Bank und
+Hub werden vollständig validiert; jede gespeicherte Frage muss auf eine
+existierende vollständige Modul-, Kapitel- und LearningNode-Kette zeigen.
+Global vorhandene IDs mit falscher Elternzuordnung und verwaiste Referenzen
+werden kontrolliert abgelehnt und nicht repariert. Eine Frage kann durch
+`updateQuestion` nicht unbemerkt auf einen anderen LearningNode verschoben
+werden. Der Inhaltsservice besitzt keine Rückabhängigkeit auf den Testservice.
+
+Serviceeingaben werden vor Leer- und Längenprüfung an den Rändern getrimmt.
+`options` ist ein Array aus zwei bis sechs Texten; `correctOptionIndex` muss
+exakt auf eine dieser Optionen zeigen. `createQuestion` verwendet die nächste
+freie positive Geschwisterposition des LearningNodes. `updateQuestion` erhält
+Frage-ID, `createdAt` und Position und erhöht `revision` nur bei einer
+tatsächlichen Änderung. Bei identischen normalisierten Eingaben erfolgt ein
+vollständiger No-op ohne ID-, Uhr- oder Schreibzugriff. Unveränderte Optionen
+behalten ihre IDs; ändert sich Optionsinhalt, -reihenfolge oder -anzahl, erhält
+der vollständige Optionssatz neue stabile IDs.
+
+ID-Generator und Uhr sind injizierbar. IDs müssen im jeweiligen vollständigen
+Vertrag eindeutig, nicht leer und bereits getrimmt sein. Kollisionen,
+ungültige Generatorwerte und Generatorfehler sind auf insgesamt fünf Versuche
+begrenzt. Eine erfolgreiche echte Bankmutation validiert den vollständigen
+neuen Bestand und speichert exakt einmal.
+
+Die stabilen Erfolgsstatus und Ergebnisfelder lauten:
+
+| Operation und Fall | `status` | Ergebnisfeld | `changed` |
+| --- | --- | --- | --- |
+| `loadTestBank`, fehlender Key | `empty` | `testBank` | `false` |
+| `loadTestBank`, vorhandene valide Bank | `loaded` | `testBank` | `false` |
+| `createQuestion`, erfolgreich | `questionCreated` | `testBank`, `question` | `true` |
+| `updateQuestion`, tatsächliche Änderung | `questionUpdated` | `testBank`, `question` | `true` |
+| `updateQuestion`, identische normalisierte Eingabe | `questionUnchanged` | `testBank`, `question` | `false` |
+| `startModuleTest`, erfolgreich | `testStarted` | `testSession` | `true` |
+| `submitModuleTest`, erfolgreich persistiert | `testCompleted` | `result` | `true` |
+| `loadAttemptHistory`, keine Attempts des Moduls | `attemptHistoryEmpty` | `attempts` | `false` |
+| `loadAttemptHistory`, vorhandene Attempts | `attemptHistoryLoaded` | `attempts` | `false` |
+
+`testSession` enthält eine defensive öffentliche Fragenprojektion ohne Lösung
+oder Erklärung. `result` enthält sichere Attempt-Metadaten und Feedback nach
+der Auswertung, aber keine Rohstores. `attempts` enthält defensive, textfreie
+Projektionen und bleibt in persistierter Append-Reihenfolge. Jeder Fehler
+verwendet `ok: false`, `changed: false` sowie stabile generische Codes und
+Meldungen; ungefilterte Dependency-Meldungen und private Eingabewerte werden
+nicht weitergereicht.
+
+`startModuleTest` benötigt mindestens eine gültige Frage des Moduls. Erst nach
+allen Validierungen erzeugt es eine lokale Session-ID und genau einen
+kanonischen Startzeitpunkt, friert die autoritative Fragenreihenfolge samt
+Antwortschlüssel im privaten Servicezustand ein und gibt nur die öffentliche
+Projektion zurück. Es schreibt keinen Attempt und verwendet weder
+Zufallsauswahl noch Shuffle. Fehler oder No-ops konsumieren keine ID und keinen
+Zeitstempel.
+
+In-Progress-Sessions werden absichtlich nicht persistiert. Nach einem Reload
+oder einer neuen Serviceinstanz muss der Test neu begonnen werden. Änderungen
+an Hub oder Testbank verändern den bereits eingefrorenen Sessionsnapshot
+nicht. Diese Grenze muss eine spätere UI sichtbar behandeln; Wiederaufnahme
+eines nicht gespeicherten Tests wird nicht versprochen.
+
+`submitModuleTest` akzeptiert ausschließlich `{ questionId,
+selectedOptionId }` für genau jede Sessionfrage und bewertet nur anhand des
+privaten Snapshots. Erst eine vollständige valide Abgabe erzeugt eine
+Attempt-ID und einen kanonischen Abschlusszeitpunkt, konstruiert den
+konsistenten Attempt und ruft `appendLearningTestAttempt` genau einmal auf.
+Die Session wird erst nach erfolgreichem Append entfernt. Ein Speicherfehler
+erhält sie für einen kontrollierten Retry; nach erfolgreichem Abschluss wird
+eine zweite Abgabe derselben Session ohne zweiten Attempt abgelehnt.
+
+`loadAttemptHistory` filtert nur anhand der validierten `moduleId`, sortiert
+nicht nach Zeitstempeln und kopiert weder Fragen-, Options- noch
+LearningNode-Texte. Attempts führen keine Progress-Mutation aus und leiten
+keinen Kompetenzstand ab. Fortschritt, LearningArtifacts und Testkompetenz
+bleiben fachlich getrennt.
+
+Controller, View und `src/main.js` sind noch nicht angebunden. Die Foundation
+ist daher noch keine sichtbare Mock-Test-UI; `v0.2.1` bleibt in Arbeit. Der
+spätere externe Zielpfad lautet weiterhin:
+
+```text
+LearningTestService
+  → SyncService
+  → SyncAgent
+  → TestAgent
+```
+
+Semantische Freitextbewertung, automatische Fragengenerierung, Confidence,
+Hinweise und Testkompetenz beginnen frühestens mit einer späteren
+versionierten Entscheidung. Die lokalen Schema-1-Verträge reservieren dafür
+keine Felder.
 
 #### Lokaler LearningArtifact-Vertrag – Schema 1
 

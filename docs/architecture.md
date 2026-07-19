@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhalts-, Progress- und LearningArtifact-UI implementiert, MVP noch nicht vollständig |
+| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhalts-, Progress- und LearningArtifact-UI sowie LearningTest-Foundation implementiert, MVP noch nicht vollständig |
 | Letzte Aktualisierung | 2026-07-19 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -152,6 +152,10 @@ loadLearningProgress()
 saveLearningProgress(progress)
 loadLearningArtifacts()
 saveLearningArtifacts(artifactStore)
+loadLearningTestBank()
+saveLearningTestBank(testBank)
+loadLearningTestAttempts()
+appendLearningTestAttempt(attempt)
 ```
 
 ### Sync-Service
@@ -484,32 +488,105 @@ kein LRS und beansprucht kein vollständiges Event Sourcing. Multi-Tab-Rennen,
 Browser-Quota, fehlende Verschlüsselung und fehlende Synchronisierung bleiben
 bekannte Grenzen.
 
-Die Inhalts-, Progress- und Artifact-UI-Integrationen verändern
-weder den Schema-2-Inhaltsvertrag noch den Schema-1-Fortschrittsvertrag oder
-deren Storage-Keys. Eine spätere Archivierung muss bestehende Ereignisse und
-Artefaktreferenzen berücksichtigen; dauerhaftes Löschen benötigt zuvor eine
-gesonderte Referenz- und Löschrichtlinie. Testversuche benötigen weiterhin
-einen eigenen Vertrag und Storage-Key. Für LearningHub-Inhalte, Fortschritt und
-Artefakte werden weder Migration noch garantierte Multi-Tab-Synchronisierung
-oder Transaktionssperren eingeführt.
+Die Inhalts-, Progress- und Artifact-UI-Integrationen verändern weder den
+Schema-2-Inhaltsvertrag noch die getrennten Schema-1-Verträge oder deren
+Storage-Keys. Eine spätere Archivierung muss bestehende Ereignisse,
+Artefaktreferenzen, Fragen und Attempts berücksichtigen; dauerhaftes Löschen
+benötigt zuvor eine gesonderte Referenz- und Löschrichtlinie. Für die lokalen
+LearningHub-Stores werden weder Migration noch garantierte
+Multi-Tab-Synchronisierung oder Transaktionssperren eingeführt.
 
-Der weiterhin geplante Testmodus soll diesen ausschließlich lokalen Pfad
-verwenden:
+Die implementierte LearningTest-Foundation verwendet diesen ausschließlich
+lokalen Pfad; View und Controller sind in diesem Arbeitspaket noch nicht
+angebunden:
 
 ```text
-LearningHubView
-  → LearningHubController
-  → LearningTestService
-  → MockLearningTestProvider
+LearningHubView / LearningHubController        noch nicht angebunden
+                    ↓
+LearningTestService
+  ├→ LearningHubService                        Referenzprüfung
+  ├→ LearningTestBankStorage
+  │    → StorageAdapter
+  │    → localStorage
+  ├→ LearningTestAttemptStorage
+  │    → StorageAdapter
+  │    → localStorage
+  └→ LearningTestEngine                        reine Deterministik
 ```
 
-Der noch nicht implementierte `MockLearningTestProvider` soll vorbereitete
-synthetische Fragen deterministisch und testbar liefern. Die spätere Oberfläche
-soll den Ablauf sichtbar als „Lokaler Mock-Test“ kennzeichnen und weder
-KI-Auswertung noch Agentenlogik behaupten. Zunächst sind Single-Choice-,
-Selbstkontroll- oder andere eindeutig auswertbare Aufgaben vorgesehen. Lokale
-Testversuche dürfen nach ihrer späteren Einführung nur über die vorgesehenen
-Service- und Storage-Grenzen gespeichert werden.
+Die reine Engine präzisiert und ersetzt in dieser Foundation den früher
+geplanten `MockLearningTestProvider`-Platzhalter. Die nutzergesteuerte Testbank
+ist nun die getrennte Fragenquelle; die Engine übernimmt ausschließlich
+deterministische Auswahl, öffentliche Projektion und Auswertung. Dadurch wird
+weder eine UI- noch eine Agenten- oder externe Provider-Anbindung vorgezogen.
+
+`LearningTestService` lädt für jede Operation den aktuellen validen privaten
+Hub und prüft vollständige Modul-, Kapitel- und LearningNode-Referenzketten.
+Der Inhaltsservice besitzt keine Rückabhängigkeit auf die Testschichten;
+Contract, Engine, Storages und Service greifen nicht direkt auf
+`localStorage` zu. Der Service stellt `loadTestBank`, `createQuestion`,
+`updateQuestion`, `startModuleTest`, `submitModuleTest` und
+`loadAttemptHistory` bereit. Die Testbank ist ein veränderbarer aktueller Bestand
+nutzergesteuerter Fragen und liegt als `LearningTestBank` mit
+`schemaVersion: 1` unter
+`goldendawn.learningHub.testBank.v1`. Schema 1 unterstützt ausschließlich
+`singleChoice`; jede Frage besitzt zwei bis sechs geordnete Optionen, genau
+eine korrekte Option, eine positive Position innerhalb ihres LearningNodes und
+eine positive Revision. Fragen verweisen stets auf die vollständige Kette
+LearningModule → LearningChapter → LearningNode.
+
+Die reine `LearningTestEngine` bestimmt alle validen Fragen eines Moduls und
+ordnet sie ohne Zufall nach Kapitelposition des aktuellen Hubs,
+LearningNode-Position und Frageposition. Optionen folgen ausschließlich ihrer
+Position. Sie verändert keine Eingabe und besitzt weder Uhr-, ID-, Storage-,
+Netzwerk- noch DOM-Zugriff. Vor der Abgabe enthält die defensive öffentliche
+Testprojektion Prompt, Schwierigkeitsstufe und Optionen, aber weder
+`correctOptionId` noch `explanation`. Single-Choice-Antworten werden mit
+strikter ID-Gleichheit bewertet; der Prozentwert wird ausschließlich mit
+`Math.round` berechnet.
+
+`startModuleTest` friert nach vollständiger Validierung eine private Session
+mit der autoritativen Reihenfolge und dem Antwortschlüssel im Servicezustand
+ein, schreibt aber noch keinen Attempt. In-Progress-Sessions bleiben bewusst
+flüchtig; nach einem Reload muss der Test neu begonnen werden. Änderungen an
+der Bank beeinflussen eine bereits gestartete Session nicht. Bei
+`submitModuleTest` werden fehlende, doppelte, zusätzliche und unbekannte
+Fragen oder Optionen kontrolliert abgelehnt. Erst eine vollständige gültige
+Abgabe erzeugt genau einen konsistenten Attempt; die Session wird erst nach
+erfolgreicher Persistenz entfernt und kann danach nicht doppelt gespeichert
+werden.
+
+Abgeschlossene Versuche verwenden den getrennten append-only
+`LearningTestAttemptLog` mit `schemaVersion: 1` unter
+`goldendawn.learningHub.testAttempts.v1`. Die persistierte Arrayreihenfolge ist
+autoritativ und wird nicht anhand von Zeitstempeln sortiert. Ein Attempt
+speichert Referenz-IDs, Fragenrevisionen, ausgewählte und korrekte Options-ID,
+Korrektheitswert sowie konsistente Zähler und Prozentwerte, aber keine Fragen-,
+Options- oder LearningNode-Texte. `LearningTestAttemptStorage` darf nur genau
+einen neuen Attempt an einen unveränderten gültigen Präfix anhängen und bietet
+keinen allgemeinen öffentlichen Überschreibpfad für historische Attempts.
+
+LearningHub-Inhalt, Kapitelprogress, LearningArtifacts, Testbank und Attempts
+bleiben getrennte Verträge und Persistenzlebenszyklen. Ein abgeschlossener
+Modulfortschritt wird nicht als Testkompetenz interpretiert; die lokale
+Foundation leitet noch keinen Kompetenzstand ab. Confidence, Hinweise,
+Freitext-Rubriken, semantische Freitextbewertung und Testkompetenz sind nur
+mögliche spätere versionierte Erweiterungen. Schema 1 reserviert dafür keine
+Felder.
+
+Beide Test-Storages verwenden Read-Preflights und akzeptieren im privaten Pfad
+nur `dataOrigin: private`. Fehlende Keys liefern schreibfrei frische private
+Leerzustände; synthetische, beschädigte oder nicht unterstützte Bestände werden
+nicht überschrieben. Preflights sind keine Transaktionen und verhindern weder
+TOCTOU- noch Multi-Tab-Rennen. Browser-Quota, unverschlüsselter
+Same-Origin-Zugriff und fehlende Synchronisierung bleiben Grenzen.
+Append-only ist eine Service- und Storage-Regel über vollständig neu
+geschriebene JSON-Snapshots, keine kryptografische Manipulationssperre.
+
+Die spätere Oberfläche muss diesen Ablauf sichtbar als „Lokaler Mock-Test“
+kennzeichnen und darf weder KI-Auswertung noch Agentenlogik behaupten. Weil
+Controller-, View- und `src/main.js`-Anbindung noch fehlen, bleibt `v0.2.1` in
+Arbeit.
 
 Der spätere Zielpfad bleibt:
 
@@ -583,7 +660,7 @@ Die konkreten Aktionen, Payloads und Antwortdaten werden verbindlich in
 `docs/data-contracts.md` definiert. Dieses Dokument legt nur den gemeinsamen
 Umschlag und die Verantwortungsgrenzen fest.
 
-## Ablauf eines Lerntests
+## Späterer verbundener Ablauf eines Lerntests
 
 ```mermaid
 sequenceDiagram
@@ -659,16 +736,22 @@ src/
 │   └── learning-hub/
 │       ├── learningArtifactContract.js
 │       ├── learningProgressContract.js
-│       └── learningProgressProjection.js
+│       ├── learningProgressProjection.js
+│       ├── learningTestAttemptContract.js
+│       ├── learningTestBankContract.js
+│       └── learningTestEngine.js
 ├── services/
 │   ├── learningArtifactService.js
 │   ├── learningHubService.js
 │   ├── learningProgressService.js
+│   ├── learningTestService.js
 │   └── syncService.js
 ├── storage/
 │   ├── learningArtifactStorage.js
 │   ├── learningHubStorage.js
 │   ├── learningProgressStorage.js
+│   ├── learningTestAttemptStorage.js
+│   ├── learningTestBankStorage.js
 │   └── storageAdapter.js
 ├── contracts/
 ├── data/
@@ -700,7 +783,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | --- | --- |
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
-| `v0.2.1` | In Arbeit: Inhalts-, Progress- und LearningArtifact-Pfade bis zur bedienbaren UI umgesetzt; der lokale Mock-Test folgt |
+| `v0.2.1` | In Arbeit: Inhalts-, Progress- und LearningArtifact-Pfade bis zur bedienbaren UI sowie lokale LearningTest-Foundation umgesetzt; Mock-Test-UI folgt |
 | `v0.2.2` | LichtwaldLog Local MVP ohne Synchronisierung oder Agentenlogik |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
@@ -730,6 +813,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0008](decisions/0008-learning-hub-local-content-persistence.md) | Lokale LearningHub-Inhaltsverwaltung und -Persistenz | Angenommen |
 | [0009](decisions/0009-append-only-learning-progress-events.md) | Separater Lernfortschritt als append-only Ereignislog | Angenommen |
 | [0010](decisions/0010-learning-artifacts-for-notes-and-summaries.md) | Getrennte LearningArtifacts für Notizen und Zusammenfassungen | Angenommen |
+| [0011](decisions/0011-local-deterministic-learning-test-foundation.md) | Lokale deterministische LearningTest-Foundation | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).

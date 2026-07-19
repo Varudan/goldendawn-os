@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; LearningArtifact-UI berücksichtigt |
+| Status | Verbindliche Sicherheitsbasis; LearningArtifact-UI und lokale LearningTest-Foundation berücksichtigt |
 | Letzte Aktualisierung | 2026-07-19 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
@@ -128,6 +128,9 @@ wird.
 - Ein fachlich append-only geführter Log ist in `localStorage` technisch ein
   überschreibbarer JSON-Snapshot. Append-only ersetzt weder kryptografische
   Integrität noch eine Signatur oder Manipulationssperre.
+- Ein Read-Preflight unmittelbar vor dem Schreiben ist keine Transaktion. Er
+  verhindert weder Änderungen zwischen Prüfung und Save noch TOCTOU- oder
+  Multi-Tab-Rennen.
 - Lokale Browserdaten sind keine Cloud-Sicherung, keine geräteübergreifende
   Synchronisierung und kein Schutz vor dem Löschen des Browserprofils.
 - Eine spätere Browser-Authentifizierung benötigt eine eigene serverseitige
@@ -171,9 +174,9 @@ Controller greifen nicht direkt auf `localStorage` zu.
   lokal und übertragen keine Daten an Webhooks, Agenten, Airtable oder andere
   Netzwerke.
 - Private LearningModules, Kapitel, LearningNodes, Lernnotizen,
-  Zusammenfassungen und spätere lokale Testversuche werden weder in das
-  Repository übernommen noch in öffentlichen Demo-Daten oder unnötigen Logs
-  verwendet.
+  Zusammenfassungen, Testfragen, Erklärungen, Antworten und Attempts werden
+  weder in das Repository übernommen noch in öffentlichen Demo-Daten oder
+  unnötigen Logs verwendet.
 - Der Demo-Hub verwendet ausschließlich unabhängig erfundene synthetische
   Inhalte mit `dataOrigin: synthetic`. Private Nutzerdaten tragen
   `dataOrigin: private` und verwenden getrennte Datenquellen. Die Demo wird
@@ -199,6 +202,27 @@ Controller greifen nicht direkt auf `localStorage` zu.
   Read-Preflight desselben Keys blockiert jeden Save über einen vorhandenen
   synthetischen, beschädigten, nicht unterstützten oder nicht sicher lesbaren
   Bestand; er ist keine Transaktions- oder Multi-Tab-Sperre.
+- Die LearningTest-Foundation verwendet zwei weitere getrennte feste Keys:
+  `goldendawn.learningHub.testBank.v1` für den veränderbaren privaten
+  Fragenbestand und `goldendawn.learningHub.testAttempts.v1` für
+  abgeschlossene append-only Attempts. Beide Verträge verwenden unabhängig
+  `schemaVersion: 1`; sie erweitern weder Inhalt, Progress noch Artifacts.
+- Beide Test-Storages akzeptieren im privaten Pfad ausschließlich
+  `dataOrigin: private`. Fehlende Keys liefern schreibfrei frische private
+  Leerzustände. Synthetische, beschädigte und nicht unterstützte Bestände
+  bleiben unangetastet und werden nicht automatisch importiert, gelöscht oder
+  überschrieben. Lese-, Schreib- und Rückgabewerte werden defensiv geklont und
+  vollständig validiert.
+- Vor jedem Bank-Save beziehungsweise Attempt-Append liest der fachliche
+  Storage seinen festen Key erneut. Dieser Preflight blockiert erkennbare
+  falsche Herkunft und beschädigte Daten, bietet aber keine Transaktion:
+  Änderungen zwischen Prüfung und Schreiben sowie TOCTOU- und Multi-Tab-Rennen
+  bleiben möglich.
+- `LearningTestAttemptStorage` bietet keinen allgemeinen öffentlichen
+  Überschreibpfad. Es darf nur genau einen neuen Attempt an einen unveränderten
+  gültigen Präfix hängen. Diese append-only Regel beweist weder Urheberschaft
+  noch Unveränderlichkeit; derselbe Origin-Speicher bleibt technisch
+  überschreibbar und besitzt keine kryptografische Verkettung oder Signatur.
 - Der `LearningHubService` trimmt Eingabetexte vor der Längenprüfung und
   begrenzt Titel auf 120 sowie LearningNode-Inhalte auf 10.000 Zeichen. Diese
   Eingabegrenzen reduzieren versehentlich übergroße einzelne Werte, ersetzen
@@ -206,20 +230,51 @@ Controller greifen nicht direkt auf `localStorage` zu.
   vollständigen Hubs. Der persistierte Vertrag bleibt bei
   `schemaVersion: 2`; Schema 3 wird dadurch nicht eingeführt.
 - Fehlermeldungen und Logs enthalten keine privaten Titel, LearningNode-Texte,
-  Artefakttexte, Artefakt- oder Referenz-IDs, Referenzketten, Zeitstempel,
-  vollständigen Fortschrittslogs oder sonstigen Rohdaten. Rohe `DOMException`-
-  und Storage-Fehler werden nicht unkontrolliert an höhere Schichten
-  weitergereicht.
+  Artefakttexte, Testfragen, Optionslabel, Erklärungen, Antworten, Artefakt-,
+  Test- oder Referenz-IDs, Referenzketten, Zeitstempel, vollständigen
+  Fortschritts- oder Attempt-Logs oder sonstigen Rohdaten. Rohe
+  `DOMException`- und Dependency-Fehler werden nicht unkontrolliert an höhere
+  Schichten weitergereicht; die Foundation erzeugt keine Console-Ausgaben.
 - Die Oberfläche weist sichtbar darauf hin, dass Inhalte, Fortschritt, Notizen
   und Zusammenfassungen nur im aktuellen Browserprofil ohne Cloud-Sicherung
   oder geräteübergreifende Synchronisierung liegen und von anderen Skripten
   derselben Origin grundsätzlich aus dem unverschlüsselten `localStorage`
   gelesen werden könnten. Sie behauptet weder Echtzeit- noch
   Multi-Tab-Konsistenz.
+- Die spätere Mock-Test-UI muss denselben Hinweis auf Testfragen und Attempts
+  erweitern. Die Foundation selbst besitzt noch keine Controller-, View- oder
+  `src/main.js`-Anbindung und darf deshalb nicht als bereits sichtbarer
+  „Lokaler Mock-Test“ dargestellt werden.
 - Schema 2 speichert keine Abschluss- oder Fortschrittsdaten. Kapitelabschluss
   und daraus abgeleiteter Modulfortschritt verwenden den separaten
   LearningProgress-Schema-1-Vertrag; Testkompetenz bleibt ein davon getrenntes
   Konzept.
+- Die LearningTestBank unterstützt in Schema 1 ausschließlich
+  nutzerkonfigurierte Single-Choice-Fragen mit zwei bis sechs Optionen und
+  vollständigen Modul-, Kapitel- und LearningNode-Referenzen. Vor jeder
+  Operation validiert der Service den aktuellen Hub und die vollständige Bank;
+  verwaiste oder falsch zugeordnete Referenzen werden nicht repariert oder
+  überschrieben.
+- Die öffentliche Testprojektion entfernt vor der Abgabe
+  `correctOptionId` und `explanation`. Das reduziert versehentliche
+  Lösungsweitergabe an die spätere View, schützt aber nicht vor anderem
+  JavaScript derselben Origin, das lokalen Speicher oder Servicezustand lesen
+  kann.
+- Laufende Sessions halten den vollständigen Antwortschlüssel ausschließlich
+  im privaten Speicher der Serviceinstanz und werden nicht persistiert. Nach
+  einem Reload muss der Test neu begonnen werden. Erst eine vollständige
+  valide Abgabe hängt genau einen Attempt an; nach erfolgreichem Append wird
+  eine Doppelsubmission derselben Session ohne zweiten Schreibzugriff
+  abgelehnt.
+- Attempts kopieren keine Fragen-, Options-, Erklärungs- oder LearningNode-
+  Texte. Referenz-IDs, ausgewählte und korrekte Options-IDs, Fragenrevisionen
+  und Zeitstempel bleiben dennoch private Nutzungsmetadaten und dürfen nicht
+  unnötig dargestellt oder protokolliert werden.
+- Ein lokaler Score verändert weder Kapitelprogress noch LearningArtifacts und
+  wird nicht als Testkompetenz ausgegeben. Confidence, Hinweise,
+  Freitext-Rubriken, semantische Freitextbewertung und Kompetenzstände sind nur
+  mögliche spätere versionierte Erweiterungen; Schema 1 reserviert dafür keine
+  Felder.
 - Der getrennte LearningArtifact-Schema-1-Vertrag speichert ausschließlich
   stabile Modul-, Kapitel- und LearningNode-Referenz-IDs, den privaten
   Artefakttext sowie Erstellungs- und Änderungszeitpunkt. Er kopiert keine
@@ -277,15 +332,18 @@ Controller greifen nicht direkt auf `localStorage` zu.
   Löschen von Modulen oder Kapiteln benötigt vor der Implementierung eine
   gesonderte Referenz- und Löschrichtlinie; verknüpfte Ereignisse dürfen nicht
   stillschweigend entfernt oder verwaist werden.
-- Der noch nicht implementierte Mock-Test soll lokal und deterministisch mit
-  vorbereiteten Fragen arbeiten. Er muss sichtbar als **„Lokaler Mock-Test“**
-  gekennzeichnet werden und darf weder eine KI-Auswertung noch eine semantische
-  Freitextbewertung behaupten.
+- Die implementierte LearningTest-Foundation arbeitet lokal und
+  deterministisch mit nutzerkonfigurierten Single-Choice-Fragen. Sie verwendet
+  keine KI, keinen `TestAgent`, keine Freitextbewertung und keine externe
+  Kommunikation. Erst die spätere UI muss sie sichtbar als
+  **„Lokaler Mock-Test“** kennzeichnen und darf keine darüber hinausgehende
+  Funktion behaupten.
 - Die Artifact-Foundation speichert Notizen und Zusammenfassungen bereits
   ausschließlich hinter Controller-, Service- und Storage-Adapter-Grenzen. Die
-  implementierte View greift nicht direkt auf `localStorage` zu. Testversuche
-  benötigen nach ihrer Einführung ebenfalls einen eigenen Service- und
-  Storage-Pfad.
+  implementierte View greift nicht direkt auf `localStorage` zu. Testbank und
+  Attempts liegen ebenfalls ausschließlich hinter Service-, fachlichen
+  Storage- und `StorageAdapter`-Grenzen; Controller und View sind dafür noch
+  nicht angebunden.
 - Der lokale MVP garantiert noch keine Multi-Tab-Konsistenz und verwendet keine
   Transaktionssperre. Gleichzeitige Änderungen in mehreren Tabs können sich
   überholen; Browser-Quota, fehlende Verschlüsselung und fehlende
@@ -299,9 +357,10 @@ Persistenz-Namespace. Der Fortschrittsvertrag verwendet unabhängig
 Service und Storage für private Inhalte sowie Vertrag, Projektion, Service und
 Storage einschließlich der zugänglichen Progress-UI sind implementiert. Für
 Notizen und Zusammenfassungen sind Vertrag, Service, Storage, Controller-
-Anbindung und sichere lokale UI implementiert. Der lokale Mock-Test
-einschließlich seiner lokalen Testversuche ist noch nicht umgesetzt;
-`v0.2.1` bleibt in Arbeit.
+Anbindung und sichere lokale UI implementiert. Für LearningTest sind Bank- und
+Attempt-Vertrag, getrennte private Storages, reine Engine und
+referenzprüfender Service implementiert. Controller-, View- und
+`src/main.js`-Anbindung fehlen weiterhin; deshalb bleibt `v0.2.1` in Arbeit.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
@@ -324,6 +383,10 @@ einschließlich seiner lokalen Testversuche ist noch nicht umgesetzt;
   Zusammenfassungen als nicht vertrauenswürdigen Klartext und gibt sie
   ausschließlich über `textContent`, Formularwert-Eigenschaften oder
   gleichwertige sichere DOM-Erzeugung aus.
+- Eine spätere LearningTest-UI muss Fragen, Optionen, Erklärungen und Feedback
+  ebenso als nicht vertrauenswürdigen Klartext behandeln und darf die vor der
+  Abgabe ausgeblendeten Lösungen nicht aus internen Stores nachladen oder
+  rendern.
 - `innerHTML` wird für Nutzereingaben und Agentenoutput nicht verwendet.
 - Markdown oder Rich Text benötigt vor HTML-Ausgabe eine dokumentierte
   Sanitization-Lösung.
@@ -574,7 +637,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | --- | --- |
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
-| `v0.2.1` | sichere lokale Inhalts-, Progress- und LearningArtifact-UI; validierte private Persistenz ohne Demo-Seeding, kontrollierte Referenzprüfung, sichere UI-Projektion und isolierte Retry-/Fehlerzustände; später deterministischer lokaler Mock-Test einschließlich lokaler Testversuche |
+| `v0.2.1` | sichere lokale Inhalts-, Progress- und LearningArtifact-UI; validierte private LearningTestBank und append-only Attempts ohne Demo-Seeding, deterministische lösungsfreie Testprojektion, flüchtige Sessions und kontrollierte Referenzprüfung; sichere Mock-Test-UI noch ausstehend |
 | `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
 | `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |

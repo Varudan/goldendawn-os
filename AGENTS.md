@@ -43,8 +43,11 @@ bedienbare Oberfläche für Kapitelabschluss und Modulfortschritt sind ebenfalls
 umgesetzt. Der getrennte LearningArtifact-Vertrag, seine private lokale
 Persistenz und sein referenzprüfender Service sind über den vorhandenen
 `LearningHubController` und die `LearningHubView` als lokale Notizen und
-Zusammenfassungen bedienbar. Nur der lokale Mock-Test bleibt für diesen
-Meilenstein offen; `v0.2.1` ist deshalb noch nicht abgeschlossen.
+Zusammenfassungen bedienbar. Die getrennte lokale LearningTest-Foundation aus
+Testbank, append-only Attempts, reiner deterministischer Engine und
+referenzprüfendem Service ist ebenfalls umgesetzt. Nur ihre Anbindung an
+`LearningHubController` und `LearningHubView` als sichtbarer lokaler Mock-Test
+bleibt offen; `v0.2.1` ist deshalb noch nicht abgeschlossen.
 
 Noch nicht Teil von `v0.2.0` sind:
 
@@ -107,19 +110,30 @@ dokumentiert wurde.
 - Private Lerninhalte und synthetische Portfolio-Demos bleiben klar getrennt.
   Öffentliche Beispieldaten dürfen keine privaten Inhalte ableiten oder
   nachbilden.
-- Der lokale Testfluss lautet exakt:
+- Der implementierte lokale Foundation-Fluss lautet, solange View und
+  Controller noch nicht angebunden sind:
 
 ```text
-LearningHubView
-  → LearningHubController
-  → LearningTestService
-  → MockLearningTestProvider
+LearningHubView / LearningHubController        noch nicht angebunden
+                    ↓
+LearningTestService
+  ├→ LearningHubService                        Referenzprüfung
+  ├→ LearningTestBankStorage
+  │    → StorageAdapter
+  │    → localStorage
+  ├→ LearningTestAttemptStorage
+  │    → StorageAdapter
+  │    → localStorage
+  └→ LearningTestEngine                        reine Deterministik
 ```
 
-Der `MockLearningTestProvider` arbeitet lokal, deterministisch und ausschließlich
-mit synthetischen Testdaten. Die Oberfläche kennzeichnet diesen Zustand sichtbar
-als `Lokaler Mock-Test`; er verwendet keine KI und darf nicht als KI-Test
-beschrieben werden. Der spätere externe Testfluss lautet:
+Die `LearningTestEngine` arbeitet rein und deterministisch mit den vollständig
+validierten Fragen der getrennten LearningTestBank. Automatisierte Tests
+verwenden ausschließlich unabhängig erfundene synthetische Inhalte; private
+Produktionsfragen werden nicht als Demo-Daten bereitgestellt. Die spätere
+Oberfläche kennzeichnet diesen Zustand sichtbar als `Lokaler Mock-Test`; er
+verwendet keine KI und darf nicht als KI-Test beschrieben werden. Der spätere
+externe Testfluss lautet:
 
 ```text
 LearningTestService
