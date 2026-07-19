@@ -14,7 +14,7 @@
 | LearningArtifact-Schema | `1` |
 | LearningArtifact-Persistenznamespace | `v1` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale PromptVault-, LearningHub-Inhalts- und Progress-Verträge sowie LearningArtifact-Foundation ohne UI implementiert; Sync-Vertrag als Zielzustand dokumentiert |
+| Status | Lokale PromptVault-, LearningHub-Inhalts-, Progress- und LearningArtifact-Verträge einschließlich bedienbarer UI implementiert; Sync-Vertrag als Zielzustand dokumentiert |
 | Letzte Aktualisierung | 2026-07-19 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
@@ -31,12 +31,13 @@ lokale Persistenz sind ebenfalls implementiert und über den vorhandenen
 Controller und die View bedienbar. Die UI-Integration verändert keinen der
 beiden Verträge. Zusätzlich sind der getrennte LearningArtifact-Schema-1-
 Vertrag, sein privater lokaler Storage und sein referenzprüfender Service
-implementiert. Diese Foundation ist noch nicht an Controller, View oder
-`src/main.js` angebunden. Der vollständige LearningHub Local MVP ist weiterhin
-in Arbeit. Die externen Sync- und Agentenverträge beschreiben den geplanten
-Zielzustand späterer Versionen. Solange eine externe Aktion noch nicht
-implementiert ist, muss sie in UI und Dokumentation als geplant gekennzeichnet
-bleiben.
+implementiert und über den vorhandenen Controller sowie die View bedienbar.
+Die UI-Integration verändert den LearningArtifact-Vertrag nicht. Der
+vollständige LearningHub Local MVP ist weiterhin in Arbeit, weil der lokale
+Mock-Test offen bleibt. Die externen Sync- und Agentenverträge beschreiben den
+geplanten Zielzustand späterer Versionen. Solange eine externe Aktion noch
+nicht implementiert ist, muss sie in UI und Dokumentation als geplant
+gekennzeichnet bleiben.
 
 ## Vertragsgrenzen der lokalen Module v0.2.1 und v0.2.2
 
@@ -88,8 +89,10 @@ Die ebenfalls implementierte LearningArtifact-Foundation umfasst
 `createLearningArtifactStorage`. Sie speichert aktuelle private Notizen und
 Zusammenfassungen getrennt von Inhalt und Fortschritt. Der Artifact-Service
 prüft Referenzen über `LearningHubService`; der Inhaltsservice besitzt keine
-Rückabhängigkeit. Controller, View und `src/main.js` sind in diesem
-Foundation-Schritt bewusst noch nicht angebunden.
+Rückabhängigkeit. `src/main.js` injiziert ihn in den vorhandenen
+`LearningHubController`; die `LearningHubView` macht aktuelle Notizen und
+Zusammenfassungen lokal bedienbar. Es gibt keinen separaten
+LearningArtifact-Controller.
 
 Davon getrennt bleibt der lokale Mock-Testfluss geplant:
 
@@ -383,21 +386,26 @@ Prüfung benötigt den aktuellen Inhaltsstand und liegt im
 ##### Datenfluss, Service und Referenzintegrität
 
 ```text
-LearningArtifactService
-  ├→ LearningHubService
-  │   → LearningHubStorage
-  │   → StorageAdapter
-  │
-  └→ LearningArtifactStorage
-      → StorageAdapter
-      → localStorage
+LearningHubView
+  → LearningHubController
+  → LearningArtifactService
+      ├→ LearningHubService
+      │   → LearningHubStorage
+      │   → StorageAdapter
+      │
+      └→ LearningArtifactStorage
+          → StorageAdapter
+          → localStorage
 ```
 
 `LearningArtifactService` verwendet `LearningHubService` ausschließlich zum
 Laden des aktuellen privaten Inhaltsstands und zur Referenzprüfung. Der
 Inhaltsservice besitzt keine Rückabhängigkeit auf den Artifact-Service; eine
-zirkuläre Service-Abhängigkeit entsteht nicht. Controller, View und
-`src/main.js` sind in diesem Foundation-Schritt noch nicht angebunden.
+zirkuläre Service-Abhängigkeit entsteht nicht. `src/main.js` injiziert den
+Service in den vorhandenen Controller, der der View nur eine defensiv geprüfte
+Projektion aktueller Notiz- und Zusammenfassungstexte übergibt. Ein eigener
+Artifact-Controller entsteht nicht; Artefakt-IDs, Referenzketten und
+Zeitstempel gehören nicht zum UI-Vertrag.
 
 Der Service stellt diese öffentlichen Operationen bereit:
 
@@ -464,6 +472,34 @@ grundsätzlich keine ID oder Uhrabfrage. Sie entfernen nur den exakt
 referenzierten Typ, erhalten das andere Artefakt desselben LearningNodes und
 verändern die Reihenfolge aller übrigen Artefakte nicht. Auch ein bereits leerer
 Typ bleibt ohne Schreibzugriff.
+
+##### UI-Projektion, No-ops und Fehlerisolation
+
+Der `LearningHubController` akzeptiert beim Laden ausschließlich `empty` und
+`loaded`. Für Speichermutationen akzeptiert er `artifactCreated` und
+`artifactUpdated` mit `changed: true` sowie `artifactUnchanged` mit
+`changed: false`. Clear-Mutationen verwenden `artifactCleared` mit
+`changed: true` oder `artifactAlreadyEmpty` mit `changed: false`. Andere oder
+widersprüchliche Status-/Changed-Kombinationen gelten nicht als Erfolg.
+
+Die UI verbindet Artefakte ausschließlich über die stabile Auswahl des
+aktuellen LearningNodes. Sie erhält defensiv geprüfte aktuelle Texte für
+`note` und `summary`, nicht den rohen Store, Artefakt-IDs, Referenzketten oder
+Zeitstempel. Nutzertext wird nur über `textContent`, Formularwert-Eigenschaften
+oder gleichwertige sichere DOM-Erzeugung ausgegeben.
+
+Ein isolierter Ladefehler markiert Artefakte als nicht verfügbar, deaktiviert
+ihre Mutationen und bietet `loadArtifacts` als nicht destruktiven Retry an;
+Inhalte und Fortschritt bleiben bedienbar. Mutationsfehler behalten die letzte
+valide Projektion und den eingegebenen Text. Erfolgreiche No-ops werden als
+Hinweis sichtbar und lösen keinen zusätzlichen Save aus.
+
+Das Leeren einer vorhandenen Notiz oder Zusammenfassung benötigt eine
+zugängliche Inline-Bestätigung. Abbrechen verändert weder Projektion noch
+Storage; Bestätigen ruft ausschließlich die passende Clear-Operation auf.
+Blockierende Browserdialoge werden nicht verwendet. Busy-Zustände verhindern
+parallele Artefaktmutationen, und der Fokus wird nach Erfolg, No-op oder Fehler
+zum betroffenen Editor oder zur auslösenden Aktion zurückgeführt.
 
 Wichtige stabile Service-Fehlercodes sind:
 
@@ -535,8 +571,9 @@ grundsätzlich zugänglich. Die lokale Ablage ist keine Cloud-Sicherung und kein
 geräteübergreifende Synchronisierung; Browserdaten können gelöscht werden.
 Browser-Quota, Multi-Tab-Rennen und fehlende Transaktionssperren bleiben
 Grenzen. Die 10.000-Zeichen-Grenze gilt je Artefakt und ersetzt keine
-Gesamtgrößenbegrenzung des Stores. Eine spätere UI muss private Artefakttexte
-über `textContent` oder gleichwertige sichere DOM-Erzeugung ausgeben.
+Gesamtgrößenbegrenzung des Stores. Die implementierte UI gibt private
+Artefakttexte über `textContent`, Formularwert-Eigenschaften oder gleichwertige
+sichere DOM-Erzeugung aus.
 
 Schema 1 enthält keine Artefakt-Versionshistorie. Eine spätere Historie,
 Migration, Import/Export, Synchronisierung sowie Archivierungs- oder

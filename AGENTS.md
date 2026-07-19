@@ -40,8 +40,11 @@ Inhaltsservices und Persistenz sowie `LearningHubController` und die lokale
 Inhaltsoberfläche für Module, Kapitel und LearningNodes sind umgesetzt. Der
 getrennte Fortschrittsvertrag, seine Persistenz und Projektion sowie die
 bedienbare Oberfläche für Kapitelabschluss und Modulfortschritt sind ebenfalls
-umgesetzt. Notizen, Zusammenfassungen und der lokale Mock-Test bleiben offen;
-`v0.2.1` ist deshalb noch nicht abgeschlossen.
+umgesetzt. Der getrennte LearningArtifact-Vertrag, seine private lokale
+Persistenz und sein referenzprüfender Service sind über den vorhandenen
+`LearningHubController` und die `LearningHubView` als lokale Notizen und
+Zusammenfassungen bedienbar. Nur der lokale Mock-Test bleibt für diesen
+Meilenstein offen; `v0.2.1` ist deshalb noch nicht abgeschlossen.
 
 Noch nicht Teil von `v0.2.0` sind:
 
@@ -98,8 +101,9 @@ dokumentiert wurde.
   Inhaltsvertrag getrennten Fortschrittsvertrag und sind lokal bedienbar.
   Testkompetenz bleibt ein eigenes späteres Konzept. 100-%-Module bleiben
   erhalten und bedienbar sowie später testbar.
-- Lokale Notizen und Zusammenfassungen gehören zum LearningHub-MVP und bleiben
-  hinter den vorgesehenen Service- und Storage-Grenzen.
+- Lokale Notizen und Zusammenfassungen gehören zum LearningHub-MVP, sind über
+  den vorhandenen Controller und die View bedienbar und bleiben hinter den
+  vorgesehenen Service- und Storage-Grenzen.
 - Private Lerninhalte und synthetische Portfolio-Demos bleiben klar getrennt.
   Öffentliche Beispieldaten dürfen keine privaten Inhalte ableiten oder
   nachbilden.

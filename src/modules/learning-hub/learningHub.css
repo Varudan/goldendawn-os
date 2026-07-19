@@ -28,6 +28,17 @@
 .learning-hub-node-card__header,
 .learning-hub-node-card__actions,
 .learning-hub-node-detail,
+.learning-hub-artifacts,
+.learning-hub-artifacts__header,
+.learning-hub-artifact-grid,
+.learning-hub-artifact-card,
+.learning-hub-artifact-card__header,
+.learning-hub-artifact-card__actions,
+.learning-hub-artifact-form,
+.learning-hub-artifact-form__field,
+.learning-hub-artifact-form__actions,
+.learning-hub-artifact-confirmation,
+.learning-hub-artifact-confirmation__actions,
 .learning-hub-form,
 .learning-hub-form > *,
 .learning-hub-form__header,
@@ -49,6 +60,11 @@
 .learning-hub-chapter__actions,
 .learning-hub-node-card__header,
 .learning-hub-node-card__actions,
+.learning-hub-artifacts__header,
+.learning-hub-artifact-card__header,
+.learning-hub-artifact-card__actions,
+.learning-hub-artifact-form__actions,
+.learning-hub-artifact-confirmation__actions,
 .learning-hub-form__header,
 .learning-hub-form__actions {
   flex-wrap: wrap;
@@ -533,6 +549,226 @@
   color: var(--text);
 }
 
+.learning-hub-artifacts {
+  margin-top: var(--s4);
+  padding-top: var(--s3);
+  border-top: 1px solid #4b594f;
+}
+
+.learning-hub-artifacts__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.learning-hub-artifacts__header h5,
+.learning-hub-artifact-card h6 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.learning-hub-artifacts__header h5 {
+  color: var(--gold-soft);
+  font-size: 1.05rem;
+}
+
+.learning-hub-artifacts__header p {
+  max-width: 30rem;
+  font-size: .78rem;
+  text-align: right;
+}
+
+.learning-hub-artifacts__load-state {
+  margin-top: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: rgb(6 15 11 / 32%);
+  overflow-wrap: anywhere;
+}
+
+.learning-hub-artifacts__load-state--error {
+  border-color: rgb(217 130 117 / 38%);
+  color: #f3b7ad;
+  background: rgb(117 52 45 / 18%);
+}
+
+.learning-hub-artifacts__load-state--error .button {
+  margin-top: var(--s2);
+}
+
+.learning-hub-artifact-grid {
+  margin-top: var(--s3);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+}
+
+.learning-hub-artifact-card {
+  padding: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: rgb(6 15 11 / 30%);
+}
+
+.learning-hub-artifact-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.learning-hub-artifact-card h6 {
+  color: var(--text);
+  font-size: .95rem;
+}
+
+.learning-hub-artifact-card__availability {
+  flex: none;
+  padding: .25rem .5rem;
+  border: 1px solid rgb(213 173 92 / 24%);
+  border-radius: 999px;
+  color: var(--gold-soft);
+  background: rgb(213 173 92 / 10%);
+  font-size: .65rem;
+  font-weight: 700;
+}
+
+.learning-hub-artifact-card__content,
+.learning-hub-artifact-card__empty {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.learning-hub-artifact-card__content {
+  color: var(--text);
+}
+
+.learning-hub-artifact-card__empty {
+  font-size: .82rem;
+}
+
+.learning-hub-artifact-card__actions,
+.learning-hub-artifact-form__actions,
+.learning-hub-artifact-confirmation__actions {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s2);
+}
+
+.learning-hub-artifact-card__actions {
+  margin-top: auto;
+}
+
+.learning-hub-artifact-form {
+  display: grid;
+  gap: var(--s3);
+}
+
+.learning-hub-artifact-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+
+.learning-hub-artifact-form__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  color: var(--text);
+  font-size: .84rem;
+  font-weight: 700;
+}
+
+.learning-hub-artifact-form__requirement {
+  color: var(--muted);
+  font-size: .64rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.learning-hub-artifact-form__control {
+  min-height: 11rem;
+}
+
+.learning-hub-artifact-form__hint {
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.5;
+}
+
+.learning-hub-artifact-form__field-error {
+  color: #f3b7ad;
+  font-size: .76rem;
+}
+
+.learning-hub-artifact-form__draft-status {
+  color: var(--muted);
+  font-size: .72rem;
+}
+
+.learning-hub-artifact-feedback {
+  padding: var(--s2);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  font-size: .78rem;
+  overflow-wrap: anywhere;
+}
+
+.learning-hub-artifact-feedback--success {
+  border-color: rgb(115 182 142 / 32%);
+  color: #b9dfc7;
+  background: rgb(74 139 96 / 13%);
+}
+
+.learning-hub-artifact-feedback--error {
+  border-color: rgb(217 130 117 / 38%);
+  color: #f3b7ad;
+  background: rgb(117 52 45 / 18%);
+}
+
+.learning-hub-artifact-confirmation {
+  margin: 0;
+  padding: var(--s3);
+  max-width: 100%;
+  border: 1px solid rgb(217 130 117 / 38%);
+  border-radius: var(--r-sm);
+  background: rgb(117 52 45 / 18%);
+  overflow-wrap: anywhere;
+}
+
+.learning-hub-artifact-confirmation legend {
+  padding: 0 .35rem;
+  color: #f3b7ad;
+  font-size: .84rem;
+  font-weight: 700;
+}
+
+.learning-hub-artifact-confirmation p {
+  font-size: .78rem;
+}
+
+.learning-hub-artifact-confirmation__actions {
+  margin-top: var(--s3);
+}
+
+.learning-hub-artifact-confirmation__confirm {
+  border-color: rgb(217 130 117 / 35%);
+  color: #f3b7ad;
+  background: rgb(117 52 45 / 22%);
+}
+
+.learning-hub-artifact-confirmation__confirm:hover {
+  border-color: #d98275;
+  background: rgb(117 52 45 / 30%);
+}
+
 .learning-hub-form {
   margin-top: 1.125rem;
   padding: clamp(1.125rem, 2.5vw, 1.5rem);
@@ -639,7 +875,8 @@
 
 @media(max-width: 760px) {
   .learning-hub-module-grid,
-  .learning-hub-node-grid {
+  .learning-hub-node-grid,
+  .learning-hub-artifact-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -668,6 +905,7 @@
 
   .learning-hub-section-heading,
   .learning-hub-detail__header,
+  .learning-hub-artifacts__header,
   .learning-hub-form__header {
     align-items: stretch;
     flex-direction: column;
@@ -703,21 +941,29 @@
 
   .learning-hub-chapter__panel,
   .learning-hub-form,
-  .learning-hub-node-detail {
+  .learning-hub-node-detail,
+  .learning-hub-artifact-card {
     padding: var(--s3);
   }
 
-  .learning-hub-form__header p {
+  .learning-hub-form__header p,
+  .learning-hub-artifacts__header p {
     text-align: left;
   }
 
   .learning-hub-node-card__actions,
+  .learning-hub-artifact-card__actions,
+  .learning-hub-artifact-form__actions,
+  .learning-hub-artifact-confirmation__actions,
   .learning-hub-form__actions {
     align-items: stretch;
     flex-direction: column;
   }
 
   .learning-hub-node-card__actions .button,
+  .learning-hub-artifact-card__actions .button,
+  .learning-hub-artifact-form__actions .button,
+  .learning-hub-artifact-confirmation__actions .button,
   .learning-hub-form__actions .button,
   .learning-hub-chapter__add-node {
     width: 100%;
@@ -747,6 +993,8 @@
   .learning-hub-chapter__toggle,
   .learning-hub-chapter__completion,
   .learning-hub-node-card .button,
+  .learning-hub-artifacts .button,
+  .learning-hub-artifact-form__control,
   .learning-hub-form .button,
   .learning-hub-progress-feedback .button,
   .learning-hub-state .button,
@@ -764,7 +1012,11 @@
   }
 
   .learning-hub-detail__progress,
-  .learning-hub-progress-bar {
+  .learning-hub-progress-bar,
+  .learning-hub-artifacts,
+  .learning-hub-artifact-card,
+  .learning-hub-artifact-form,
+  .learning-hub-artifact-confirmation {
     width: 100%;
     max-width: 100%;
   }

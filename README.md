@@ -21,10 +21,11 @@ remain entirely manual with Jan.
 
 LearningHub `v0.2.1` is now in progress. Its Schema 2 content contract, local
 service and storage path, controller, private content UI, and separate local
-chapter and module progress are implemented. Notes and summaries are the next
-step; the deterministic local mock test follows later as a separate step. The
-milestone remains in progress. LichtwaldLog `v0.2.2` follows after it and is
-not implemented yet.
+chapter and module progress are implemented. The separate LearningArtifact
+contract, private local storage, reference-validating service, and UI for notes
+and summaries are implemented as well. Only the deterministic local mock test
+remains open for this milestone, so `v0.2.1` stays in progress. LichtwaldLog
+`v0.2.2` follows after it and is not implemented yet.
 
 ## Vision
 
@@ -73,7 +74,7 @@ Accepted architecture decisions and their rationale are indexed in
 | --- | --- | --- | --- |
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
-| LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, and deterministic synthetic mock tests | `v0.2.1` | Local content and progress UI implemented; milestone in progress |
+| LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic synthetic mock tests | `v0.2.1` | Local content, progress, and LearningArtifact UI implemented; mock test remains open |
 | LichtwaldLog | Local text journal with search and filters | `v0.2.2` | Planned; not implemented |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
@@ -136,8 +137,9 @@ contain no modules, while every persisted module contains at least one chapter.
 Chapters are implicitly trackable and may contain no LearningNodes;
 LearningNodes are user-created text cards. The local UI supports creating and
 renaming modules and chapters, creating and editing LearningNodes, marking
-chapters complete or open, and viewing derived module progress. Content and
-progress use these separate implemented paths:
+chapters complete or open, viewing derived module progress, and maintaining one
+current note and one current summary per LearningNode. Content, progress, and
+LearningArtifacts use these separate implemented paths:
 
 ```text
 LearningHubView
@@ -147,9 +149,15 @@ LearningHubView
       │   → StorageAdapter
       │   → localStorage
       │
-      └→ LearningProgressService
+      ├→ LearningProgressService
+      │   ├→ LearningHubService
+      │   └→ LearningProgressStorage
+      │       → StorageAdapter
+      │       → localStorage
+      │
+      └→ LearningArtifactService
           ├→ LearningHubService
-          └→ LearningProgressStorage
+          └→ LearningArtifactStorage
               → StorageAdapter
               → localStorage
 ```
@@ -158,23 +166,31 @@ The view and controller never access `localStorage` directly. Selection, open
 accordions, and form state remain transient; persistent content stays at
 `schemaVersion: 2` under `goldendawn.learningHub.content.v1`, while the
 append-only progress log stays at `schemaVersion: 1` under
-`goldendawn.learningHub.progress.v1`. The controller gives the view only a
-validated projection, not event IDs, timestamps, or the raw log. If progress
-cannot be loaded, content management remains available, progress is marked
-unavailable instead of displaying a false zero, and a non-destructive retry is
-offered. Creating a module or chapter refreshes progress without rolling back
-an already successful content change if that refresh fails.
+`goldendawn.learningHub.progress.v1`. Current notes and summaries use their own
+`schemaVersion: 1` store under `goldendawn.learningHub.artifacts.v1`. The
+controller gives the view validated UI projections instead of raw progress logs
+or Artifact IDs, reference chains, and timestamps. If progress or artifacts
+cannot be loaded, content management remains available, the affected controls
+are marked unavailable, and a non-destructive retry is offered. Creating a
+module or chapter refreshes progress without rolling back an already
+successful content change if that refresh fails.
 
-User text is rendered through safe DOM text APIs. Native labeled chapter
-checkboxes, visible numeric progress, accessible progress bars, status and
-alert regions, focus restoration, and isolated busy states keep the progress
-workflow operable without relying on color alone. Completed modules remain
-visible and usable. Content and progress remain in the current browser profile
+User text is rendered through safe DOM text APIs and form-value properties.
+Native labeled chapter checkboxes, visible numeric progress, accessible
+progress bars, status and alert regions, focus restoration, and isolated busy
+states keep the workflows operable without relying on color alone. Note and
+summary editors preserve the last valid UI projection on errors. Identical
+saves are visible write-free no-ops; clearing uses an accessible inline
+confirmation instead of a blocking browser dialog, and an already empty target
+remains a write-free no-op. Completed modules remain visible and usable.
+
+Content, progress, notes, and summaries remain in the current browser profile
 without cloud backup or cross-device synchronization. Local storage is
 unencrypted and can in principle be read by other scripts on the same origin;
-real-time and multi-tab consistency are not guaranteed. Private learning data
-and independently invented synthetic portfolio data remain strictly separate.
-Notes, summaries, and test logic are not part of this progress step.
+browser quota and real-time or multi-tab consistency remain limitations.
+Private learning data and independently invented synthetic portfolio data stay
+strictly separate. The local mock test is the remaining LearningHub work item;
+it is not part of the LearningArtifact flow.
 
 The planned local test path is:
 
@@ -245,7 +261,7 @@ Detailed milestones and acceptance criteria are maintained in
 | --- | --- | --- |
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
-| v0.2.1 | LearningHub Local MVP | Local Schema 2 content and separate progress UI implemented; notes, summaries, and deterministic mock tests remain planned |
+| v0.2.1 | LearningHub Local MVP | Local Schema 2 content, separate progress, and LearningArtifact UI implemented; deterministic mock test remains planned |
 | v0.2.2 | LichtwaldLog Local MVP | Planned local text-entry CRUD, search, and filters |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |

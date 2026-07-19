@@ -1,4 +1,9 @@
 import { validateLearningHub } from './learningHubContract.js'
+import {
+  LEARNING_ARTIFACT_CONTENT_MAX_LENGTH,
+  LEARNING_ARTIFACT_TYPES,
+  validateLearningArtifactStore,
+} from './learningArtifactContract.js'
 
 const EMPTY_PRIVATE_HUB = Object.freeze({
   schemaVersion: 2,
@@ -77,6 +82,46 @@ const PROGRESS_STALE_ERROR_MESSAGE =
 const PROGRESS_MUTATION_ERROR_MESSAGE =
   'Der Kapitelstatus konnte nicht gespeichert werden. Bitte versuche es erneut.'
 
+const ARTIFACT_TYPES = Object.freeze([
+  LEARNING_ARTIFACT_TYPES.NOTE,
+  LEARNING_ARTIFACT_TYPES.SUMMARY,
+])
+
+const ARTIFACT_SAVE_METHODS = Object.freeze({
+  [LEARNING_ARTIFACT_TYPES.NOTE]: 'saveNote',
+  [LEARNING_ARTIFACT_TYPES.SUMMARY]: 'saveSummary',
+})
+
+const ARTIFACT_CLEAR_METHODS = Object.freeze({
+  [LEARNING_ARTIFACT_TYPES.NOTE]: 'clearNote',
+  [LEARNING_ARTIFACT_TYPES.SUMMARY]: 'clearSummary',
+})
+
+const ARTIFACT_LABELS = Object.freeze({
+  [LEARNING_ARTIFACT_TYPES.NOTE]: 'Notiz',
+  [LEARNING_ARTIFACT_TYPES.SUMMARY]: 'Zusammenfassung',
+})
+
+const ARTIFACT_SAVE_SUCCESS_RESULTS = Object.freeze({
+  artifactCreated: true,
+  artifactUpdated: true,
+  artifactUnchanged: false,
+})
+
+const ARTIFACT_CLEAR_SUCCESS_RESULTS = Object.freeze({
+  artifactCleared: true,
+  artifactAlreadyEmpty: false,
+})
+
+const ARTIFACT_LOAD_ERROR_MESSAGE =
+  'Notizen und Zusammenfassungen sind derzeit nicht verfügbar. Lerninhalte und Fortschritt bleiben bedienbar.'
+const ARTIFACT_MUTATION_ERROR_MESSAGE =
+  'Das Lernartefakt konnte nicht lokal gespeichert werden. Bitte versuche es erneut.'
+const ARTIFACT_RESULT_ERROR_MESSAGE =
+  'Das Ergebnis der Artefaktoperation konnte nicht sicher verarbeitet werden. Der letzte gültige Stand bleibt erhalten.'
+const ARTIFACT_DIRTY_BLOCK_MESSAGE =
+  'Es gibt einen ungespeicherten Entwurf. Speichere ihn oder brich die Bearbeitung ab, bevor du den Bereich wechselst.'
+
 function scheduleAfterPaint(callback) {
   if (
     typeof globalThis.requestAnimationFrame !== 'function' ||
@@ -102,6 +147,31 @@ function scheduleAfterPaint(callback) {
 
 function isObjectRecord(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isPlainDataObject(value) {
+  if (!isObjectRecord(value)) return false
+
+  try {
+    const prototype = Object.getPrototypeOf(value)
+    return prototype === Object.prototype || prototype === null
+  } catch {
+    return false
+  }
+}
+
+function hasArtifactResultShape(result) {
+  try {
+    return (
+      isPlainDataObject(result) &&
+      Object.hasOwn(result, 'ok') &&
+      Object.hasOwn(result, 'status') &&
+      Object.hasOwn(result, 'changed') &&
+      Object.hasOwn(result, 'artifactStore')
+    )
+  } catch {
+    return false
+  }
 }
 
 function isEntityId(value) {
@@ -171,6 +241,150 @@ function cloneProgressState(progress) {
     ...progress,
     projection: cloneProgressProjection(progress.projection),
   }
+}
+
+function cloneArtifact(artifact) {
+  return { ...artifact }
+}
+
+function cloneArtifactStore(artifactStore) {
+  return {
+    schemaVersion: artifactStore.schemaVersion,
+    dataOrigin: artifactStore.dataOrigin,
+    artifacts: artifactStore.artifacts.map(cloneArtifact),
+  }
+}
+
+function createInitialArtifactState() {
+  return {
+    phase: 'loading',
+    activeType: null,
+    mode: 'view',
+    draft: '',
+    fieldError: '',
+    errorMessage: '',
+    statusMessage: '',
+    feedbackType: null,
+    mutatingType: null,
+  }
+}
+
+function isArtifactType(type) {
+  return ARTIFACT_TYPES.includes(type)
+}
+
+function getArtifactIndex(artifactStore, type, references) {
+  if (!artifactStore || !references) return -1
+
+  return artifactStore.artifacts.findIndex((artifact) => (
+    artifact.type === type &&
+    artifact.moduleId === references.moduleId &&
+    artifact.chapterId === references.chapterId &&
+    artifact.learningNodeId === references.learningNodeId
+  ))
+}
+
+function getArtifactContent(artifactStore, type, references) {
+  const artifactIndex = getArtifactIndex(
+    artifactStore,
+    type,
+    references
+  )
+
+  return artifactIndex === -1
+    ? null
+    : artifactStore.artifacts[artifactIndex].content
+}
+
+function createArtifactTargetSnapshot(type, references) {
+  if (
+    !isArtifactType(type) ||
+    !isEntityId(references?.moduleId) ||
+    !isEntityId(references?.chapterId) ||
+    !isEntityId(references?.learningNodeId)
+  ) {
+    return null
+  }
+
+  return Object.freeze({
+    moduleId: references.moduleId,
+    chapterId: references.chapterId,
+    learningNodeId: references.learningNodeId,
+    type,
+  })
+}
+
+function isValidArtifactTargetSnapshot(target) {
+  try {
+    if (!isPlainDataObject(target) || !Object.isFrozen(target)) {
+      return false
+    }
+
+    return (
+      Object.keys(target).length === 4 &&
+      Object.hasOwn(target, 'moduleId') &&
+      Object.hasOwn(target, 'chapterId') &&
+      Object.hasOwn(target, 'learningNodeId') &&
+      Object.hasOwn(target, 'type') &&
+      isEntityId(target.moduleId) &&
+      isEntityId(target.chapterId) &&
+      isEntityId(target.learningNodeId) &&
+      isArtifactType(target.type)
+    )
+  } catch {
+    return false
+  }
+}
+
+function getArtifactTargetReferences(target) {
+  if (!isValidArtifactTargetSnapshot(target)) return null
+
+  return {
+    moduleId: target.moduleId,
+    chapterId: target.chapterId,
+    learningNodeId: target.learningNodeId,
+  }
+}
+
+function doesArtifactTargetMatchSelection(
+  target,
+  type,
+  references
+) {
+  return (
+    isValidArtifactTargetSnapshot(target) &&
+    target.type === type &&
+    references !== null &&
+    target.moduleId === references.moduleId &&
+    target.chapterId === references.chapterId &&
+    target.learningNodeId === references.learningNodeId
+  )
+}
+
+function areArtifactsEqual(firstArtifact, secondArtifact) {
+  return (
+    firstArtifact?.id === secondArtifact?.id &&
+    firstArtifact?.type === secondArtifact?.type &&
+    firstArtifact?.moduleId === secondArtifact?.moduleId &&
+    firstArtifact?.chapterId === secondArtifact?.chapterId &&
+    firstArtifact?.learningNodeId === secondArtifact?.learningNodeId &&
+    firstArtifact?.content === secondArtifact?.content &&
+    firstArtifact?.createdAt === secondArtifact?.createdAt &&
+    firstArtifact?.updatedAt === secondArtifact?.updatedAt
+  )
+}
+
+function areArtifactStoresEqual(firstStore, secondStore) {
+  return (
+    firstStore?.schemaVersion === secondStore?.schemaVersion &&
+    firstStore?.dataOrigin === secondStore?.dataOrigin &&
+    Array.isArray(firstStore?.artifacts) &&
+    Array.isArray(secondStore?.artifacts) &&
+    firstStore.artifacts.length === secondStore.artifacts.length &&
+    firstStore.artifacts.every((artifact, index) =>
+      areArtifactsEqual(artifact, secondStore.artifacts[index])
+    )
+  )
 }
 
 function createEmptyHub() {
@@ -264,6 +478,119 @@ function getLearningNodeLocation(learningModule, learningNodeId) {
   }
 
   return null
+}
+
+function getSelectedLearningNodeReferences(viewState) {
+  const learningModule = getModule(
+    viewState.hub,
+    viewState.selectedModuleId
+  )
+  const location = getLearningNodeLocation(
+    learningModule,
+    viewState.selectedLearningNodeId
+  )
+
+  if (!learningModule || !location) return null
+
+  return {
+    moduleId: learningModule.id,
+    chapterId: location.chapter.id,
+    learningNodeId: location.learningNode.id,
+  }
+}
+
+function isArtifactStoreForHub(artifactStore, learningHub) {
+  try {
+    if (
+      artifactStore?.dataOrigin !== 'private' ||
+      !validateLearningArtifactStore(artifactStore).ok
+    ) {
+      return false
+    }
+
+    for (const artifact of artifactStore.artifacts) {
+      const learningModule = getModule(learningHub, artifact.moduleId)
+      const chapter = getChapter(learningModule, artifact.chapterId)
+      const learningNode = getLearningNode(
+        chapter,
+        artifact.learningNodeId
+      )
+
+      if (!learningModule || !chapter || !learningNode) {
+        return false
+      }
+    }
+
+    return true
+  } catch {
+    return false
+  }
+}
+
+function readValidatedArtifactStore(result, learningHub) {
+  let candidateStore
+
+  try {
+    if (!hasArtifactResultShape(result)) return null
+    candidateStore = result?.artifactStore
+  } catch {
+    return null
+  }
+
+  if (
+    !isObjectRecord(candidateStore) ||
+    !isArtifactStoreForHub(candidateStore, learningHub)
+  ) {
+    return null
+  }
+
+  let artifactStore
+
+  try {
+    artifactStore = cloneArtifactStore(candidateStore)
+  } catch {
+    return null
+  }
+
+  return isArtifactStoreForHub(artifactStore, learningHub)
+    ? artifactStore
+    : null
+}
+
+function createArtifactViewModel(
+  viewState,
+  artifactState,
+  artifactStoreSnapshot
+) {
+  const references = getSelectedLearningNodeReferences(viewState)
+  const values = {
+    [LEARNING_ARTIFACT_TYPES.NOTE]: references
+      ? getArtifactContent(
+          artifactStoreSnapshot,
+          LEARNING_ARTIFACT_TYPES.NOTE,
+          references
+        )
+      : null,
+    [LEARNING_ARTIFACT_TYPES.SUMMARY]: references
+      ? getArtifactContent(
+          artifactStoreSnapshot,
+          LEARNING_ARTIFACT_TYPES.SUMMARY,
+          references
+        )
+      : null,
+  }
+  const persistedValue = artifactState.activeType
+    ? values[artifactState.activeType] ?? ''
+    : ''
+
+  return {
+    ...artifactState,
+    values,
+    dirty:
+      artifactState.mode === 'editing' &&
+      artifactState.draft.trim() !== persistedValue,
+    interactionDisabled: viewState.form !== null,
+  }
 }
 
 function getReadyPhase(learningHub) {
@@ -469,6 +796,222 @@ function getMutationErrorMessage(result) {
   }
 }
 
+function getArtifactLoadErrorMessage(result) {
+  switch (result?.status) {
+    case 'invalidJson':
+    case 'invalidStoredData':
+      return 'Die lokal gespeicherten Lernartefakte sind nicht lesbar. Sie wurden nicht überschrieben.'
+    case 'unavailable':
+      return 'Der lokale Speicher für Notizen und Zusammenfassungen ist in diesem Browserprofil nicht verfügbar.'
+    case 'readFailed':
+      return 'Notizen und Zusammenfassungen konnten lokal nicht gelesen werden. Bitte versuche es erneut.'
+    default:
+      return ARTIFACT_LOAD_ERROR_MESSAGE
+  }
+}
+
+function getArtifactMutationErrorMessage(result) {
+  switch (result?.status) {
+    case 'validationFailed':
+      return 'Bitte korrigiere den Artefakttext.'
+    case 'quotaExceeded':
+      return 'Der verfügbare lokale Speicherplatz reicht für dieses Lernartefakt nicht aus.'
+    case 'unavailable':
+      return 'Der lokale Speicher für Notizen und Zusammenfassungen ist derzeit nicht verfügbar.'
+    case 'invalidJson':
+    case 'invalidStoredData':
+      return 'Die gespeicherten Lernartefakte sind nicht lesbar und wurden nicht überschrieben.'
+    case 'readFailed':
+      return 'Die Lernartefakte konnten vor dem Speichern nicht sicher gelesen werden.'
+    case 'notFound':
+    case 'ownershipMismatch':
+      return 'Der ausgewählte LearningNode ist nicht mehr verfügbar. Lade den LearningHub neu und versuche es erneut.'
+    case 'generationFailed':
+      return 'Das Lernartefakt konnte lokal nicht vorbereitet werden. Bitte versuche es erneut.'
+    case 'writeFailed':
+    case 'serializationFailed':
+      return ARTIFACT_MUTATION_ERROR_MESSAGE
+    default:
+      return ARTIFACT_MUTATION_ERROR_MESSAGE
+  }
+}
+
+function hasArtifactContentFieldError(result) {
+  return (
+    result?.status === 'validationFailed' &&
+    isObjectRecord(result.error?.fieldErrors) &&
+    Object.hasOwn(result.error.fieldErrors, 'content')
+  )
+}
+
+function hasExpectedTargetArtifact(
+  artifact,
+  type,
+  references,
+  content
+) {
+  return (
+    artifact?.type === type &&
+    artifact?.moduleId === references.moduleId &&
+    artifact?.chapterId === references.chapterId &&
+    artifact?.learningNodeId === references.learningNodeId &&
+    artifact?.content === content
+  )
+}
+
+function isArtifactSaveResultConsistent(
+  status,
+  previousStore,
+  updatedStore,
+  type,
+  references,
+  content
+) {
+  const previousIndex = getArtifactIndex(
+    previousStore,
+    type,
+    references
+  )
+  const updatedIndex = getArtifactIndex(
+    updatedStore,
+    type,
+    references
+  )
+
+  if (status === 'artifactUnchanged') {
+    return (
+      previousIndex !== -1 &&
+      previousStore.artifacts[previousIndex].content === content &&
+      areArtifactStoresEqual(previousStore, updatedStore)
+    )
+  }
+
+  if (status === 'artifactCreated') {
+    if (
+      previousIndex !== -1 ||
+      updatedIndex !== previousStore.artifacts.length ||
+      updatedStore.artifacts.length !==
+        previousStore.artifacts.length + 1 ||
+      previousStore.schemaVersion !== updatedStore.schemaVersion ||
+      previousStore.dataOrigin !== updatedStore.dataOrigin ||
+      !hasExpectedTargetArtifact(
+        updatedStore.artifacts[updatedIndex],
+        type,
+        references,
+        content
+      )
+    ) {
+      return false
+    }
+
+    return previousStore.artifacts.every((artifact, index) =>
+      areArtifactsEqual(artifact, updatedStore.artifacts[index])
+    )
+  }
+
+  if (
+    status !== 'artifactUpdated' ||
+    previousIndex === -1 ||
+    updatedIndex !== previousIndex ||
+    updatedStore.artifacts.length !== previousStore.artifacts.length ||
+    previousStore.schemaVersion !== updatedStore.schemaVersion ||
+    previousStore.dataOrigin !== updatedStore.dataOrigin
+  ) {
+    return false
+  }
+
+  const previousArtifact = previousStore.artifacts[previousIndex]
+  const updatedArtifact = updatedStore.artifacts[updatedIndex]
+
+  if (
+    previousArtifact.content === content ||
+    previousArtifact.id !== updatedArtifact.id ||
+    previousArtifact.createdAt !== updatedArtifact.createdAt ||
+    !hasExpectedTargetArtifact(
+      updatedArtifact,
+      type,
+      references,
+      content
+    )
+  ) {
+    return false
+  }
+
+  return previousStore.artifacts.every((artifact, index) =>
+    index === previousIndex ||
+    areArtifactsEqual(artifact, updatedStore.artifacts[index])
+  )
+}
+
+function isArtifactClearResultConsistent(
+  status,
+  previousStore,
+  updatedStore,
+  type,
+  references
+) {
+  const previousIndex = getArtifactIndex(
+    previousStore,
+    type,
+    references
+  )
+  const updatedIndex = getArtifactIndex(
+    updatedStore,
+    type,
+    references
+  )
+
+  if (status === 'artifactAlreadyEmpty') {
+    if (updatedIndex !== -1) return false
+
+    if (previousIndex === -1) {
+      return areArtifactStoresEqual(previousStore, updatedStore)
+    }
+
+    return isExactArtifactRemoval(
+      previousStore,
+      updatedStore,
+      previousIndex
+    )
+  }
+
+  if (
+    status !== 'artifactCleared' ||
+    previousIndex === -1 ||
+    updatedIndex !== -1
+  ) {
+    return false
+  }
+
+  return isExactArtifactRemoval(
+    previousStore,
+    updatedStore,
+    previousIndex
+  )
+}
+
+function isExactArtifactRemoval(
+  previousStore,
+  updatedStore,
+  removedIndex
+) {
+  if (
+    updatedStore.artifacts.length !== previousStore.artifacts.length - 1 ||
+    previousStore.schemaVersion !== updatedStore.schemaVersion ||
+    previousStore.dataOrigin !== updatedStore.dataOrigin
+  ) {
+    return false
+  }
+
+  const expectedArtifacts = previousStore.artifacts.filter(
+    (_, index) => index !== removedIndex
+  )
+
+  return expectedArtifacts.every((artifact, index) =>
+    areArtifactsEqual(artifact, updatedStore.artifacts[index])
+  )
+}
+
 function getRequiredFieldErrors(formValues, fieldNames) {
   const fieldErrors = {}
 
@@ -557,16 +1100,22 @@ function getSubmission(form, submittedValues) {
 export function createLearningHubController({
   learningHubService,
   learningProgressService,
+  learningArtifactService,
   learningHubView,
   scheduleTask = scheduleAfterPaint,
 } = {}) {
   let isActive = false
   let cancelScheduledLoad = null
   let viewState = createInitialState()
+  let artifactState = createInitialArtifactState()
+  let artifactStoreSnapshot = null
+  let artifactTargetSnapshot = null
+  let resumeArtifactEditingAfterClear = false
 
   const actions = Object.freeze({
     onRetryLoad: retryHubLoad,
     onRetryProgressLoad: retryProgressLoad,
+    onRetryArtifactLoad: retryArtifactLoad,
     onSelectModule: selectModule,
     onBackToOverview: backToOverview,
     onToggleChapter: toggleChapter,
@@ -581,6 +1130,15 @@ export function createLearningHubController({
     onUpdateFormField: updateFormField,
     onSubmitForm: submitForm,
     onCancelForm: cancelForm,
+    onOpenArtifactEditor: openArtifactEditor,
+    onUpdateArtifactDraft: updateArtifactDraft,
+    onSaveArtifact: saveArtifact,
+    onCancelArtifactEditor: cancelArtifactEditor,
+    onOpenArtifactClearConfirmation:
+      openArtifactClearConfirmation,
+    onCancelArtifactClearConfirmation:
+      cancelArtifactClearConfirmation,
+    onConfirmArtifactClear: confirmArtifactClear,
   })
 
   function render(focusTarget = null) {
@@ -593,6 +1151,11 @@ export function createLearningHubController({
         expandedChapterIds: [...viewState.expandedChapterIds],
         form: cloneForm(viewState.form),
         progress: cloneProgressState(viewState.progress),
+        artifacts: createArtifactViewModel(
+          viewState,
+          artifactState,
+          artifactStoreSnapshot
+        ),
         focusTarget,
       },
       actions
@@ -656,6 +1219,68 @@ export function createLearningHubController({
     return false
   }
 
+  function finishArtifactLoading() {
+    let result
+
+    try {
+      result = learningArtifactService?.loadArtifacts?.()
+    } catch {
+      result = null
+    }
+
+    let artifactStore = null
+    let resultStatus = null
+
+    try {
+      resultStatus = result?.status
+
+      if (
+        hasArtifactResultShape(result) &&
+        result?.ok === true &&
+        ['empty', 'loaded'].includes(resultStatus) &&
+        result.changed === false
+      ) {
+        artifactStore = readValidatedArtifactStore(result, viewState.hub)
+      }
+    } catch {
+      artifactStore = null
+      resultStatus = null
+    }
+
+    const hasConsistentEmptyStatus =
+      resultStatus !== 'empty' ||
+      artifactStore?.artifacts.length === 0
+
+    if (artifactStore && hasConsistentEmptyStatus) {
+      artifactStoreSnapshot = artifactStore
+      artifactTargetSnapshot = null
+      resumeArtifactEditingAfterClear = false
+      artifactState = {
+        ...createInitialArtifactState(),
+        phase: 'ready',
+      }
+      return true
+    }
+
+    artifactStoreSnapshot = null
+    artifactTargetSnapshot = null
+    resumeArtifactEditingAfterClear = false
+    let errorMessage = ARTIFACT_LOAD_ERROR_MESSAGE
+
+    try {
+      errorMessage = getArtifactLoadErrorMessage(result)
+    } catch {
+      errorMessage = ARTIFACT_LOAD_ERROR_MESSAGE
+    }
+
+    artifactState = {
+      ...createInitialArtifactState(),
+      phase: 'unavailable',
+      errorMessage,
+    }
+    return false
+  }
+
   function finishLoading() {
     cancelScheduledLoad = null
     if (!isActive) return
@@ -680,12 +1305,25 @@ export function createLearningHubController({
         },
         result.hub
       )
+      artifactStoreSnapshot = null
+      artifactTargetSnapshot = null
+      artifactState = createInitialArtifactState()
+      resumeArtifactEditingAfterClear = false
       render()
       finishProgressLoading('unavailable')
+      render()
+      finishArtifactLoading()
       render({ type: 'heading' })
       return
     }
 
+    artifactStoreSnapshot = null
+    artifactTargetSnapshot = null
+    resumeArtifactEditingAfterClear = false
+    artifactState = {
+      ...createInitialArtifactState(),
+      phase: 'unavailable',
+    }
     viewState = {
       ...createInitialState(),
       phase: 'loadError',
@@ -705,6 +1343,10 @@ export function createLearningHubController({
 
     cancelPendingLoad()
     viewState = createInitialState()
+    artifactStoreSnapshot = null
+    artifactTargetSnapshot = null
+    artifactState = createInitialArtifactState()
+    resumeArtifactEditingAfterClear = false
     render()
     cancelScheduledLoad = scheduleTask(finishLoading)
   }
@@ -715,12 +1357,101 @@ export function createLearningHubController({
     loadHub()
   }
 
+  function getPersistedArtifactContent(type) {
+    const references = getArtifactTargetReferences(
+      artifactTargetSnapshot
+    )
+    return getArtifactContent(
+      artifactStoreSnapshot,
+      type,
+      references
+    ) ?? ''
+  }
+
+  function hasCurrentArtifactTarget(type) {
+    return doesArtifactTargetMatchSelection(
+      artifactTargetSnapshot,
+      type,
+      getSelectedLearningNodeReferences(viewState)
+    )
+  }
+
+  function isArtifactEditorDirty() {
+    if (
+      artifactState.phase === 'ready' &&
+      artifactState.mode === 'editing' &&
+      isArtifactType(artifactState.activeType)
+    ) {
+      return (
+        !hasCurrentArtifactTarget(artifactState.activeType) ||
+        artifactState.draft.trim() !==
+          getPersistedArtifactContent(artifactState.activeType)
+      )
+    }
+
+    return false
+  }
+
+  function resetArtifactInteraction() {
+    artifactTargetSnapshot = null
+    resumeArtifactEditingAfterClear = false
+    artifactState = {
+      ...artifactState,
+      activeType: null,
+      mode: 'view',
+      draft: '',
+      fieldError: '',
+      errorMessage: artifactState.phase === 'unavailable'
+        ? artifactState.errorMessage
+        : '',
+      statusMessage: '',
+      feedbackType: null,
+      mutatingType: null,
+    }
+  }
+
+  function rejectArtifactTargetMismatch(type) {
+    const feedbackType = isArtifactType(type)
+      ? type
+      : artifactState.activeType
+
+    resetArtifactInteraction()
+    artifactState = {
+      ...artifactState,
+      errorMessage: ARTIFACT_RESULT_ERROR_MESSAGE,
+      feedbackType,
+    }
+    render({
+      type: 'artifactAlert',
+      artifactType: feedbackType,
+    })
+  }
+
+  function blockDirtyArtifactTransition() {
+    if (!isArtifactEditorDirty()) return false
+
+    artifactState = {
+      ...artifactState,
+      fieldError: '',
+      errorMessage: ARTIFACT_DIRTY_BLOCK_MESSAGE,
+      statusMessage: '',
+      feedbackType: artifactState.activeType,
+    }
+    render({
+      type: 'artifactField',
+      artifactType: artifactState.activeType,
+    })
+    return true
+  }
+
   function canUseReadyView() {
     return (
       isActive &&
       ['empty', 'ready'].includes(viewState.phase) &&
       !viewState.form?.isSubmitting &&
-      viewState.progress.phase !== 'mutating'
+      viewState.progress.phase !== 'mutating' &&
+      artifactState.phase !== 'mutating' &&
+      artifactState.mode !== 'confirmClear'
     )
   }
 
@@ -741,12 +1472,35 @@ export function createLearningHubController({
     render()
   }
 
+  function retryArtifactLoad() {
+    if (
+      !canUseReadyView() ||
+      viewState.form !== null ||
+      artifactState.phase !== 'unavailable'
+    ) {
+      return
+    }
+
+    artifactTargetSnapshot = null
+    artifactState = createInitialArtifactState()
+    render()
+    finishArtifactLoading()
+    render(
+      artifactState.phase === 'ready'
+        ? { type: 'artifactHeading' }
+        : { type: 'artifactLoadAlert' }
+    )
+  }
+
   function selectModule(moduleId) {
     if (!canUseReadyView()) return
 
     const learningModule = getModule(viewState.hub, moduleId)
     if (!learningModule) return
+    if (moduleId === viewState.selectedModuleId) return
+    if (blockDirtyArtifactTransition()) return
 
+    resetArtifactInteraction()
     viewState = {
       ...viewState,
       selectedModuleId: learningModule.id,
@@ -761,7 +1515,9 @@ export function createLearningHubController({
 
   function backToOverview() {
     if (!canUseReadyView() || viewState.selectedModuleId === null) return
+    if (blockDirtyArtifactTransition()) return
 
+    resetArtifactInteraction()
     viewState = {
       ...viewState,
       selectedModuleId: null,
@@ -788,12 +1544,25 @@ export function createLearningHubController({
       learningModule,
       viewState.selectedLearningNodeId
     )
+    const willHideSelectedLearningNode =
+      isExpanded && selectedLocation?.chapter.id === chapterId
+
+    if (
+      willHideSelectedLearningNode &&
+      blockDirtyArtifactTransition()
+    ) {
+      return
+    }
+
+    if (willHideSelectedLearningNode) {
+      resetArtifactInteraction()
+    }
 
     viewState = {
       ...viewState,
       expandedChapterIds,
       selectedLearningNodeId:
-        isExpanded && selectedLocation?.chapter.id === chapterId
+        willHideSelectedLearningNode
           ? null
           : viewState.selectedLearningNodeId,
       form:
@@ -915,7 +1684,10 @@ export function createLearningHubController({
     const chapter = getChapter(learningModule, chapterId)
     const learningNode = getLearningNode(chapter, learningNodeId)
     if (!learningNode) return
+    if (learningNodeId === viewState.selectedLearningNodeId) return
+    if (blockDirtyArtifactTransition()) return
 
+    resetArtifactInteraction()
     viewState = {
       ...viewState,
       expandedChapterIds: [
@@ -934,11 +1706,14 @@ export function createLearningHubController({
     })
   }
 
-  function setForm(form, focusTarget) {
+  function setForm(form, focusTarget, stateUpdates = {}) {
     if (!canUseReadyView()) return
+    if (blockDirtyArtifactTransition()) return
 
+    resetArtifactInteraction()
     viewState = {
       ...viewState,
+      ...stateUpdates,
       form,
       statusMessage: '',
       errorMessage: '',
@@ -1001,19 +1776,17 @@ export function createLearningHubController({
     const learningModule = getModule(viewState.hub, moduleId)
     const chapter = getChapter(learningModule, chapterId)
     if (!chapter || moduleId !== viewState.selectedModuleId) return
-
-    viewState = {
-      ...viewState,
-      expandedChapterIds: [
-        ...new Set([...viewState.expandedChapterIds, chapterId]),
-      ],
-    }
     setForm(
       createFormState(FORM_TYPES.ADD_LEARNING_NODE, {
         moduleId,
         chapterId,
       }),
-      { type: 'formField', fieldName: 'title' }
+      { type: 'formField', fieldName: 'title' },
+      {
+        expandedChapterIds: [
+          ...new Set([...viewState.expandedChapterIds, chapterId]),
+        ],
+      }
     )
   }
 
@@ -1028,22 +1801,626 @@ export function createLearningHubController({
     const chapter = getChapter(learningModule, chapterId)
     const learningNode = getLearningNode(chapter, learningNodeId)
     if (!learningNode || moduleId !== viewState.selectedModuleId) return
-
-    viewState = {
-      ...viewState,
-      expandedChapterIds: [
-        ...new Set([...viewState.expandedChapterIds, chapterId]),
-      ],
-      selectedLearningNodeId: learningNodeId,
-    }
     setForm(
       createFormState(
         FORM_TYPES.UPDATE_LEARNING_NODE,
         { moduleId, chapterId, learningNodeId },
         { title: learningNode.title, content: learningNode.content }
       ),
-      { type: 'formField', fieldName: 'title' }
+      { type: 'formField', fieldName: 'title' },
+      {
+        expandedChapterIds: [
+          ...new Set([...viewState.expandedChapterIds, chapterId]),
+        ],
+        selectedLearningNodeId: learningNodeId,
+      }
     )
+  }
+
+  function canUseArtifactEditor() {
+    return (
+      canUseReadyView() &&
+      viewState.form === null &&
+      artifactState.phase === 'ready' &&
+      artifactStoreSnapshot !== null &&
+      getSelectedLearningNodeReferences(viewState) !== null
+    )
+  }
+
+  function openArtifactEditor(type) {
+    if (!isArtifactType(type) || !canUseArtifactEditor()) return
+
+    if (
+      artifactState.mode === 'editing' &&
+      !hasCurrentArtifactTarget(artifactState.activeType)
+    ) {
+      rejectArtifactTargetMismatch(artifactState.activeType)
+      return
+    }
+
+    if (
+      artifactState.mode === 'editing' &&
+      artifactState.activeType === type
+    ) {
+      render({ type: 'artifactField', artifactType: type })
+      return
+    }
+
+    if (blockDirtyArtifactTransition()) return
+
+    const references = getSelectedLearningNodeReferences(viewState)
+    const targetSnapshot = createArtifactTargetSnapshot(
+      type,
+      references
+    )
+    if (targetSnapshot === null) return
+
+    resetArtifactInteraction()
+    artifactTargetSnapshot = targetSnapshot
+    artifactState = {
+      ...artifactState,
+      activeType: type,
+      mode: 'editing',
+      draft: getArtifactContent(
+        artifactStoreSnapshot,
+        type,
+        references
+      ) ?? '',
+    }
+    render({ type: 'artifactField', artifactType: type })
+  }
+
+  function updateArtifactDraft(type, value) {
+    if (
+      !isArtifactType(type) ||
+      typeof value !== 'string' ||
+      artifactState.phase !== 'ready' ||
+      artifactState.mode !== 'editing' ||
+      artifactState.activeType !== type
+    ) {
+      return
+    }
+
+    if (!hasCurrentArtifactTarget(type)) {
+      rejectArtifactTargetMismatch(type)
+      return
+    }
+
+    const shouldRender = Boolean(
+      artifactState.fieldError ||
+      artifactState.errorMessage ||
+      artifactState.statusMessage
+    )
+    artifactState = {
+      ...artifactState,
+      draft: value,
+      fieldError: '',
+      errorMessage: '',
+      statusMessage: '',
+      feedbackType: null,
+    }
+
+    if (shouldRender) {
+      render({ type: 'artifactField', artifactType: type })
+    }
+  }
+
+  function getArtifactFailureFeedback(result, malformedSuccess) {
+    if (malformedSuccess) {
+      return {
+        fieldError: '',
+        errorMessage: ARTIFACT_RESULT_ERROR_MESSAGE,
+      }
+    }
+
+    try {
+      const hasFieldError = hasArtifactContentFieldError(result)
+
+      return {
+        fieldError: hasFieldError
+          ? 'Bitte gib einen Text mit höchstens 10.000 Zeichen ein.'
+          : '',
+        errorMessage: hasFieldError
+          ? 'Bitte korrigiere den Artefakttext.'
+          : getArtifactMutationErrorMessage(result),
+      }
+    } catch {
+      return {
+        fieldError: '',
+        errorMessage: ARTIFACT_MUTATION_ERROR_MESSAGE,
+      }
+    }
+  }
+
+  function saveArtifact(submission) {
+    const targetSnapshotAtEntry = artifactTargetSnapshot
+    const interactionType = artifactState.activeType
+    const references = getArtifactTargetReferences(
+      targetSnapshotAtEntry
+    )
+    const selectedReferencesAtEntry =
+      getSelectedLearningNodeReferences(viewState)
+    const targetMatchedSelectionAtEntry =
+      doesArtifactTargetMatchSelection(
+        targetSnapshotAtEntry,
+        interactionType,
+        selectedReferencesAtEntry
+      )
+
+    if (
+      artifactState.phase !== 'ready' ||
+      artifactState.mode !== 'editing' ||
+      !isArtifactType(interactionType)
+    ) {
+      return
+    }
+
+    if (
+      references === null ||
+      !targetMatchedSelectionAtEntry ||
+      artifactTargetSnapshot !== targetSnapshotAtEntry
+    ) {
+      rejectArtifactTargetMismatch(interactionType)
+      return
+    }
+
+    function isOriginalArtifactInteractionCurrent(
+      submittedType = interactionType
+    ) {
+      const currentReferences =
+        getSelectedLearningNodeReferences(viewState)
+      const targetMatchesSelection =
+        doesArtifactTargetMatchSelection(
+          targetSnapshotAtEntry,
+          interactionType,
+          currentReferences
+        )
+
+      return (
+        targetMatchesSelection &&
+        artifactTargetSnapshot === targetSnapshotAtEntry &&
+        artifactState.phase === 'ready' &&
+        artifactState.mode === 'editing' &&
+        artifactState.activeType === interactionType &&
+        submittedType === interactionType
+      )
+    }
+
+    const canUseEditor = canUseArtifactEditor()
+
+    if (!isOriginalArtifactInteractionCurrent()) {
+      rejectArtifactTargetMismatch(interactionType)
+      return
+    }
+
+    if (!canUseEditor) return
+
+    let isSubmissionPlain = false
+
+    try {
+      isSubmissionPlain = isPlainDataObject(submission)
+    } catch {
+      isSubmissionPlain = false
+    }
+
+    if (!isOriginalArtifactInteractionCurrent()) {
+      rejectArtifactTargetMismatch(interactionType)
+      return
+    }
+
+    if (!isSubmissionPlain) return
+
+    let type
+
+    try {
+      type = submission.type
+    } catch {
+      if (!isOriginalArtifactInteractionCurrent()) {
+        rejectArtifactTargetMismatch(interactionType)
+      }
+      return
+    }
+
+    if (!isOriginalArtifactInteractionCurrent(type)) {
+      rejectArtifactTargetMismatch(interactionType)
+      return
+    }
+
+    if (!isArtifactType(type)) return
+
+    let content
+
+    try {
+      content = submission.content
+    } catch {
+      if (!isOriginalArtifactInteractionCurrent(type)) {
+        rejectArtifactTargetMismatch(interactionType)
+      }
+      return
+    }
+
+    if (!isOriginalArtifactInteractionCurrent(type)) {
+      rejectArtifactTargetMismatch(interactionType)
+      return
+    }
+
+    if (typeof content !== 'string') return
+
+    let normalizedContent
+
+    try {
+      normalizedContent = content.trim()
+    } catch {
+      if (!isOriginalArtifactInteractionCurrent(type)) {
+        rejectArtifactTargetMismatch(interactionType)
+      }
+      return
+    }
+
+    if (!isOriginalArtifactInteractionCurrent(type)) {
+      rejectArtifactTargetMismatch(interactionType)
+      return
+    }
+
+    artifactState = {
+      ...artifactState,
+      draft: content,
+      fieldError: '',
+      errorMessage: '',
+      statusMessage: '',
+      feedbackType: type,
+    }
+
+    if (
+      normalizedContent.length === 0 ||
+      normalizedContent.length > LEARNING_ARTIFACT_CONTENT_MAX_LENGTH
+    ) {
+      artifactState = {
+        ...artifactState,
+        fieldError:
+          normalizedContent.length === 0
+            ? 'Bitte gib einen Text ein.'
+            : 'Bitte gib einen Text mit höchstens 10.000 Zeichen ein.',
+        errorMessage: 'Bitte korrigiere den Artefakttext.',
+      }
+      render({ type: 'artifactField', artifactType: type })
+      return
+    }
+
+    const previousStore = cloneArtifactStore(artifactStoreSnapshot)
+    artifactState = {
+      ...artifactState,
+      phase: 'mutating',
+      mutatingType: type,
+    }
+    render()
+
+    let result = null
+    let updatedStore = null
+    let isValidSuccess = false
+    let malformedSuccess = false
+
+    try {
+      result = learningArtifactService?.[
+        ARTIFACT_SAVE_METHODS[type]
+      ]?.({
+        ...references,
+        content,
+      })
+
+      if (result?.ok === true) {
+        malformedSuccess = true
+        if (hasArtifactResultShape(result)) {
+          const expectedChanged =
+            ARTIFACT_SAVE_SUCCESS_RESULTS[result.status]
+          updatedStore = readValidatedArtifactStore(result, viewState.hub)
+          isValidSuccess = (
+            Object.hasOwn(
+              ARTIFACT_SAVE_SUCCESS_RESULTS,
+              result.status
+            ) &&
+            result.changed === expectedChanged &&
+            updatedStore !== null &&
+            isArtifactSaveResultConsistent(
+              result.status,
+              previousStore,
+              updatedStore,
+              type,
+              references,
+              normalizedContent
+            )
+          )
+        }
+        malformedSuccess = !isValidSuccess
+      }
+    } catch {
+      result = null
+      updatedStore = null
+      isValidSuccess = false
+      malformedSuccess = false
+    }
+
+    if (isValidSuccess) {
+      artifactStoreSnapshot = updatedStore
+      artifactTargetSnapshot = null
+      artifactState = {
+        ...createInitialArtifactState(),
+        phase: 'ready',
+        statusMessage: result.status === 'artifactCreated'
+          ? ARTIFACT_LABELS[type] + ' wurde lokal erstellt.'
+          : result.status === 'artifactUpdated'
+            ? ARTIFACT_LABELS[type] + ' wurde lokal aktualisiert.'
+            : ARTIFACT_LABELS[type] + ' ist bereits aktuell.',
+        feedbackType: type,
+      }
+      render({ type: 'artifactTrigger', artifactType: type })
+      return
+    }
+
+    const feedback = getArtifactFailureFeedback(
+      result,
+      malformedSuccess
+    )
+    artifactState = {
+      ...artifactState,
+      phase: 'ready',
+      mode: 'editing',
+      activeType: type,
+      draft: content,
+      fieldError: feedback.fieldError,
+      errorMessage: feedback.errorMessage,
+      statusMessage: '',
+      feedbackType: type,
+      mutatingType: null,
+    }
+    render({
+      type: feedback.fieldError ? 'artifactField' : 'artifactAlert',
+      artifactType: type,
+    })
+  }
+
+  function cancelArtifactEditor(type) {
+    if (
+      !isArtifactType(type) ||
+      artifactState.phase !== 'ready' ||
+      artifactState.mode !== 'editing' ||
+      artifactState.activeType !== type
+    ) {
+      return
+    }
+
+    resetArtifactInteraction()
+    render({ type: 'artifactTrigger', artifactType: type })
+  }
+
+  function canResolveArtifactClear(type) {
+    return (
+      isActive &&
+      isArtifactType(type) &&
+      ['empty', 'ready'].includes(viewState.phase) &&
+      viewState.form === null &&
+      viewState.progress.phase !== 'mutating' &&
+      artifactState.phase === 'ready' &&
+      artifactStoreSnapshot !== null &&
+      getSelectedLearningNodeReferences(viewState) !== null
+    )
+  }
+
+  function openArtifactClearConfirmation(type) {
+    if (!canResolveArtifactClear(type)) return
+
+    if (artifactState.mode === 'confirmClear') {
+      if (
+        artifactState.activeType !== type ||
+        !hasCurrentArtifactTarget(type)
+      ) {
+        rejectArtifactTargetMismatch(artifactState.activeType)
+        return
+      }
+
+      render({
+        type: 'artifactConfirmation',
+        artifactType: type,
+      })
+      return
+    }
+
+    const references = getSelectedLearningNodeReferences(viewState)
+    const targetSnapshot = createArtifactTargetSnapshot(
+      type,
+      references
+    )
+    if (targetSnapshot === null) return
+
+    if (artifactState.mode === 'editing') {
+      if (!hasCurrentArtifactTarget(artifactState.activeType)) {
+        rejectArtifactTargetMismatch(artifactState.activeType)
+        return
+      }
+
+      if (
+        artifactState.activeType !== type &&
+        blockDirtyArtifactTransition()
+      ) {
+        return
+      }
+    }
+
+    if (getArtifactContent(artifactStoreSnapshot, type, references) === null) {
+      return
+    }
+
+    const shouldResumeArtifactEditing = (
+      artifactState.mode === 'editing' &&
+      artifactState.activeType === type
+    )
+    const preservedDraft = shouldResumeArtifactEditing
+      ? artifactState.draft
+      : ''
+
+    if (!shouldResumeArtifactEditing) {
+      resetArtifactInteraction()
+    }
+
+    artifactTargetSnapshot = targetSnapshot
+    resumeArtifactEditingAfterClear = shouldResumeArtifactEditing
+    artifactState = {
+      ...artifactState,
+      activeType: type,
+      mode: 'confirmClear',
+      draft: preservedDraft,
+      fieldError: '',
+      errorMessage: '',
+      statusMessage: '',
+      feedbackType: type,
+      mutatingType: null,
+    }
+    render({
+      type: 'artifactConfirmation',
+      artifactType: type,
+    })
+  }
+
+  function cancelArtifactClearConfirmation(type) {
+    if (
+      !isArtifactType(type) ||
+      artifactState.phase !== 'ready' ||
+      artifactState.mode !== 'confirmClear'
+    ) {
+      return
+    }
+
+    if (
+      artifactState.activeType !== type ||
+      !canResolveArtifactClear(type) ||
+      !hasCurrentArtifactTarget(type)
+    ) {
+      rejectArtifactTargetMismatch(artifactState.activeType)
+      return
+    }
+
+    if (resumeArtifactEditingAfterClear) {
+      resumeArtifactEditingAfterClear = false
+      artifactState = {
+        ...artifactState,
+        mode: 'editing',
+        fieldError: '',
+        errorMessage: '',
+        statusMessage: '',
+        feedbackType: null,
+      }
+      render({ type: 'artifactClearTrigger', artifactType: type })
+      return
+    }
+
+    resetArtifactInteraction()
+    render({ type: 'artifactClearTrigger', artifactType: type })
+  }
+
+  function confirmArtifactClear(type) {
+    if (
+      !isArtifactType(type) ||
+      artifactState.phase !== 'ready' ||
+      artifactState.mode !== 'confirmClear'
+    ) {
+      return
+    }
+
+    if (
+      artifactState.activeType !== type ||
+      !canResolveArtifactClear(type) ||
+      !hasCurrentArtifactTarget(type)
+    ) {
+      rejectArtifactTargetMismatch(artifactState.activeType)
+      return
+    }
+
+    const references = getArtifactTargetReferences(
+      artifactTargetSnapshot
+    )
+    const previousStore = cloneArtifactStore(artifactStoreSnapshot)
+    artifactState = {
+      ...artifactState,
+      phase: 'mutating',
+      errorMessage: '',
+      statusMessage: '',
+      mutatingType: type,
+    }
+    render()
+
+    let result = null
+    let updatedStore = null
+    let isValidSuccess = false
+    let malformedSuccess = false
+
+    try {
+      result = learningArtifactService?.[
+        ARTIFACT_CLEAR_METHODS[type]
+      ]?.({ ...references })
+
+      if (result?.ok === true) {
+        malformedSuccess = true
+        if (hasArtifactResultShape(result)) {
+          const expectedChanged =
+            ARTIFACT_CLEAR_SUCCESS_RESULTS[result.status]
+          updatedStore = readValidatedArtifactStore(result, viewState.hub)
+          isValidSuccess = (
+            Object.hasOwn(
+              ARTIFACT_CLEAR_SUCCESS_RESULTS,
+              result.status
+            ) &&
+            result.changed === expectedChanged &&
+            updatedStore !== null &&
+            isArtifactClearResultConsistent(
+              result.status,
+              previousStore,
+              updatedStore,
+              type,
+              references
+            )
+          )
+        }
+        malformedSuccess = !isValidSuccess
+      }
+    } catch {
+      result = null
+      updatedStore = null
+      isValidSuccess = false
+      malformedSuccess = false
+    }
+
+    if (isValidSuccess) {
+      artifactStoreSnapshot = updatedStore
+      artifactTargetSnapshot = null
+      resumeArtifactEditingAfterClear = false
+      artifactState = {
+        ...createInitialArtifactState(),
+        phase: 'ready',
+        statusMessage: result.status === 'artifactCleared'
+          ? ARTIFACT_LABELS[type] + ' wurde lokal geleert.'
+          : ARTIFACT_LABELS[type] + ' war bereits leer.',
+        feedbackType: type,
+      }
+      render({ type: 'artifactTrigger', artifactType: type })
+      return
+    }
+
+    const feedback = getArtifactFailureFeedback(
+      result,
+      malformedSuccess
+    )
+    artifactState = {
+      ...artifactState,
+      phase: 'ready',
+      mode: 'confirmClear',
+      activeType: type,
+      fieldError: '',
+      errorMessage: feedback.errorMessage,
+      statusMessage: '',
+      feedbackType: type,
+      mutatingType: null,
+    }
+    render({ type: 'artifactAlert', artifactType: type })
   }
 
   function updateFormField(fieldName, value) {
@@ -1130,6 +2507,20 @@ export function createLearningHubController({
 
     nextState = reconcileStateWithHub(nextState, result.hub)
     viewState = nextState
+
+    if (
+      artifactStoreSnapshot &&
+      !isArtifactStoreForHub(artifactStoreSnapshot, result.hub)
+    ) {
+      artifactStoreSnapshot = null
+      artifactTargetSnapshot = null
+      resumeArtifactEditingAfterClear = false
+      artifactState = {
+        ...createInitialArtifactState(),
+        phase: 'unavailable',
+        errorMessage: ARTIFACT_LOAD_ERROR_MESSAGE,
+      }
+    }
 
     if (
       [FORM_TYPES.CREATE_MODULE, FORM_TYPES.ADD_CHAPTER].includes(form.type)
@@ -1244,10 +2635,35 @@ export function createLearningHubController({
   }
 
   function close() {
+    if (
+      isActive &&
+      (
+        artifactState.phase === 'mutating' ||
+        artifactState.mode === 'confirmClear'
+      )
+    ) {
+      render({
+        type: artifactState.mode === 'confirmClear'
+          ? 'artifactConfirmation'
+          : 'artifactAlert',
+        artifactType: artifactState.activeType,
+      })
+      return false
+    }
+
+    if (isActive && blockDirtyArtifactTransition()) {
+      return false
+    }
+
     isActive = false
     cancelPendingLoad()
     viewState = createInitialState()
+    artifactState = createInitialArtifactState()
+    artifactStoreSnapshot = null
+    artifactTargetSnapshot = null
+    resumeArtifactEditingAfterClear = false
     learningHubView?.unmount?.()
+    return true
   }
 
   return Object.freeze({ open, close })
