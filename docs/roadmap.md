@@ -7,7 +7,7 @@
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | In Arbeit; Inhalts-, Progress- und LearningArtifact-Pfade bis zur bedienbaren UI umgesetzt |
+| Status | In Arbeit; Inhalts-, Progress- und LearningArtifact-Pfade bis zur bedienbaren UI sowie LearningTest-Foundation umgesetzt, Mock-Test-UI offen |
 | Letzte Aktualisierung | 2026-07-19 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
@@ -48,7 +48,7 @@ nicht starre Kalendertermine.
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
-| `v0.2.1` | LearningHub Local MVP | Inhalts-, Progress- und LearningArtifact-UI umgesetzt; lokaler Mock-Test folgt | 🟡 |
+| `v0.2.1` | LearningHub Local MVP | Inhalts-, Progress- und LearningArtifact-UI sowie LearningTest-Foundation umgesetzt; Mock-Test-UI folgt | 🟡 |
 | `v0.2.2` | LichtwaldLog Local MVP | Lokale Reflexions- und Erkenntniseinträge | ⬜ |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
@@ -175,14 +175,24 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
   noch keine Versionshistorie und verändern nicht das append-only
   Progress-Modell.
 - Fortschritt und spätere Testkompetenz sind getrennte Konzepte.
+- Nutzerkonfigurierte Single-Choice-Fragen verwenden eine getrennte
+  veränderbare LearningTestBank; abgeschlossene Versuche einen getrennten
+  append-only LearningTestAttemptLog. Beide Verträge verwenden
+  `schemaVersion: 1` und eigene Storage-Keys.
+- Laufende Testsessionen bleiben flüchtig und werden nach einem Reload neu
+  begonnen. Ein lokaler Score erzeugt weder Progress-Ereignisse noch einen
+  Kompetenzstand.
+- Confidence, Hinweise, Freitext-Rubriken und Testkompetenz bleiben mögliche
+  spätere versionierte Erweiterungen; Schema 1 reserviert keine Felder dafür.
 - Private Lerninhalte bleiben außerhalb des Repositorys. Die Demo-Daten sind
   unabhängig erfunden, synthetisch und vollständig tief eingefroren.
 - Die abgeschlossene Schema-2-Foundation selbst enthält keine UI, Persistenz,
   Storage-, Fortschritts- oder Testlogik. Getrennte nachfolgende Arbeitspakete
   haben Service, Storage, Controller und Inhalts-UI sowie die weiterhin
-  eigenständige Progress- und LearningArtifact-Foundation ergänzt, ohne diese
-  Vertragsgrenzen zu vermischen. Progress und LearningArtifacts sind über den
-  vorhandenen Controller und die View bedienbar.
+  eigenständige Progress-, LearningArtifact- und LearningTest-Foundation
+  ergänzt, ohne diese Vertragsgrenzen zu vermischen. Progress und
+  LearningArtifacts sind über den vorhandenen Controller und die View
+  bedienbar; die LearningTest-Foundation bleibt noch ohne UI-Anbindung.
 
 ### Umfang des LearningHub Local MVP
 
@@ -216,12 +226,14 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
 - ✅ LearningArtifactService in `LearningHubController` und
   `LearningHubView` anbinden und Notizen sowie Zusammenfassungen lokal
   bedienbar machen.
-- ⬜ Einen vorbereiteten, sichtbaren **„Lokalen Mock-Test“** für bekannte Inhalte
-  anbieten.
-- ⬜ Single-Choice-, Selbstkontroll- oder andere eindeutig auswertbare Aufgaben
-  mit synthetischen, vorbereiteten Fragen verwenden.
-- ⬜ Lokale Testversuche ausschließlich hinter Service- und Storage-Grenzen
-  speichern; Views und Controller greifen nicht direkt auf `localStorage` zu.
+- ✅ Getrennte LearningTestBank- und LearningTestAttempt-Verträge, private
+  Storages, reine deterministische Engine und referenzprüfenden
+  `LearningTestService` ohne UI-Anbindung bereitstellen.
+- ✅ Nutzerkonfigurierte Single-Choice-Fragen stabil mit LearningNodes
+  verknüpfen, Lösungen vor der Abgabe ausblenden und abgeschlossene Attempts
+  append-only hinter Service- und Storage-Grenzen speichern.
+- ⬜ LearningTestService in `LearningHubController` und `LearningHubView`
+  anbinden und den Ablauf sichtbar als **„Lokalen Mock-Test“** kennzeichnen.
 - ✅ Lade-, Leer-, Inhalts-, Mutations-, Erfolgs- und Fehlerzustände zugänglich
   gestalten.
 
@@ -284,19 +296,38 @@ xAPI-konform; es gibt weder ein LRS noch vollständiges Event Sourcing. Eine
 spätere Archivierung muss Ereignisse erhalten, und dauerhaftes Löschen benötigt
 eine gesonderte Referenz- und Löschrichtlinie.
 
-Der geplante lokale Mock-Testfluss lautet:
+Die implementierte LearningTest-Foundation verwendet ohne UI-Anbindung diesen
+lokalen Datenfluss:
 
 ```text
-LearningHubView
-  → LearningHubController
-  → LearningTestService
-  → MockLearningTestProvider
+LearningHubView / LearningHubController        noch nicht angebunden
+                    ↓
+LearningTestService
+  ├→ LearningHubService                        Referenzprüfung
+  ├→ LearningTestBankStorage
+  │    → StorageAdapter
+  │    → localStorage
+  ├→ LearningTestAttemptStorage
+  │    → StorageAdapter
+  │    → localStorage
+  └→ LearningTestEngine                        reine Deterministik
 ```
 
-Der `MockLearningTestProvider` arbeitet ausschließlich lokal, deterministisch
-und testbar. Er verwendet synthetische, vorbereitete Fragen, behauptet weder
-KI-Auswertung noch semantische Freitextbewertung und benötigt keine externe
-Kommunikation.
+Die veränderbare Testbank liegt unter
+`goldendawn.learningHub.testBank.v1`, der append-only Attempt-Log getrennt
+unter `goldendawn.learningHub.testAttempts.v1`. Fragen werden nachvollziehbar
+nach Kapitel-, LearningNode- und Frageposition geordnet; Optionen folgen ihrer
+Position. Es gibt keine Zufallsauswahl. Vor der Abgabe enthält die öffentliche
+Projektion weder korrekte Options-ID noch Erklärung. Laufende Sessions bleiben
+im Servicezustand flüchtig und schreiben erst bei einer vollständigen
+erfolgreichen Abgabe genau einen Attempt.
+
+Die reine `LearningTestEngine` präzisiert und ersetzt für diese Foundation den
+früher geplanten Provider-Platzhalter. Sie verwendet nutzerkonfigurierte
+Single-Choice-Fragen, behauptet weder KI-Auswertung noch semantische
+Freitextbewertung und benötigt keine externe Kommunikation. Die noch offene
+Controller- und View-Anbindung muss den Ablauf sichtbar als „Lokaler
+Mock-Test“ kennzeichnen.
 
 Der spätere Zielpfad bleibt:
 
@@ -337,11 +368,20 @@ geplant.
   Quellenreferenzkette.
 - Die Artefakt-UI verwendet ausschließlich die vorgesehenen Controller-,
   Service- und Storage-Grenzen; View und Controller greifen nicht direkt auf
-  `localStorage` zu. Lokale Testversuche müssen nach ihrer Einführung dieselbe
-  Schichtengrenze einhalten.
+  `localStorage` zu. LearningTestBank und Attempts halten dieselbe Grenze über
+  ihre fachlichen Storages und den gemeinsamen `StorageAdapter` ein; ihre
+  Controller- und View-Anbindung bleibt noch offen.
 - Artifact-Ladefehler lassen Inhalt und Fortschritt bedienbar und bieten einen
   nicht destruktiven Retry. No-ops schreiben nicht; das Leeren einer Notiz oder
   Zusammenfassung verwendet eine zugängliche Inline-Bestätigung.
+- Fragen werden über die vollständige aktuelle Elternkette referenzgeprüft und
+  ohne Zufall nach Kapitel-, LearningNode- und Frageposition ausgewählt.
+  Öffentliche Testfragen enthalten vor der Abgabe keine Lösung oder Erklärung.
+- Eine vollständige gültige Abgabe hängt genau einen konsistenten Attempt an;
+  malformed oder doppelte Antworten und Doppelsubmissionen erzeugen keinen
+  zweiten Datensatz. Historische Attempts bleiben in Append-Reihenfolge.
+- In-Progress-Sessions bleiben flüchtig. Fortschritt, Artifacts, Attempts und
+  eine mögliche spätere Testkompetenz werden nicht vermischt.
 - Der lokale Mock-Test ist eindeutig gekennzeichnet, reproduzierbar und ohne
   KI-Auswertung eindeutig auswertbar.
 - Private Kursinhalte gelangen nicht in das Repository; eine öffentliche Demo
@@ -369,6 +409,10 @@ geplant.
 - nachvollziehbare, deterministische Ableitung des Modulfortschritts aus der
   Ereignisreihenfolge sowie zugängliche Kapitel-Markierungsfelder,
   Fortschrittsanzeigen und isolierte Retry-Zustände;
+- Vertrags-, Engine-, Storage- und Service-Tests der LearningTest-Foundation
+  einschließlich vollständiger Fehlerakkumulation, Referenzprüfung,
+  deterministischer Reihenfolge, Lösungsausblendung, No-ops,
+  Präfixschutz, flüchtiger Sessions und exakter Single-Choice-Auswertung;
 - reproduzierbarer lokaler Mock-Test ohne behauptete KI-Funktion.
 
 ## v0.2.2 – LichtwaldLog Local MVP
@@ -497,6 +541,10 @@ kontrollierter Ergebnisspeicherung umsetzen.
 
 ### Umfang der TestAgent-Lerntests
 
+- ⬜ `LearningTestService` über eine dokumentierte Provider- oder
+  Adaptergrenze an `SyncService → SyncAgent → TestAgent` anbinden, ohne direkte
+  Agentenaufrufe aus UI-Komponenten oder stille Erweiterung der lokalen
+  Schema-1-Verträge.
 - ⬜ Request- und Ergebnisformat für Lerntests definieren.
 - ⬜ Freigegebenen Lernkontext strukturiert an den TestAgent übergeben.
 - ⬜ Testfragen mit erwarteten Antwortmerkmalen erzeugen.
@@ -678,8 +726,18 @@ LearningNode-Inhalte in den Artifact-Store. `src/main.js`, der vorhandene
 Controller und die View binden diesen Pfad ein. Die UI verwendet eine sichere
 Projektion, isoliert Artefaktfehler von Inhalt und Fortschritt, bietet Retry,
 meldet schreibfreie No-ops sichtbar und leert erst nach zugänglicher
-Inline-Bestätigung. Als nächster und einziger offener LearningHub-Schritt folgt
-der lokale Mock-Test; der Meilenstein ist damit noch nicht abgeschlossen.
+Inline-Bestätigung.
+
+Die LearningTest-Foundation ist ebenfalls umgesetzt: getrennte
+Schema-1-Verträge und private Storages unter
+`goldendawn.learningHub.testBank.v1` und
+`goldendawn.learningHub.testAttempts.v1`, eine reine deterministische Engine
+sowie der referenzprüfende Service für Fragenverwaltung, flüchtige Sessions,
+exakte Auswertung und append-only Attempts. Es gibt keine Demo-Übernahme,
+Zufallsauswahl, KI- oder Netzwerkfunktion. Als nächster und einziger offener
+LearningHub-Schritt folgt die Anbindung dieses Service an den vorhandenen
+Controller und die View als sichtbar gekennzeichneter „Lokaler Mock-Test“; der
+Meilenstein ist deshalb noch nicht abgeschlossen.
 
 `v0.2.2 – LichtwaldLog Local MVP` folgt anschließend als weiteres rein lokales
 Modul und ist noch nicht implementiert.

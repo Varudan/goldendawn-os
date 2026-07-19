@@ -23,9 +23,11 @@ LearningHub `v0.2.1` is now in progress. Its Schema 2 content contract, local
 service and storage path, controller, private content UI, and separate local
 chapter and module progress are implemented. The separate LearningArtifact
 contract, private local storage, reference-validating service, and UI for notes
-and summaries are implemented as well. Only the deterministic local mock test
-remains open for this milestone, so `v0.2.1` stays in progress. LichtwaldLog
-`v0.2.2` follows after it and is not implemented yet.
+and summaries are implemented as well. The separate local LearningTest bank,
+append-only attempts, deterministic engine, reference-validating service, and
+tests are implemented without UI wiring. Only the controller and view
+integration for the visible local mock test remains open, so `v0.2.1` stays in
+progress. LichtwaldLog `v0.2.2` follows after it and is not implemented yet.
 
 ## Vision
 
@@ -74,7 +76,7 @@ Accepted architecture decisions and their rationale are indexed in
 | --- | --- | --- | --- |
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
-| LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic synthetic mock tests | `v0.2.1` | Local content, progress, and LearningArtifact UI implemented; mock test remains open |
+| LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local content, progress, and LearningArtifact UI plus LearningTest foundation implemented; mock-test UI remains open |
 | LichtwaldLog | Local text journal with search and filters | `v0.2.2` | Planned; not implemented |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
@@ -189,21 +191,31 @@ without cloud backup or cross-device synchronization. Local storage is
 unencrypted and can in principle be read by other scripts on the same origin;
 browser quota and real-time or multi-tab consistency remain limitations.
 Private learning data and independently invented synthetic portfolio data stay
-strictly separate. The local mock test is the remaining LearningHub work item;
-it is not part of the LearningArtifact flow.
+strictly separate. The local LearningTest foundation is implemented separately
+from the LearningArtifact flow; only its controller and view integration is
+still open.
 
-The planned local test path is:
+The implemented foundation path is:
 
 ```text
-LearningHubView
-  → LearningHubController
-  → LearningTestService
-  → MockLearningTestProvider
+LearningHubView / LearningHubController        not connected yet
+                    ↓
+LearningTestService
+  ├→ LearningHubService                        reference validation
+  ├→ LearningTestBankStorage
+  │    → StorageAdapter
+  │    → localStorage
+  ├→ LearningTestAttemptStorage
+  │    → StorageAdapter
+  │    → localStorage
+  └→ LearningTestEngine                        pure determinism
 ```
 
-This local provider will be deterministic, synthetic, visibly labeled
-`Lokaler Mock-Test`, and will not use AI. Free-text evaluation and TestAgent
-processing are deferred to `v0.5.0`, using the later path:
+The engine uses the validated user-configured question bank deterministically,
+projects no solutions before submission, and does not use AI. Automated tests
+use independently invented synthetic content. The later UI will be visibly
+labeled `Lokaler Mock-Test`. Free-text evaluation and TestAgent processing are
+deferred to `v0.5.0`, using the later path:
 
 ```text
 LearningTestService
@@ -261,7 +273,7 @@ Detailed milestones and acceptance criteria are maintained in
 | --- | --- | --- |
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
-| v0.2.1 | LearningHub Local MVP | Local Schema 2 content, separate progress, and LearningArtifact UI implemented; deterministic mock test remains planned |
+| v0.2.1 | LearningHub Local MVP | Local Schema 2 content, separate progress, and LearningArtifact UI plus deterministic LearningTest foundation implemented; mock-test UI remains open |
 | v0.2.2 | LichtwaldLog Local MVP | Planned local text-entry CRUD, search, and filters |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
