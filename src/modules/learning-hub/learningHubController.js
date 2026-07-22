@@ -4,6 +4,18 @@ import {
   LEARNING_ARTIFACT_TYPES,
   validateLearningArtifactStore,
 } from './learningArtifactContract.js'
+import {
+  LEARNING_TEST_BANK_SCHEMA_VERSION,
+  LEARNING_TEST_DIFFICULTIES,
+  LEARNING_TEST_EXPLANATION_MAX_LENGTH,
+  LEARNING_TEST_MAX_OPTION_COUNT,
+  LEARNING_TEST_MIN_OPTION_COUNT,
+  LEARNING_TEST_OPTION_LABEL_MAX_LENGTH,
+  LEARNING_TEST_PROMPT_MAX_LENGTH,
+  LEARNING_TEST_QUESTION_TYPES,
+  isCanonicalUtcTimestamp,
+  validateLearningTestBank,
+} from './learningTestBankContract.js'
 
 const EMPTY_PRIVATE_HUB = Object.freeze({
   schemaVersion: 2,
@@ -122,6 +134,41 @@ const ARTIFACT_RESULT_ERROR_MESSAGE =
 const ARTIFACT_DIRTY_BLOCK_MESSAGE =
   'Es gibt einen ungespeicherten Entwurf. Speichere ihn oder brich die Bearbeitung ab, bevor du den Bereich wechselst.'
 
+const TEST_BANK_LOAD_ERROR_MESSAGE =
+  'Die lokalen Testfragen sind derzeit nicht verfügbar. Lerninhalte, Fortschritt und Lernartefakte bleiben bedienbar.'
+const TEST_BANK_RESULT_ERROR_MESSAGE =
+  'Das Ergebnis der Testfragenoperation konnte nicht sicher verarbeitet werden. Der letzte gültige Stand bleibt erhalten.'
+const TEST_QUESTION_MUTATION_ERROR_MESSAGE =
+  'Die Testfrage konnte nicht lokal gespeichert werden. Bitte versuche es erneut.'
+const TEST_QUESTION_DIRTY_BLOCK_MESSAGE =
+  'Der Testfragenentwurf enthält ungespeicherte Änderungen. Möchtest du weiterbearbeiten oder den Entwurf verwerfen?'
+const TEST_START_ERROR_MESSAGE =
+  'Der lokale Modultest konnte nicht sicher gestartet werden. Bitte versuche es erneut.'
+const TEST_SUBMISSION_ERROR_MESSAGE =
+  'Der lokale Modultest konnte nicht sicher ausgewertet werden. Deine Session und Antworten bleiben für einen Retry oder einen kontrollierten Abbruch erhalten.'
+const TEST_RESULT_ERROR_MESSAGE =
+  'Das Testergebnis konnte nicht sicher verarbeitet werden. Deine Session und Antworten bleiben erhalten.'
+const TEST_CANCEL_ERROR_MESSAGE =
+  'Die laufende Testsession konnte nicht sicher abgebrochen werden. Sie und ihre Antworten bleiben erhalten.'
+const TEST_SESSION_RELEASED_MESSAGE =
+  'Die lokale Testsession ist nicht mehr verfügbar. Der sichere Stand wurde abgeglichen; du kannst den Bereich wieder wechseln.'
+const TEST_ACTIVE_BLOCK_MESSAGE =
+  'Beende den laufenden lokalen Mock-Test oder brich ihn kontrolliert ab, bevor du den Bereich wechselst.'
+const TEST_INTERACTION_BLOCK_MESSAGE =
+  'Schließe zuerst das geöffnete Formular oder den Lernartefakt-Editor, bevor du den Modultest startest.'
+const TEST_HISTORY_LOAD_ERROR_MESSAGE =
+  'Die lokale Versuchshistorie ist derzeit nicht verfügbar. Testfragen und laufende Tests bleiben bedienbar.'
+
+const TEST_DIFFICULTIES = Object.freeze(
+  Object.values(LEARNING_TEST_DIFFICULTIES)
+)
+
+const QUESTION_SUCCESS_RESULTS = Object.freeze({
+  questionCreated: true,
+  questionUpdated: true,
+  questionUnchanged: false,
+})
+
 function scheduleAfterPaint(callback) {
   if (
     typeof globalThis.requestAnimationFrame !== 'function' ||
@@ -158,6 +205,267 @@ function isPlainDataObject(value) {
   } catch {
     return false
   }
+}
+
+function snapshotPlainData(value, state = null) {
+  const snapshotState = state ?? {
+    seen: new Set(),
+    remainingEntries: 10000,
+  }
+
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'boolean' ||
+    (typeof value === 'number' && Number.isFinite(value))
+  ) {
+    return { ok: true, value }
+  }
+
+  if (typeof value !== 'object' || snapshotState.seen.has(value)) {
+    return { ok: false }
+  }
+
+  let prototype
+  let descriptors
+
+  try {
+    prototype = Object.getPrototypeOf(value)
+    descriptors = Object.getOwnPropertyDescriptors(value)
+  } catch {
+    return { ok: false }
+  }
+
+  const isArray = Array.isArray(value)
+
+  if (
+    (isArray && prototype !== Array.prototype) ||
+    (!isArray && prototype !== Object.prototype && prototype !== null)
+  ) {
+    return { ok: false }
+  }
+
+  const propertyNames = Reflect.ownKeys(descriptors)
+  if (propertyNames.some((propertyName) => typeof propertyName !== 'string')) {
+    return { ok: false }
+  }
+
+  snapshotState.seen.add(value)
+
+  if (isArray) {
+    const lengthDescriptor = descriptors.length
+    const length = lengthDescriptor?.value
+
+    if (
+      !Number.isSafeInteger(length) ||
+      length < 0 ||
+      propertyNames.length !== length + 1
+    ) {
+      snapshotState.seen.delete(value)
+      return { ok: false }
+    }
+
+    const snapshot = []
+
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = descriptors[String(index)]
+
+      if (
+        !descriptor ||
+        !Object.hasOwn(descriptor, 'value') ||
+        descriptor.enumerable !== true ||
+        snapshotState.remainingEntries <= 0
+      ) {
+        snapshotState.seen.delete(value)
+        return { ok: false }
+      }
+
+      snapshotState.remainingEntries -= 1
+      const entrySnapshot = snapshotPlainData(
+        descriptor.value,
+        snapshotState
+      )
+
+      if (!entrySnapshot.ok) {
+        snapshotState.seen.delete(value)
+        return entrySnapshot
+      }
+
+      snapshot.push(entrySnapshot.value)
+    }
+
+    snapshotState.seen.delete(value)
+    return { ok: true, value: snapshot }
+  }
+
+  const snapshot = Object.create(null)
+
+  for (const propertyName of propertyNames) {
+    const descriptor = descriptors[propertyName]
+
+    if (
+      !Object.hasOwn(descriptor, 'value') ||
+      descriptor.enumerable !== true ||
+      snapshotState.remainingEntries <= 0
+    ) {
+      snapshotState.seen.delete(value)
+      return { ok: false }
+    }
+
+    snapshotState.remainingEntries -= 1
+    const propertySnapshot = snapshotPlainData(
+      descriptor.value,
+      snapshotState
+    )
+
+    if (!propertySnapshot.ok) {
+      snapshotState.seen.delete(value)
+      return propertySnapshot
+    }
+
+    snapshot[propertyName] = propertySnapshot.value
+  }
+
+  snapshotState.seen.delete(value)
+  return { ok: true, value: snapshot }
+}
+
+function deepFreezeData(value) {
+  if (!value || typeof value !== 'object' || Object.isFrozen(value)) {
+    return value
+  }
+
+  Object.values(value).forEach(deepFreezeData)
+  return Object.freeze(value)
+}
+
+function createFrozenSnapshot(value) {
+  const snapshot = snapshotPlainData(value)
+  return snapshot.ok ? deepFreezeData(snapshot.value) : null
+}
+
+function createTestSolutionSnapshot(moduleId, questions) {
+  return createFrozenSnapshot({
+    moduleId,
+    questions: questions.map((question) => ({
+      questionId: question.id,
+      learningNodeId: question.learningNodeId,
+      revision: question.revision,
+      correctOptionId: question.correctOptionId,
+      explanation: question.explanation,
+      optionIds: sortByPosition(question.options).map(
+        (option) => option.id
+      ),
+    })),
+  })
+}
+
+function hasExactProperties(value, expectedProperties) {
+  if (!isPlainDataObject(value)) return false
+
+  let propertyNames
+
+  try {
+    propertyNames = Object.keys(value)
+  } catch {
+    return false
+  }
+
+  return (
+    propertyNames.length === expectedProperties.length &&
+    expectedProperties.every((propertyName) =>
+      Object.hasOwn(value, propertyName)
+    )
+  )
+}
+
+function isTrimmedEntityId(value) {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value === value.trim()
+  )
+}
+
+function arePlainValuesEqual(firstValue, secondValue) {
+  if (Object.is(firstValue, secondValue)) return true
+
+  if (Array.isArray(firstValue) || Array.isArray(secondValue)) {
+    return (
+      Array.isArray(firstValue) &&
+      Array.isArray(secondValue) &&
+      firstValue.length === secondValue.length &&
+      firstValue.every((entry, index) =>
+        arePlainValuesEqual(entry, secondValue[index])
+      )
+    )
+  }
+
+  if (!isPlainDataObject(firstValue) || !isPlainDataObject(secondValue)) {
+    return false
+  }
+
+  const firstKeys = Object.keys(firstValue)
+  const secondKeys = Object.keys(secondValue)
+
+  return (
+    firstKeys.length === secondKeys.length &&
+    firstKeys.every((propertyName) => (
+      Object.hasOwn(secondValue, propertyName) &&
+      arePlainValuesEqual(
+        firstValue[propertyName],
+        secondValue[propertyName]
+      )
+    ))
+  )
+}
+
+function readTestOperationFailure(result) {
+  const resultSnapshot = snapshotPlainData(result)
+  if (!resultSnapshot.ok) return null
+
+  const snapshot = resultSnapshot.value
+
+  if (
+    !hasExactProperties(snapshot, ['ok', 'status', 'changed', 'error']) ||
+    snapshot.ok !== false ||
+    snapshot.changed !== false ||
+    typeof snapshot.status !== 'string' ||
+    !hasExactProperties(snapshot.error, ['code', 'message']) ||
+    typeof snapshot.error.code !== 'string' ||
+    typeof snapshot.error.message !== 'string'
+  ) {
+    return null
+  }
+
+  return {
+    status: snapshot.status,
+    code: snapshot.error.code,
+  }
+}
+
+function isEvaluationFailure(failure) {
+  return (
+    failure?.status === 'evaluationFailed' &&
+    failure.code === 'learningTestEvaluationFailed'
+  )
+}
+
+function isMissingTestSessionFailure(failure) {
+  return (
+    failure?.status === 'notFound' &&
+    failure.code === 'testSessionNotFound'
+  )
+}
+
+function isPendingTestSubmissionConflict(failure) {
+  return (
+    failure?.status === 'conflict' &&
+    [
+      'learningTestSubmissionInProgress',
+      'learningTestPendingSubmission',
+    ].includes(failure.code)
+  )
 }
 
 function hasArtifactResultShape(result) {
@@ -211,6 +519,281 @@ function cloneHub(learningHub) {
     ...learningHub,
     modules: learningHub.modules.map(cloneModule),
   }
+}
+
+function cloneTestQuestionOption(option) {
+  return { ...option }
+}
+
+function cloneTestQuestion(question) {
+  return {
+    ...question,
+    options: question.options.map(cloneTestQuestionOption),
+  }
+}
+
+function cloneTestBank(testBank) {
+  return {
+    schemaVersion: testBank.schemaVersion,
+    dataOrigin: testBank.dataOrigin,
+    questions: testBank.questions.map(cloneTestQuestion),
+  }
+}
+
+function sortByPosition(entries) {
+  return [...entries].sort((left, right) => left.position - right.position)
+}
+
+function getOrderedModuleQuestions(learningHub, testBank, moduleId) {
+  const learningModule = getModule(learningHub, moduleId)
+  if (!learningModule || !testBank) return []
+
+  const orderedQuestions = []
+
+  sortByPosition(learningModule.chapters).forEach((chapter) => {
+    sortByPosition(chapter.learningNodes).forEach((learningNode) => {
+      sortByPosition(
+        testBank.questions.filter((question) => (
+          question.moduleId === learningModule.id &&
+          question.chapterId === chapter.id &&
+          question.learningNodeId === learningNode.id
+        ))
+      ).forEach((question) => orderedQuestions.push(question))
+    })
+  })
+
+  return orderedQuestions
+}
+
+function isTestBankForHub(testBank, learningHub) {
+  try {
+    if (
+      testBank?.schemaVersion !== LEARNING_TEST_BANK_SCHEMA_VERSION ||
+      testBank?.dataOrigin !== 'private' ||
+      validateLearningTestBank(testBank).ok !== true
+    ) {
+      return false
+    }
+
+    const questionIds = new Set()
+    const optionIds = new Set()
+
+    for (const question of testBank.questions) {
+      const learningModule = getModule(learningHub, question.moduleId)
+      const chapter = getChapter(learningModule, question.chapterId)
+      const learningNode = getLearningNode(
+        chapter,
+        question.learningNodeId
+      )
+
+      if (
+        !learningModule ||
+        !chapter ||
+        !learningNode ||
+        questionIds.has(question.id) ||
+        optionIds.has(question.id)
+      ) {
+        return false
+      }
+
+      questionIds.add(question.id)
+
+      for (const option of question.options) {
+        if (optionIds.has(option.id) || questionIds.has(option.id)) {
+          return false
+        }
+
+        optionIds.add(option.id)
+      }
+    }
+
+    return true
+  } catch {
+    return false
+  }
+}
+
+function cloneValidatedTestBank(result, learningHub) {
+  const resultSnapshot = snapshotPlainData(result)
+  if (!resultSnapshot.ok) return null
+
+  const snapshot = resultSnapshot.value
+
+  if (
+    snapshot.ok !== true ||
+    !['empty', 'loaded'].includes(snapshot.status) ||
+    snapshot.changed !== false ||
+    !hasExactProperties(snapshot, [
+      'ok',
+      'status',
+      'changed',
+      'testBank',
+    ]) ||
+    !isTestBankForHub(snapshot.testBank, learningHub) ||
+    (snapshot.status === 'empty' && snapshot.testBank.questions.length !== 0)
+  ) {
+    return null
+  }
+
+  return cloneTestBank(snapshot.testBank)
+}
+
+function areTestQuestionsEqual(firstQuestion, secondQuestion) {
+  return arePlainValuesEqual(firstQuestion, secondQuestion)
+}
+
+function areTestBanksEqual(firstBank, secondBank) {
+  return arePlainValuesEqual(firstBank, secondBank)
+}
+
+function createAuthorQuestionView(question) {
+  const orderedOptions = sortByPosition(question.options)
+
+  return {
+    id: question.id,
+    prompt: question.prompt,
+    difficulty: question.difficulty,
+    position: question.position,
+    revision: question.revision,
+    options: orderedOptions.map((option) => ({
+      id: option.id,
+      label: option.label,
+      position: option.position,
+      isCorrect: option.id === question.correctOptionId,
+    })),
+    correctOptionIndex: orderedOptions.findIndex(
+      (option) => option.id === question.correctOptionId
+    ),
+    explanation: question.explanation,
+  }
+}
+
+function createPublicTestSessionClone(testSession) {
+  return {
+    id: testSession.id,
+    moduleId: testSession.moduleId,
+    startedAt: testSession.startedAt,
+    questions: testSession.questions.map((question) => ({
+      id: question.id,
+      learningNodeId: question.learningNodeId,
+      type: question.type,
+      prompt: question.prompt,
+      difficulty: question.difficulty,
+      options: question.options.map((option) => ({ ...option })),
+    })),
+  }
+}
+
+function isPublicSessionForStartResult(
+  result,
+  targetSnapshot,
+  learningHub,
+  testBank
+) {
+  const resultSnapshot = snapshotPlainData(result)
+  if (!resultSnapshot.ok) return null
+
+  const snapshot = resultSnapshot.value
+
+  if (
+    !hasExactProperties(snapshot, [
+      'ok',
+      'status',
+      'changed',
+      'testSession',
+    ]) ||
+    snapshot.ok !== true ||
+    snapshot.status !== 'testStarted' ||
+    snapshot.changed !== true
+  ) {
+    return null
+  }
+
+  const testSession = snapshot.testSession
+
+  if (
+    !hasExactProperties(testSession, [
+      'id',
+      'moduleId',
+      'startedAt',
+      'questions',
+    ]) ||
+    !isTrimmedEntityId(testSession.id) ||
+    testSession.moduleId !== targetSnapshot.moduleId ||
+    !isCanonicalUtcTimestamp(testSession.startedAt) ||
+    !Array.isArray(testSession.questions)
+  ) {
+    return null
+  }
+
+  const expectedQuestions = getOrderedModuleQuestions(
+    learningHub,
+    testBank,
+    targetSnapshot.moduleId
+  )
+
+  if (
+    expectedQuestions.length === 0 ||
+    testSession.questions.length !== expectedQuestions.length
+  ) {
+    return null
+  }
+
+  const questionIds = new Set()
+  const optionIds = new Set()
+
+  for (let index = 0; index < expectedQuestions.length; index += 1) {
+    const question = testSession.questions[index]
+    const expectedQuestion = expectedQuestions[index]
+    const expectedOptions = sortByPosition(expectedQuestion.options)
+
+    if (
+      !hasExactProperties(question, [
+        'id',
+        'learningNodeId',
+        'type',
+        'prompt',
+        'difficulty',
+        'options',
+      ]) ||
+      question.id !== expectedQuestion.id ||
+      question.learningNodeId !== expectedQuestion.learningNodeId ||
+      question.type !== LEARNING_TEST_QUESTION_TYPES.SINGLE_CHOICE ||
+      question.type !== expectedQuestion.type ||
+      question.prompt !== expectedQuestion.prompt ||
+      question.difficulty !== expectedQuestion.difficulty ||
+      !Array.isArray(question.options) ||
+      question.options.length !== expectedOptions.length ||
+      questionIds.has(question.id)
+    ) {
+      return null
+    }
+
+    questionIds.add(question.id)
+
+    for (
+      let optionIndex = 0;
+      optionIndex < expectedOptions.length;
+      optionIndex += 1
+    ) {
+      const option = question.options[optionIndex]
+      const expectedOption = expectedOptions[optionIndex]
+
+      if (
+        !hasExactProperties(option, ['id', 'label']) ||
+        option.id !== expectedOption.id ||
+        option.label !== expectedOption.label ||
+        optionIds.has(option.id) ||
+        questionIds.has(option.id)
+      ) {
+        return null
+      }
+
+      optionIds.add(option.id)
+    }
+  }
+
+  return createPublicTestSessionClone(testSession)
 }
 
 function cloneProgressProjection(projection) {
@@ -267,6 +850,117 @@ function createInitialArtifactState() {
     feedbackType: null,
     mutatingType: null,
   }
+}
+
+function createInitialTestState() {
+  return {
+    bank: {
+      phase: 'loading',
+      errorMessage: '',
+      statusMessage: '',
+    },
+    editor: null,
+    runner: {
+      phase: 'idle',
+      questionCount: 0,
+      testSession: null,
+      answers: [],
+      retryPending: false,
+      errorMessage: '',
+      statusMessage: '',
+      cancelConfirmation: false,
+      result: null,
+    },
+    history: {
+      phase: 'idle',
+      attempts: [],
+      errorMessage: '',
+    },
+  }
+}
+
+function cloneQuestionEditor(editor) {
+  if (!editor) return null
+
+  return {
+    ...editor,
+    values: {
+      ...editor.values,
+      options: [...editor.values.options],
+    },
+    fieldErrors: { ...editor.fieldErrors },
+  }
+}
+
+function cloneTestResult(result) {
+  if (!result) return null
+
+  return {
+    ...result,
+    questions: result.questions.map((question) => ({
+      ...question,
+      options: question.options.map((option) => ({ ...option })),
+    })),
+  }
+}
+
+function cloneTestRunner(runner) {
+  return {
+    ...runner,
+    testSession: runner.testSession
+      ? createPublicTestSessionClone(runner.testSession)
+      : null,
+    answers: runner.answers.map((answer) => ({ ...answer })),
+    result: cloneTestResult(runner.result),
+  }
+}
+
+function cloneTestHistory(history) {
+  return {
+    ...history,
+    attempts: history.attempts.map((attempt) => ({ ...attempt })),
+  }
+}
+
+function getDefaultQuestionValues() {
+  return {
+    prompt: '',
+    difficulty: LEARNING_TEST_DIFFICULTIES.MEDIUM,
+    options: ['', ''],
+    correctOptionIndex: 0,
+    explanation: '',
+  }
+}
+
+function createQuestionEditor(mode, values, questionId = null) {
+  return {
+    mode,
+    questionId,
+    values: {
+      ...values,
+      options: [...values.options],
+    },
+    fieldErrors: {},
+    errorMessage: '',
+    isSubmitting: false,
+    dirty: false,
+    discardConfirmation: false,
+  }
+}
+
+function areQuestionValuesEqual(firstValues, secondValues) {
+  return (
+    firstValues?.prompt === secondValues?.prompt &&
+    firstValues?.difficulty === secondValues?.difficulty &&
+    firstValues?.correctOptionIndex === secondValues?.correctOptionIndex &&
+    firstValues?.explanation === secondValues?.explanation &&
+    Array.isArray(firstValues?.options) &&
+    Array.isArray(secondValues?.options) &&
+    firstValues.options.length === secondValues.options.length &&
+    firstValues.options.every(
+      (option, index) => option === secondValues.options[index]
+    )
+  )
 }
 
 function isArtifactType(type) {
@@ -496,6 +1190,56 @@ function getSelectedLearningNodeReferences(viewState) {
     moduleId: learningModule.id,
     chapterId: location.chapter.id,
     learningNodeId: location.learningNode.id,
+  }
+}
+
+function isTestSessionOpen(runner) {
+  return ['starting', 'active', 'submitting', 'cancelling'].includes(
+    runner?.phase
+  )
+}
+
+function createTestViewModel(
+  viewState,
+  testState,
+  testBankSnapshot
+) {
+  const selectedReferences = getSelectedLearningNodeReferences(viewState)
+  const selectedModuleId = viewState.selectedModuleId
+  const shouldHideAuthorQuestions = isTestSessionOpen(testState.runner)
+  const questions = (
+    !shouldHideAuthorQuestions &&
+    selectedReferences &&
+    testBankSnapshot
+  )
+    ? sortByPosition(
+        testBankSnapshot.questions.filter((question) => (
+          question.moduleId === selectedReferences.moduleId &&
+          question.chapterId === selectedReferences.chapterId &&
+          question.learningNodeId === selectedReferences.learningNodeId
+        ))
+      ).map(createAuthorQuestionView)
+    : []
+  const totalQuestionCount = (
+    typeof selectedModuleId === 'string' && testBankSnapshot
+  )
+    ? testBankSnapshot.questions.filter(
+        (question) => question.moduleId === selectedModuleId
+      ).length
+    : 0
+
+  return {
+    bank: {
+      ...testState.bank,
+      questions,
+      totalQuestionCount,
+    },
+    editor: cloneQuestionEditor(testState.editor),
+    runner: {
+      ...cloneTestRunner(testState.runner),
+      questionCount: totalQuestionCount,
+    },
+    history: cloneTestHistory(testState.history),
   }
 }
 
@@ -1097,10 +1841,791 @@ function getSubmission(form, submittedValues) {
   return { values, serviceInput }
 }
 
+function validateQuestionEditorValues(values) {
+  const fieldErrors = {}
+  const prompt = typeof values?.prompt === 'string'
+    ? values.prompt.trim()
+    : ''
+  const difficulty = values?.difficulty
+  const explanation = typeof values?.explanation === 'string'
+    ? values.explanation.trim()
+    : ''
+  const options = Array.isArray(values?.options)
+    ? values.options.map((option) => (
+        typeof option === 'string' ? option.trim() : ''
+      ))
+    : []
+  const correctOptionIndex = values?.correctOptionIndex
+
+  if (!prompt || prompt.length > LEARNING_TEST_PROMPT_MAX_LENGTH) {
+    fieldErrors.prompt = !prompt
+      ? 'Bitte gib einen Fragetext ein.'
+      : `Der Fragetext darf höchstens ${LEARNING_TEST_PROMPT_MAX_LENGTH} Zeichen enthalten.`
+  }
+
+  if (!TEST_DIFFICULTIES.includes(difficulty)) {
+    fieldErrors.difficulty = 'Bitte wähle einen gültigen Schwierigkeitsgrad.'
+  }
+
+  if (
+    options.length < LEARNING_TEST_MIN_OPTION_COUNT ||
+    options.length > LEARNING_TEST_MAX_OPTION_COUNT
+  ) {
+    fieldErrors.options = 'Eine Frage benötigt zwei bis sechs Antwortoptionen.'
+  } else if (
+    options.some((option) => (
+      option.length === 0 ||
+      option.length > LEARNING_TEST_OPTION_LABEL_MAX_LENGTH
+    ))
+  ) {
+    fieldErrors.options =
+      `Jede Option benötigt einen Text mit höchstens ${LEARNING_TEST_OPTION_LABEL_MAX_LENGTH} Zeichen.`
+    options.forEach((option, optionIndex) => {
+      if (
+        option.length === 0 ||
+        option.length > LEARNING_TEST_OPTION_LABEL_MAX_LENGTH
+      ) {
+        fieldErrors[`options.${optionIndex}`] =
+          `Option ${optionIndex + 1} benötigt einen zulässigen Text.`
+      }
+    })
+  }
+
+  if (
+    !Number.isInteger(correctOptionIndex) ||
+    correctOptionIndex < 0 ||
+    correctOptionIndex >= options.length
+  ) {
+    fieldErrors.correctOptionIndex =
+      'Markiere genau eine vorhandene Antwortoption als korrekt.'
+  }
+
+  if (explanation.length > LEARNING_TEST_EXPLANATION_MAX_LENGTH) {
+    fieldErrors.explanation =
+      `Die Erklärung darf höchstens ${LEARNING_TEST_EXPLANATION_MAX_LENGTH} Zeichen enthalten.`
+  }
+
+  return {
+    values: {
+      prompt,
+      difficulty,
+      options,
+      correctOptionIndex,
+      explanation,
+    },
+    fieldErrors,
+  }
+}
+
+function getFirstQuestionFieldError(fieldErrors, values) {
+  for (const fieldName of [
+    'prompt',
+    'difficulty',
+    'options',
+    'correctOptionIndex',
+    'explanation',
+  ]) {
+    if (!Object.hasOwn(fieldErrors, fieldName)) continue
+
+    return {
+      type: 'questionEditorField',
+      fieldName,
+      optionIndex:
+        fieldName === 'options'
+          ? Math.max(
+              0,
+              values.options.findIndex((option) => (
+                typeof option !== 'string' ||
+                option.trim().length === 0 ||
+                option.trim().length >
+                  LEARNING_TEST_OPTION_LABEL_MAX_LENGTH
+              ))
+            )
+          : undefined,
+    }
+  }
+
+  return { type: 'questionEditorAlert' }
+}
+
+function doesQuestionMatchValues(question, values) {
+  const orderedOptions = sortByPosition(question.options)
+
+  return (
+    question.prompt === values.prompt &&
+    question.difficulty === values.difficulty &&
+    question.explanation === values.explanation &&
+    orderedOptions.length === values.options.length &&
+    orderedOptions.every((option, index) => (
+      option.label === values.options[index] &&
+      option.position === index + 1
+    )) &&
+    orderedOptions[values.correctOptionIndex]?.id ===
+      question.correctOptionId
+  )
+}
+
+function readQuestionMutationResult({
+  result,
+  mode,
+  targetSnapshot,
+  previousBank,
+  values,
+  learningHub,
+}) {
+  const resultSnapshot = snapshotPlainData(result)
+  if (!resultSnapshot.ok) return null
+
+  const snapshot = resultSnapshot.value
+  const allowedStatuses = mode === 'create'
+    ? ['questionCreated']
+    : ['questionUpdated', 'questionUnchanged']
+
+  if (
+    !hasExactProperties(snapshot, [
+      'ok',
+      'status',
+      'changed',
+      'question',
+      'testBank',
+    ]) ||
+    snapshot.ok !== true ||
+    !allowedStatuses.includes(snapshot.status) ||
+    snapshot.changed !== QUESTION_SUCCESS_RESULTS[snapshot.status] ||
+    !isTestBankForHub(snapshot.testBank, learningHub) ||
+    snapshot.testBank.schemaVersion !== previousBank.schemaVersion ||
+    snapshot.testBank.dataOrigin !== previousBank.dataOrigin
+  ) {
+    return null
+  }
+
+  const nextBank = cloneTestBank(snapshot.testBank)
+  let targetQuestion = null
+
+  if (mode === 'create') {
+    if (nextBank.questions.length !== previousBank.questions.length + 1) {
+      return null
+    }
+
+    if (
+      !previousBank.questions.every((question, index) =>
+        areTestQuestionsEqual(question, nextBank.questions[index])
+      )
+    ) {
+      return null
+    }
+
+    targetQuestion = nextBank.questions.at(-1)
+    const siblingPositions = previousBank.questions
+      .filter((question) => (
+        question.learningNodeId === targetSnapshot.learningNodeId
+      ))
+      .map((question) => question.position)
+    const expectedPosition = siblingPositions.length === 0
+      ? 1
+      : Math.max(...siblingPositions) + 1
+
+    if (
+      targetQuestion.moduleId !== targetSnapshot.moduleId ||
+      targetQuestion.chapterId !== targetSnapshot.chapterId ||
+      targetQuestion.learningNodeId !== targetSnapshot.learningNodeId ||
+      targetQuestion.type !== LEARNING_TEST_QUESTION_TYPES.SINGLE_CHOICE ||
+      targetQuestion.position !== expectedPosition ||
+      targetQuestion.revision !== 1 ||
+      targetQuestion.createdAt !== targetQuestion.updatedAt ||
+      !isCanonicalUtcTimestamp(targetQuestion.createdAt)
+    ) {
+      return null
+    }
+  } else {
+    if (nextBank.questions.length !== previousBank.questions.length) {
+      return null
+    }
+
+    const targetIndex = previousBank.questions.findIndex(
+      (question) => question.id === targetSnapshot.questionId
+    )
+
+    if (targetIndex === -1) return null
+
+    for (let index = 0; index < previousBank.questions.length; index += 1) {
+      if (
+        index !== targetIndex &&
+        !areTestQuestionsEqual(
+          previousBank.questions[index],
+          nextBank.questions[index]
+        )
+      ) {
+        return null
+      }
+    }
+
+    const previousQuestion = previousBank.questions[targetIndex]
+    targetQuestion = nextBank.questions[targetIndex]
+
+    if (
+      targetQuestion.id !== previousQuestion.id ||
+      targetQuestion.moduleId !== targetSnapshot.moduleId ||
+      targetQuestion.chapterId !== targetSnapshot.chapterId ||
+      targetQuestion.learningNodeId !== targetSnapshot.learningNodeId ||
+      targetQuestion.type !== previousQuestion.type ||
+      targetQuestion.position !== previousQuestion.position ||
+      targetQuestion.createdAt !== previousQuestion.createdAt
+    ) {
+      return null
+    }
+
+    if (snapshot.status === 'questionUnchanged') {
+      if (
+        !areTestBanksEqual(previousBank, nextBank) ||
+        !areTestQuestionsEqual(previousQuestion, targetQuestion)
+      ) {
+        return null
+      }
+    } else {
+      if (
+        targetQuestion.revision !== previousQuestion.revision + 1 ||
+        !isCanonicalUtcTimestamp(targetQuestion.updatedAt) ||
+        Date.parse(targetQuestion.updatedAt) <
+          Date.parse(previousQuestion.updatedAt)
+      ) {
+        return null
+      }
+
+      const previousOptions = sortByPosition(previousQuestion.options)
+      const nextOptions = sortByPosition(targetQuestion.options)
+      const optionLabelsUnchanged = (
+        previousOptions.length === values.options.length &&
+        previousOptions.every(
+          (option, index) => option.label === values.options[index]
+        )
+      )
+
+      if (
+        optionLabelsUnchanged &&
+        !previousOptions.every(
+          (option, index) => option.id === nextOptions[index]?.id
+        )
+      ) {
+        return null
+      }
+
+      if (
+        !optionLabelsUnchanged &&
+        nextOptions.some((option) =>
+          previousOptions.some(
+            (previousOption) => previousOption.id === option.id
+          )
+        )
+      ) {
+        return null
+      }
+    }
+  }
+
+  if (
+    !targetQuestion ||
+    !doesQuestionMatchValues(targetQuestion, values) ||
+    !areTestQuestionsEqual(snapshot.question, targetQuestion)
+  ) {
+    return null
+  }
+
+  return {
+    status: snapshot.status,
+    changed: snapshot.changed,
+    testBank: nextBank,
+  }
+}
+
+function readQuestionMutationReconciliation({
+  mode,
+  targetSnapshot,
+  previousBank,
+  values,
+  authoritativeBank,
+  learningHub,
+}) {
+  const question = mode === 'create'
+    ? authoritativeBank.questions.at(-1)
+    : authoritativeBank.questions.find(
+        (entry) => entry.id === targetSnapshot.questionId
+      )
+
+  if (!question) return null
+
+  const status = mode === 'create'
+    ? 'questionCreated'
+    : areTestBanksEqual(previousBank, authoritativeBank)
+      ? 'questionUnchanged'
+      : 'questionUpdated'
+
+  return readQuestionMutationResult({
+    result: {
+      ok: true,
+      status,
+      changed: QUESTION_SUCCESS_RESULTS[status],
+      question,
+      testBank: authoritativeBank,
+    },
+    mode,
+    targetSnapshot,
+    previousBank,
+    values,
+    learningHub,
+  })
+}
+
+function createSubmissionSnapshot(
+  activeSessionSnapshot,
+  answers
+) {
+  if (
+    !activeSessionSnapshot ||
+    answers.length !== activeSessionSnapshot.questions.length
+  ) {
+    return null
+  }
+
+  const answerByQuestionId = new Map(
+    answers.map((answer) => [answer.questionId, answer.selectedOptionId])
+  )
+  const orderedAnswers = []
+
+  for (const question of activeSessionSnapshot.questions) {
+    const selectedOptionId = answerByQuestionId.get(question.id)
+
+    if (
+      !isTrimmedEntityId(selectedOptionId) ||
+      !question.options.some((option) => option.id === selectedOptionId)
+    ) {
+      return null
+    }
+
+    orderedAnswers.push({
+      questionId: question.id,
+      selectedOptionId,
+    })
+  }
+
+  return createFrozenSnapshot({
+    moduleId: activeSessionSnapshot.moduleId,
+    testSessionId: activeSessionSnapshot.id,
+    questions: activeSessionSnapshot.questions,
+    payload: {
+      testSessionId: activeSessionSnapshot.id,
+      answers: orderedAnswers,
+    },
+  })
+}
+
+function readCompletedTestResult({
+  result,
+  sessionSnapshot,
+  solutionSnapshot,
+  submissionSnapshot,
+}) {
+  const resultSnapshot = snapshotPlainData(result)
+  if (!resultSnapshot.ok) return null
+
+  const snapshot = resultSnapshot.value
+
+  if (
+    !hasExactProperties(snapshot, [
+      'ok',
+      'status',
+      'changed',
+      'result',
+    ]) ||
+    snapshot.ok !== true ||
+    snapshot.status !== 'testCompleted' ||
+    snapshot.changed !== true
+  ) {
+    return null
+  }
+
+  const completedResult = snapshot.result
+
+  if (
+    solutionSnapshot?.moduleId !== submissionSnapshot.moduleId ||
+    !Array.isArray(solutionSnapshot?.questions) ||
+    !hasExactProperties(completedResult, [
+      'attemptId',
+      'moduleId',
+      'startedAt',
+      'completedAt',
+      'totalQuestionCount',
+      'correctAnswerCount',
+      'scorePercent',
+      'answers',
+      'feedback',
+    ]) ||
+    !isTrimmedEntityId(completedResult.attemptId) ||
+    completedResult.moduleId !== submissionSnapshot.moduleId ||
+    completedResult.startedAt !== sessionSnapshot.startedAt ||
+    !isCanonicalUtcTimestamp(completedResult.completedAt) ||
+    Date.parse(completedResult.completedAt) <
+      Date.parse(sessionSnapshot.startedAt) ||
+    !Array.isArray(completedResult.answers) ||
+    !Array.isArray(completedResult.feedback)
+  ) {
+    return null
+  }
+
+  const questions = submissionSnapshot.questions
+  const solutions = solutionSnapshot.questions
+  const submittedAnswers = submissionSnapshot.payload.answers
+
+  if (
+    solutions.length !== questions.length ||
+    completedResult.answers.length !== questions.length ||
+    completedResult.feedback.length !== questions.length ||
+    completedResult.totalQuestionCount !== questions.length
+  ) {
+    return null
+  }
+
+  let correctAnswerCount = 0
+
+  for (let index = 0; index < questions.length; index += 1) {
+    const question = questions[index]
+    const solution = solutions[index]
+    const submittedAnswer = submittedAnswers[index]
+    const answer = completedResult.answers[index]
+    const feedback = completedResult.feedback[index]
+    if (
+      !hasExactProperties(solution, [
+        'questionId',
+        'learningNodeId',
+        'revision',
+        'correctOptionId',
+        'explanation',
+        'optionIds',
+      ]) ||
+      solution.questionId !== question.id ||
+      !Number.isSafeInteger(solution.revision) ||
+      solution.revision < 1 ||
+      !Array.isArray(solution.optionIds) ||
+      solution.optionIds.length !== question.options.length ||
+      !solution.optionIds.every(
+        (optionId, optionIndex) =>
+          optionId === question.options[optionIndex]?.id
+      ) ||
+      !solution.optionIds.includes(solution.correctOptionId) ||
+      typeof solution.explanation !== 'string' ||
+      solution.explanation.length >
+        LEARNING_TEST_EXPLANATION_MAX_LENGTH ||
+      !hasExactProperties(answer, [
+        'questionId',
+        'questionRevision',
+        'learningNodeId',
+        'selectedOptionId',
+        'correctOptionId',
+        'isCorrect',
+      ]) ||
+      !hasExactProperties(feedback, [
+        'questionId',
+        'selectedOptionId',
+        'correctOptionId',
+        'isCorrect',
+        'explanation',
+      ]) ||
+      answer.questionId !== question.id ||
+      answer.questionRevision !== solution.revision ||
+      answer.learningNodeId !== solution.learningNodeId ||
+      answer.selectedOptionId !== submittedAnswer.selectedOptionId ||
+      answer.correctOptionId !== solution.correctOptionId ||
+      answer.isCorrect !==
+        (answer.selectedOptionId === answer.correctOptionId) ||
+      feedback.questionId !== answer.questionId ||
+      feedback.selectedOptionId !== answer.selectedOptionId ||
+      feedback.correctOptionId !== solution.correctOptionId ||
+      feedback.isCorrect !== answer.isCorrect ||
+      feedback.explanation !== solution.explanation ||
+      !solution.optionIds.includes(answer.selectedOptionId)
+    ) {
+      return null
+    }
+
+    if (answer.isCorrect) correctAnswerCount += 1
+  }
+
+  const expectedScorePercent = questions.length === 0
+    ? 0
+    : Math.round((correctAnswerCount / questions.length) * 100)
+
+  if (
+    completedResult.correctAnswerCount !== correctAnswerCount ||
+    completedResult.scorePercent !== expectedScorePercent
+  ) {
+    return null
+  }
+
+  return {
+    viewResult: {
+      completedAt: completedResult.completedAt,
+      totalQuestionCount: questions.length,
+      correctAnswerCount,
+      scorePercent: expectedScorePercent,
+      questions: questions.map((question, index) => {
+        const answer = completedResult.answers[index]
+
+        return {
+          prompt: sessionSnapshot.questions[index].prompt,
+          options: sessionSnapshot.questions[index].options.map((option) => ({
+            label: option.label,
+            isSelected: option.id === answer.selectedOptionId,
+            isCorrect: option.id === answer.correctOptionId,
+          })),
+          isCorrect: answer.isCorrect,
+          explanation: solutions[index].explanation,
+        }
+      }),
+    },
+    historyAttempt: {
+      attemptId: completedResult.attemptId,
+      moduleId: completedResult.moduleId,
+      startedAt: completedResult.startedAt,
+      completedAt: completedResult.completedAt,
+      totalQuestionCount: completedResult.totalQuestionCount,
+      correctAnswerCount: completedResult.correctAnswerCount,
+      scorePercent: completedResult.scorePercent,
+      answers: completedResult.answers.map((answer) => ({ ...answer })),
+    },
+  }
+}
+
+function readReconciledCompletedTestAttempt({
+  attempt,
+  sessionSnapshot,
+  solutionSnapshot,
+  submissionSnapshot,
+}) {
+  if (!isPlainDataObject(attempt)) return null
+
+  const feedback = solutionSnapshot?.questions?.map(
+    (solution, index) => {
+      const selectedOptionId =
+        attempt.answers?.[index]?.selectedOptionId
+
+      return {
+        questionId: solution.questionId,
+        selectedOptionId,
+        correctOptionId: solution.correctOptionId,
+        isCorrect: selectedOptionId === solution.correctOptionId,
+        explanation: solution.explanation,
+      }
+    }
+  )
+
+  if (!Array.isArray(feedback)) return null
+
+  return readCompletedTestResult({
+    result: {
+      ok: true,
+      status: 'testCompleted',
+      changed: true,
+      result: {
+        attemptId: attempt.attemptId,
+        moduleId: attempt.moduleId,
+        startedAt: attempt.startedAt,
+        completedAt: attempt.completedAt,
+        totalQuestionCount: attempt.totalQuestionCount,
+        correctAnswerCount: attempt.correctAnswerCount,
+        scorePercent: attempt.scorePercent,
+        answers: attempt.answers,
+        feedback,
+      },
+    },
+    sessionSnapshot,
+    solutionSnapshot,
+    submissionSnapshot,
+  })
+}
+
+function readSanitizedAttemptHistory(
+  result,
+  targetSnapshot,
+  learningHub,
+  testBank
+) {
+  const resultSnapshot = snapshotPlainData(result)
+  if (!resultSnapshot.ok) return null
+
+  const snapshot = resultSnapshot.value
+
+  if (
+    !hasExactProperties(snapshot, [
+      'ok',
+      'status',
+      'changed',
+      'attempts',
+    ]) ||
+    snapshot.ok !== true ||
+    !['attemptHistoryEmpty', 'attemptHistoryLoaded'].includes(
+      snapshot.status
+    ) ||
+    snapshot.changed !== false ||
+    !Array.isArray(snapshot.attempts) ||
+    (snapshot.status === 'attemptHistoryEmpty' &&
+      snapshot.attempts.length !== 0) ||
+    (snapshot.status === 'attemptHistoryLoaded' &&
+      snapshot.attempts.length === 0) ||
+    !getModule(learningHub, targetSnapshot.moduleId)
+  ) {
+    return null
+  }
+
+  const orderedQuestions = getOrderedModuleQuestions(
+    learningHub,
+    testBank,
+    targetSnapshot.moduleId
+  )
+  const questionOrder = new Map(
+    orderedQuestions.map((question, index) => [question.id, index])
+  )
+  const questionsById = new Map(
+    orderedQuestions.map((question) => [question.id, question])
+  )
+  const attemptIds = new Set()
+  const sanitizedAttempts = []
+
+  for (const attempt of snapshot.attempts) {
+    if (
+      !hasExactProperties(attempt, [
+        'attemptId',
+        'moduleId',
+        'startedAt',
+        'completedAt',
+        'totalQuestionCount',
+        'correctAnswerCount',
+        'scorePercent',
+        'answers',
+      ]) ||
+      !isTrimmedEntityId(attempt.attemptId) ||
+      attemptIds.has(attempt.attemptId) ||
+      attempt.moduleId !== targetSnapshot.moduleId ||
+      !isCanonicalUtcTimestamp(attempt.startedAt) ||
+      !isCanonicalUtcTimestamp(attempt.completedAt) ||
+      Date.parse(attempt.completedAt) < Date.parse(attempt.startedAt) ||
+      !Number.isSafeInteger(attempt.totalQuestionCount) ||
+      attempt.totalQuestionCount <= 0 ||
+      !Number.isSafeInteger(attempt.correctAnswerCount) ||
+      attempt.correctAnswerCount < 0 ||
+      attempt.correctAnswerCount > attempt.totalQuestionCount ||
+      attempt.scorePercent !== Math.round(
+        (attempt.correctAnswerCount / attempt.totalQuestionCount) * 100
+      ) ||
+      !Array.isArray(attempt.answers) ||
+      attempt.answers.length !== attempt.totalQuestionCount
+    ) {
+      return null
+    }
+
+    attemptIds.add(attempt.attemptId)
+    const answerQuestionIds = new Set()
+    let previousQuestionOrder = -1
+    let countedCorrectAnswers = 0
+
+    for (const answer of attempt.answers) {
+      const question = questionsById.get(answer?.questionId)
+      const currentQuestionOrder = questionOrder.get(answer?.questionId)
+
+      if (
+        !hasExactProperties(answer, [
+          'questionId',
+          'questionRevision',
+          'learningNodeId',
+          'selectedOptionId',
+          'correctOptionId',
+          'isCorrect',
+        ]) ||
+        !question ||
+        answerQuestionIds.has(answer.questionId) ||
+        !Number.isSafeInteger(answer.questionRevision) ||
+        answer.questionRevision < 1 ||
+        answer.questionRevision > question.revision ||
+        answer.learningNodeId !== question.learningNodeId ||
+        !isTrimmedEntityId(answer.selectedOptionId) ||
+        !isTrimmedEntityId(answer.correctOptionId) ||
+        typeof answer.isCorrect !== 'boolean' ||
+        answer.isCorrect !==
+          (answer.selectedOptionId === answer.correctOptionId) ||
+        !Number.isInteger(currentQuestionOrder) ||
+        currentQuestionOrder <= previousQuestionOrder
+      ) {
+        return null
+      }
+
+      answerQuestionIds.add(answer.questionId)
+      previousQuestionOrder = currentQuestionOrder
+      if (answer.isCorrect) countedCorrectAnswers += 1
+    }
+
+    if (countedCorrectAnswers !== attempt.correctAnswerCount) {
+      return null
+    }
+
+    sanitizedAttempts.push({
+      completedAt: attempt.completedAt,
+      totalQuestionCount: attempt.totalQuestionCount,
+      correctAnswerCount: attempt.correctAnswerCount,
+      scorePercent: attempt.scorePercent,
+    })
+  }
+
+  const previousAttempts = Array.isArray(targetSnapshot.previousAttempts)
+    ? targetSnapshot.previousAttempts
+    : []
+  const expectedAppends = Array.isArray(targetSnapshot.expectedAppends)
+    ? targetSnapshot.expectedAppends
+    : []
+
+  if (targetSnapshot.hasPreviousSnapshot === true) {
+    const expectedLength = previousAttempts.length +
+      expectedAppends.length
+
+    if (
+      snapshot.attempts.length !== expectedLength ||
+      !previousAttempts.every((attempt, index) =>
+        arePlainValuesEqual(attempt, snapshot.attempts[index])
+      ) ||
+      !expectedAppends.every((attempt, index) =>
+        arePlainValuesEqual(
+          attempt,
+          snapshot.attempts[previousAttempts.length + index]
+        )
+      )
+    ) {
+      return null
+    }
+  } else if (expectedAppends.length > 0) {
+    const suffixStart = snapshot.attempts.length - expectedAppends.length
+
+    if (
+      suffixStart < 0 ||
+      !expectedAppends.every((attempt, index) =>
+        arePlainValuesEqual(
+          attempt,
+          snapshot.attempts[suffixStart + index]
+        )
+      )
+    ) {
+      return null
+    }
+  }
+
+  return {
+    rawAttempts: snapshot.attempts,
+    attempts: sanitizedAttempts,
+  }
+}
+
 export function createLearningHubController({
   learningHubService,
   learningProgressService,
   learningArtifactService,
+  learningTestService,
   learningHubView,
   scheduleTask = scheduleAfterPaint,
 } = {}) {
@@ -1111,6 +2636,20 @@ export function createLearningHubController({
   let artifactStoreSnapshot = null
   let artifactTargetSnapshot = null
   let resumeArtifactEditingAfterClear = false
+  let testState = createInitialTestState()
+  let testBankSnapshot = null
+  let testBankLoadTargetSnapshot = null
+  let questionTargetSnapshot = null
+  let questionBaselineSnapshot = null
+  let questionMutationReconciliationSnapshot = null
+  let testStartTargetSnapshot = null
+  let activeTestSessionSnapshot = null
+  let activeTestSolutionSnapshot = null
+  let testSubmissionTargetSnapshot = null
+  let testCancelTargetSnapshot = null
+  let attemptHistoryTargetSnapshot = null
+  let attemptHistorySnapshots = new Map()
+  let pendingAttemptHistoryAppendSnapshots = new Map()
 
   const actions = Object.freeze({
     onRetryLoad: retryHubLoad,
@@ -1139,6 +2678,24 @@ export function createLearningHubController({
     onCancelArtifactClearConfirmation:
       cancelArtifactClearConfirmation,
     onConfirmArtifactClear: confirmArtifactClear,
+    onRetryTestBankLoad: retryTestBankLoad,
+    onOpenCreateQuestion: openCreateQuestion,
+    onOpenEditQuestion: openEditQuestion,
+    onUpdateQuestionField: updateQuestionField,
+    onAddQuestionOption: addQuestionOption,
+    onRemoveQuestionOption: removeQuestionOption,
+    onSelectCorrectQuestionOption: selectCorrectQuestionOption,
+    onSubmitQuestion: submitQuestion,
+    onCancelQuestionEditor: cancelQuestionEditor,
+    onContinueQuestionEditing: continueQuestionEditing,
+    onDiscardQuestionDraft: discardQuestionDraft,
+    onStartModuleTest: startModuleTest,
+    onSelectTestAnswer: selectTestAnswer,
+    onSubmitModuleTest: submitModuleTest,
+    onOpenTestCancelConfirmation: openTestCancelConfirmation,
+    onContinueModuleTest: continueModuleTest,
+    onConfirmModuleTestCancel: confirmModuleTestCancel,
+    onRetryAttemptHistory: retryAttemptHistory,
   })
 
   function render(focusTarget = null) {
@@ -1155,6 +2712,11 @@ export function createLearningHubController({
           viewState,
           artifactState,
           artifactStoreSnapshot
+        ),
+        tests: createTestViewModel(
+          viewState,
+          testState,
+          testBankSnapshot
         ),
         focusTarget,
       },
@@ -1281,6 +2843,100 @@ export function createLearningHubController({
     return false
   }
 
+  function resetPrivateTestState() {
+    testState = createInitialTestState()
+    testBankSnapshot = null
+    testBankLoadTargetSnapshot = null
+    questionTargetSnapshot = null
+    questionBaselineSnapshot = null
+    questionMutationReconciliationSnapshot = null
+    testStartTargetSnapshot = null
+    activeTestSessionSnapshot = null
+    activeTestSolutionSnapshot = null
+    testSubmissionTargetSnapshot = null
+    testCancelTargetSnapshot = null
+    attemptHistoryTargetSnapshot = null
+    attemptHistorySnapshots = new Map()
+    pendingAttemptHistoryAppendSnapshots = new Map()
+  }
+
+  function finishTestBankLoading(focusTarget = null) {
+    const targetSnapshot = testBankLoadTargetSnapshot
+
+    if (
+      !isActive ||
+      !targetSnapshot ||
+      !arePlainValuesEqual(targetSnapshot.hub, viewState.hub)
+    ) {
+      return false
+    }
+
+    let result = null
+
+    try {
+      result = learningTestService?.loadTestBank?.()
+    } catch {
+      result = null
+    }
+
+    if (
+      testBankLoadTargetSnapshot !== targetSnapshot ||
+      !arePlainValuesEqual(targetSnapshot.hub, viewState.hub)
+    ) {
+      return false
+    }
+
+    const validatedBank = cloneValidatedTestBank(result, viewState.hub)
+
+    if (validatedBank) {
+      testBankSnapshot = deepFreezeData(validatedBank)
+      testBankLoadTargetSnapshot = null
+      testState = {
+        ...testState,
+        bank: {
+          phase: 'ready',
+          errorMessage: '',
+          statusMessage: '',
+        },
+      }
+      render(focusTarget)
+      return true
+    }
+
+    testBankSnapshot = null
+    testBankLoadTargetSnapshot = null
+    testState = {
+      ...testState,
+      bank: {
+        phase: 'error',
+        errorMessage: TEST_BANK_LOAD_ERROR_MESSAGE,
+        statusMessage: '',
+      },
+    }
+    render(focusTarget ?? { type: 'testBankAlert' })
+    return false
+  }
+
+  function loadTestBank(focusTarget = null) {
+    const targetSnapshot = createFrozenSnapshot({
+      hub: cloneHub(viewState.hub),
+    })
+
+    if (!targetSnapshot) return false
+
+    testBankLoadTargetSnapshot = targetSnapshot
+    testState = {
+      ...testState,
+      bank: {
+        phase: 'loading',
+        errorMessage: '',
+        statusMessage: '',
+      },
+    }
+    render()
+    return finishTestBankLoading(focusTarget)
+  }
+
   function finishLoading() {
     cancelScheduledLoad = null
     if (!isActive) return
@@ -1313,13 +2969,15 @@ export function createLearningHubController({
       finishProgressLoading('unavailable')
       render()
       finishArtifactLoading()
-      render({ type: 'heading' })
+      render()
+      loadTestBank({ type: 'heading' })
       return
     }
 
     artifactStoreSnapshot = null
     artifactTargetSnapshot = null
     resumeArtifactEditingAfterClear = false
+    resetPrivateTestState()
     artifactState = {
       ...createInitialArtifactState(),
       phase: 'unavailable',
@@ -1347,6 +3005,7 @@ export function createLearningHubController({
     artifactTargetSnapshot = null
     artifactState = createInitialArtifactState()
     resumeArtifactEditingAfterClear = false
+    resetPrivateTestState()
     render()
     cancelScheduledLoad = scheduleTask(finishLoading)
   }
@@ -1444,6 +3103,72 @@ export function createLearningHubController({
     return true
   }
 
+  function resetQuestionInteraction() {
+    questionTargetSnapshot = null
+    questionBaselineSnapshot = null
+    questionMutationReconciliationSnapshot = null
+    testState = {
+      ...testState,
+      editor: null,
+    }
+  }
+
+  function blockDirtyQuestionTransition() {
+    if (testState.editor?.isSubmitting) {
+      render({ type: 'questionEditorAlert' })
+      return true
+    }
+
+    if (!testState.editor?.dirty) return false
+
+    testState = {
+      ...testState,
+      editor: {
+        ...testState.editor,
+        discardConfirmation: true,
+        errorMessage: TEST_QUESTION_DIRTY_BLOCK_MESSAGE,
+      },
+    }
+    render({ type: 'questionDiscardConfirmation' })
+    return true
+  }
+
+  function blockActiveTestTransition() {
+    if (!isTestSessionOpen(testState.runner)) return false
+
+    if (
+      testState.runner.phase === 'active' &&
+      activeTestSessionSnapshot
+    ) {
+      testCancelTargetSnapshot = createFrozenSnapshot({
+        moduleId: activeTestSessionSnapshot.moduleId,
+        testSessionId: activeTestSessionSnapshot.id,
+      })
+      testState = {
+        ...testState,
+        runner: {
+          ...testState.runner,
+          cancelConfirmation: true,
+          errorMessage: TEST_ACTIVE_BLOCK_MESSAGE,
+          statusMessage: '',
+        },
+      }
+      render({ type: 'testCancelConfirmation' })
+      return true
+    }
+
+    testState = {
+      ...testState,
+      runner: {
+        ...testState.runner,
+        errorMessage: TEST_ACTIVE_BLOCK_MESSAGE,
+        statusMessage: '',
+      },
+    }
+    render({ type: 'testSubmissionAlert' })
+    return true
+  }
+
   function canUseReadyView() {
     return (
       isActive &&
@@ -1451,8 +3176,170 @@ export function createLearningHubController({
       !viewState.form?.isSubmitting &&
       viewState.progress.phase !== 'mutating' &&
       artifactState.phase !== 'mutating' &&
-      artifactState.mode !== 'confirmClear'
+      artifactState.mode !== 'confirmClear' &&
+      testState.editor?.isSubmitting !== true &&
+      !isTestSessionOpen(testState.runner)
     )
+  }
+
+  function retryTestBankLoad() {
+    if (
+      !isActive ||
+      !['empty', 'ready'].includes(viewState.phase) ||
+      testState.bank.phase !== 'error' ||
+      viewState.form !== null ||
+      artifactState.mode !== 'view' ||
+      testState.editor !== null ||
+      isTestSessionOpen(testState.runner)
+    ) {
+      return
+    }
+
+    loadTestBank({ type: 'testBankAlert' })
+  }
+
+  function finishAttemptHistoryLoading(focusTarget = null) {
+    const targetSnapshot = attemptHistoryTargetSnapshot
+
+    if (
+      !targetSnapshot ||
+      targetSnapshot.moduleId !== viewState.selectedModuleId ||
+      !testBankSnapshot
+    ) {
+      return false
+    }
+
+    let result = null
+
+    try {
+      result = learningTestService?.loadAttemptHistory?.({
+        moduleId: targetSnapshot.moduleId,
+      })
+    } catch {
+      result = null
+    }
+
+    if (
+      attemptHistoryTargetSnapshot !== targetSnapshot ||
+      targetSnapshot.moduleId !== viewState.selectedModuleId
+    ) {
+      return false
+    }
+
+    const historyResult = readSanitizedAttemptHistory(
+      result,
+      targetSnapshot,
+      viewState.hub,
+      testBankSnapshot
+    )
+
+    const historySnapshot = historyResult
+      ? createFrozenSnapshot({
+        rawAttempts: historyResult.rawAttempts,
+        attempts: historyResult.attempts,
+      })
+      : null
+
+    if (historyResult && historySnapshot) {
+      attemptHistorySnapshots.set(
+        targetSnapshot.moduleId,
+        historySnapshot
+      )
+      pendingAttemptHistoryAppendSnapshots.delete(
+        targetSnapshot.moduleId
+      )
+      attemptHistoryTargetSnapshot = null
+      testState = {
+        ...testState,
+        history: {
+          phase: 'ready',
+          attempts: historyResult.attempts,
+          errorMessage: '',
+        },
+      }
+      render(focusTarget)
+      return true
+    }
+
+    attemptHistoryTargetSnapshot = null
+    const previousHistory = attemptHistorySnapshots.get(
+      targetSnapshot.moduleId
+    )
+    testState = {
+      ...testState,
+      history: {
+        phase: 'error',
+        attempts: previousHistory
+          ? previousHistory.attempts.map((attempt) => ({ ...attempt }))
+          : testState.history.attempts,
+        errorMessage: TEST_HISTORY_LOAD_ERROR_MESSAGE,
+      },
+    }
+    render(focusTarget ?? { type: 'attemptHistoryAlert' })
+    return false
+  }
+
+  function loadAttemptHistory(focusTarget = null) {
+    if (
+      !isEntityId(viewState.selectedModuleId) ||
+      !getModule(viewState.hub, viewState.selectedModuleId)
+    ) {
+      return false
+    }
+
+    if (!testBankSnapshot) {
+      testState = {
+        ...testState,
+        history: {
+          phase: 'error',
+          attempts: [...testState.history.attempts],
+          errorMessage: TEST_HISTORY_LOAD_ERROR_MESSAGE,
+        },
+      }
+      render(focusTarget ?? { type: 'attemptHistoryAlert' })
+      return false
+    }
+
+    const previousHistory = attemptHistorySnapshots.get(
+      viewState.selectedModuleId
+    )
+    const expectedAppends = pendingAttemptHistoryAppendSnapshots.get(
+      viewState.selectedModuleId
+    ) ?? []
+    const targetSnapshot = createFrozenSnapshot({
+      moduleId: viewState.selectedModuleId,
+      hasPreviousSnapshot: Boolean(previousHistory),
+      previousAttempts: previousHistory?.rawAttempts ?? [],
+      expectedAppends,
+    })
+    if (!targetSnapshot) return false
+
+    attemptHistoryTargetSnapshot = targetSnapshot
+    testState = {
+      ...testState,
+      history: {
+        phase: 'loading',
+        attempts: previousHistory
+          ? previousHistory.attempts.map((attempt) => ({ ...attempt }))
+          : [],
+        errorMessage: '',
+      },
+    }
+    render()
+    return finishAttemptHistoryLoading(focusTarget)
+  }
+
+  function retryAttemptHistory() {
+    if (
+      !isActive ||
+      !['empty', 'ready'].includes(viewState.phase) ||
+      testState.history.phase !== 'error' ||
+      !isEntityId(viewState.selectedModuleId)
+    ) {
+      return
+    }
+
+    loadAttemptHistory({ type: 'attemptHistoryAlert' })
   }
 
   function retryProgressLoad() {
@@ -1493,14 +3380,19 @@ export function createLearningHubController({
   }
 
   function selectModule(moduleId) {
+    if (blockActiveTestTransition()) return
     if (!canUseReadyView()) return
 
     const learningModule = getModule(viewState.hub, moduleId)
     if (!learningModule) return
     if (moduleId === viewState.selectedModuleId) return
+    if (blockDirtyQuestionTransition()) return
     if (blockDirtyArtifactTransition()) return
 
+    resetQuestionInteraction()
     resetArtifactInteraction()
+    resetActiveTestSession()
+    attemptHistoryTargetSnapshot = null
     viewState = {
       ...viewState,
       selectedModuleId: learningModule.id,
@@ -1510,14 +3402,45 @@ export function createLearningHubController({
       statusMessage: '',
       errorMessage: '',
     }
+    testState = {
+      ...testState,
+      runner: {
+        ...createInitialTestState().runner,
+        questionCount: testBankSnapshot
+          ? testBankSnapshot.questions.filter(
+              (question) => question.moduleId === learningModule.id
+            ).length
+          : 0,
+      },
+      history: {
+        phase: 'loading',
+        attempts: [],
+        errorMessage: '',
+      },
+    }
     render({ type: 'moduleHeading' })
+    loadAttemptHistory({ type: 'moduleHeading' })
   }
 
   function backToOverview() {
+    if (blockActiveTestTransition()) return
     if (!canUseReadyView() || viewState.selectedModuleId === null) return
+    if (blockDirtyQuestionTransition()) return
     if (blockDirtyArtifactTransition()) return
 
+    resetQuestionInteraction()
     resetArtifactInteraction()
+    resetActiveTestSession()
+    attemptHistoryTargetSnapshot = null
+    testState = {
+      ...testState,
+      runner: createInitialTestState().runner,
+      history: {
+        phase: 'idle',
+        attempts: [],
+        errorMessage: '',
+      },
+    }
     viewState = {
       ...viewState,
       selectedModuleId: null,
@@ -1530,6 +3453,7 @@ export function createLearningHubController({
   }
 
   function toggleChapter(moduleId, chapterId) {
+    if (blockActiveTestTransition()) return
     if (!canUseReadyView() || moduleId !== viewState.selectedModuleId) return
 
     const learningModule = getModule(viewState.hub, moduleId)
@@ -1549,12 +3473,20 @@ export function createLearningHubController({
 
     if (
       willHideSelectedLearningNode &&
+      blockDirtyQuestionTransition()
+    ) {
+      return
+    }
+
+    if (
+      willHideSelectedLearningNode &&
       blockDirtyArtifactTransition()
     ) {
       return
     }
 
     if (willHideSelectedLearningNode) {
+      resetQuestionInteraction()
       resetArtifactInteraction()
     }
 
@@ -1678,6 +3610,7 @@ export function createLearningHubController({
   }
 
   function selectLearningNode(moduleId, chapterId, learningNodeId) {
+    if (blockActiveTestTransition()) return
     if (!canUseReadyView() || moduleId !== viewState.selectedModuleId) return
 
     const learningModule = getModule(viewState.hub, moduleId)
@@ -1685,8 +3618,10 @@ export function createLearningHubController({
     const learningNode = getLearningNode(chapter, learningNodeId)
     if (!learningNode) return
     if (learningNodeId === viewState.selectedLearningNodeId) return
+    if (blockDirtyQuestionTransition()) return
     if (blockDirtyArtifactTransition()) return
 
+    resetQuestionInteraction()
     resetArtifactInteraction()
     viewState = {
       ...viewState,
@@ -1707,9 +3642,12 @@ export function createLearningHubController({
   }
 
   function setForm(form, focusTarget, stateUpdates = {}) {
+    if (blockActiveTestTransition()) return
     if (!canUseReadyView()) return
+    if (blockDirtyQuestionTransition()) return
     if (blockDirtyArtifactTransition()) return
 
+    resetQuestionInteraction()
     resetArtifactInteraction()
     viewState = {
       ...viewState,
@@ -1771,6 +3709,7 @@ export function createLearningHubController({
   }
 
   function openAddLearningNodeForm(moduleId, chapterId) {
+    if (blockActiveTestTransition()) return
     if (!canUseReadyView()) return
 
     const learningModule = getModule(viewState.hub, moduleId)
@@ -1795,6 +3734,7 @@ export function createLearningHubController({
     chapterId,
     learningNodeId
   ) {
+    if (blockActiveTestTransition()) return
     if (!canUseReadyView()) return
 
     const learningModule = getModule(viewState.hub, moduleId)
@@ -1817,10 +3757,723 @@ export function createLearningHubController({
     )
   }
 
+  function doesQuestionTargetMatchSelection(targetSnapshot) {
+    const references = getSelectedLearningNodeReferences(viewState)
+
+    return (
+      targetSnapshot &&
+      references &&
+      targetSnapshot.moduleId === references.moduleId &&
+      targetSnapshot.chapterId === references.chapterId &&
+      targetSnapshot.learningNodeId === references.learningNodeId &&
+      (
+        targetSnapshot.mode === 'create' ||
+        isTrimmedEntityId(targetSnapshot.questionId)
+      )
+    )
+  }
+
+  function canOpenQuestionEditor() {
+    return (
+      canUseReadyView() &&
+      viewState.form === null &&
+      testState.editor === null &&
+      artifactState.mode === 'view' &&
+      testState.bank.phase === 'ready' &&
+      testBankSnapshot !== null &&
+      getSelectedLearningNodeReferences(viewState) !== null
+    )
+  }
+
+  function openCreateQuestion() {
+    if (blockActiveTestTransition()) return
+
+    if (testState.editor) {
+      render({
+        type: 'questionEditorField',
+        fieldName: 'prompt',
+      })
+      return
+    }
+
+    if (!canOpenQuestionEditor()) return
+    if (blockDirtyArtifactTransition()) return
+
+    const references = getSelectedLearningNodeReferences(viewState)
+    const targetSnapshot = createFrozenSnapshot({
+      ...references,
+      mode: 'create',
+    })
+    const baselineSnapshot = createFrozenSnapshot(
+      getDefaultQuestionValues()
+    )
+
+    if (!targetSnapshot || !baselineSnapshot) return
+
+    questionTargetSnapshot = targetSnapshot
+    questionBaselineSnapshot = baselineSnapshot
+    testState = {
+      ...testState,
+      bank: {
+        ...testState.bank,
+        errorMessage: '',
+        statusMessage: '',
+      },
+      editor: createQuestionEditor(
+        'create',
+        getDefaultQuestionValues()
+      ),
+    }
+    render({
+      type: 'questionEditorField',
+      fieldName: 'prompt',
+    })
+  }
+
+  function openEditQuestion(questionId) {
+    if (blockActiveTestTransition()) return
+    if (!isTrimmedEntityId(questionId)) return
+
+    if (testState.editor) {
+      if (
+        testState.editor.mode === 'edit' &&
+        testState.editor.questionId === questionId
+      ) {
+        render({
+          type: 'questionEditorField',
+          fieldName: 'prompt',
+        })
+      }
+      return
+    }
+
+    if (!canOpenQuestionEditor()) return
+    if (blockDirtyArtifactTransition()) return
+
+    const references = getSelectedLearningNodeReferences(viewState)
+    const question = testBankSnapshot.questions.find(
+      (candidateQuestion) => (
+        candidateQuestion.id === questionId &&
+        candidateQuestion.moduleId === references.moduleId &&
+        candidateQuestion.chapterId === references.chapterId &&
+        candidateQuestion.learningNodeId === references.learningNodeId
+      )
+    )
+    if (!question) return
+
+    const orderedOptions = sortByPosition(question.options)
+    const values = {
+      prompt: question.prompt,
+      difficulty: question.difficulty,
+      options: orderedOptions.map((option) => option.label),
+      correctOptionIndex: orderedOptions.findIndex(
+        (option) => option.id === question.correctOptionId
+      ),
+      explanation: question.explanation,
+    }
+    const targetSnapshot = createFrozenSnapshot({
+      ...references,
+      mode: 'edit',
+      questionId: question.id,
+    })
+    const baselineSnapshot = createFrozenSnapshot(values)
+
+    if (!targetSnapshot || !baselineSnapshot) return
+
+    questionTargetSnapshot = targetSnapshot
+    questionBaselineSnapshot = baselineSnapshot
+    testState = {
+      ...testState,
+      bank: {
+        ...testState.bank,
+        errorMessage: '',
+        statusMessage: '',
+      },
+      editor: createQuestionEditor('edit', values, question.id),
+    }
+    render({
+      type: 'questionEditorField',
+      fieldName: 'prompt',
+    })
+  }
+
+  function updateQuestionEditorValues(
+    nextValues,
+    clearedFieldName,
+    focusTarget = null
+  ) {
+    if (
+      !testState.editor ||
+      testState.editor.isSubmitting ||
+      testState.editor.discardConfirmation ||
+      !doesQuestionTargetMatchSelection(questionTargetSnapshot) ||
+      !questionBaselineSnapshot
+    ) {
+      return false
+    }
+
+    const nextDirty = !areQuestionValuesEqual(
+      nextValues,
+      questionBaselineSnapshot
+    )
+    const shouldRender = Boolean(
+      testState.editor.errorMessage ||
+      testState.editor.dirty !== nextDirty ||
+      Object.keys(testState.editor.fieldErrors).some(
+        (fieldName) => (
+          fieldName === clearedFieldName ||
+          (
+            clearedFieldName === 'options' &&
+            fieldName.startsWith('options.')
+          )
+        )
+      )
+    )
+    const fieldErrors = { ...testState.editor.fieldErrors }
+    delete fieldErrors[clearedFieldName]
+    if (clearedFieldName === 'options') {
+      Object.keys(fieldErrors)
+        .filter((fieldName) => fieldName.startsWith('options.'))
+        .forEach((fieldName) => delete fieldErrors[fieldName])
+    }
+
+    testState = {
+      ...testState,
+      editor: {
+        ...testState.editor,
+        values: nextValues,
+        fieldErrors,
+        errorMessage: '',
+        dirty: nextDirty,
+      },
+    }
+
+    if (shouldRender) {
+      render(focusTarget)
+    }
+
+    return shouldRender
+  }
+
+  function updateQuestionField(fieldName, value, optionIndex) {
+    if (!testState.editor) return
+
+    if (fieldName === 'options') {
+      if (
+        typeof value !== 'string' ||
+        !Number.isInteger(optionIndex) ||
+        optionIndex < 0 ||
+        optionIndex >= testState.editor.values.options.length
+      ) {
+        return
+      }
+
+      const options = [...testState.editor.values.options]
+      options[optionIndex] = value
+      updateQuestionEditorValues(
+        { ...testState.editor.values, options },
+        'options',
+        {
+          type: 'questionEditorField',
+          fieldName: 'options',
+          optionIndex,
+        }
+      )
+      return
+    }
+
+    if (
+      !['prompt', 'difficulty', 'explanation'].includes(fieldName) ||
+      typeof value !== 'string'
+    ) {
+      return
+    }
+
+    updateQuestionEditorValues(
+      { ...testState.editor.values, [fieldName]: value },
+      fieldName,
+      { type: 'questionEditorField', fieldName }
+    )
+  }
+
+  function addQuestionOption() {
+    if (
+      !testState.editor ||
+      testState.editor.values.options.length >=
+        LEARNING_TEST_MAX_OPTION_COUNT
+    ) {
+      return
+    }
+
+    const didRender = updateQuestionEditorValues(
+      {
+        ...testState.editor.values,
+        options: [...testState.editor.values.options, ''],
+      },
+      'options',
+      {
+        type: 'questionEditorField',
+        fieldName: 'options',
+        optionIndex: testState.editor.values.options.length,
+      }
+    )
+    if (!didRender) {
+      render({
+        type: 'questionEditorField',
+        fieldName: 'options',
+        optionIndex: testState.editor.values.options.length - 1,
+      })
+    }
+  }
+
+  function removeQuestionOption(optionIndex) {
+    if (
+      !testState.editor ||
+      !Number.isInteger(optionIndex) ||
+      testState.editor.values.options.length <=
+        LEARNING_TEST_MIN_OPTION_COUNT ||
+      optionIndex < 0 ||
+      optionIndex >= testState.editor.values.options.length
+    ) {
+      return
+    }
+
+    const options = testState.editor.values.options.filter(
+      (_, index) => index !== optionIndex
+    )
+    const previousCorrectIndex =
+      testState.editor.values.correctOptionIndex
+    const correctOptionIndex = previousCorrectIndex === optionIndex
+      ? 0
+      : previousCorrectIndex > optionIndex
+        ? previousCorrectIndex - 1
+        : previousCorrectIndex
+
+    const didRender = updateQuestionEditorValues(
+      {
+        ...testState.editor.values,
+        options,
+        correctOptionIndex,
+      },
+      'options',
+      {
+        type: 'questionEditorField',
+        fieldName: 'options',
+        optionIndex: Math.min(optionIndex, options.length - 1),
+      }
+    )
+    if (!didRender) {
+      render({
+        type: 'questionEditorField',
+        fieldName: 'options',
+        optionIndex: Math.min(optionIndex, options.length - 1),
+      })
+    }
+  }
+
+  function selectCorrectQuestionOption(optionIndex) {
+    if (
+      !testState.editor ||
+      !Number.isInteger(optionIndex) ||
+      optionIndex < 0 ||
+      optionIndex >= testState.editor.values.options.length
+    ) {
+      return
+    }
+
+    updateQuestionEditorValues(
+      {
+        ...testState.editor.values,
+        correctOptionIndex: optionIndex,
+      },
+      'correctOptionIndex',
+      {
+        type: 'questionEditorField',
+        fieldName: 'correctOptionIndex',
+      }
+    )
+  }
+
+  function getQuestionEditorTrigger(editor, targetSnapshot) {
+    return {
+      type: 'questionEditorTrigger',
+      mode: editor.mode,
+      ...(editor.mode === 'edit'
+        ? { questionId: targetSnapshot?.questionId }
+        : {}),
+    }
+  }
+
+  function cancelQuestionEditor() {
+    if (!testState.editor || testState.editor.isSubmitting) return
+
+    if (testState.editor.dirty) {
+      blockDirtyQuestionTransition()
+      return
+    }
+
+    const focusTarget = getQuestionEditorTrigger(
+      testState.editor,
+      questionTargetSnapshot
+    )
+    resetQuestionInteraction()
+    render(focusTarget)
+  }
+
+  function continueQuestionEditing() {
+    if (!testState.editor?.discardConfirmation) return
+
+    testState = {
+      ...testState,
+      editor: {
+        ...testState.editor,
+        discardConfirmation: false,
+        errorMessage: '',
+      },
+    }
+    render({
+      type: 'questionEditorField',
+      fieldName: 'prompt',
+    })
+  }
+
+  function discardQuestionDraft() {
+    if (!testState.editor?.discardConfirmation) return
+
+    const focusTarget = getQuestionEditorTrigger(
+      testState.editor,
+      questionTargetSnapshot
+    )
+    resetQuestionInteraction()
+    render(focusTarget)
+  }
+
+  function finishQuestionMutation(validResult) {
+    testBankSnapshot = deepFreezeData(validResult.testBank)
+    questionTargetSnapshot = null
+    questionBaselineSnapshot = null
+    questionMutationReconciliationSnapshot = null
+    testState = {
+      ...testState,
+      bank: {
+        phase: 'ready',
+        errorMessage: '',
+        statusMessage:
+          validResult.status === 'questionCreated'
+            ? 'Testfrage wurde lokal erstellt.'
+            : validResult.status === 'questionUpdated'
+              ? 'Testfrage wurde lokal aktualisiert.'
+              : 'Die Testfrage ist bereits aktuell.',
+      },
+      editor: null,
+    }
+    render({ type: 'testBankStatus' })
+  }
+
+  function getQuestionBaselineFromBank(
+    mode,
+    targetSnapshot,
+    authoritativeBank
+  ) {
+    if (mode === 'create') return getDefaultQuestionValues()
+
+    const question = authoritativeBank.questions.find(
+      (candidateQuestion) =>
+        candidateQuestion.id === targetSnapshot.questionId &&
+        candidateQuestion.moduleId === targetSnapshot.moduleId &&
+        candidateQuestion.chapterId === targetSnapshot.chapterId &&
+        candidateQuestion.learningNodeId === targetSnapshot.learningNodeId
+    )
+
+    if (!question) return null
+
+    const orderedOptions = sortByPosition(question.options)
+    return {
+      prompt: question.prompt,
+      difficulty: question.difficulty,
+      options: orderedOptions.map((option) => option.label),
+      correctOptionIndex: orderedOptions.findIndex(
+        (option) => option.id === question.correctOptionId
+      ),
+      explanation: question.explanation,
+    }
+  }
+
+  function reconcileQuestionMutation() {
+    const reconciliationAtEntry =
+      questionMutationReconciliationSnapshot
+    const targetAtEntry = questionTargetSnapshot
+
+    if (
+      !reconciliationAtEntry ||
+      !targetAtEntry ||
+      !testState.editor ||
+      !doesQuestionTargetMatchSelection(targetAtEntry)
+    ) {
+      return false
+    }
+
+    testState = {
+      ...testState,
+      editor: {
+        ...testState.editor,
+        isSubmitting: true,
+        fieldErrors: {},
+        errorMessage: '',
+      },
+    }
+    render()
+
+    let loadResult = null
+
+    try {
+      loadResult = learningTestService?.loadTestBank?.()
+    } catch {
+      loadResult = null
+    }
+
+    if (
+      questionMutationReconciliationSnapshot !==
+        reconciliationAtEntry ||
+      questionTargetSnapshot !== targetAtEntry ||
+      !doesQuestionTargetMatchSelection(targetAtEntry) ||
+      !testState.editor
+    ) {
+      return false
+    }
+
+    const authoritativeBank = cloneValidatedTestBank(
+      loadResult,
+      viewState.hub
+    )
+
+    if (!authoritativeBank) {
+      testState = {
+        ...testState,
+        editor: {
+          ...testState.editor,
+          isSubmitting: false,
+          fieldErrors: {},
+          errorMessage: TEST_BANK_RESULT_ERROR_MESSAGE,
+          dirty: true,
+        },
+      }
+      render({ type: 'questionEditorAlert' })
+      return false
+    }
+
+    const validResult = readQuestionMutationReconciliation({
+      mode: reconciliationAtEntry.mode,
+      targetSnapshot: reconciliationAtEntry.targetSnapshot,
+      previousBank: reconciliationAtEntry.previousBank,
+      values: reconciliationAtEntry.values,
+      authoritativeBank,
+      learningHub: viewState.hub,
+    })
+
+    if (validResult) {
+      finishQuestionMutation(validResult)
+      return true
+    }
+
+    testBankSnapshot = deepFreezeData(authoritativeBank)
+    questionMutationReconciliationSnapshot = null
+    const baselineValues = getQuestionBaselineFromBank(
+      targetAtEntry.mode,
+      targetAtEntry,
+      authoritativeBank
+    )
+    const baselineSnapshot = baselineValues
+      ? createFrozenSnapshot(baselineValues)
+      : null
+
+    if (baselineSnapshot) {
+      questionBaselineSnapshot = baselineSnapshot
+    }
+
+    testState = {
+      ...testState,
+      bank: {
+        phase: 'ready',
+        errorMessage: '',
+        statusMessage: '',
+      },
+      editor: {
+        ...testState.editor,
+        isSubmitting: false,
+        fieldErrors: {},
+        errorMessage: TEST_BANK_RESULT_ERROR_MESSAGE,
+        dirty: !areQuestionValuesEqual(
+          testState.editor.values,
+          questionBaselineSnapshot
+        ),
+      },
+    }
+    render({ type: 'questionEditorAlert' })
+    return false
+  }
+
+  function submitQuestion() {
+    if (questionMutationReconciliationSnapshot) {
+      reconcileQuestionMutation()
+      return
+    }
+
+    const editorAtEntry = testState.editor
+    const targetAtEntry = questionTargetSnapshot
+    const baselineAtEntry = questionBaselineSnapshot
+
+    if (
+      !editorAtEntry ||
+      editorAtEntry.isSubmitting ||
+      editorAtEntry.discardConfirmation ||
+      !targetAtEntry ||
+      !baselineAtEntry ||
+      !doesQuestionTargetMatchSelection(targetAtEntry) ||
+      testState.bank.phase !== 'ready' ||
+      !testBankSnapshot
+    ) {
+      return
+    }
+
+    const validation = validateQuestionEditorValues(editorAtEntry.values)
+
+    if (Object.keys(validation.fieldErrors).length > 0) {
+      testState = {
+        ...testState,
+        editor: {
+          ...editorAtEntry,
+          values: {
+            ...validation.values,
+            options: [...validation.values.options],
+          },
+          fieldErrors: validation.fieldErrors,
+          errorMessage: 'Bitte korrigiere die markierten Felder.',
+          dirty: true,
+        },
+      }
+      render(
+        getFirstQuestionFieldError(
+          validation.fieldErrors,
+          editorAtEntry.values
+        )
+      )
+      return
+    }
+
+    const previousBank = cloneTestBank(testBankSnapshot)
+    const serviceInput = {
+      moduleId: targetAtEntry.moduleId,
+      chapterId: targetAtEntry.chapterId,
+      learningNodeId: targetAtEntry.learningNodeId,
+      ...validation.values,
+      ...(targetAtEntry.mode === 'edit'
+        ? { questionId: targetAtEntry.questionId }
+        : {}),
+    }
+
+    testState = {
+      ...testState,
+      editor: {
+        ...editorAtEntry,
+        values: {
+          ...validation.values,
+          options: [...validation.values.options],
+        },
+        fieldErrors: {},
+        errorMessage: '',
+        isSubmitting: true,
+      },
+    }
+    render()
+
+    let result = null
+
+    try {
+      const methodName = targetAtEntry.mode === 'create'
+        ? 'createQuestion'
+        : 'updateQuestion'
+      result = learningTestService?.[methodName]?.({ ...serviceInput })
+    } catch {
+      result = null
+    }
+
+    if (
+      questionTargetSnapshot !== targetAtEntry ||
+      questionBaselineSnapshot !== baselineAtEntry ||
+      !doesQuestionTargetMatchSelection(targetAtEntry) ||
+      testState.editor !== null &&
+        testState.editor.mode !== editorAtEntry.mode
+    ) {
+      testState = {
+        ...testState,
+        editor: testState.editor
+          ? {
+              ...testState.editor,
+              isSubmitting: false,
+              errorMessage: TEST_BANK_RESULT_ERROR_MESSAGE,
+            }
+          : null,
+      }
+      render({ type: 'questionEditorAlert' })
+      return
+    }
+
+    const validResult = readQuestionMutationResult({
+      result,
+      mode: targetAtEntry.mode,
+      targetSnapshot: targetAtEntry,
+      previousBank,
+      values: validation.values,
+      learningHub: viewState.hub,
+    })
+
+    if (validResult) {
+      finishQuestionMutation(validResult)
+      return
+    }
+
+    const malformedSuccess = (() => {
+      const snapshot = snapshotPlainData(result)
+      return snapshot.ok && snapshot.value?.ok === true
+    })()
+
+    if (malformedSuccess) {
+      const reconciliationSnapshot = createFrozenSnapshot({
+        mode: targetAtEntry.mode,
+        targetSnapshot: targetAtEntry,
+        previousBank,
+        values: validation.values,
+      })
+
+      if (reconciliationSnapshot) {
+        questionMutationReconciliationSnapshot =
+          reconciliationSnapshot
+        reconcileQuestionMutation()
+        return
+      }
+    }
+
+    testState = {
+      ...testState,
+      editor: {
+        ...testState.editor,
+        isSubmitting: false,
+        fieldErrors: {},
+        errorMessage: malformedSuccess
+          ? TEST_BANK_RESULT_ERROR_MESSAGE
+          : TEST_QUESTION_MUTATION_ERROR_MESSAGE,
+        dirty: true,
+      },
+    }
+    render({ type: 'questionEditorAlert' })
+  }
+
   function canUseArtifactEditor() {
     return (
       canUseReadyView() &&
       viewState.form === null &&
+      testState.editor === null &&
       artifactState.phase === 'ready' &&
       artifactStoreSnapshot !== null &&
       getSelectedLearningNodeReferences(viewState) !== null
@@ -2423,6 +5076,801 @@ export function createLearningHubController({
     render({ type: 'artifactAlert', artifactType: type })
   }
 
+  function resetActiveTestSession() {
+    testStartTargetSnapshot = null
+    activeTestSessionSnapshot = null
+    activeTestSolutionSnapshot = null
+    testSubmissionTargetSnapshot = null
+    testCancelTargetSnapshot = null
+  }
+
+  function startModuleTest() {
+    if (
+      !isActive ||
+      !['empty', 'ready'].includes(viewState.phase) ||
+      isTestSessionOpen(testState.runner) ||
+      testState.bank.phase !== 'ready' ||
+      !testBankSnapshot ||
+      !isEntityId(viewState.selectedModuleId)
+    ) {
+      return
+    }
+
+    if (
+      viewState.form !== null ||
+      artifactState.mode !== 'view' ||
+      artifactState.phase === 'mutating' ||
+      testState.editor !== null
+    ) {
+      testState = {
+        ...testState,
+        runner: {
+          ...testState.runner,
+          errorMessage: TEST_INTERACTION_BLOCK_MESSAGE,
+          statusMessage: '',
+        },
+      }
+      render({ type: 'testStart' })
+      return
+    }
+
+    const moduleId = viewState.selectedModuleId
+    const questions = getOrderedModuleQuestions(
+      viewState.hub,
+      testBankSnapshot,
+      moduleId
+    )
+
+    if (questions.length === 0) {
+      testState = {
+        ...testState,
+        runner: {
+          ...testState.runner,
+          phase: 'idle',
+          errorMessage:
+            'Für dieses Lernmodul sind noch keine Testfragen vorhanden.',
+          statusMessage: '',
+        },
+      }
+      render({ type: 'testStart' })
+      return
+    }
+
+    const targetSnapshot = createFrozenSnapshot({
+      moduleId,
+      questions: questions.map(cloneTestQuestion),
+    })
+    if (!targetSnapshot) return
+
+    resetActiveTestSession()
+    testStartTargetSnapshot = targetSnapshot
+    testState = {
+      ...testState,
+      runner: {
+        phase: 'starting',
+        questionCount: questions.length,
+        testSession: null,
+        answers: [],
+        retryPending: false,
+        errorMessage: '',
+        statusMessage: 'Der lokale Modultest wird vorbereitet.',
+        cancelConfirmation: false,
+        result: null,
+      },
+    }
+    render()
+
+    let result = null
+
+    try {
+      result = learningTestService?.startModuleTest?.({ moduleId })
+    } catch {
+      result = null
+    }
+
+    if (
+      testStartTargetSnapshot !== targetSnapshot ||
+      viewState.selectedModuleId !== targetSnapshot.moduleId
+    ) {
+      testStartTargetSnapshot = null
+      testState = {
+        ...testState,
+        runner: {
+          ...createInitialTestState().runner,
+          questionCount: questions.length,
+          errorMessage: TEST_START_ERROR_MESSAGE,
+        },
+      }
+      render({ type: 'testStart' })
+      return
+    }
+
+    const publicSession = isPublicSessionForStartResult(
+      result,
+      targetSnapshot,
+      viewState.hub,
+      testBankSnapshot
+    )
+
+    if (!publicSession) {
+      testStartTargetSnapshot = null
+      testState = {
+        ...testState,
+        runner: {
+          ...createInitialTestState().runner,
+          questionCount: questions.length,
+          errorMessage: TEST_START_ERROR_MESSAGE,
+        },
+      }
+      render({ type: 'testStart' })
+      return
+    }
+
+    const publicSessionSnapshot = createFrozenSnapshot(publicSession)
+    const solutionSnapshot = createTestSolutionSnapshot(
+      targetSnapshot.moduleId,
+      targetSnapshot.questions
+    )
+    testStartTargetSnapshot = null
+
+    if (!publicSessionSnapshot || !solutionSnapshot) {
+      resetActiveTestSession()
+      testState = {
+        ...testState,
+        runner: {
+          ...createInitialTestState().runner,
+          questionCount: questions.length,
+          errorMessage: TEST_START_ERROR_MESSAGE,
+        },
+      }
+      render({ type: 'testStart' })
+      return
+    }
+
+    activeTestSessionSnapshot = publicSessionSnapshot
+    activeTestSolutionSnapshot = solutionSnapshot
+
+    testState = {
+      ...testState,
+      runner: {
+        phase: 'active',
+        questionCount: publicSession.questions.length,
+        testSession: publicSession,
+        answers: publicSession.questions.map((question) => ({
+          questionId: question.id,
+          selectedOptionId: null,
+        })),
+        retryPending: false,
+        errorMessage: '',
+        statusMessage: '',
+        cancelConfirmation: false,
+        result: null,
+      },
+    }
+    render({ type: 'testRunnerHeading' })
+  }
+
+  function selectTestAnswer(questionId, optionId) {
+    if (
+      testState.runner.phase !== 'active' ||
+      testState.runner.retryPending ||
+      testState.runner.cancelConfirmation ||
+      !activeTestSessionSnapshot ||
+      !isTrimmedEntityId(questionId) ||
+      !isTrimmedEntityId(optionId)
+    ) {
+      return
+    }
+
+    const question = activeTestSessionSnapshot.questions.find(
+      (candidateQuestion) => candidateQuestion.id === questionId
+    )
+
+    if (
+      !question ||
+      !question.options.some((option) => option.id === optionId)
+    ) {
+      return
+    }
+
+    testState = {
+      ...testState,
+      runner: {
+        ...testState.runner,
+        answers: testState.runner.answers.map((answer) => (
+          answer.questionId === questionId
+            ? { ...answer, selectedOptionId: optionId }
+            : answer
+        )),
+        errorMessage: '',
+        statusMessage: '',
+      },
+    }
+    render({ type: 'testAnswer', questionId, optionId })
+  }
+
+  function reconcilePersistedTestSubmission(
+    sessionAtEntry,
+    solutionAtEntry,
+    submissionSnapshot
+  ) {
+    if (
+      !sessionAtEntry ||
+      !solutionAtEntry ||
+      !submissionSnapshot ||
+      sessionAtEntry.moduleId !== submissionSnapshot.moduleId ||
+      solutionAtEntry.moduleId !== submissionSnapshot.moduleId ||
+      !testBankSnapshot
+    ) {
+      return null
+    }
+
+    let result = null
+
+    try {
+      result = learningTestService?.loadAttemptHistory?.({
+        moduleId: sessionAtEntry.moduleId,
+      })
+    } catch {
+      result = null
+    }
+
+    if (
+      activeTestSessionSnapshot !== sessionAtEntry ||
+      activeTestSolutionSnapshot !== solutionAtEntry ||
+      testSubmissionTargetSnapshot !== submissionSnapshot
+    ) {
+      return null
+    }
+
+    const historyResult = readSanitizedAttemptHistory(
+      result,
+      {
+        moduleId: sessionAtEntry.moduleId,
+        hasPreviousSnapshot: false,
+        previousAttempts: [],
+        expectedAppends: [],
+      },
+      viewState.hub,
+      testBankSnapshot
+    )
+
+    if (!historyResult) return null
+
+    const previousHistory = attemptHistorySnapshots.get(
+      sessionAtEntry.moduleId
+    )
+    let candidates = historyResult.rawAttempts
+
+    if (previousHistory) {
+      const previousAttempts = previousHistory.rawAttempts
+
+      if (
+        historyResult.rawAttempts.length < previousAttempts.length ||
+        historyResult.rawAttempts.length > previousAttempts.length + 1 ||
+        !previousAttempts.every((attempt, index) =>
+          arePlainValuesEqual(
+            attempt,
+            historyResult.rawAttempts[index]
+          )
+        )
+      ) {
+        return null
+      }
+
+      candidates = historyResult.rawAttempts.slice(
+        previousAttempts.length
+      )
+    }
+
+    const matches = candidates
+      .map((attempt) => readReconciledCompletedTestAttempt({
+        attempt,
+        sessionSnapshot: sessionAtEntry,
+        solutionSnapshot: solutionAtEntry,
+        submissionSnapshot,
+      }))
+      .filter(Boolean)
+
+    if (matches.length > 1) return null
+
+    const historySnapshot = createFrozenSnapshot({
+      rawAttempts: historyResult.rawAttempts,
+      attempts: historyResult.attempts,
+    })
+
+    if (!historySnapshot) return null
+
+    return {
+      completedResult: matches[0] ?? null,
+      historySnapshot,
+      attempts: historyResult.attempts,
+    }
+  }
+
+  function finishCompletedModuleTest(
+    completedResult,
+    reconciliation = null
+  ) {
+    const completedModuleId = completedResult.historyAttempt.moduleId
+    const historyAttemptSnapshot = createFrozenSnapshot(
+      completedResult.historyAttempt
+    )
+
+    if (!historyAttemptSnapshot) return false
+
+    if (reconciliation?.historySnapshot) {
+      attemptHistorySnapshots.set(
+        completedModuleId,
+        reconciliation.historySnapshot
+      )
+      pendingAttemptHistoryAppendSnapshots.delete(completedModuleId)
+      testState = {
+        ...testState,
+        history: {
+          phase: 'ready',
+          attempts: reconciliation.attempts.map(
+            (attempt) => ({ ...attempt })
+          ),
+          errorMessage: '',
+        },
+      }
+    } else {
+      const pendingAppends =
+        pendingAttemptHistoryAppendSnapshots.get(completedModuleId) ?? []
+      pendingAttemptHistoryAppendSnapshots.set(
+        completedModuleId,
+        deepFreezeData([...pendingAppends, historyAttemptSnapshot])
+      )
+    }
+
+    resetActiveTestSession()
+    testState = {
+      ...testState,
+      runner: {
+        phase: 'completed',
+        questionCount: completedResult.viewResult.totalQuestionCount,
+        testSession: null,
+        answers: [],
+        retryPending: false,
+        errorMessage: '',
+        statusMessage: 'Der lokale Modultest wurde ausgewertet.',
+        cancelConfirmation: false,
+        result: completedResult.viewResult,
+      },
+    }
+    render({ type: 'testResultHeading' })
+
+    if (
+      !reconciliation &&
+      viewState.selectedModuleId === completedModuleId
+    ) {
+      loadAttemptHistory({ type: 'testResultHeading' })
+    }
+
+    return true
+  }
+
+  function releaseMissingTestSession(reconciliation = null) {
+    if (reconciliation?.historySnapshot) {
+      const moduleId = activeTestSessionSnapshot?.moduleId
+
+      if (moduleId) {
+        attemptHistorySnapshots.set(
+          moduleId,
+          reconciliation.historySnapshot
+        )
+        pendingAttemptHistoryAppendSnapshots.delete(moduleId)
+      }
+
+      testState = {
+        ...testState,
+        history: {
+          phase: 'ready',
+          attempts: reconciliation.attempts.map(
+            (attempt) => ({ ...attempt })
+          ),
+          errorMessage: '',
+        },
+      }
+    }
+
+    resetActiveTestSession()
+    testState = {
+      ...testState,
+      runner: {
+        ...createInitialTestState().runner,
+        questionCount: testBankSnapshot
+          ? testBankSnapshot.questions.filter(
+              (question) =>
+                question.moduleId === viewState.selectedModuleId
+            ).length
+          : 0,
+        statusMessage: TEST_SESSION_RELEASED_MESSAGE,
+      },
+    }
+    render({ type: 'testStart' })
+  }
+
+  function submitModuleTest() {
+    if (
+      testState.runner.phase !== 'active' ||
+      testState.runner.cancelConfirmation ||
+      !activeTestSessionSnapshot ||
+      !activeTestSolutionSnapshot
+    ) {
+      return
+    }
+
+    let submissionSnapshot = testSubmissionTargetSnapshot
+
+    if (!testState.runner.retryPending) {
+      submissionSnapshot = createSubmissionSnapshot(
+        activeTestSessionSnapshot,
+        testState.runner.answers
+      )
+
+      if (!submissionSnapshot) {
+        const firstUnanswered = testState.runner.answers.find(
+          (answer) => !isTrimmedEntityId(answer.selectedOptionId)
+        )
+        testState = {
+          ...testState,
+          runner: {
+            ...testState.runner,
+            errorMessage:
+              'Bitte beantworte jede Testfrage, bevor du den Test auswertest.',
+            statusMessage: '',
+          },
+        }
+        render(
+          firstUnanswered
+            ? {
+                type: 'testAnswer',
+                questionId: firstUnanswered.questionId,
+              }
+            : { type: 'testSubmissionAlert' }
+        )
+        return
+      }
+
+      testSubmissionTargetSnapshot = submissionSnapshot
+    }
+
+    if (
+      !submissionSnapshot ||
+      submissionSnapshot.testSessionId !==
+        activeTestSessionSnapshot.id
+    ) {
+      return
+    }
+
+    const sessionAtEntry = activeTestSessionSnapshot
+    const solutionAtEntry = activeTestSolutionSnapshot
+    testState = {
+      ...testState,
+      runner: {
+        ...testState.runner,
+        phase: 'submitting',
+        errorMessage: '',
+        statusMessage: 'Der lokale Modultest wird ausgewertet.',
+        cancelConfirmation: false,
+      },
+    }
+    render()
+
+    let result = null
+
+    try {
+      result = learningTestService?.submitModuleTest?.({
+        testSessionId: submissionSnapshot.payload.testSessionId,
+        answers: submissionSnapshot.payload.answers.map((answer) => ({
+          questionId: answer.questionId,
+          selectedOptionId: answer.selectedOptionId,
+        })),
+      })
+    } catch {
+      result = null
+    }
+
+    if (
+      activeTestSessionSnapshot !== sessionAtEntry ||
+      activeTestSolutionSnapshot !== solutionAtEntry ||
+      testSubmissionTargetSnapshot !== submissionSnapshot
+    ) {
+      testState = {
+        ...testState,
+        runner: {
+          ...testState.runner,
+          phase: 'active',
+          retryPending: true,
+          errorMessage: TEST_RESULT_ERROR_MESSAGE,
+          statusMessage: '',
+        },
+      }
+      render({ type: 'testSubmissionAlert' })
+      return
+    }
+
+    const completedResult = readCompletedTestResult({
+      result,
+      sessionSnapshot: sessionAtEntry,
+      solutionSnapshot: solutionAtEntry,
+      submissionSnapshot,
+    })
+
+    if (completedResult) {
+      if (finishCompletedModuleTest(completedResult)) return
+
+      testState = {
+        ...testState,
+        runner: {
+          ...testState.runner,
+          phase: 'active',
+          retryPending: true,
+          errorMessage: TEST_RESULT_ERROR_MESSAGE,
+          statusMessage: '',
+        },
+      }
+      render({ type: 'testSubmissionAlert' })
+      return
+    }
+
+    const failure = readTestOperationFailure(result)
+
+    if (isMissingTestSessionFailure(failure)) {
+      const reconciliation = reconcilePersistedTestSubmission(
+        sessionAtEntry,
+        solutionAtEntry,
+        submissionSnapshot
+      )
+
+      if (
+        reconciliation?.completedResult &&
+        finishCompletedModuleTest(
+          reconciliation.completedResult,
+          reconciliation
+        )
+      ) {
+        return
+      }
+
+      releaseMissingTestSession(reconciliation)
+      return
+    }
+
+    const malformedSuccess = (() => {
+      const snapshot = snapshotPlainData(result)
+      return snapshot.ok && snapshot.value?.ok === true
+    })()
+
+    if (malformedSuccess) {
+      const reconciliation = reconcilePersistedTestSubmission(
+        sessionAtEntry,
+        solutionAtEntry,
+        submissionSnapshot
+      )
+
+      if (
+        reconciliation?.completedResult &&
+        finishCompletedModuleTest(
+          reconciliation.completedResult,
+          reconciliation
+        )
+      ) {
+        return
+      }
+    }
+
+    if (isEvaluationFailure(failure)) {
+      testSubmissionTargetSnapshot = null
+    }
+
+    testState = {
+      ...testState,
+      runner: {
+        ...testState.runner,
+        phase: 'active',
+        retryPending: !isEvaluationFailure(failure),
+        errorMessage: malformedSuccess
+          ? TEST_RESULT_ERROR_MESSAGE
+          : TEST_SUBMISSION_ERROR_MESSAGE,
+        statusMessage: '',
+        cancelConfirmation: false,
+      },
+    }
+    render({ type: 'testSubmissionAlert' })
+  }
+
+  function openTestCancelConfirmation() {
+    if (
+      testState.runner.phase !== 'active' ||
+      !activeTestSessionSnapshot
+    ) {
+      return
+    }
+
+    const targetSnapshot = createFrozenSnapshot({
+      moduleId: activeTestSessionSnapshot.moduleId,
+      testSessionId: activeTestSessionSnapshot.id,
+    })
+    if (!targetSnapshot) return
+
+    testCancelTargetSnapshot = targetSnapshot
+    testState = {
+      ...testState,
+      runner: {
+        ...testState.runner,
+        cancelConfirmation: true,
+        errorMessage: '',
+        statusMessage: '',
+      },
+    }
+    render({ type: 'testCancelConfirmation' })
+  }
+
+  function continueModuleTest() {
+    if (
+      testState.runner.phase !== 'active' ||
+      !testState.runner.cancelConfirmation
+    ) {
+      return
+    }
+
+    testCancelTargetSnapshot = null
+    testState = {
+      ...testState,
+      runner: {
+        ...testState.runner,
+        cancelConfirmation: false,
+        errorMessage: '',
+      },
+    }
+    render({ type: 'testRunnerHeading' })
+  }
+
+  function confirmModuleTestCancel() {
+    const targetSnapshot = testCancelTargetSnapshot
+    const sessionAtEntry = activeTestSessionSnapshot
+    const solutionAtEntry = activeTestSolutionSnapshot
+    const submissionAtEntry = testSubmissionTargetSnapshot
+
+    if (
+      testState.runner.phase !== 'active' ||
+      !testState.runner.cancelConfirmation ||
+      !targetSnapshot ||
+      !sessionAtEntry ||
+      targetSnapshot.moduleId !== sessionAtEntry.moduleId ||
+      targetSnapshot.testSessionId !== sessionAtEntry.id
+    ) {
+      return
+    }
+
+    testState = {
+      ...testState,
+      runner: {
+        ...testState.runner,
+        phase: 'cancelling',
+        errorMessage: '',
+        statusMessage: 'Die lokale Testsession wird abgebrochen.',
+      },
+    }
+    render()
+
+    let result = null
+
+    try {
+      result = learningTestService?.cancelModuleTest?.({
+        testSessionId: targetSnapshot.testSessionId,
+      })
+    } catch {
+      result = null
+    }
+
+    if (
+      activeTestSessionSnapshot !== sessionAtEntry ||
+      activeTestSolutionSnapshot !== solutionAtEntry ||
+      testSubmissionTargetSnapshot !== submissionAtEntry ||
+      testCancelTargetSnapshot !== targetSnapshot
+    ) {
+      testState = {
+        ...testState,
+        runner: {
+          ...testState.runner,
+          phase: 'active',
+          cancelConfirmation: true,
+          errorMessage: TEST_CANCEL_ERROR_MESSAGE,
+          statusMessage: '',
+        },
+      }
+      render({ type: 'testCancelConfirmation' })
+      return
+    }
+
+    const resultSnapshot = snapshotPlainData(result)
+    const isValidSuccess = (
+      resultSnapshot.ok &&
+      hasExactProperties(resultSnapshot.value, [
+        'ok',
+        'status',
+        'changed',
+      ]) &&
+      resultSnapshot.value.ok === true &&
+      resultSnapshot.value.status === 'testCancelled' &&
+      resultSnapshot.value.changed === true
+    )
+
+    if (!isValidSuccess) {
+      const failure = readTestOperationFailure(result)
+
+      if (isPendingTestSubmissionConflict(failure)) {
+        testCancelTargetSnapshot = null
+        testState = {
+          ...testState,
+          runner: {
+            ...testState.runner,
+            phase: 'active',
+            retryPending: true,
+            cancelConfirmation: false,
+            errorMessage: TEST_SUBMISSION_ERROR_MESSAGE,
+            statusMessage: '',
+          },
+        }
+        render({ type: 'testSubmissionAlert' })
+        return
+      }
+
+      if (isMissingTestSessionFailure(failure)) {
+        const reconciliation = reconcilePersistedTestSubmission(
+          sessionAtEntry,
+          solutionAtEntry,
+          submissionAtEntry
+        )
+
+        if (
+          reconciliation?.completedResult &&
+          finishCompletedModuleTest(
+            reconciliation.completedResult,
+            reconciliation
+          )
+        ) {
+          return
+        }
+
+        releaseMissingTestSession(reconciliation)
+        return
+      }
+
+      testState = {
+        ...testState,
+        runner: {
+          ...testState.runner,
+          phase: 'active',
+          cancelConfirmation: true,
+          errorMessage: TEST_CANCEL_ERROR_MESSAGE,
+          statusMessage: '',
+        },
+      }
+      render({ type: 'testCancelConfirmation' })
+      return
+    }
+
+    resetActiveTestSession()
+    testState = {
+      ...testState,
+      runner: {
+        ...createInitialTestState().runner,
+        questionCount: testBankSnapshot
+          ? testBankSnapshot.questions.filter(
+              (question) => question.moduleId === viewState.selectedModuleId
+            ).length
+          : 0,
+        statusMessage: 'Die lokale Testsession wurde abgebrochen.',
+      },
+    }
+    render({ type: 'testStart' })
+  }
+
   function updateFormField(fieldName, value) {
     if (
       !canUseReadyView() ||
@@ -2635,6 +6083,14 @@ export function createLearningHubController({
   }
 
   function close() {
+    if (isActive && blockActiveTestTransition()) {
+      return false
+    }
+
+    if (isActive && blockDirtyQuestionTransition()) {
+      return false
+    }
+
     if (
       isActive &&
       (
@@ -2662,6 +6118,7 @@ export function createLearningHubController({
     artifactStoreSnapshot = null
     artifactTargetSnapshot = null
     resumeArtifactEditingAfterClear = false
+    resetPrivateTestState()
     learningHubView?.unmount?.()
     return true
   }

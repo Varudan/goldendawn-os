@@ -2,7 +2,7 @@
 
 ## Status
 
-Angenommen – 2026-07-19
+Angenommen – 2026-07-19; UI- und Abbruchergänzung – 2026-07-20
 
 ## Kontext
 
@@ -29,34 +29,40 @@ Agentenfunktion.
 
 ## Entscheidung
 
-### Getrennter Datenfluss ohne UI-Anbindung
+### Getrennter Datenfluss mit bestehender UI-Anbindung
 
 Die Foundation verwendet diesen lokalen Datenfluss:
 
 ```text
-LearningHubView / LearningHubController        noch nicht angebunden
-                    ↓
-LearningTestService
-  ├→ LearningHubService                        Referenzprüfung
-  ├→ LearningTestBankStorage
-  │    → StorageAdapter
-  │    → localStorage
-  ├→ LearningTestAttemptStorage
-  │    → StorageAdapter
-  │    → localStorage
-  └→ LearningTestEngine                        reine Deterministik
+LearningHubView
+  → LearningHubController
+      → LearningTestService
+          ├→ LearningHubService                Referenzprüfung
+          ├→ LearningTestBankStorage
+          │    → StorageAdapter
+          │    → localStorage
+          ├→ LearningTestAttemptStorage
+          │    → StorageAdapter
+          │    → localStorage
+          └→ LearningTestEngine                reine Deterministik
 ```
 
 `LearningTestService` hängt einseitig vom `LearningHubService` ab, um vor jeder
-Operation den aktuellen validen Hub zu laden und vollständige Modul-, Kapitel-
-und LearningNode-Referenzketten zu prüfen. Der Inhaltsservice kennt die
-Testschichten nicht. Contract, Engine, fachliche Storages und Service greifen
+fachlichen Operation außer dem rein speicherinternen Abbruch den aktuellen
+validen Hub zu laden und vollständige Modul-, Kapitel- und
+LearningNode-Referenzketten zu prüfen. `cancelModuleTest` prüft ausschließlich
+den flüchtigen Sessionzustand und liest keine fachliche Dependency. Der
+Inhaltsservice kennt die Testschichten nicht. Contract, Engine, fachliche
+Storages und Service greifen
 nicht direkt auf `localStorage` zu; eine zyklische Abhängigkeit wird nicht
 eingeführt.
 
-`LearningHubView`, `LearningHubController` und `src/main.js` werden in diesem
-Arbeitspaket nicht angebunden. Die Foundation ist deshalb noch kein sichtbarer
-„Lokaler Mock-Test“, und `v0.2.1` bleibt in Arbeit.
+`src/main.js` erzeugt die beiden fachlichen Test-Storages über den vorhandenen
+`StorageAdapter`, erzeugt den `LearningTestService` und injiziert ihn in den
+vorhandenen `LearningHubController`. Es gibt keinen separaten Test-Controller.
+Die `LearningHubView` kennzeichnet den Ablauf sichtbar als „Lokaler
+Mock-Test“. `v0.2.1` bleibt bis zur separaten Release-Prüfung,
+abschließenden Dokumentationskontrolle und Release-PR in Arbeit.
 
 Die reine `LearningTestEngine` präzisiert und ersetzt für diese Foundation die
 frühere Planung eines `MockLearningTestProvider` als Platzhalter unter dem
@@ -64,9 +70,8 @@ Service. Der Provider hätte einen vorbereiteten festen Fragenbestand und die
 deterministische Auswahl in einer Rolle vermischt. Nun ist die
 nutzergesteuerte `LearningTestBank` die klar validierte Fragenquelle, während
 die Engine ausschließlich Auswahl, öffentliche Projektion und Auswertung ohne
-Seiteneffekte übernimmt. Diese Präzisierung führt weder eine UI-Anbindung noch
-Agentenlogik ein; der sichtbare Produktbegriff bleibt später „Lokaler
-Mock-Test“.
+Seiteneffekte übernimmt. Die UI-Anbindung führt keine Agentenlogik ein; der
+sichtbare Produktbegriff ist „Lokaler Mock-Test“.
 
 ### Nutzerkonfigurierte, veränderbare Single-Choice-Testbank
 
@@ -112,7 +117,7 @@ Vor der Abgabe enthält die öffentliche Testprojektion Prompt,
 Schwierigkeitsstufe und Optionen, aber weder `correctOptionId` noch
 `explanation`. Diese Projektion ist keine Geheimhaltungsgrenze gegenüber
 anderem JavaScript derselben Origin; sie verhindert eine versehentliche
-Weitergabe der Lösung an eine spätere View. Nach der Auswertung dürfen korrekte
+Weitergabe der Lösung an die Runner-View. Nach der Auswertung dürfen korrekte
 Option und Erklärung als Feedback ausgegeben werden.
 
 ### Flüchtige In-Progress-Sessions
@@ -125,8 +130,8 @@ Zufallsauswahl noch einen vom Aufrufer gelieferten Lösungsschlüssel.
 
 In-Progress-Sessions werden bewusst nicht persistiert. Nach einem Reload oder
 dem Erzeugen einer neuen Serviceinstanz muss der Test neu begonnen werden. Die
-spätere UI muss diese Grenze klar behandeln und darf keine Wiederaufnahme eines
-nicht gespeicherten Zwischenstands versprechen.
+implementierte UI behandelt diese Grenze klar und verspricht keine
+Wiederaufnahme eines nicht gespeicherten Zwischenstands.
 
 `submitModuleTest` verlangt genau eine bekannte Antwort pro Sessionfrage und
 bewertet ausschließlich den beim Start eingefrorenen privaten Snapshot.
@@ -135,6 +140,28 @@ ohne Attempt-Schreibzugriff abgelehnt. Die Session wird erst nach erfolgreichem
 Anhängen entfernt; damit kann ein Speicherfehler kontrolliert wiederholt
 werden. Nach erfolgreicher Persistenz verhindert der Service eine zweite
 Speicherung derselben Session.
+
+### Kontrollierter Abbruch flüchtiger Sessions
+
+`cancelModuleTest({ testSessionId })` ist die einzige fachliche Erweiterung
+der Foundation für den UI-Lebenszyklus. Der Service liest das Ziel defensiv und
+entfernt ausschließlich eine bekannte, sicher abbrechbare Session aus seinem
+aktiven Speicher. Der Erfolgstatus lautet `testCancelled` mit
+`changed: true`. Er erzeugt keinen Attempt, führt keinen Storage-Zugriff aus,
+vergibt keine neue ID und liest keine Uhrzeit.
+
+Eine unbekannte Session liefert einen kontrollierten `notFound`-Fehler. Bei
+`submissionInProgress` oder einer vorhandenen `pendingSubmission` liefert
+der Service `conflict` mit `changed: false`; die Session bleibt für Retry
+beziehungsweise Reconciliation erhalten. Abgebrochene Session-IDs bleiben
+innerhalb derselben Serviceinstanz reserviert und werden nicht erneut
+vergeben. Fehlertexte enthalten weder Session- noch Dependencydetails.
+
+Die View verwendet eine private nicht blockierende Inline-Bestätigung. Eine
+aktive Session blockiert Modul-, Kapitel-, LearningNode-, Formular- und globale
+Bereichswechsel, bis sie abgeschlossen oder über den Service sicher
+abgebrochen wurde. Ein optisches Verwerfen nur im Controller ist ausdrücklich
+nicht zulässig.
 
 ### Append-only abgeschlossene Attempts
 
@@ -241,6 +268,8 @@ Positive Auswirkungen:
   Kompetenzmodelle auseinander;
 - injizierbare ID-Generatoren und Uhr sowie eine reine Engine ermöglichen
   deterministische Tests.
+- ein fachlicher Session-Abbruch beendet nur sicher abbrechbare Arbeit und
+  erhält pending Abgaben für Retry oder Reconciliation.
 
 Kosten und Einschränkungen:
 
@@ -251,8 +280,9 @@ Kosten und Einschränkungen:
   Browser-Quota;
 - `localStorage` bietet keine Verschlüsselung, Transaktion, kryptografische
   Integrität oder garantierte tabübergreifende Konsistenz;
-- ohne Controller- und View-Anbindung ist der lokale Mock-Test noch nicht
-  bedienbar und `v0.2.1` bleibt in Arbeit.
+- die zusätzliche UI-State-Maschine muss private Bank-, Session- und
+  Historien-Snapshots strikt von ihren redigierten View-Modellen trennen;
+- `v0.2.1` bleibt bis zur separaten Release-Prüfung und Release-PR in Arbeit.
 
 ## Erwogene Alternativen
 

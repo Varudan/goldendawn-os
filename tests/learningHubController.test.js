@@ -60,6 +60,176 @@ function createHubFixture() {
   }
 }
 
+function createTestQuestion(overrides = {}) {
+  return {
+    id: 'question-pulse-1',
+    moduleId: 'module-orbit',
+    chapterId: 'chapter-signals',
+    learningNodeId: 'node-pulse',
+    type: 'singleChoice',
+    prompt: 'Welche erfundene Farbe hat der ruhige Puls?',
+    difficulty: 'medium',
+    position: 1,
+    revision: 1,
+    createdAt: '2026-07-20T08:00:00.000Z',
+    updatedAt: '2026-07-20T08:00:00.000Z',
+    options: [
+      { id: 'option-pulse-blue', label: 'Blau', position: 1 },
+      { id: 'option-pulse-gold', label: 'Gold', position: 2 },
+    ],
+    correctOptionId: 'option-pulse-gold',
+    explanation: 'Im frei erfundenen Beispiel leuchtet der Puls golden.',
+    ...overrides,
+  }
+}
+
+function createTestBank(questions = []) {
+  return {
+    schemaVersion: 1,
+    dataOrigin: 'private',
+    questions: cloneValue(questions),
+  }
+}
+
+function createTestBankLoadSuccess(questions = []) {
+  return {
+    ok: true,
+    status: questions.length === 0 ? 'empty' : 'loaded',
+    changed: false,
+    testBank: createTestBank(questions),
+  }
+}
+
+function createPublicTestSession(question = createTestQuestion()) {
+  return {
+    id: 'session-pulse-1',
+    moduleId: question.moduleId,
+    startedAt: '2026-07-20T09:00:00.000Z',
+    questions: [
+      {
+        id: question.id,
+        learningNodeId: question.learningNodeId,
+        type: question.type,
+        prompt: question.prompt,
+        difficulty: question.difficulty,
+        options: [...question.options]
+          .sort((left, right) => left.position - right.position)
+          .map((option) => ({ id: option.id, label: option.label })),
+      },
+    ],
+  }
+}
+
+function createPublicTestSessionForQuestions(questions) {
+  return {
+    id: 'session-pulse-many',
+    moduleId: 'module-orbit',
+    startedAt: '2026-07-20T09:00:00.000Z',
+    questions: questions.map((question) => ({
+      id: question.id,
+      learningNodeId: question.learningNodeId,
+      type: question.type,
+      prompt: question.prompt,
+      difficulty: question.difficulty,
+      options: [...question.options]
+        .sort((left, right) => left.position - right.position)
+        .map((option) => ({ id: option.id, label: option.label })),
+    })),
+  }
+}
+
+function createCompletedTestSuccessForQuestions(questions) {
+  const answers = questions.map((question) => ({
+    questionId: question.id,
+    questionRevision: question.revision,
+    learningNodeId: question.learningNodeId,
+    selectedOptionId: question.correctOptionId,
+    correctOptionId: question.correctOptionId,
+    isCorrect: true,
+  }))
+
+  return {
+    ok: true,
+    status: 'testCompleted',
+    changed: true,
+    result: {
+      attemptId: 'attempt-pulse-many',
+      moduleId: 'module-orbit',
+      startedAt: '2026-07-20T09:00:00.000Z',
+      completedAt: '2026-07-20T09:05:00.000Z',
+      totalQuestionCount: questions.length,
+      correctAnswerCount: questions.length,
+      scorePercent: 100,
+      answers,
+      feedback: questions.map((question) => ({
+        questionId: question.id,
+        selectedOptionId: question.correctOptionId,
+        correctOptionId: question.correctOptionId,
+        isCorrect: true,
+        explanation: question.explanation,
+      })),
+    },
+  }
+}
+
+function createCompletedTestSuccess(question = createTestQuestion()) {
+  return {
+    ok: true,
+    status: 'testCompleted',
+    changed: true,
+    result: {
+      attemptId: 'attempt-pulse-1',
+      moduleId: question.moduleId,
+      startedAt: '2026-07-20T09:00:00.000Z',
+      completedAt: '2026-07-20T09:05:00.000Z',
+      totalQuestionCount: 1,
+      correctAnswerCount: 1,
+      scorePercent: 100,
+      answers: [
+        {
+          questionId: question.id,
+          questionRevision: question.revision,
+          learningNodeId: question.learningNodeId,
+          selectedOptionId: question.correctOptionId,
+          correctOptionId: question.correctOptionId,
+          isCorrect: true,
+        },
+      ],
+      feedback: [
+        {
+          questionId: question.id,
+          selectedOptionId: question.correctOptionId,
+          correctOptionId: question.correctOptionId,
+          isCorrect: true,
+          explanation: question.explanation,
+        },
+      ],
+    },
+  }
+}
+
+function createAttemptHistorySuccess(question = createTestQuestion()) {
+  const completed = createCompletedTestSuccess(question).result
+
+  return {
+    ok: true,
+    status: 'attemptHistoryLoaded',
+    changed: false,
+    attempts: [
+      {
+        attemptId: completed.attemptId,
+        moduleId: completed.moduleId,
+        startedAt: completed.startedAt,
+        completedAt: completed.completedAt,
+        totalQuestionCount: completed.totalQuestionCount,
+        correctAnswerCount: completed.correctAnswerCount,
+        scorePercent: completed.scorePercent,
+        answers: cloneValue(completed.answers),
+      },
+    ],
+  }
+}
+
 function createRoundingHub(chapterCounts) {
   return {
     schemaVersion: 2,
@@ -411,6 +581,69 @@ function createArtifactServiceDouble({
   return { calls, service }
 }
 
+function createTestServiceDouble({
+  loadResults,
+  methodHandlers = {},
+} = {}) {
+  const loadQueue = Array.isArray(loadResults)
+    ? [...loadResults]
+    : [loadResults ?? createTestBankLoadSuccess()]
+  const methodNames = [
+    'createQuestion',
+    'updateQuestion',
+    'startModuleTest',
+    'submitModuleTest',
+    'cancelModuleTest',
+    'loadAttemptHistory',
+  ]
+  const calls = {
+    loadTestBank: [],
+    createQuestion: [],
+    updateQuestion: [],
+    startModuleTest: [],
+    submitModuleTest: [],
+    cancelModuleTest: [],
+    loadAttemptHistory: [],
+  }
+  const service = {
+    loadTestBank() {
+      calls.loadTestBank.push(undefined)
+      const result = loadQueue.length > 1
+        ? loadQueue.shift()
+        : loadQueue[0]
+      return typeof result === 'function' ? result() : cloneValue(result)
+    },
+  }
+
+  for (const methodName of methodNames) {
+    service[methodName] = (input) => {
+      calls[methodName].push(cloneValue(input))
+      const handler = methodHandlers[methodName]
+
+      if (typeof handler === 'function') {
+        return handler(cloneValue(input))
+      }
+
+      if (typeof handler !== 'undefined') {
+        return cloneValue(handler)
+      }
+
+      if (methodName === 'loadAttemptHistory') {
+        return {
+          ok: true,
+          status: 'attemptHistoryEmpty',
+          changed: false,
+          attempts: [],
+        }
+      }
+
+      return undefined
+    }
+  }
+
+  return { calls, service }
+}
+
 function createControllerSystem({
   loadResults,
   mutationHandlers,
@@ -418,6 +651,8 @@ function createControllerSystem({
   progressMutationHandlers,
   artifactLoadResults,
   artifactMutationHandlers,
+  testBankLoadResults,
+  testMethodHandlers,
 } = {}) {
   const scheduler = createManualScheduler()
   const viewRecorder = createViewRecorder()
@@ -447,10 +682,15 @@ function createControllerSystem({
       createArtifactLoadSuccess(),
     mutationHandlers: artifactMutationHandlers,
   })
+  const testServiceDouble = createTestServiceDouble({
+    loadResults: testBankLoadResults,
+    methodHandlers: testMethodHandlers,
+  })
   const controller = createLearningHubController({
     learningHubService: serviceDouble.service,
     learningProgressService: progressServiceDouble.service,
     learningArtifactService: artifactServiceDouble.service,
+    learningTestService: testServiceDouble.service,
     learningHubView: viewRecorder.view,
     scheduleTask: scheduler.scheduleTask,
   })
@@ -461,6 +701,7 @@ function createControllerSystem({
     serviceDouble,
     progressServiceDouble,
     artifactServiceDouble,
+    testServiceDouble,
     viewRecorder,
   }
 }
@@ -1205,6 +1446,1003 @@ test('Controller benötigt weder Storage noch localStorage', () => {
       delete globalThis.localStorage
     }
   }
+})
+
+test('lädt und retryt die Testbank isoliert mit redigiertem Fehlerzustand', () => {
+  const question = createTestQuestion()
+  const system = createControllerSystem({
+    testBankLoadResults: [
+      {
+        ok: false,
+        status: 'readFailed',
+        changed: false,
+        error: { code: 'private-error', message: 'PRIVATE-BANK-DETAIL' },
+      },
+      createTestBankLoadSuccess([question]),
+    ],
+  })
+  const actions = openReadyController(system)
+
+  assert.equal(system.viewRecorder.lastState.tests.bank.phase, 'error')
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState.tests).includes(
+      'PRIVATE-BANK-DETAIL'
+    ),
+    false
+  )
+  actions.onRetryTestBankLoad()
+  assert.equal(system.testServiceDouble.calls.loadTestBank.length, 2)
+  assert.equal(system.viewRecorder.lastState.tests.bank.phase, 'ready')
+})
+
+test('integriert öffentliche Session, exakten Payload, Ergebnis und sanitisierte Historie ohne Lösungsleck', () => {
+  const question = createTestQuestion()
+  let historyLoadCount = 0
+  const system = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+    testMethodHandlers: {
+      startModuleTest: {
+        ok: true,
+        status: 'testStarted',
+        changed: true,
+        testSession: createPublicTestSession(question),
+      },
+      submitModuleTest: createCompletedTestSuccess(question),
+      loadAttemptHistory() {
+        historyLoadCount += 1
+        return historyLoadCount === 1
+          ? {
+              ok: true,
+              status: 'attemptHistoryEmpty',
+              changed: false,
+              attempts: [],
+            }
+          : createAttemptHistorySuccess(question)
+      },
+    },
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+  actions.onStartModuleTest()
+
+  const activeTests = system.viewRecorder.lastState.tests
+  assert.equal(activeTests.runner.phase, 'active')
+  assert.deepEqual(activeTests.bank.questions, [])
+  assert.equal(JSON.stringify(activeTests).includes('correctOptionId'), false)
+  assert.equal(
+    JSON.stringify(activeTests).includes(question.explanation),
+    false
+  )
+
+  actions.onSelectTestAnswer(question.id, question.correctOptionId)
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'testAnswer',
+    questionId: question.id,
+    optionId: question.correctOptionId,
+  })
+  assert.equal(
+    system.viewRecorder.lastState.tests.runner.answers[0]
+      .selectedOptionId,
+    question.correctOptionId
+  )
+  actions.onSubmitModuleTest()
+  actions.onSubmitModuleTest()
+
+  assert.deepEqual(system.testServiceDouble.calls.submitModuleTest, [
+    {
+      testSessionId: 'session-pulse-1',
+      answers: [{
+        questionId: question.id,
+        selectedOptionId: question.correctOptionId,
+      }],
+    },
+  ])
+  const completedTests = system.viewRecorder.lastState.tests
+  assert.equal(completedTests.runner.phase, 'completed')
+  assert.deepEqual(completedTests.history.attempts, [{
+    completedAt: '2026-07-20T09:05:00.000Z',
+    totalQuestionCount: 1,
+    correctAnswerCount: 1,
+    scorePercent: 100,
+  }])
+  assert.equal(
+    JSON.stringify(completedTests.history).includes('attempt-pulse-1'),
+    false
+  )
+  assert.equal(
+    JSON.stringify(completedTests.history).includes('answers'),
+    false
+  )
+})
+
+test('retryt nach Abgabefehler exakt denselben eingefrorenen Payload', () => {
+  const question = createTestQuestion()
+  let submitCount = 0
+  const system = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+    testMethodHandlers: {
+      startModuleTest: {
+        ok: true,
+        status: 'testStarted',
+        changed: true,
+        testSession: createPublicTestSession(question),
+      },
+      submitModuleTest() {
+        submitCount += 1
+        return submitCount === 1
+          ? {
+              ok: false,
+              status: 'writeFailed',
+              changed: false,
+              error: { code: 'write', message: 'PRIVATE-SUBMIT' },
+            }
+          : createCompletedTestSuccess(question)
+      },
+      cancelModuleTest: {
+        ok: false,
+        status: 'conflict',
+        changed: false,
+        error: {
+          code: 'learningTestPendingSubmission',
+          message: 'PRIVATE-PENDING-SUBMISSION',
+        },
+      },
+    },
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+  actions.onStartModuleTest()
+  actions.onSelectTestAnswer(question.id, question.correctOptionId)
+  actions.onSubmitModuleTest()
+
+  assert.equal(system.viewRecorder.lastState.tests.runner.retryPending, true)
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState.tests).includes(
+      'PRIVATE-SUBMIT'
+    ),
+    false
+  )
+  actions.onOpenTestCancelConfirmation()
+  actions.onConfirmModuleTestCancel()
+  assert.deepEqual(system.testServiceDouble.calls.cancelModuleTest, [
+    { testSessionId: 'session-pulse-1' },
+  ])
+  assert.equal(system.viewRecorder.lastState.tests.runner.phase, 'active')
+  assert.equal(system.viewRecorder.lastState.tests.runner.retryPending, true)
+  assert.equal(
+    system.viewRecorder.lastState.tests.runner.cancelConfirmation,
+    false
+  )
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState.tests).includes(
+      'PRIVATE-PENDING-SUBMISSION'
+    ),
+    false
+  )
+  actions.onSelectTestAnswer(question.id, 'option-pulse-blue')
+  actions.onSubmitModuleTest()
+
+  assert.equal(system.testServiceDouble.calls.submitModuleTest.length, 2)
+  assert.deepEqual(
+    system.testServiceDouble.calls.submitModuleTest[1],
+    system.testServiceDouble.calls.submitModuleTest[0]
+  )
+  assert.equal(system.viewRecorder.lastState.tests.runner.phase, 'completed')
+})
+
+test('blockiert close bis zum kontrollierten Session-Abbruch und schützt Dirty-Frageentwürfe', () => {
+  const question = createTestQuestion()
+  const system = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+    testMethodHandlers: {
+      startModuleTest: {
+        ok: true,
+        status: 'testStarted',
+        changed: true,
+        testSession: createPublicTestSession(question),
+      },
+      cancelModuleTest: {
+        ok: true,
+        status: 'testCancelled',
+        changed: true,
+      },
+    },
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+  actions.onOpenEditQuestion(question.id)
+  actions.onUpdateQuestionField('prompt', 'Geänderter Fantasietext')
+  actions.onBackToOverview()
+  assert.equal(
+    system.viewRecorder.lastState.tests.editor.discardConfirmation,
+    true
+  )
+  assert.equal(system.controller.close(), false)
+  actions.onDiscardQuestionDraft()
+
+  actions.onStartModuleTest()
+  assert.equal(system.controller.close(), false)
+  assert.equal(
+    system.viewRecorder.lastState.tests.runner.cancelConfirmation,
+    true
+  )
+  actions.onConfirmModuleTestCancel()
+  assert.deepEqual(system.testServiceDouble.calls.cancelModuleTest, [
+    { testSessionId: 'session-pulse-1' },
+  ])
+  assert.equal(system.viewRecorder.lastState.tests.runner.phase, 'idle')
+  assert.equal(system.controller.close(), true)
+})
+
+test('erstellt, aktualisiert und erkennt Testfragen unverändert mit lokaler Trim- und Längenvalidierung', () => {
+  const createdQuestion = createTestQuestion({
+    id: 'question-created-1',
+    prompt: 'Welche Farbe hat das erfundene Signal?',
+    difficulty: 'easy',
+    explanation: 'Das synthetische Signal ist golden.',
+    options: [
+      { id: 'option-created-blue', label: 'Blau', position: 1 },
+      { id: 'option-created-gold', label: 'Gold', position: 2 },
+    ],
+    correctOptionId: 'option-created-gold',
+  })
+  const updatedQuestion = createTestQuestion({
+    ...createdQuestion,
+    prompt: 'Welche Farbe hat das aktualisierte Signal?',
+    revision: 2,
+    updatedAt: '2026-07-20T08:30:00.000Z',
+  })
+  let updateCount = 0
+  const system = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess(),
+    testMethodHandlers: {
+      createQuestion: {
+        ok: true,
+        status: 'questionCreated',
+        changed: true,
+        question: createdQuestion,
+        testBank: createTestBank([createdQuestion]),
+      },
+      updateQuestion() {
+        updateCount += 1
+
+        return {
+          ok: true,
+          status: updateCount === 1
+            ? 'questionUpdated'
+            : 'questionUnchanged',
+          changed: updateCount === 1,
+          question: updatedQuestion,
+          testBank: createTestBank([updatedQuestion]),
+        }
+      },
+    },
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+
+  actions.onOpenCreateQuestion()
+  actions.onUpdateQuestionField(
+    'prompt',
+    '  Welche Farbe hat das erfundene Signal?  '
+  )
+  actions.onUpdateQuestionField('difficulty', 'easy')
+  actions.onUpdateQuestionField('options', '  Blau  ', 0)
+  actions.onUpdateQuestionField('options', '  Gold  ', 1)
+  actions.onSelectCorrectQuestionOption(1)
+  actions.onUpdateQuestionField(
+    'explanation',
+    '  Das synthetische Signal ist golden.  '
+  )
+  actions.onSubmitQuestion()
+
+  assert.deepEqual(system.testServiceDouble.calls.createQuestion, [{
+    moduleId: 'module-orbit',
+    chapterId: 'chapter-signals',
+    learningNodeId: 'node-pulse',
+    prompt: createdQuestion.prompt,
+    difficulty: 'easy',
+    options: ['Blau', 'Gold'],
+    correctOptionIndex: 1,
+    explanation: createdQuestion.explanation,
+  }])
+  assert.equal(system.viewRecorder.lastState.tests.editor, null)
+  assert.equal(system.viewRecorder.lastState.tests.bank.totalQuestionCount, 1)
+
+  actions.onOpenEditQuestion(createdQuestion.id)
+  actions.onUpdateQuestionField(
+    'prompt',
+    '  Welche Farbe hat das aktualisierte Signal?  '
+  )
+  actions.onSubmitQuestion()
+
+  assert.equal(system.testServiceDouble.calls.updateQuestion.length, 1)
+  assert.deepEqual(system.testServiceDouble.calls.updateQuestion[0], {
+    moduleId: 'module-orbit',
+    chapterId: 'chapter-signals',
+    learningNodeId: 'node-pulse',
+    prompt: updatedQuestion.prompt,
+    difficulty: 'easy',
+    options: ['Blau', 'Gold'],
+    correctOptionIndex: 1,
+    explanation: createdQuestion.explanation,
+    questionId: createdQuestion.id,
+  })
+  assert.equal(system.viewRecorder.lastState.tests.editor, null)
+
+  actions.onOpenEditQuestion(createdQuestion.id)
+  actions.onSubmitQuestion()
+  assert.equal(system.testServiceDouble.calls.updateQuestion.length, 2)
+  assert.equal(system.viewRecorder.lastState.tests.editor, null)
+
+  actions.onOpenEditQuestion(createdQuestion.id)
+  actions.onUpdateQuestionField('prompt', '   ')
+  actions.onUpdateQuestionField('options', 'x'.repeat(301), 0)
+  actions.onUpdateQuestionField('explanation', 'x'.repeat(2001))
+  actions.onSubmitQuestion()
+
+  assert.equal(system.testServiceDouble.calls.updateQuestion.length, 2)
+  assert.deepEqual(
+    Object.keys(system.viewRecorder.lastState.tests.editor.fieldErrors),
+    ['prompt', 'options', 'options.0', 'explanation']
+  )
+  assert.equal(system.viewRecorder.lastState.tests.editor.values.prompt, '')
+  assert.equal(system.viewRecorder.lastState.focusTarget.type, 'questionEditorField')
+  assert.equal(system.viewRecorder.lastState.focusTarget.fieldName, 'prompt')
+})
+
+test('startet ohne Fragen keinen Test und stellt in einer neuen Controllerinstanz keine alte Session wieder her', () => {
+  const emptySystem = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess(),
+  })
+  const emptyActions = openReadyController(emptySystem)
+  emptyActions.onSelectModule('module-orbit')
+  emptyActions.onStartModuleTest()
+
+  assert.equal(emptySystem.testServiceDouble.calls.startModuleTest.length, 0)
+  assert.equal(emptySystem.viewRecorder.lastState.tests.runner.phase, 'idle')
+  assert.equal(emptySystem.viewRecorder.lastState.focusTarget.type, 'testStart')
+  assert.match(
+    emptySystem.viewRecorder.lastState.tests.runner.errorMessage,
+    /keine Testfragen/i
+  )
+
+  const question = createTestQuestion()
+  const firstSystem = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+    testMethodHandlers: {
+      startModuleTest: {
+        ok: true,
+        status: 'testStarted',
+        changed: true,
+        testSession: createPublicTestSession(question),
+      },
+    },
+  })
+  const firstActions = openReadyController(firstSystem)
+  firstActions.onSelectModule('module-orbit')
+  firstActions.onStartModuleTest()
+  assert.equal(firstSystem.viewRecorder.lastState.tests.runner.phase, 'active')
+
+  const reloadedSystem = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+  })
+  const reloadedActions = openReadyController(reloadedSystem)
+  reloadedActions.onSelectModule('module-orbit')
+
+  assert.equal(reloadedSystem.viewRecorder.lastState.tests.runner.phase, 'idle')
+  assert.equal(reloadedSystem.viewRecorder.lastState.tests.runner.testSession, null)
+  assert.deepEqual(reloadedSystem.viewRecorder.lastState.tests.runner.answers, [])
+  assert.equal(reloadedSystem.testServiceDouble.calls.startModuleTest.length, 0)
+})
+
+test('weist manipulierte Ergebniszähler, Scores, Referenzen, Reihenfolgen und Feedbacks zurück', () => {
+  const questions = [
+    createTestQuestion(),
+    createTestQuestion({
+      id: 'question-pulse-2',
+      prompt: 'Welche erfundene Form begleitet den zweiten Puls?',
+      position: 2,
+      options: [
+        { id: 'option-pulse-circle', label: 'Kreis', position: 1 },
+        { id: 'option-pulse-star', label: 'Stern', position: 2 },
+      ],
+      correctOptionId: 'option-pulse-star',
+      explanation: 'Im synthetischen Beispiel erscheint ein Stern.',
+    }),
+  ]
+  const resultMutations = [
+    {
+      name: 'questionCount',
+      mutate(result) {
+        result.result.totalQuestionCount = 3
+      },
+    },
+    {
+      name: 'scorePercent',
+      mutate(result) {
+        result.result.scorePercent = 99
+      },
+    },
+    {
+      name: 'moduleReference',
+      mutate(result) {
+        result.result.moduleId = 'module-private-foreign'
+      },
+    },
+    {
+      name: 'learningNodeReference',
+      mutate(result) {
+        result.result.answers[0].learningNodeId =
+          'node-private-foreign'
+      },
+    },
+    {
+      name: 'correctOptionReference',
+      mutate(result) {
+        result.result.answers[0].correctOptionId =
+          'option-private-foreign'
+        result.result.feedback[0].correctOptionId =
+          'option-private-foreign'
+      },
+    },
+    {
+      name: 'answerOrder',
+      mutate(result) {
+        result.result.answers.reverse()
+      },
+    },
+    {
+      name: 'feedbackSelection',
+      mutate(result) {
+        result.result.feedback[0].selectedOptionId =
+          questions[0].options[0].id
+      },
+    },
+    {
+      name: 'existingButWrongCorrectOption',
+      mutate(result) {
+        const wrongCorrectOptionId = questions[0].options[0].id
+        result.result.answers[0].correctOptionId = wrongCorrectOptionId
+        result.result.answers[0].isCorrect = false
+        result.result.feedback[0].correctOptionId = wrongCorrectOptionId
+        result.result.feedback[0].isCorrect = false
+        result.result.correctAnswerCount = 1
+        result.result.scorePercent = 50
+      },
+    },
+    {
+      name: 'differentValidQuestionRevision',
+      mutate(result) {
+        result.result.answers[0].questionRevision =
+          questions[0].revision + 1
+      },
+    },
+    {
+      name: 'differentValidExplanation',
+      mutate(result) {
+        result.result.feedback[0].explanation =
+          'Eine andere, formal gültige synthetische Erklärung.'
+      },
+    },
+  ]
+
+  for (const scenario of resultMutations) {
+    const malformedResult = cloneValue(
+      createCompletedTestSuccessForQuestions(questions)
+    )
+    scenario.mutate(malformedResult)
+    const system = createControllerSystem({
+      testBankLoadResults: createTestBankLoadSuccess(questions),
+      testMethodHandlers: {
+        startModuleTest: {
+          ok: true,
+          status: 'testStarted',
+          changed: true,
+          testSession: createPublicTestSessionForQuestions(questions),
+        },
+        submitModuleTest: malformedResult,
+      },
+    })
+    const actions = openReadyController(system)
+    actions.onSelectModule('module-orbit')
+    actions.onStartModuleTest()
+    for (const question of questions) {
+      actions.onSelectTestAnswer(question.id, question.correctOptionId)
+    }
+    actions.onSubmitModuleTest()
+
+    const runner = system.viewRecorder.lastState.tests.runner
+    assert.equal(runner.phase, 'active', scenario.name)
+    assert.equal(runner.retryPending, true, scenario.name)
+    assert.equal(runner.result, null, scenario.name)
+    assert.equal(runner.testSession.questions.length, 2, scenario.name)
+    assert.deepEqual(
+      runner.answers.map((answer) => answer.selectedOptionId),
+      questions.map((question) => question.correctOptionId),
+      scenario.name
+    )
+    assert.equal(
+      JSON.stringify(system.viewRecorder.lastState.tests)
+        .includes('correctOptionId'),
+      false,
+      scenario.name
+    )
+    if (scenario.name === 'differentValidExplanation') {
+      assert.equal(
+        JSON.stringify(system.viewRecorder.lastState.tests).includes(
+          'Eine andere, formal gültige synthetische Erklärung.'
+        ),
+        false
+      )
+    }
+  }
+})
+
+test('ermöglicht nach evaluationFailed den autoritativen kontrollierten Session-Abbruch', () => {
+  const question = createTestQuestion()
+  const privateFailureMessage = 'PRIVATE-EVALUATION-DETAIL'
+  const system = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+    testMethodHandlers: {
+      startModuleTest: {
+        ok: true,
+        status: 'testStarted',
+        changed: true,
+        testSession: createPublicTestSession(question),
+      },
+      submitModuleTest: {
+        ok: false,
+        status: 'evaluationFailed',
+        changed: false,
+        error: {
+          code: 'learningTestEvaluationFailed',
+          message: privateFailureMessage,
+        },
+      },
+      cancelModuleTest: {
+        ok: true,
+        status: 'testCancelled',
+        changed: true,
+      },
+    },
+  })
+  const actions = openReadyController(system)
+  actions.onSelectModule('module-orbit')
+  actions.onStartModuleTest()
+  actions.onSelectTestAnswer(question.id, question.correctOptionId)
+  actions.onSubmitModuleTest()
+
+  assert.equal(system.viewRecorder.lastState.tests.runner.phase, 'active')
+  assert.equal(
+    system.viewRecorder.lastState.tests.runner.retryPending,
+    false
+  )
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState.tests).includes(
+      privateFailureMessage
+    ),
+    false
+  )
+
+  actions.onOpenTestCancelConfirmation()
+  assert.equal(
+    system.viewRecorder.lastState.tests.runner.cancelConfirmation,
+    true
+  )
+  actions.onConfirmModuleTestCancel()
+
+  assert.deepEqual(system.testServiceDouble.calls.cancelModuleTest, [
+    { testSessionId: 'session-pulse-1' },
+  ])
+  assert.equal(system.viewRecorder.lastState.tests.runner.phase, 'idle')
+  assert.equal(system.viewRecorder.lastState.tests.runner.testSession, null)
+  assert.deepEqual(system.viewRecorder.lastState.tests.runner.answers, [])
+
+  actions.onSelectModule('module-garden')
+  assert.equal(system.viewRecorder.lastState.selectedModuleId, 'module-garden')
+})
+
+test('reconciliert malformed testCompleted nach anschließendem notFound ohne zweiten Attempt oder UI-Lock', () => {
+  const question = createTestQuestion()
+  const persistedAttempts = createAttemptHistorySuccess(question).attempts
+  const privateResultDetail = 'PRIVATE-MALFORMED-COMPLETION'
+  let submitCount = 0
+  let orbitHistoryLoadCount = 0
+  const malformedCompletion = {
+    ...createCompletedTestSuccess(question),
+    unexpectedPrivateDetail: privateResultDetail,
+  }
+  const system = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+    testMethodHandlers: {
+      startModuleTest: {
+        ok: true,
+        status: 'testStarted',
+        changed: true,
+        testSession: createPublicTestSession(question),
+      },
+      submitModuleTest() {
+        submitCount += 1
+        return submitCount === 1
+          ? malformedCompletion
+          : {
+              ok: false,
+              status: 'notFound',
+              changed: false,
+              error: {
+                code: 'testSessionNotFound',
+                message: 'PRIVATE-NOT-FOUND-DETAIL',
+              },
+            }
+      },
+      loadAttemptHistory({ moduleId }) {
+        if (moduleId !== 'module-orbit') {
+          return {
+            ok: true,
+            status: 'attemptHistoryEmpty',
+            changed: false,
+            attempts: [],
+          }
+        }
+
+        orbitHistoryLoadCount += 1
+        return orbitHistoryLoadCount < 3
+          ? {
+              ok: true,
+              status: 'attemptHistoryEmpty',
+              changed: false,
+              attempts: [],
+            }
+          : {
+              ok: true,
+              status: 'attemptHistoryLoaded',
+              changed: false,
+              attempts: cloneValue(persistedAttempts),
+            }
+      },
+    },
+  })
+  const actions = openReadyController(system)
+  actions.onSelectModule('module-orbit')
+  actions.onStartModuleTest()
+  actions.onSelectTestAnswer(question.id, question.correctOptionId)
+  actions.onSubmitModuleTest()
+
+  assert.equal(system.viewRecorder.lastState.tests.runner.phase, 'active')
+  assert.equal(system.viewRecorder.lastState.tests.runner.retryPending, true)
+  assert.equal(system.viewRecorder.lastState.tests.runner.result, null)
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState.tests).includes(
+      privateResultDetail
+    ),
+    false
+  )
+
+  actions.onSubmitModuleTest()
+
+  assert.equal(system.testServiceDouble.calls.submitModuleTest.length, 2)
+  assert.deepEqual(
+    system.testServiceDouble.calls.submitModuleTest[1],
+    system.testServiceDouble.calls.submitModuleTest[0]
+  )
+  assert.equal(persistedAttempts.length, 1)
+  assert.equal(system.viewRecorder.lastState.tests.runner.phase, 'completed')
+  assert.equal(system.viewRecorder.lastState.tests.runner.retryPending, false)
+  assert.equal(system.viewRecorder.lastState.tests.history.attempts.length, 1)
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState.tests).includes(
+      'PRIVATE-NOT-FOUND-DETAIL'
+    ),
+    false
+  )
+
+  actions.onSelectModule('module-garden')
+  const gardenRunner = system.viewRecorder.lastState.tests.runner
+  assert.equal(system.viewRecorder.lastState.selectedModuleId, 'module-garden')
+  assert.equal(gardenRunner.phase, 'idle')
+  assert.equal(gardenRunner.result, null)
+  assert.equal(gardenRunner.errorMessage, '')
+  assert.equal(gardenRunner.statusMessage, '')
+})
+
+test('reconciliert malformed Create-Erfolg per autoritativem Bank-Reload ohne doppelte Frage', () => {
+  const privateMutationDetail = 'PRIVATE-CREATE-RESULT-DETAIL'
+  const createdQuestion = createTestQuestion({
+    id: 'question-created-reconciled',
+    prompt: 'Welche Farbe trägt das synthetische Reconciliation-Signal?',
+    difficulty: 'hard',
+    options: [
+      { id: 'option-created-silver', label: 'Silber', position: 1 },
+      { id: 'option-created-violet', label: 'Violett', position: 2 },
+    ],
+    correctOptionId: 'option-created-violet',
+    explanation: 'Das erfundene Signal trägt die Farbe Violett.',
+  })
+  const system = createControllerSystem({
+    testBankLoadResults: [
+      createTestBankLoadSuccess(),
+      createTestBankLoadSuccess([createdQuestion]),
+    ],
+    testMethodHandlers: {
+      createQuestion: {
+        ok: true,
+        status: 'questionCreated',
+        changed: true,
+        question: createdQuestion,
+        testBank: createTestBank([createdQuestion]),
+        unexpectedPrivateDetail: privateMutationDetail,
+      },
+    },
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+  actions.onOpenCreateQuestion()
+  actions.onUpdateQuestionField('prompt', createdQuestion.prompt)
+  actions.onUpdateQuestionField('difficulty', createdQuestion.difficulty)
+  actions.onUpdateQuestionField(
+    'options',
+    createdQuestion.options[0].label,
+    0
+  )
+  actions.onUpdateQuestionField(
+    'options',
+    createdQuestion.options[1].label,
+    1
+  )
+  actions.onSelectCorrectQuestionOption(1)
+  actions.onUpdateQuestionField(
+    'explanation',
+    createdQuestion.explanation
+  )
+  actions.onSubmitQuestion()
+
+  assert.equal(system.testServiceDouble.calls.createQuestion.length, 1)
+  assert.equal(system.testServiceDouble.calls.loadTestBank.length, 2)
+  assert.equal(system.viewRecorder.lastState.tests.bank.totalQuestionCount, 1)
+  assert.equal(system.viewRecorder.lastState.tests.editor, null)
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState.tests).includes(
+      privateMutationDetail
+    ),
+    false
+  )
+
+  actions.onSubmitQuestion()
+  assert.equal(system.testServiceDouble.calls.createQuestion.length, 1)
+  actions.onOpenEditQuestion(createdQuestion.id)
+  assert.equal(system.viewRecorder.lastState.tests.editor.mode, 'edit')
+})
+
+test('setzt terminalen Runnerzustand bei einem Modulwechsel vollständig zurück', () => {
+  const question = createTestQuestion()
+  let historyLoadCount = 0
+  const completedSystem = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+    testMethodHandlers: {
+      startModuleTest: {
+        ok: true,
+        status: 'testStarted',
+        changed: true,
+        testSession: createPublicTestSession(question),
+      },
+      submitModuleTest: createCompletedTestSuccess(question),
+      loadAttemptHistory({ moduleId }) {
+        if (moduleId !== 'module-orbit') {
+          return {
+            ok: true,
+            status: 'attemptHistoryEmpty',
+            changed: false,
+            attempts: [],
+          }
+        }
+
+        historyLoadCount += 1
+        return historyLoadCount === 1
+          ? {
+              ok: true,
+              status: 'attemptHistoryEmpty',
+              changed: false,
+              attempts: [],
+            }
+          : createAttemptHistorySuccess(question)
+      },
+    },
+  })
+  const completedActions = openReadyController(completedSystem)
+  completedActions.onSelectModule('module-orbit')
+  completedActions.onStartModuleTest()
+  completedActions.onSelectTestAnswer(question.id, question.correctOptionId)
+  completedActions.onSubmitModuleTest()
+  assert.equal(
+    completedSystem.viewRecorder.lastState.tests.runner.phase,
+    'completed'
+  )
+
+  completedActions.onSelectModule('module-garden')
+  const resetRunner = completedSystem.viewRecorder.lastState.tests.runner
+  assert.equal(resetRunner.phase, 'idle')
+  assert.equal(resetRunner.result, null)
+  assert.equal(resetRunner.testSession, null)
+  assert.deepEqual(resetRunner.answers, [])
+  assert.equal(resetRunner.retryPending, false)
+  assert.equal(resetRunner.errorMessage, '')
+  assert.equal(resetRunner.statusMessage, '')
+
+  const failedSystem = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+    testMethodHandlers: {
+      startModuleTest: {
+        ok: false,
+        status: 'readFailed',
+        changed: false,
+        error: {
+          code: 'learningTestStartFailed',
+          message: 'PRIVATE-START-DETAIL',
+        },
+      },
+    },
+  })
+  const failedActions = openReadyController(failedSystem)
+  failedActions.onSelectModule('module-orbit')
+  failedActions.onStartModuleTest()
+  assert.notEqual(
+    failedSystem.viewRecorder.lastState.tests.runner.errorMessage,
+    ''
+  )
+
+  failedActions.onSelectModule('module-garden')
+  const resetFailedRunner = failedSystem.viewRecorder.lastState.tests.runner
+  assert.equal(resetFailedRunner.phase, 'idle')
+  assert.equal(resetFailedRunner.result, null)
+  assert.equal(resetFailedRunner.errorMessage, '')
+  assert.equal(resetFailedRunner.statusMessage, '')
+})
+
+test('rendert Question-Dirty-Toggles in beide Richtungen ohne Nebenfelder zu verlieren', () => {
+  const question = createTestQuestion()
+  const system = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+  actions.onOpenEditQuestion(question.id)
+  const initialValues = cloneValue(
+    system.viewRecorder.lastState.tests.editor.values
+  )
+  const renderCount = system.viewRecorder.renders.length
+
+  actions.onUpdateQuestionField(
+    'prompt',
+    'Geänderte synthetische Dirty-Frage'
+  )
+  assert.equal(system.viewRecorder.renders.length, renderCount + 1)
+  assert.equal(system.viewRecorder.lastState.tests.editor.dirty, true)
+  assert.deepEqual(
+    {
+      ...system.viewRecorder.lastState.tests.editor.values,
+      prompt: initialValues.prompt,
+    },
+    initialValues
+  )
+
+  actions.onUpdateQuestionField('prompt', initialValues.prompt)
+  assert.equal(system.viewRecorder.renders.length, renderCount + 2)
+  assert.equal(system.viewRecorder.lastState.tests.editor.dirty, false)
+  assert.deepEqual(
+    system.viewRecorder.lastState.tests.editor.values,
+    initialValues
+  )
+})
+
+test('isoliert einen History-Lesefehler und lädt ihn kontrolliert erneut', () => {
+  const question = createTestQuestion()
+  let historyLoadCount = 0
+  const system = createControllerSystem({
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+    testMethodHandlers: {
+      loadAttemptHistory() {
+        historyLoadCount += 1
+        return historyLoadCount === 1
+          ? {
+              ok: false,
+              status: 'readFailed',
+              changed: false,
+              error: {
+                code: 'private-history-error',
+                message: 'PRIVATE-HISTORY-DETAIL',
+              },
+            }
+          : {
+              ok: true,
+              status: 'attemptHistoryEmpty',
+              changed: false,
+              attempts: [],
+            }
+      },
+    },
+  })
+  const actions = openReadyController(system)
+  actions.onSelectModule('module-orbit')
+
+  assert.equal(system.viewRecorder.lastState.tests.history.phase, 'error')
+  assert.equal(system.viewRecorder.lastState.tests.bank.phase, 'ready')
+  assert.equal(
+    JSON.stringify(system.viewRecorder.lastState.tests)
+      .includes('PRIVATE-HISTORY-DETAIL'),
+    false
+  )
+
+  actions.onToggleChapter('module-orbit', 'chapter-signals')
+  actions.onSelectLearningNode(
+    'module-orbit',
+    'chapter-signals',
+    'node-pulse'
+  )
+  actions.onOpenEditQuestion(question.id)
+  assert.equal(system.viewRecorder.lastState.tests.editor.mode, 'edit')
+  actions.onCancelQuestionEditor()
+
+  actions.onRetryAttemptHistory()
+  assert.equal(system.testServiceDouble.calls.loadAttemptHistory.length, 2)
+  assert.equal(system.viewRecorder.lastState.tests.history.phase, 'ready')
+  assert.deepEqual(system.viewRecorder.lastState.tests.history.attempts, [])
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'attemptHistoryAlert',
+  })
+})
+
+test('blockiert Modul-, Kapitel-, Node-, Formular- und Übersichtswechsel während einer aktiven Testsession', () => {
+  const hub = createArtifactHubFixture()
+  const question = createTestQuestion()
+  const system = createControllerSystem({
+    loadResults: { ok: true, status: 'loaded', hub },
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+    testMethodHandlers: {
+      startModuleTest: {
+        ok: true,
+        status: 'testStarted',
+        changed: true,
+        testSession: createPublicTestSession(question),
+      },
+    },
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+  actions.onStartModuleTest()
+
+  const assertBlockedTransition = (transition) => {
+    transition()
+    const state = system.viewRecorder.lastState
+    assert.equal(state.selectedModuleId, 'module-orbit')
+    assert.deepEqual(state.expandedChapterIds, ['chapter-signals'])
+    assert.equal(state.selectedLearningNodeId, 'node-pulse')
+    assert.equal(state.form, null)
+    assert.equal(state.tests.runner.phase, 'active')
+    assert.equal(state.tests.runner.cancelConfirmation, true)
+    assert.deepEqual(state.focusTarget, {
+      type: 'testCancelConfirmation',
+    })
+    actions.onContinueModuleTest()
+  }
+
+  assertBlockedTransition(() => actions.onSelectModule('module-garden'))
+  assertBlockedTransition(() => (
+    actions.onToggleChapter('module-orbit', 'chapter-signals')
+  ))
+  assertBlockedTransition(() => actions.onSelectLearningNode(
+    'module-orbit',
+    'chapter-signals',
+    'node-echo'
+  ))
+  assertBlockedTransition(() => actions.onOpenAddLearningNodeForm(
+    'module-orbit',
+    'chapter-signals'
+  ))
+  assertBlockedTransition(() => actions.onBackToOverview())
+
+  assert.equal(system.testServiceDouble.calls.cancelModuleTest.length, 0)
+  assert.equal(system.testServiceDouble.calls.loadAttemptHistory.length, 1)
 })
 
 test('lädt leeren und vorhandenen Fortschritt erst nach dem Inhalt und speichert keinen Roh-Log im UI-State', () => {

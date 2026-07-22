@@ -161,6 +161,114 @@ function createArtifactState(overrides = {}) {
   }
 }
 
+function createTestsState(overrides = {}) {
+  return {
+    bank: {
+      phase: 'ready',
+      questions: [],
+      totalQuestionCount: 0,
+      errorMessage: '',
+      statusMessage: '',
+      ...overrides.bank,
+    },
+    editor: overrides.editor ?? null,
+    runner: {
+      phase: 'idle',
+      questionCount: 0,
+      testSession: null,
+      answers: {},
+      retryPending: false,
+      errorMessage: '',
+      statusMessage: '',
+      cancelConfirmation: false,
+      result: null,
+      ...overrides.runner,
+    },
+    history: {
+      phase: 'ready',
+      attempts: [],
+      errorMessage: '',
+      ...overrides.history,
+    },
+  }
+}
+
+function createAuthorQuestionFixture(overrides = {}) {
+  return {
+    id: 'question-synthetic-one',
+    prompt: 'Welche erfundene Farbe markiert den Nordbogen?',
+    difficulty: 'easy',
+    explanation: 'Im synthetischen Beispiel markiert Blau den Nordbogen.',
+    options: [
+      {
+        id: 'option-synthetic-blue',
+        label: 'Blau',
+        isCorrect: true,
+      },
+      {
+        id: 'option-synthetic-gold',
+        label: 'Gold',
+        isCorrect: false,
+      },
+    ],
+    ...overrides,
+  }
+}
+
+function createPublicTestSession(overrides = {}) {
+  return {
+    id: 'session-synthetic-one',
+    moduleId: 'module-orbit',
+    startedAt: '2026-07-20T08:00:00.000Z',
+    questions: [
+      {
+        id: 'question-public-one',
+        learningNodeId: 'node-first',
+        type: 'singleChoice',
+        prompt: 'Welche erfundene Form öffnet das Nordtor?',
+        difficulty: 'medium',
+        options: [
+          { id: 'option-public-circle', label: 'Kreis' },
+          { id: 'option-public-star', label: 'Stern' },
+        ],
+      },
+      {
+        id: 'question-public-two',
+        learningNodeId: 'node-second',
+        type: 'singleChoice',
+        prompt: 'Welches Fantasiesignal beendet die Runde?',
+        difficulty: 'hard',
+        options: [
+          { id: 'option-public-bell', label: 'Glocke' },
+          { id: 'option-public-wave', label: 'Welle' },
+        ],
+      },
+    ],
+    ...overrides,
+  }
+}
+
+function createCompletedTestResult(overrides = {}) {
+  return {
+    completedAt: '2026-07-20T08:05:00.000Z',
+    totalQuestionCount: 1,
+    correctAnswerCount: 1,
+    scorePercent: 100,
+    questions: [
+      {
+        prompt: 'Welche erfundene Form öffnet das Nordtor?',
+        options: [
+          { label: 'Kreis', isSelected: true, isCorrect: true },
+          { label: 'Stern', isSelected: false, isCorrect: false },
+        ],
+        isCorrect: true,
+        explanation: 'Im synthetischen Beispiel ist der Kreis korrekt.',
+      },
+    ],
+    ...overrides,
+  }
+}
+
 function createViewState(overrides = {}) {
   const hub = overrides.hub ?? createEmptyHub()
 
@@ -173,6 +281,7 @@ function createViewState(overrides = {}) {
     form: null,
     progress: createProgressState(hub),
     artifacts: createArtifactState(),
+    tests: createTestsState(),
     statusMessage: '',
     errorMessage: '',
     focusTarget: null,
@@ -239,6 +348,18 @@ function createSelectedArtifactViewState(artifactOverrides = {}) {
     expandedChapterIds: ['chapter-signals'],
     selectedLearningNodeId: 'node-first',
     artifacts: createArtifactState(artifactOverrides),
+  })
+}
+
+function createSelectedTestViewState(testOverrides = {}) {
+  const hub = createHubFixture()
+  return createViewState({
+    phase: 'ready',
+    hub,
+    selectedModuleId: 'module-orbit',
+    expandedChapterIds: ['chapter-signals'],
+    selectedLearningNodeId: 'node-first',
+    tests: createTestsState(testOverrides),
   })
 }
 
@@ -325,6 +446,8 @@ test('zeigt den sachlichen Datenschutzhinweis in allen LearningHub-Zuständen', 
       assert.ok(
         privacyNotice.textContent.includes('Notizen und Zusammenfassungen')
       )
+      assert.ok(privacyNotice.textContent.includes('Testfragen'))
+      assert.ok(privacyNotice.textContent.includes('abgeschlossenen Versuche'))
       assert.ok(privacyNotice.textContent.includes('aktuellen Browserprofil'))
       assert.ok(privacyNotice.textContent.includes('Cloud-Sicherung'))
       assert.ok(
@@ -334,6 +457,8 @@ test('zeigt den sachlichen Datenschutzhinweis in allen LearningHub-Zuständen', 
       )
       assert.ok(privacyNotice.textContent.includes('localStorage ist unverschlüsselt'))
       assert.ok(privacyNotice.textContent.includes('derselben Origin'))
+      assert.ok(privacyNotice.textContent.includes('nur im Arbeitsspeicher'))
+      assert.ok(privacyNotice.textContent.includes('bei einem Reload verloren'))
     })
   })
 })
@@ -2176,6 +2301,1141 @@ test('wiederholtes Rendern registriert keine mehrfach wirksamen Handler', () => 
   })
 })
 
+test('isoliert Testbank-Laden und -Fehler und rendert Autorfragen in Service-Reihenfolge', () => {
+  withLearningHubView(({ document, root, view }) => {
+    view.render(createSelectedTestViewState({
+      bank: {
+        phase: 'loading',
+      },
+    }))
+
+    const loadingSection = findByClass(
+      root,
+      'learning-hub-test-questions'
+    )[0]
+    assert.equal(loadingSection.getAttribute('aria-busy'), 'true')
+    assert.equal(
+      findByClass(
+        loadingSection,
+        'learning-hub-test-questions__load-state'
+      )[0].getAttribute('role'),
+      'status'
+    )
+    assert.ok(root.textContent.includes('Frei erfundener erster Inhalt'))
+    assert.equal(findByClass(root, 'learning-hub-artifacts').length, 1)
+
+    let retryCalls = 0
+    view.render(
+      {
+        ...createSelectedTestViewState({
+          bank: {
+            phase: 'unavailable',
+            errorMessage:
+              'Die synthetische Testfragenbank konnte nicht geladen werden.',
+          },
+        }),
+        focusTarget: { type: 'testBankAlert' },
+      },
+      {
+        onRetryTestBankLoad() {
+          retryCalls += 1
+        },
+      }
+    )
+    const alert = findByClass(
+      root,
+      'learning-hub-test-questions__load-state--error'
+    )[0]
+    assert.equal(alert.getAttribute('role'), 'alert')
+    assert.equal(document.activeElement, alert)
+    findButton(alert, 'Testfragen erneut laden').click()
+    assert.equal(retryCalls, 1)
+    assert.ok(root.textContent.includes('Frei erfundener erster Inhalt'))
+
+    const firstQuestion = createAuthorQuestionFixture({
+      id: 'question-author-first',
+      prompt: 'Erste synthetische Autorfrage',
+    })
+    const secondQuestion = createAuthorQuestionFixture({
+      id: 'question-author-second',
+      prompt: 'Zweite synthetische Autorfrage',
+      difficulty: 'hard',
+      explanation: '',
+    })
+    const editCalls = []
+    let createCalls = 0
+    view.render(
+      createSelectedTestViewState({
+        bank: {
+          questions: [secondQuestion, firstQuestion],
+          totalQuestionCount: 2,
+          statusMessage: 'Keine Änderungen an der Testfrage.',
+        },
+      }),
+      {
+        onOpenCreateQuestion() {
+          createCalls += 1
+        },
+        onOpenEditQuestion(questionId) {
+          editCalls.push(questionId)
+        },
+      }
+    )
+    const authorCards = findByClass(root, 'learning-hub-author-question')
+    assert.deepEqual(
+      authorCards.map((card) => findByTag(card, 'h6')[0].textContent),
+      ['Zweite synthetische Autorfrage', 'Erste synthetische Autorfrage']
+    )
+    assert.ok(authorCards[0].textContent.includes('Schwierigkeit: Schwer'))
+    assert.ok(authorCards[1].textContent.includes('Richtige Antwort'))
+    assert.ok(authorCards[1].textContent.includes('Erklärung:'))
+    assert.equal(findButton(root, 'Testfrage löschen'), null)
+    assert.equal(findButton(root, 'Testfrage verschieben'), null)
+    findByTag(root, 'button')
+      .filter((button) => button.textContent === 'Testfrage bearbeiten')
+      .forEach((button) => button.click())
+    findButton(root, 'Testfrage erstellen').click()
+    assert.deepEqual(editCalls, [
+      'question-author-second',
+      'question-author-first',
+    ])
+    assert.equal(createCalls, 1)
+    assert.equal(
+      findByClass(root, 'learning-hub-test-feedback--success')[0]
+        .getAttribute('role'),
+      'status'
+    )
+  })
+})
+
+test('Frageeditor verdrahtet Grenzen, native Korrekt-Radios, dynamische Optionen und Dirty-Verwerfen', () => {
+  withLearningHubView(({ document, root, view }) => {
+    const updates = []
+    const removeCalls = []
+    const correctCalls = []
+    let addCalls = 0
+    let submitCalls = 0
+    let cancelCalls = 0
+    const actions = {
+      onUpdateQuestionField(fieldName, value, optionIndex) {
+        updates.push([fieldName, value, optionIndex])
+      },
+      onAddQuestionOption() {
+        addCalls += 1
+      },
+      onRemoveQuestionOption(optionIndex) {
+        removeCalls.push(optionIndex)
+      },
+      onSelectCorrectQuestionOption(optionIndex) {
+        correctCalls.push(optionIndex)
+      },
+      onSubmitQuestion() {
+        submitCalls += 1
+      },
+      onCancelQuestionEditor() {
+        cancelCalls += 1
+      },
+    }
+    const editor = {
+      mode: 'create',
+      values: {
+        prompt: 'Synthetische Frage',
+        difficulty: 'medium',
+        options: ['Erste Option', 'Zweite Option', 'Dritte Option'],
+        correctOptionIndex: 1,
+        explanation: 'Synthetische Erklärung',
+      },
+      fieldErrors: {
+        'options.2': 'Bitte gib eine gültige dritte Option ein.',
+      },
+      errorMessage: 'Bitte korrigiere die markierten Felder.',
+      isSubmitting: false,
+      dirty: true,
+      discardConfirmation: false,
+    }
+    view.render(
+      {
+        ...createSelectedTestViewState({ editor }),
+        focusTarget: {
+          type: 'questionEditorField',
+          fieldName: 'options',
+          optionIndex: 2,
+        },
+      },
+      actions
+    )
+
+    const form = findByClass(root, 'learning-hub-question-form')[0]
+    const prompt = findControl(form, 'prompt')
+    const explanation = findControl(form, 'explanation')
+    const difficulty = findByTag(form, 'select')[0]
+    const optionInputs = findByTag(form, 'input').filter(
+      (input) => input.type === 'text' && input.name.startsWith('option-')
+    )
+    const correctRadios = findByTag(form, 'input').filter(
+      (input) => input.type === 'radio'
+    )
+    assert.equal(prompt.maxLength, 500)
+    assert.equal(prompt.getAttribute('maxlength'), '500')
+    assert.equal(explanation.maxLength, 2000)
+    assert.equal(explanation.getAttribute('maxlength'), '2000')
+    assert.equal(difficulty.value, 'medium')
+    assert.deepEqual(
+      findByTag(difficulty, 'option').map((option) => option.value),
+      ['easy', 'medium', 'hard']
+    )
+    assert.equal(optionInputs.length, 3)
+    assert.ok(optionInputs.every((input) => input.maxLength === 300))
+    assert.equal(correctRadios.length, 3)
+    assert.ok(correctRadios.every(
+      (radio) => radio.name === 'learning-hub-question-correct-option'
+    ))
+    assert.equal(correctRadios[1].checked, true)
+    assert.equal(optionInputs[2].getAttribute('aria-invalid'), 'true')
+    assert.ok(optionInputs[2].getAttribute('aria-describedby').includes('-error'))
+    assert.equal(document.activeElement, optionInputs[2])
+    assert.equal(findByTag(form, 'fieldset').length, 1)
+    assert.equal(findByTag(form, 'legend')[0].textContent, 'Antwortoptionen')
+
+    prompt.value = 'Aktualisierte synthetische Frage'
+    prompt.dispatchEvent({ type: 'input' })
+    difficulty.value = 'hard'
+    difficulty.dispatchEvent({ type: 'change' })
+    optionInputs[1].value = 'Aktualisierte zweite Option'
+    optionInputs[1].dispatchEvent({ type: 'input' })
+    correctRadios[2].dispatchEvent({ type: 'change' })
+    findButton(form, 'Antwortoption hinzufügen').click()
+    findByTag(form, 'button')
+      .filter((button) => button.textContent === 'Option entfernen')[1]
+      .click()
+    form.dispatchEvent({ type: 'submit' })
+    form.dispatchEvent({ type: 'submit' })
+    findButton(form, 'Abbrechen').click()
+    assert.deepEqual(updates, [
+      ['prompt', 'Aktualisierte synthetische Frage', undefined],
+      ['difficulty', 'hard', undefined],
+      ['options', 'Aktualisierte zweite Option', 1],
+    ])
+    assert.deepEqual(correctCalls, [2])
+    assert.equal(addCalls, 1)
+    assert.deepEqual(removeCalls, [1])
+    assert.equal(submitCalls, 1)
+    assert.equal(cancelCalls, 1)
+
+    view.render(createSelectedTestViewState({
+      editor: {
+        ...editor,
+        values: {
+          ...editor.values,
+          options: Array.from(
+            { length: 6 },
+            (_, optionIndex) => `Synthetische Option ${optionIndex + 1}`
+          ),
+          correctOptionIndex: 5,
+        },
+        fieldErrors: {},
+        errorMessage: '',
+      },
+    }))
+    assert.equal(
+      findButton(root, 'Antwortoption hinzufügen').disabled,
+      true
+    )
+    assert.ok(
+      findByTag(root, 'button')
+        .filter((button) => button.textContent === 'Option entfernen')
+        .every((button) => button.disabled === false)
+    )
+
+    view.render(createSelectedTestViewState({
+      editor: {
+        ...editor,
+        values: {
+          ...editor.values,
+          options: ['Erste Option', 'Zweite Option'],
+          correctOptionIndex: 0,
+        },
+        fieldErrors: {},
+        errorMessage: '',
+      },
+    }))
+    assert.equal(
+      findButton(root, 'Antwortoption hinzufügen').disabled,
+      false
+    )
+    assert.ok(
+      findByTag(root, 'button')
+        .filter((button) => button.textContent === 'Option entfernen')
+        .every((button) => button.disabled)
+    )
+
+    view.render({
+      ...createSelectedTestViewState({
+        editor: {
+          ...editor,
+          fieldErrors: {
+            correctOptionIndex:
+              'Markiere genau eine vorhandene Antwortoption als korrekt.',
+          },
+          errorMessage: '',
+        },
+      }),
+      focusTarget: {
+        type: 'questionEditorField',
+        fieldName: 'correctOptionIndex',
+      },
+    })
+    const focusedCorrectRadios = findByClass(
+      root,
+      'learning-hub-question-option__radio'
+    )
+    assert.equal(document.activeElement, focusedCorrectRadios[1])
+    assert.ok(focusedCorrectRadios.every(
+      (radio) => radio.getAttribute('aria-invalid') === 'true'
+    ))
+    assert.ok(focusedCorrectRadios.every(
+      (radio) => radio.getAttribute('aria-describedby').includes(
+        'learning-hub-question-correct-error'
+      )
+    ))
+
+    let continueCalls = 0
+    let discardCalls = 0
+    view.render(
+      {
+        ...createSelectedTestViewState({
+          editor: {
+            ...editor,
+            errorMessage: '',
+            fieldErrors: {},
+            discardConfirmation: true,
+          },
+        }),
+        focusTarget: { type: 'questionDiscardConfirmation' },
+      },
+      {
+        onContinueQuestionEditing() {
+          continueCalls += 1
+        },
+        onDiscardQuestionDraft() {
+          discardCalls += 1
+        },
+      }
+    )
+    const confirmation = findByClass(
+      root,
+      'learning-hub-question-discard'
+    )[0]
+    assert.equal(findByTag(confirmation, 'legend')[0].textContent, 'Ungespeicherte Frage verwerfen?')
+    assert.equal(
+      document.activeElement,
+      findButton(confirmation, 'Weiter bearbeiten')
+    )
+    assert.ok(findByTag(form, 'input').every((input) => input.disabled === false))
+    findButton(confirmation, 'Weiter bearbeiten').click()
+    findButton(confirmation, 'Entwurf verwerfen').click()
+    assert.equal(continueCalls, 1)
+    assert.equal(discardCalls, 1)
+    const disabledEditor = findByClass(root, 'learning-hub-question-form')[0]
+    assert.ok(
+      findByTag(disabledEditor, 'input')
+        .concat(findByTag(disabledEditor, 'textarea'))
+        .concat(findByTag(disabledEditor, 'select'))
+        .every((control) => control.disabled)
+    )
+  })
+})
+
+test('Frageeditor übernimmt medium und hard erst nach dem Aufbau aller Select-Optionen', () => {
+  withLearningHubView(({ document, root, view }) => {
+    const originalCreateElement = document.createElement.bind(document)
+
+    document.createElement = (tagName) => {
+      const element = originalCreateElement(tagName)
+
+      if (String(tagName).toLowerCase() !== 'select') return element
+
+      const originalAppend = element.append.bind(element)
+      element.append = (...nodes) => {
+        originalAppend(...nodes)
+        const options = element.children.filter(
+          (child) => child.tagName === 'OPTION'
+        )
+
+        if (options.length > 0 && !options.some((option) => option.selected)) {
+          options[0].selected = true
+        }
+      }
+      Object.defineProperty(element, 'value', {
+        configurable: true,
+        get() {
+          return element.children.find(
+            (child) => child.tagName === 'OPTION' && child.selected
+          )?.value ?? ''
+        },
+        set(nextValue) {
+          const normalizedValue = String(nextValue)
+          element.children
+            .filter((child) => child.tagName === 'OPTION')
+            .forEach((option) => {
+              option.selected = option.value === normalizedValue
+            })
+        },
+      })
+
+      return element
+    }
+
+    for (const difficulty of ['medium', 'hard']) {
+      view.render(createSelectedTestViewState({
+        editor: {
+          mode: 'create',
+          values: {
+            prompt: 'Synthetische Auswahlfrage',
+            difficulty,
+            options: ['Erste Option', 'Zweite Option'],
+            correctOptionIndex: 0,
+            explanation: '',
+          },
+          fieldErrors: {},
+          errorMessage: '',
+          isSubmitting: false,
+          dirty: false,
+          discardConfirmation: false,
+        },
+      }))
+
+      const select = findByTag(root, 'select')[0]
+      assert.equal(select.value, difficulty)
+      assert.deepEqual(
+        findByTag(select, 'option')
+          .filter((option) => option.selected)
+          .map((option) => option.value),
+        [difficulty]
+      )
+    }
+  })
+})
+
+test('Frageeditor verwendet die kanonischen LearningTest-Vertragskonstanten', () => {
+  const viewSource = readFileSync(
+    new URL(
+      '../src/modules/learning-hub/learningHubView.js',
+      import.meta.url
+    ),
+    'utf8'
+  )
+  const contractConstants = [
+    'LEARNING_TEST_DIFFICULTIES',
+    'LEARNING_TEST_EXPLANATION_MAX_LENGTH',
+    'LEARNING_TEST_MAX_OPTION_COUNT',
+    'LEARNING_TEST_MIN_OPTION_COUNT',
+    'LEARNING_TEST_OPTION_LABEL_MAX_LENGTH',
+    'LEARNING_TEST_PROMPT_MAX_LENGTH',
+  ]
+
+  assert.match(
+    viewSource,
+    /from '.\/learningTestBankContract\.js'/
+  )
+  contractConstants.forEach((constantName) => {
+    assert.match(viewSource, new RegExp(`\\b${constantName}\\b`))
+  })
+  assert.doesNotMatch(
+    viewSource,
+    /const QUESTION_(?:PROMPT|OPTION|EXPLANATION)_MAX_LENGTH/
+  )
+  assert.doesNotMatch(
+    viewSource,
+    /const (?:MIN|MAX)_QUESTION_OPTION_COUNT/
+  )
+})
+
+test('Frageeditor aktualisiert den Dirty-Status bei Zustandswechseln ohne Eingabeverlust', () => {
+  withLearningHubView(({ document, root, view }) => {
+    const initialPrompt = 'Unveränderte synthetische Frage'
+    const preservedOption = 'Synthetische Antwort bleibt erhalten'
+    const baselineValues = {
+      prompt: initialPrompt,
+      difficulty: 'medium',
+      options: [preservedOption, 'Zweite Option'],
+      correctOptionIndex: 0,
+      explanation: '',
+    }
+    let editor = {
+      mode: 'create',
+      values: {
+        ...baselineValues,
+        options: [...baselineValues.options],
+      },
+      fieldErrors: {},
+      errorMessage: '',
+      isSubmitting: false,
+      dirty: false,
+      discardConfirmation: false,
+    }
+
+    function renderEditor(focusTarget = null) {
+      view.render(
+        {
+          ...createSelectedTestViewState({ editor }),
+          focusTarget,
+        },
+        {
+          onUpdateQuestionField(fieldName, value) {
+            const previousDirty = editor.dirty
+            editor = {
+              ...editor,
+              values: {
+                ...editor.values,
+                [fieldName]: value,
+              },
+              dirty: value !== baselineValues[fieldName],
+            }
+
+            if (editor.dirty !== previousDirty) {
+              renderEditor({
+                type: 'questionEditorField',
+                fieldName,
+              })
+            }
+          },
+        }
+      )
+    }
+
+    renderEditor()
+
+    let prompt = findControl(root, 'prompt')
+    let draftStatus = findByClass(
+      root,
+      'learning-hub-question-form__draft-status'
+    )[0]
+    assert.equal(draftStatus.textContent, 'Keine ungespeicherten Änderungen.')
+
+    prompt.value = 'Geänderte synthetische Frage'
+    prompt.dispatchEvent({ type: 'input' })
+
+    prompt = findControl(root, 'prompt')
+    draftStatus = findByClass(
+      root,
+      'learning-hub-question-form__draft-status'
+    )[0]
+    assert.equal(draftStatus.textContent, 'Ungespeicherte Änderungen.')
+    assert.equal(prompt.value, 'Geänderte synthetische Frage')
+    assert.equal(findControl(root, 'option-0').value, preservedOption)
+    assert.equal(document.activeElement, prompt)
+
+    prompt.value = initialPrompt
+    prompt.dispatchEvent({ type: 'input' })
+
+    prompt = findControl(root, 'prompt')
+    draftStatus = findByClass(
+      root,
+      'learning-hub-question-form__draft-status'
+    )[0]
+    assert.equal(draftStatus.textContent, 'Keine ungespeicherten Änderungen.')
+    assert.equal(prompt.value, initialPrompt)
+    assert.equal(findControl(root, 'option-0').value, preservedOption)
+    assert.equal(document.activeElement, prompt)
+  })
+})
+
+test('Frageeditor benennt Korrekt-Radios und Entfernen-Buttons eindeutig nach Optionsnummer', () => {
+  withLearningHubView(({ root, view }) => {
+    view.render(createSelectedTestViewState({
+      editor: {
+        mode: 'create',
+        values: {
+          prompt: 'Synthetische zugängliche Frage',
+          difficulty: 'easy',
+          options: ['Erste Option', 'Zweite Option', 'Dritte Option'],
+          correctOptionIndex: 1,
+          explanation: '',
+        },
+        fieldErrors: {},
+        errorMessage: '',
+        isSubmitting: false,
+        dirty: false,
+        discardConfirmation: false,
+      },
+    }))
+
+    const correctRadios = findByClass(
+      root,
+      'learning-hub-question-option__radio'
+    )
+    const removeButtons = findByTag(root, 'button').filter(
+      (button) => button.textContent === 'Option entfernen'
+    )
+
+    assert.deepEqual(
+      correctRadios.map((radio) => radio.getAttribute('aria-label')),
+      [
+        'Option 1 als richtige Antwort markieren',
+        'Option 2 als richtige Antwort markieren',
+        'Option 3 als richtige Antwort markieren',
+      ]
+    )
+    assert.deepEqual(
+      removeButtons.map((button) => button.getAttribute('aria-label')),
+      ['Option 1 entfernen', 'Option 2 entfernen', 'Option 3 entfernen']
+    )
+  })
+})
+
+test('correctOptionIndex-Fehler fokussiert die tatsächlich ausgewählte Option', () => {
+  withLearningHubView(({ document, root, view }) => {
+    view.render({
+      ...createSelectedTestViewState({
+        editor: {
+          mode: 'edit',
+          values: {
+            prompt: 'Synthetische Fokusfrage',
+            difficulty: 'hard',
+            options: ['Erste Option', 'Zweite Option', 'Dritte Option'],
+            correctOptionIndex: 2,
+            explanation: '',
+          },
+          fieldErrors: {
+            correctOptionIndex:
+              'Markiere genau eine vorhandene Antwortoption als korrekt.',
+          },
+          errorMessage: 'Bitte korrigiere das markierte Feld.',
+          isSubmitting: false,
+          dirty: true,
+          discardConfirmation: false,
+        },
+      }),
+      focusTarget: {
+        type: 'questionEditorField',
+        fieldName: 'correctOptionIndex',
+      },
+    })
+
+    const correctRadios = findByClass(
+      root,
+      'learning-hub-question-option__radio'
+    )
+    assert.equal(correctRadios[2].checked, true)
+    assert.equal(document.activeElement, correctRadios[2])
+  })
+})
+
+test('Runner nutzt nur die öffentliche Session, sperrt konkurrierende UI und verhindert doppelte Abgabe', () => {
+  withLearningHubView(({ root, view }) => {
+    const solutionSentinel = 'PRIVATE-SOLUTION-SENTINEL'
+    const explanationSentinel = 'PRIVATE-EXPLANATION-SENTINEL'
+    const authorSentinel = 'PRIVATE-AUTHOR-QUESTION-SENTINEL'
+    const publicSession = createPublicTestSession()
+    publicSession.correctOptionId = solutionSentinel
+    publicSession.explanation = explanationSentinel
+    publicSession.privateBankSnapshot = authorSentinel
+    publicSession.questions[0].correctOptionId = solutionSentinel
+    publicSession.questions[0].explanation = explanationSentinel
+    publicSession.questions[0].options[0].isCorrect = true
+    const answerCalls = []
+    view.render(
+      {
+        ...createSelectedTestViewState({
+          bank: {
+            questions: [createAuthorQuestionFixture({ prompt: authorSentinel })],
+            totalQuestionCount: 2,
+          },
+          runner: {
+            phase: 'active',
+            questionCount: 2,
+            testSession: publicSession,
+            answers: {
+              'question-public-one': 'option-public-circle',
+            },
+          },
+        }),
+        focusTarget: {
+          type: 'testAnswer',
+          questionId: 'question-public-two',
+          optionId: 'option-public-wave',
+        },
+      },
+      {
+        onSelectTestAnswer(questionId, optionId) {
+          answerCalls.push([questionId, optionId])
+        },
+      }
+    )
+
+    assert.ok(root.textContent.includes('Lokaler Mock-Test'))
+    assert.ok(root.textContent.includes('Laufender Modultest'))
+    assert.equal(root.textContent.includes(solutionSentinel), false)
+    assert.equal(root.textContent.includes(explanationSentinel), false)
+    assert.equal(root.textContent.includes(authorSentinel), false)
+    assert.equal(findByClass(root, 'learning-hub-author-question').length, 0)
+    assert.ok(root.textContent.includes('Autorenansicht ist während'))
+    const questionFieldsets = findByClass(
+      root,
+      'learning-hub-test-runner__question'
+    )
+    assert.equal(questionFieldsets.length, 2)
+    assert.deepEqual(
+      questionFieldsets.map(
+        (fieldset) => findByTag(fieldset, 'legend')[0].textContent
+      ),
+      [
+        'Welche erfundene Form öffnet das Nordtor?',
+        'Welches Fantasiesignal beendet die Runde?',
+      ]
+    )
+    const runnerRadios = findByClass(
+      root,
+      'learning-hub-test-runner__radio'
+    )
+    assert.equal(runnerRadios.length, 4)
+    assert.ok(runnerRadios.every((radio) => radio.type === 'radio'))
+    assert.equal(runnerRadios[0].checked, true)
+    assert.equal(document.activeElement, runnerRadios[3])
+    assert.ok(root.textContent.includes('1 von 2 Fragen beantwortet'))
+    runnerRadios[3].dispatchEvent({ type: 'change' })
+    assert.deepEqual(answerCalls, [[
+      'question-public-two',
+      'option-public-wave',
+    ]])
+    assert.equal(findButton(root, 'Test auswerten').disabled, true)
+    assert.equal(findButton(root, '← Zur Modulübersicht').disabled, true)
+    assert.ok(findCompletionCheckboxes(root).every((input) => input.disabled))
+    assert.ok(
+      findByClass(root, 'learning-hub-artifact-card')
+        .flatMap((card) => findByTag(card, 'button'))
+        .every((button) => button.disabled)
+    )
+    for (const element of findAll(
+      root,
+      (node) => node.nodeType === 1
+    )) {
+      for (const attributeValue of element.attributes.values()) {
+        assert.equal(attributeValue.includes(solutionSentinel), false)
+        assert.equal(attributeValue.includes(explanationSentinel), false)
+        assert.equal(attributeValue.includes(authorSentinel), false)
+      }
+    }
+
+    view.render(createSelectedTestViewState({
+      bank: {
+        questions: [createAuthorQuestionFixture({
+          prompt: authorSentinel,
+          explanation: explanationSentinel,
+          options: [
+            {
+              id: 'option-author-private-one',
+              label: solutionSentinel,
+              isCorrect: true,
+            },
+            {
+              id: 'option-author-private-two',
+              label: 'Synthetische Schwesteroption',
+              isCorrect: false,
+            },
+          ],
+        })],
+        totalQuestionCount: 2,
+      },
+      runner: {
+        phase: 'starting',
+        questionCount: 2,
+      },
+    }))
+    assert.equal(root.textContent.includes(solutionSentinel), false)
+    assert.equal(root.textContent.includes(explanationSentinel), false)
+    assert.equal(root.textContent.includes(authorSentinel), false)
+    assert.equal(findByClass(root, 'learning-hub-author-question').length, 0)
+
+    let submissionCalls = 0
+    view.render(
+      createSelectedTestViewState({
+        bank: {
+          questions: [createAuthorQuestionFixture({ prompt: authorSentinel })],
+          totalQuestionCount: 2,
+        },
+        runner: {
+          phase: 'active',
+          questionCount: 2,
+          testSession: publicSession,
+          answers: {
+            'question-public-one': 'option-public-circle',
+            'question-public-two': 'option-public-wave',
+          },
+        },
+      }),
+      {
+        onSubmitModuleTest() {
+          submissionCalls += 1
+        },
+      }
+    )
+    const runnerForm = findByClass(
+      root,
+      'learning-hub-test-runner__form'
+    )[0]
+    const submitButton = findButton(runnerForm, 'Test auswerten')
+    assert.equal(submitButton.disabled, false)
+    runnerForm.dispatchEvent({ type: 'submit' })
+    runnerForm.dispatchEvent({ type: 'submit' })
+    assert.equal(submissionCalls, 1)
+    assert.equal(runnerForm.getAttribute('aria-busy'), 'true')
+    assert.equal(submitButton.disabled, true)
+    assert.ok(
+      findByClass(runnerForm, 'learning-hub-test-runner__radio')
+        .every((radio) => radio.disabled)
+    )
+  })
+})
+
+test('Lokaler Mock-Test zeigt Grenzen, Leerzustand und fokussierbaren Start', () => {
+  withLearningHubView(({ document, root, view }) => {
+    view.render(createSelectedTestViewState())
+    const testCard = findByClass(root, 'learning-hub-local-test')[0]
+    assert.equal(
+      testCard.getAttribute('aria-labelledby'),
+      'learning-hub-local-test-title'
+    )
+    assert.ok(testCard.textContent.includes('deterministischer Reihenfolge'))
+    assert.ok(testCard.textContent.includes('keine KI'))
+    assert.ok(testCard.textContent.includes('aktuellen Browserprofil'))
+    assert.ok(testCard.textContent.includes('bei einem Reload verloren'))
+    assert.ok(testCard.textContent.includes('0 verfügbare Fragen'))
+    assert.ok(testCard.textContent.includes('noch keine Testfragen'))
+    assert.equal(findButton(testCard, 'Modultest starten').disabled, true)
+    assert.ok(testCard.textContent.includes('Noch keine abgeschlossenen Versuche'))
+
+    let startCalls = 0
+    view.render(
+      {
+        ...createSelectedTestViewState({
+          bank: {
+            totalQuestionCount: 2,
+          },
+          runner: {
+            questionCount: 2,
+          },
+        }),
+        focusTarget: { type: 'testStart' },
+      },
+      {
+        onStartModuleTest() {
+          startCalls += 1
+        },
+      }
+    )
+    const startButton = findButton(root, 'Modultest starten')
+    assert.equal(document.activeElement, startButton)
+    assert.equal(startButton.disabled, false)
+    startButton.click()
+    assert.equal(startCalls, 1)
+    assert.ok(root.textContent.includes('2 verfügbare Fragen'))
+
+    view.render(createSelectedTestViewState({
+      bank: {
+        totalQuestionCount: 2,
+      },
+      runner: {
+        phase: 'starting',
+        questionCount: 2,
+      },
+    }))
+    assert.equal(root.getAttribute('aria-busy'), 'true')
+    assert.equal(
+      findButton(root, 'Modultest wird gestartet …').disabled,
+      true
+    )
+  })
+})
+
+test('Abgabefehler erhält Antworten und Retry, Inline-Abbruch bleibt kontrolliert', () => {
+  withLearningHubView(({ document, root, view }) => {
+    const publicSession = createPublicTestSession()
+    let submitCalls = 0
+    let openCancelCalls = 0
+    view.render(
+      {
+        ...createSelectedTestViewState({
+          bank: { totalQuestionCount: 2 },
+          runner: {
+            phase: 'active',
+            questionCount: 2,
+            testSession: publicSession,
+            answers: {
+              'question-public-one': 'option-public-circle',
+              'question-public-two': 'option-public-wave',
+            },
+            retryPending: true,
+            errorMessage:
+              'Der synthetische Versuch konnte nicht gespeichert werden.',
+          },
+        }),
+        focusTarget: { type: 'testSubmissionAlert' },
+      },
+      {
+        onSubmitModuleTest() {
+          submitCalls += 1
+        },
+        onOpenTestCancelConfirmation() {
+          openCancelCalls += 1
+        },
+      }
+    )
+    const submissionAlert = findByClass(
+      root,
+      'learning-hub-test-feedback--error'
+    ).find((element) => element.textContent.includes('synthetische Versuch'))
+    assert.equal(document.activeElement, submissionAlert)
+    assert.equal(submissionAlert.getAttribute('role'), 'alert')
+    assert.ok(
+      findByClass(root, 'learning-hub-test-runner__radio')
+        .filter((radio) => radio.checked)
+        .length === 2
+    )
+    assert.equal(
+      findButton(root, 'Auswertung erneut versuchen').disabled,
+      false
+    )
+    const retryCancelButton = findButton(root, 'Test abbrechen')
+    assert.equal(retryCancelButton.disabled, false)
+    const retryNote = findByClass(
+      root,
+      'learning-hub-test-runner__retry-note'
+    )[0]
+    assert.ok(
+      retryNote.textContent.includes(
+        'Ein kontrollierter Abbruch kann angefragt werden'
+      )
+    )
+    assert.equal(
+      retryNote.textContent.includes('kann jetzt nicht abgebrochen werden'),
+      false
+    )
+    retryCancelButton.click()
+    assert.equal(openCancelCalls, 1)
+    const retryForm = findByClass(
+      root,
+      'learning-hub-test-runner__form'
+    )[0]
+    retryForm.dispatchEvent({ type: 'submit' })
+    retryForm.dispatchEvent({ type: 'submit' })
+    assert.equal(submitCalls, 1)
+
+    let continueCalls = 0
+    let cancelCalls = 0
+    view.render(
+      {
+        ...createSelectedTestViewState({
+          bank: { totalQuestionCount: 2 },
+          runner: {
+            phase: 'active',
+            questionCount: 2,
+            testSession: publicSession,
+            answers: {
+              'question-public-one': 'option-public-circle',
+              'question-public-two': 'option-public-wave',
+            },
+            cancelConfirmation: true,
+          },
+        }),
+        focusTarget: { type: 'testCancelConfirmation' },
+      },
+      {
+        onContinueModuleTest() {
+          continueCalls += 1
+        },
+        onConfirmModuleTestCancel() {
+          cancelCalls += 1
+        },
+      }
+    )
+    const confirmation = findByClass(root, 'learning-hub-test-cancel')[0]
+    assert.equal(
+      findByTag(confirmation, 'legend')[0].textContent,
+      'Laufenden Test abbrechen?'
+    )
+    assert.equal(
+      document.activeElement,
+      findButton(confirmation, 'Test fortsetzen')
+    )
+    assert.ok(confirmation.textContent.includes('kein Versuch gespeichert'))
+    assert.equal(findByTag(confirmation, 'fieldset').length, 1)
+    assert.ok(
+      findByClass(root, 'learning-hub-test-runner__radio')
+        .every((radio) => radio.disabled)
+    )
+    assert.equal(findButton(root, 'Test abbrechen').disabled, true)
+    findButton(confirmation, 'Test fortsetzen').click()
+    findButton(confirmation, 'Test jetzt abbrechen').click()
+    assert.equal(continueCalls, 1)
+    assert.equal(cancelCalls, 1)
+
+    for (const phase of ['submitting', 'cancelling']) {
+      view.render(createSelectedTestViewState({
+        bank: { totalQuestionCount: 2 },
+        runner: {
+          phase,
+          questionCount: 2,
+          testSession: publicSession,
+          answers: {
+            'question-public-one': 'option-public-circle',
+            'question-public-two': 'option-public-wave',
+          },
+          retryPending: true,
+        },
+      }))
+      assert.equal(
+        findButton(root, 'Test abbrechen').disabled,
+        true,
+        phase
+      )
+    }
+  })
+})
+
+test('Ergebnis und Versuchshistorie bleiben redigiert, sicher und unabhängig retrybar', () => {
+  withLearningHubView(({ document, root, view }) => {
+    const promptSentinel = '<script>synthetic-result-prompt</script>'
+    const optionSentinel = '<img src=x onerror=synthetic-result-option>'
+    const explanationSentinel = '<strong>synthetic-result-explanation</strong>'
+    const hiddenAttemptId = 'attempt-private-sentinel'
+    const hiddenAnswerSentinel = 'answer-private-sentinel'
+    const result = createCompletedTestResult({
+      questions: [
+        {
+          prompt: promptSentinel,
+          options: [
+            {
+              label: optionSentinel,
+              isSelected: true,
+              isCorrect: false,
+            },
+            {
+              label: 'Sichere synthetische Antwort',
+              isSelected: false,
+              isCorrect: true,
+            },
+          ],
+          isCorrect: false,
+          explanation: explanationSentinel,
+        },
+      ],
+      correctAnswerCount: 0,
+      scorePercent: 0,
+    })
+    const attempts = [
+      {
+        completedAt: '2026-07-20T08:05:00.000Z',
+        correctAnswerCount: 0,
+        totalQuestionCount: 1,
+        scorePercent: 0,
+        attemptId: hiddenAttemptId,
+        answers: hiddenAnswerSentinel,
+      },
+      {
+        completedAt: '2026-07-20T09:10:00.000Z',
+        correctAnswerCount: 1,
+        totalQuestionCount: 1,
+        scorePercent: 100,
+      },
+    ]
+    view.render({
+      ...createSelectedTestViewState({
+        bank: { totalQuestionCount: 1 },
+        runner: {
+          phase: 'completed',
+          questionCount: 1,
+          result,
+        },
+        history: {
+          attempts,
+        },
+      }),
+      focusTarget: { type: 'testResultHeading' },
+    })
+    const resultSection = findByClass(root, 'learning-hub-test-result')[0]
+    const resultHeading = findByTag(resultSection, 'h3')[0]
+    assert.equal(document.activeElement, resultHeading)
+    assert.equal(resultSection.getAttribute('aria-live'), 'polite')
+    assert.ok(resultSection.textContent.includes('0 von 1 richtig · 0 %'))
+    assert.ok(resultSection.textContent.includes(promptSentinel))
+    assert.ok(resultSection.textContent.includes(optionSentinel))
+    assert.ok(resultSection.textContent.includes(explanationSentinel))
+    assert.ok(resultSection.textContent.includes('Deine Auswahl'))
+    assert.ok(resultSection.textContent.includes('Korrekte Auswahl'))
+    assert.equal(findByTag(resultSection, 'script').length, 0)
+    assert.equal(findByTag(resultSection, 'img').length, 0)
+    assert.equal(findByTag(resultSection, 'strong').some(
+      (element) => element.textContent === 'synthetic-result-explanation'
+    ), false)
+    const historyEntries = findByClass(
+      root,
+      'learning-hub-test-history__attempt'
+    )
+    assert.equal(historyEntries.length, 2)
+    assert.ok(historyEntries[0].textContent.includes('0 von 1 richtig'))
+    assert.ok(historyEntries[0].textContent.includes('0 %'))
+    assert.ok(historyEntries[1].textContent.includes('1 von 1 richtig'))
+    assert.ok(historyEntries[1].textContent.includes('100 %'))
+    assert.equal(root.textContent.includes(hiddenAttemptId), false)
+    assert.equal(root.textContent.includes(hiddenAnswerSentinel), false)
+
+    view.render(createSelectedTestViewState({
+      bank: { totalQuestionCount: 1 },
+      runner: {
+        phase: 'completed',
+        questionCount: 1,
+        result,
+      },
+      history: {
+        phase: 'loading',
+      },
+    }))
+    assert.equal(root.getAttribute('aria-busy'), 'true')
+    assert.equal(findByClass(root, 'learning-hub-test-result').length, 1)
+    assert.equal(
+      findByClass(root, 'learning-hub-test-history__state')[0]
+        .getAttribute('role'),
+      'status'
+    )
+
+    let retryCalls = 0
+    view.render(
+      {
+        ...createSelectedTestViewState({
+          bank: { totalQuestionCount: 1 },
+          runner: {
+            phase: 'completed',
+            questionCount: 1,
+            result,
+          },
+          history: {
+            phase: 'unavailable',
+            errorMessage:
+              'Die synthetische Versuchshistorie konnte nicht geladen werden.',
+          },
+        }),
+        focusTarget: { type: 'attemptHistoryAlert' },
+      },
+      {
+        onRetryAttemptHistory() {
+          retryCalls += 1
+        },
+      }
+    )
+    const historyAlert = findByClass(
+      root,
+      'learning-hub-test-history__state--error'
+    )[0]
+    assert.equal(document.activeElement, historyAlert)
+    assert.equal(historyAlert.getAttribute('role'), 'alert')
+    assert.equal(findByClass(root, 'learning-hub-test-result').length, 1)
+    findButton(historyAlert, 'Versuchshistorie erneut laden').click()
+    assert.equal(retryCalls, 1)
+  })
+})
+
 test('Artefakt-CSS definiert Zwei-Spalten-, Text- und 390px-Regeln', () => {
   const stylesheet = readFileSync(
     new URL(
@@ -2216,5 +3476,76 @@ test('Artefakt-CSS definiert Zwei-Spalten-, Text- und 390px-Regeln', () => {
   assert.match(
     mobileRules,
     /\.learning-hub-artifact-confirmation[^}]*max-width:\s*100%;/s
+  )
+})
+
+test('LearningTest-CSS bewahrt Touch-Ziele, Umbruch und responsive Anordnung', () => {
+  const stylesheet = readFileSync(
+    new URL(
+      '../src/modules/learning-hub/learningHub.css',
+      import.meta.url
+    ),
+    'utf8'
+  )
+  const tabletStart = stylesheet.indexOf('@media(max-width: 760px)')
+  const compactStart = stylesheet.indexOf('@media(max-width: 620px)')
+  const mobileStart = stylesheet.indexOf('@media(max-width: 390px)')
+  const reducedMotionStart = stylesheet.indexOf(
+    '@media(prefers-reduced-motion: reduce)'
+  )
+  const tabletRules = stylesheet.slice(tabletStart, compactStart)
+  const compactRules = stylesheet.slice(compactStart, mobileStart)
+  const mobileRules = stylesheet.slice(mobileStart, reducedMotionStart)
+  const reducedMotionRules = stylesheet.slice(reducedMotionStart)
+
+  assert.match(stylesheet, /\.learning-hub-local-test\s*\{/)
+  assert.match(
+    stylesheet,
+    /\.learning-hub-test-questions \.button,\s*\.learning-hub-local-test \.button\s*\{[^}]*min-height:\s*44px;/s
+  )
+  assert.match(
+    stylesheet,
+    /\.learning-hub-question-option__correct,\s*\.learning-hub-test-runner__option\s*\{[^}]*overflow-wrap:\s*anywhere;[^}]*word-break:\s*break-word;/s
+  )
+  assert.match(
+    stylesheet,
+    /\.learning-hub-author-question h6,\s*\.learning-hub-author-question__option,\s*\.learning-hub-author-question__explanation\s*\{[^}]*overflow-wrap:\s*anywhere;[^}]*word-break:\s*break-word;/s
+  )
+
+  assert.ok(tabletStart >= 0)
+  assert.match(tabletRules, /\.learning-hub-local-test__facts/)
+  assert.match(
+    tabletRules,
+    /grid-template-columns:\s*minmax\(0,\s*1fr\);/
+  )
+
+  assert.ok(compactStart >= 0)
+  assert.match(
+    compactRules,
+    /\.learning-hub-local-test__start,[^{]*\.learning-hub-test-runner__actions,[^{]*\.learning-hub-test-cancel__actions[^{]*\{[^}]*flex-direction:\s*column;/s
+  )
+  assert.match(
+    compactRules,
+    /\.learning-hub-local-test__start \.button,[^{]*\.learning-hub-test-runner__actions \.button,[^{]*\.learning-hub-test-cancel__actions \.button[^{]*\{[^}]*width:\s*100%;/s
+  )
+
+  assert.ok(mobileStart >= 0)
+  assert.match(
+    mobileRules,
+    /\.learning-hub-local-test \.button,[^{]*\.learning-hub-question-option__correct,[^{]*\.learning-hub-test-runner__option[^{]*\{[^}]*min-height:\s*44px;/s
+  )
+  assert.match(
+    mobileRules,
+    /\.learning-hub-test-questions,[^{]*\.learning-hub-local-test,[^{]*\.learning-hub-test-runner,[^{]*\.learning-hub-test-history[^{]*\{[^}]*width:\s*100%;[^}]*max-width:\s*100%;/s
+  )
+  assert.match(
+    mobileRules,
+    /\.learning-hub-local-test__header h2,[^{]*\.learning-hub-test-runner__option,[^{]*\.learning-hub-test-result-question__option,[^{]*\.learning-hub-test-history__attempt[^{]*\{[^}]*overflow-wrap:\s*anywhere;[^}]*word-break:\s*break-word;/s
+  )
+
+  assert.ok(reducedMotionStart >= 0)
+  assert.match(
+    reducedMotionRules,
+    /\.learning-hub-loading-indicator\s*\{[^}]*animation:\s*none;/s
   )
 })

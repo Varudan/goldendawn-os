@@ -2106,7 +2106,7 @@ export function createLearningTestService({
     const sessionId = generateUniqueId(
       generateLearningTestId,
       'session',
-      new Set(issuedSessionIds)
+      issuedSessionIds
     )
 
     if (!sessionId) {
@@ -2137,7 +2137,6 @@ export function createLearningTestService({
       submissionInProgress: false,
     }
 
-    issuedSessionIds.add(sessionId)
     sessions.set(sessionId, privateSession)
 
     return {
@@ -2148,6 +2147,62 @@ export function createLearningTestService({
         ...privateSession,
         questions: privateSession.publicQuestions,
       }),
+    }
+  }
+
+  function cancelModuleTest(input) {
+    const inputSnapshot = snapshotRecordFields(input, ['testSessionId'])
+
+    if (!inputSnapshot.ok) {
+      return createUnsafeInputFailure('invalidLearningTestCancellation')
+    }
+
+    const fieldErrors = {}
+    const testSessionId = validateTargetId(
+      inputSnapshot.snapshot.testSessionId,
+      'testSessionId',
+      fieldErrors
+    )
+
+    if (Object.keys(fieldErrors).length > 0) {
+      return createInputFailure(
+        fieldErrors,
+        'invalidLearningTestCancellation'
+      )
+    }
+
+    const privateSession = sessions.get(testSessionId)
+
+    if (!privateSession) {
+      return createFailure(
+        'notFound',
+        'testSessionNotFound',
+        'Die Testsession ist nicht mehr verfügbar.'
+      )
+    }
+
+    if (privateSession.submissionInProgress) {
+      return createFailure(
+        'conflict',
+        'learningTestSubmissionInProgress',
+        'Die Testsession wird bereits sicher verarbeitet.'
+      )
+    }
+
+    if (privateSession.pendingSubmission) {
+      return createFailure(
+        'conflict',
+        'learningTestPendingSubmission',
+        'Die vorbereitete Testabgabe muss sicher abgeschlossen werden.'
+      )
+    }
+
+    sessions.delete(testSessionId)
+
+    return {
+      ok: true,
+      status: 'testCancelled',
+      changed: true,
     }
   }
 
@@ -2484,6 +2539,7 @@ export function createLearningTestService({
     createQuestion,
     updateQuestion,
     startModuleTest,
+    cancelModuleTest,
     submitModuleTest,
     loadAttemptHistory,
   })

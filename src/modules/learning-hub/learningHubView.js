@@ -1,5 +1,29 @@
+import {
+  LEARNING_TEST_DIFFICULTIES,
+  LEARNING_TEST_EXPLANATION_MAX_LENGTH,
+  LEARNING_TEST_MAX_OPTION_COUNT,
+  LEARNING_TEST_MIN_OPTION_COUNT,
+  LEARNING_TEST_OPTION_LABEL_MAX_LENGTH,
+  LEARNING_TEST_PROMPT_MAX_LENGTH,
+} from './learningTestBankContract.js'
+
 const TITLE_MAX_LENGTH = 120
 const CONTENT_MAX_LENGTH = 10000
+
+const QUESTION_DIFFICULTY_OPTIONS = Object.freeze([
+  Object.freeze({
+    value: LEARNING_TEST_DIFFICULTIES.EASY,
+    label: 'Leicht',
+  }),
+  Object.freeze({
+    value: LEARNING_TEST_DIFFICULTIES.MEDIUM,
+    label: 'Mittel',
+  }),
+  Object.freeze({
+    value: LEARNING_TEST_DIFFICULTIES.HARD,
+    label: 'Schwer',
+  }),
+])
 
 const ARTIFACT_CONFIGS = Object.freeze({
   note: Object.freeze({
@@ -300,11 +324,194 @@ function createFocusReferences() {
     artifactConfirmations: new Map(),
     artifactAlerts: new Map(),
     artifactLoadAlert: null,
+    testBankAlert: null,
+    testBankStatus: null,
+    questionEditorFields: new Map(),
+    questionEditorAlert: null,
+    questionEditorTriggers: new Map(),
+    questionDiscardConfirmation: null,
+    testStart: null,
+    testRunnerHeading: null,
+    testAnswers: new Map(),
+    testSubmissionAlert: null,
+    testResultHeading: null,
+    testCancelConfirmation: null,
+    attemptHistoryAlert: null,
   }
 }
 
 function createReferenceKey(...values) {
   return JSON.stringify(values)
+}
+
+function isRecord(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function getQuestionEditorFieldKey(fieldName, optionIndex = null) {
+  return createReferenceKey(fieldName, optionIndex)
+}
+
+function getQuestionEditorTriggerKey(mode, questionId = null) {
+  return createReferenceKey(mode, questionId)
+}
+
+function getLearningTestState(viewState) {
+  const tests = isRecord(viewState.tests) ? viewState.tests : {}
+  const sourceBank = isRecord(tests.bank) ? tests.bank : {}
+  const sourceRunner = isRecord(tests.runner) ? tests.runner : {}
+  const sourceHistory = isRecord(tests.history) ? tests.history : {}
+  const totalQuestionCount = Number.isInteger(sourceBank.totalQuestionCount) &&
+      sourceBank.totalQuestionCount >= 0
+    ? sourceBank.totalQuestionCount
+    : 0
+
+  return {
+    bank: {
+      phase: typeof sourceBank.phase === 'string'
+        ? sourceBank.phase
+        : 'ready',
+      questions: Array.isArray(sourceBank.questions)
+        ? sourceBank.questions
+        : [],
+      totalQuestionCount,
+      errorMessage: typeof sourceBank.errorMessage === 'string'
+        ? sourceBank.errorMessage
+        : '',
+      statusMessage: typeof sourceBank.statusMessage === 'string'
+        ? sourceBank.statusMessage
+        : '',
+    },
+    editor: isRecord(tests.editor) ? tests.editor : null,
+    runner: {
+      phase: typeof sourceRunner.phase === 'string'
+        ? sourceRunner.phase
+        : 'idle',
+      questionCount: Number.isInteger(sourceRunner.questionCount) &&
+          sourceRunner.questionCount >= 0
+        ? sourceRunner.questionCount
+        : totalQuestionCount,
+      testSession: isRecord(sourceRunner.testSession)
+        ? sourceRunner.testSession
+        : null,
+      answers: sourceRunner.answers ?? {},
+      retryPending: sourceRunner.retryPending === true,
+      errorMessage: typeof sourceRunner.errorMessage === 'string'
+        ? sourceRunner.errorMessage
+        : '',
+      statusMessage: typeof sourceRunner.statusMessage === 'string'
+        ? sourceRunner.statusMessage
+        : '',
+      cancelConfirmation: sourceRunner.cancelConfirmation === true,
+      result: isRecord(sourceRunner.result) ? sourceRunner.result : null,
+    },
+    history: {
+      phase: typeof sourceHistory.phase === 'string'
+        ? sourceHistory.phase
+        : 'ready',
+      attempts: Array.isArray(sourceHistory.attempts)
+        ? sourceHistory.attempts
+        : [],
+      errorMessage: typeof sourceHistory.errorMessage === 'string'
+        ? sourceHistory.errorMessage
+        : '',
+    },
+  }
+}
+
+function hasActiveTestSession(testState) {
+  return isRecord(testState?.runner?.testSession)
+}
+
+function shouldHideTestAuthoring(testState) {
+  return (
+    hasActiveTestSession(testState) ||
+    [
+      'starting',
+      'active',
+      'submitting',
+      'submissionInProgress',
+      'cancelling',
+    ].includes(testState?.runner?.phase)
+  )
+}
+
+function getQuestionDifficultyLabel(difficulty) {
+  return QUESTION_DIFFICULTY_OPTIONS.find(
+    (entry) => entry.value === difficulty
+  )?.label ?? 'Nicht angegeben'
+}
+
+function getQuestionFieldError(fieldErrors, fieldName, optionIndex = null) {
+  if (!isRecord(fieldErrors)) return ''
+
+  if (optionIndex !== null) {
+    const indexedError = fieldErrors[`options.${optionIndex}`]
+    if (typeof indexedError === 'string') return indexedError
+
+    if (Array.isArray(fieldErrors.options)) {
+      const arrayError = fieldErrors.options[optionIndex]
+      if (typeof arrayError === 'string') return arrayError
+    }
+
+    if (isRecord(fieldErrors.options)) {
+      const recordError = fieldErrors.options[optionIndex]
+      if (typeof recordError === 'string') return recordError
+    }
+
+    return ''
+  }
+
+  return typeof fieldErrors[fieldName] === 'string'
+    ? fieldErrors[fieldName]
+    : ''
+}
+
+function getSelectedOptionId(answers, questionId) {
+  if (Array.isArray(answers)) {
+    const answer = answers.find(
+      (candidate) => candidate?.questionId === questionId
+    )
+    return typeof answer?.selectedOptionId === 'string'
+      ? answer.selectedOptionId
+      : null
+  }
+
+  if (answers instanceof Map) {
+    const answer = answers.get(questionId)
+    if (typeof answer === 'string') return answer
+    return typeof answer?.selectedOptionId === 'string'
+      ? answer.selectedOptionId
+      : null
+  }
+
+  if (!isRecord(answers) || !Object.hasOwn(answers, questionId)) {
+    return null
+  }
+
+  const answer = answers[questionId]
+  if (typeof answer === 'string') return answer
+  return typeof answer?.selectedOptionId === 'string'
+    ? answer.selectedOptionId
+    : null
+}
+
+function formatCompletedAt(value) {
+  if (typeof value !== 'string') return 'Zeitpunkt nicht verfügbar'
+
+  const parsedDate = new Date(value)
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'Zeitpunkt nicht verfügbar'
+  }
+
+  try {
+    return new Intl.DateTimeFormat('de-DE', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(parsedDate)
+  } catch {
+    return 'Zeitpunkt nicht verfügbar'
+  }
 }
 
 function getFormTriggerKey({
@@ -361,7 +568,7 @@ function createHeader(moduleCount, isMutating, focusReferences) {
     createElement(
       'p',
       '',
-      'Verwalte Lernmodule, Kapitel, LearningNodes, Kapitel-/Modulfortschritt sowie Notizen und Zusammenfassungen lokal. Der deterministische lokale Mock-Test folgt als nächster Ausbauschritt.'
+      'Verwalte Lernmodule, Kapitel, LearningNodes, Kapitel-/Modulfortschritt, Notizen, Zusammenfassungen und den deterministischen lokalen Mock-Test im aktuellen Browserprofil.'
     )
   )
   const count = createElement('p', 'learning-hub-count')
@@ -386,7 +593,7 @@ function createPrivacyNotice() {
   const text = createElement(
     'p',
     '',
-    'Deine Inhalte und dein Fortschritt sowie deine Notizen und Zusammenfassungen bleiben ausschließlich im aktuellen Browserprofil. Eine Cloud-Sicherung oder geräteübergreifende Synchronisierung gibt es nicht. Das localStorage ist unverschlüsselt und für andere Skripte derselben Origin (Website-Adresse) grundsätzlich lesbar.'
+    'Deine Inhalte und dein Fortschritt sowie deine Notizen und Zusammenfassungen, Testfragen und abgeschlossenen Versuche bleiben ausschließlich im aktuellen Browserprofil. Eine Cloud-Sicherung oder geräteübergreifende Synchronisierung gibt es nicht. Das localStorage ist unverschlüsselt und für andere Skripte derselben Origin (Website-Adresse) grundsätzlich lesbar. Laufende Testsessionen liegen nur im Arbeitsspeicher und gehen bei einem Reload verloren.'
   )
   notice.append(title, text)
   return notice
@@ -787,6 +994,7 @@ function createForm(
       formState.errorMessage
     )
     alert.setAttribute('role', 'alert')
+    alert.setAttribute('aria-live', 'assertive')
     alert.tabIndex = -1
     focusReferences.formAlert = alert
     form.append(alert)
@@ -1301,6 +1509,7 @@ function createArtifactFeedback(
       artifactState.errorMessage
     )
     alert.setAttribute('role', 'alert')
+    alert.setAttribute('aria-live', 'assertive')
     alert.tabIndex = -1
     focusReferences.artifactAlerts.set(type, alert)
     return alert
@@ -1455,13 +1664,15 @@ function createArtifactCard(
 function createLearningArtifacts(
   viewState,
   actions,
-  focusReferences
+  focusReferences,
+  additionalInteractionBlock = false
 ) {
   const normalizedArtifactState = getArtifactState(viewState)
   const artifactState = {
     ...normalizedArtifactState,
     interactionDisabled:
       normalizedArtifactState.interactionDisabled ||
+      additionalInteractionBlock ||
       viewState.phase === 'mutating' ||
       viewState.progress?.phase === 'mutating',
   }
@@ -1564,14 +1775,1549 @@ function createLearningArtifacts(
   return section
 }
 
+function createQuestionTextField({
+  editor,
+  fieldName,
+  labelText,
+  hintText,
+  maxLength,
+  rows,
+  required,
+  actions,
+  focusReferences,
+  disabled,
+}) {
+  const field = createElement('div', 'learning-hub-question-form__field')
+  const controlId = `learning-hub-question-${fieldName}`
+  const hintId = `${controlId}-hint`
+  const errorId = `${controlId}-error`
+  const label = createElement(
+    'label',
+    'learning-hub-question-form__label',
+    labelText
+  )
+  label.setAttribute('for', controlId)
+  label.append(
+    createElement(
+      'span',
+      'learning-hub-question-form__requirement',
+      required ? 'Pflichtfeld' : 'Optional'
+    )
+  )
+  const control = createElement(
+    rows ? 'textarea' : 'input',
+    'form-control learning-hub-question-form__control'
+  )
+  control.id = controlId
+  control.name = fieldName
+  control.value = typeof editor.values?.[fieldName] === 'string'
+    ? editor.values[fieldName]
+    : ''
+  control.maxLength = maxLength
+  control.disabled = disabled
+  control.autocomplete = 'off'
+  control.setAttribute('maxlength', String(maxLength))
+  control.setAttribute('autocomplete', 'off')
+
+  if (required) {
+    control.required = true
+    control.setAttribute('required', '')
+  }
+
+  if (rows) {
+    control.rows = rows
+  } else {
+    control.type = 'text'
+  }
+
+  const hint = createElement(
+    'small',
+    'learning-hub-question-form__hint',
+    hintText
+  )
+  hint.id = hintId
+  const fieldError = getQuestionFieldError(
+    editor.fieldErrors,
+    fieldName
+  )
+  const describedBy = [hintId]
+
+  if (fieldError) {
+    control.setAttribute('aria-invalid', 'true')
+    describedBy.push(errorId)
+  }
+
+  control.setAttribute('aria-describedby', describedBy.join(' '))
+  control.addEventListener('input', () => {
+    if (disabled) return
+    actions.onUpdateQuestionField?.(fieldName, control.value)
+  })
+  focusReferences.questionEditorFields.set(
+    getQuestionEditorFieldKey(fieldName),
+    control
+  )
+  field.append(label, control, hint)
+
+  if (fieldError) {
+    const error = createElement(
+      'span',
+      'learning-hub-question-form__field-error',
+      fieldError
+    )
+    error.id = errorId
+    field.append(error)
+  }
+
+  return field
+}
+
+function createQuestionDifficultyField({
+  editor,
+  actions,
+  focusReferences,
+  disabled,
+}) {
+  const field = createElement('div', 'learning-hub-question-form__field')
+  const controlId = 'learning-hub-question-difficulty'
+  const hintId = `${controlId}-hint`
+  const errorId = `${controlId}-error`
+  const label = createElement(
+    'label',
+    'learning-hub-question-form__label',
+    'Schwierigkeit'
+  )
+  label.setAttribute('for', controlId)
+  label.append(
+    createElement(
+      'span',
+      'learning-hub-question-form__requirement',
+      'Pflichtfeld'
+    )
+  )
+  const select = createElement(
+    'select',
+    'form-control learning-hub-question-form__control'
+  )
+  select.id = controlId
+  select.name = 'difficulty'
+  select.required = true
+  select.disabled = disabled
+  select.setAttribute('required', '')
+  const selectedDifficulty = typeof editor.values?.difficulty === 'string'
+    ? editor.values.difficulty
+    : LEARNING_TEST_DIFFICULTIES.MEDIUM
+
+  QUESTION_DIFFICULTY_OPTIONS.forEach((difficulty) => {
+    const option = createElement('option', '', difficulty.label)
+    option.value = difficulty.value
+    select.append(option)
+  })
+  select.value = selectedDifficulty
+
+  const hint = createElement(
+    'small',
+    'learning-hub-question-form__hint',
+    'Wähle eine der drei festgelegten Schwierigkeitsstufen.'
+  )
+  hint.id = hintId
+  const fieldError = getQuestionFieldError(
+    editor.fieldErrors,
+    'difficulty'
+  )
+  const describedBy = [hintId]
+
+  if (fieldError) {
+    select.setAttribute('aria-invalid', 'true')
+    describedBy.push(errorId)
+  }
+
+  select.setAttribute('aria-describedby', describedBy.join(' '))
+  select.addEventListener('change', () => {
+    if (disabled) return
+    actions.onUpdateQuestionField?.('difficulty', select.value)
+  })
+  focusReferences.questionEditorFields.set(
+    getQuestionEditorFieldKey('difficulty'),
+    select
+  )
+  field.append(label, select, hint)
+
+  if (fieldError) {
+    const error = createElement(
+      'span',
+      'learning-hub-question-form__field-error',
+      fieldError
+    )
+    error.id = errorId
+    field.append(error)
+  }
+
+  return field
+}
+
+function createQuestionOptionsField({
+  editor,
+  actions,
+  focusReferences,
+  disabled,
+}) {
+  const options = Array.isArray(editor.values?.options)
+    ? editor.values.options
+    : []
+  const fieldset = createElement(
+    'fieldset',
+    'learning-hub-question-options'
+  )
+  const legend = createElement('legend', '', 'Antwortoptionen')
+  const hintId = 'learning-hub-question-options-hint'
+  const optionsErrorId = 'learning-hub-question-options-error'
+  const correctErrorId = 'learning-hub-question-correct-error'
+  const optionsHint = createElement(
+    'small',
+    'learning-hub-question-form__hint',
+    `Erstelle ${LEARNING_TEST_MIN_OPTION_COUNT} bis ${LEARNING_TEST_MAX_OPTION_COUNT} nicht leere Optionen mit jeweils maximal ${LEARNING_TEST_OPTION_LABEL_MAX_LENGTH} Zeichen und markiere genau eine richtige Antwort.`
+  )
+  optionsHint.id = hintId
+  const optionsError = getQuestionFieldError(
+    editor.fieldErrors,
+    'options'
+  )
+  const correctError = getQuestionFieldError(
+    editor.fieldErrors,
+    'correctOptionIndex'
+  )
+  fieldset.append(legend, optionsHint)
+
+  if (optionsError) {
+    const error = createElement(
+      'p',
+      'learning-hub-question-form__field-error',
+      optionsError
+    )
+    error.id = optionsErrorId
+    fieldset.append(error)
+  }
+
+  if (correctError) {
+    const error = createElement(
+      'p',
+      'learning-hub-question-form__field-error',
+      correctError
+    )
+    error.id = correctErrorId
+    fieldset.append(error)
+  }
+
+  const optionList = createElement(
+    'div',
+    'learning-hub-question-options__list'
+  )
+  const correctOptionRadios = []
+
+  options.forEach((optionValue, optionIndex) => {
+    const optionRow = createElement(
+      'div',
+      'learning-hub-question-option'
+    )
+    const inputId = `learning-hub-question-option-${optionIndex}`
+    const inputErrorId = `${inputId}-error`
+    const textLabel = createElement(
+      'label',
+      'learning-hub-question-form__label',
+      `Option ${optionIndex + 1}`
+    )
+    textLabel.setAttribute('for', inputId)
+    const textInput = createElement(
+      'input',
+      'form-control learning-hub-question-option__input'
+    )
+    textInput.type = 'text'
+    textInput.id = inputId
+    textInput.name = `option-${optionIndex}`
+    textInput.value = typeof optionValue === 'string' ? optionValue : ''
+    textInput.required = true
+    textInput.maxLength = LEARNING_TEST_OPTION_LABEL_MAX_LENGTH
+    textInput.disabled = disabled
+    textInput.autocomplete = 'off'
+    textInput.setAttribute('required', '')
+    textInput.setAttribute(
+      'maxlength',
+      String(LEARNING_TEST_OPTION_LABEL_MAX_LENGTH)
+    )
+    textInput.setAttribute('autocomplete', 'off')
+    const optionError = getQuestionFieldError(
+      editor.fieldErrors,
+      'options',
+      optionIndex
+    )
+    const describedBy = [hintId]
+
+    if (optionsError) describedBy.push(optionsErrorId)
+    if (optionError) {
+      textInput.setAttribute('aria-invalid', 'true')
+      describedBy.push(inputErrorId)
+    }
+
+    textInput.setAttribute('aria-describedby', describedBy.join(' '))
+    textInput.addEventListener('input', () => {
+      if (disabled) return
+      actions.onUpdateQuestionField?.(
+        'options',
+        textInput.value,
+        optionIndex
+      )
+    })
+    focusReferences.questionEditorFields.set(
+      getQuestionEditorFieldKey('options', optionIndex),
+      textInput
+    )
+    const correctLabel = createElement(
+      'label',
+      'learning-hub-question-option__correct'
+    )
+    const correctRadio = createElement(
+      'input',
+      'learning-hub-question-option__radio'
+    )
+    correctRadio.type = 'radio'
+    correctRadio.name = 'learning-hub-question-correct-option'
+    correctRadio.value = String(optionIndex)
+    correctRadio.checked = editor.values?.correctOptionIndex === optionIndex
+    correctRadio.disabled = disabled
+    correctRadio.setAttribute(
+      'aria-label',
+      `Option ${optionIndex + 1} als richtige Antwort markieren`
+    )
+    correctRadio.setAttribute('aria-describedby', [
+      hintId,
+      ...(correctError ? [correctErrorId] : []),
+    ].join(' '))
+    if (correctError) correctRadio.setAttribute('aria-invalid', 'true')
+    correctRadio.addEventListener('change', () => {
+      if (disabled) return
+      actions.onSelectCorrectQuestionOption?.(optionIndex)
+    })
+    correctOptionRadios.push(correctRadio)
+    focusReferences.questionEditorFields.set(
+      getQuestionEditorFieldKey('correctOptionIndex', optionIndex),
+      correctRadio
+    )
+    correctLabel.append(
+      correctRadio,
+      createElement('span', '', 'Diese Option ist korrekt')
+    )
+    const removeButton = createButton(
+      'Option entfernen',
+      'button button--secondary learning-hub-question-option__remove',
+      () => actions.onRemoveQuestionOption?.(optionIndex),
+      {
+        disabled:
+          disabled || options.length <= LEARNING_TEST_MIN_OPTION_COUNT,
+      }
+    )
+    removeButton.setAttribute(
+      'aria-label',
+      `Option ${optionIndex + 1} entfernen`
+    )
+    optionRow.append(textLabel, textInput)
+
+    if (optionError) {
+      const error = createElement(
+        'span',
+        'learning-hub-question-form__field-error',
+        optionError
+      )
+      error.id = inputErrorId
+      optionRow.append(error)
+    }
+
+    const optionActions = createElement(
+      'div',
+      'learning-hub-question-option__actions'
+    )
+    optionActions.append(correctLabel, removeButton)
+    optionRow.append(optionActions)
+    optionList.append(optionRow)
+  })
+
+  const selectedCorrectOptionIndex = editor.values?.correctOptionIndex
+  const preferredCorrectOption = correctOptionRadios[
+    Number.isInteger(selectedCorrectOptionIndex) &&
+      selectedCorrectOptionIndex >= 0 &&
+      selectedCorrectOptionIndex < correctOptionRadios.length
+      ? selectedCorrectOptionIndex
+      : 0
+  ]
+  if (preferredCorrectOption) {
+    focusReferences.questionEditorFields.set(
+      getQuestionEditorFieldKey('correctOptionIndex'),
+      preferredCorrectOption
+    )
+  }
+
+  fieldset.append(optionList)
+  const addButton = createButton(
+    'Antwortoption hinzufügen',
+    'button button--secondary learning-hub-question-options__add',
+    () => actions.onAddQuestionOption?.(),
+    {
+      disabled:
+        disabled || options.length >= LEARNING_TEST_MAX_OPTION_COUNT,
+    }
+  )
+  fieldset.append(addButton)
+  return fieldset
+}
+
+function createQuestionDiscardConfirmation(
+  actions,
+  focusReferences,
+  disabled
+) {
+  const confirmation = createElement(
+    'fieldset',
+    'learning-hub-question-discard'
+  )
+  confirmation.append(
+    createElement('legend', '', 'Ungespeicherte Frage verwerfen?'),
+    createElement(
+      'p',
+      '',
+      'Der aktuelle Entwurf geht verloren. Die zuletzt validierte Fragenbank bleibt unverändert.'
+    )
+  )
+  const confirmationActions = createElement(
+    'div',
+    'learning-hub-question-discard__actions'
+  )
+  const continueButton = createButton(
+    'Weiter bearbeiten',
+    'button button--secondary',
+    () => actions.onContinueQuestionEditing?.(),
+    { disabled }
+  )
+  const discardButton = createButton(
+    'Entwurf verwerfen',
+    'button learning-hub-question-discard__confirm',
+    () => actions.onDiscardQuestionDraft?.(),
+    { disabled }
+  )
+  focusReferences.questionDiscardConfirmation = continueButton
+  confirmationActions.append(continueButton, discardButton)
+  confirmation.append(confirmationActions)
+  return confirmation
+}
+
+function createQuestionEditor(
+  editor,
+  actions,
+  focusReferences,
+  isInteractionBlocked
+) {
+  const isSubmitting = editor.isSubmitting === true
+  const discardConfirmation = editor.discardConfirmation === true
+  const externalInteractionBlock =
+    isInteractionBlocked && !discardConfirmation
+  const controlsDisabled =
+    externalInteractionBlock || isSubmitting || discardConfirmation
+  const form = createElement('form', 'learning-hub-question-form')
+  form.noValidate = true
+  form.setAttribute('autocomplete', 'off')
+  form.setAttribute('aria-busy', String(isSubmitting))
+  const header = createElement('div', 'learning-hub-question-form__header')
+  const title = createElement(
+    'h6',
+    '',
+    editor.mode === 'edit'
+      ? 'Testfrage bearbeiten'
+      : 'Neue Testfrage erstellen'
+  )
+  header.append(
+    title,
+    createElement(
+      'p',
+      '',
+      'Kein Autosave: Erst „Testfrage speichern“ übergibt den normalisierten Entwurf.'
+    )
+  )
+  form.append(header)
+  const fields = createElement('div', 'learning-hub-question-form__fields')
+  fields.append(
+    createQuestionTextField({
+      editor,
+      fieldName: 'prompt',
+      labelText: 'Fragetext',
+      hintText:
+        `Maximal ${LEARNING_TEST_PROMPT_MAX_LENGTH} Zeichen. Leerraum an Anfang und Ende wird beim Speichern entfernt.`,
+      maxLength: LEARNING_TEST_PROMPT_MAX_LENGTH,
+      rows: 4,
+      required: true,
+      actions,
+      focusReferences,
+      disabled: controlsDisabled,
+    }),
+    createQuestionDifficultyField({
+      editor,
+      actions,
+      focusReferences,
+      disabled: controlsDisabled,
+    }),
+    createQuestionOptionsField({
+      editor,
+      actions,
+      focusReferences,
+      disabled: controlsDisabled,
+    }),
+    createQuestionTextField({
+      editor,
+      fieldName: 'explanation',
+      labelText: 'Erklärung',
+      hintText:
+        `Optional, maximal ${LEARNING_TEST_EXPLANATION_MAX_LENGTH.toLocaleString('de-DE')} Zeichen. Sie wird erst nach der Testauswertung angezeigt.`,
+      maxLength: LEARNING_TEST_EXPLANATION_MAX_LENGTH,
+      rows: 5,
+      required: false,
+      actions,
+      focusReferences,
+      disabled: controlsDisabled,
+    })
+  )
+  form.append(fields)
+
+  if (typeof editor.errorMessage === 'string' && editor.errorMessage) {
+    const alert = createElement(
+      'p',
+      'learning-hub-question-form__error',
+      editor.errorMessage
+    )
+    alert.setAttribute('role', 'alert')
+    alert.setAttribute('aria-live', 'assertive')
+    alert.tabIndex = -1
+    focusReferences.questionEditorAlert = alert
+    form.append(alert)
+  }
+
+  form.append(
+    createElement(
+      'p',
+      'learning-hub-question-form__draft-status',
+      editor.dirty === true
+        ? 'Ungespeicherte Änderungen.'
+        : 'Keine ungespeicherten Änderungen.'
+    )
+  )
+  const formActions = createElement(
+    'div',
+    'learning-hub-question-form__actions'
+  )
+  const cancelButton = createButton(
+    'Abbrechen',
+    'button button--secondary',
+    () => actions.onCancelQuestionEditor?.(),
+    { disabled: controlsDisabled }
+  )
+  const submitButton = createElement(
+    'button',
+    'button button--primary',
+    isSubmitting ? 'Wird gespeichert …' : 'Testfrage speichern'
+  )
+  submitButton.type = 'submit'
+  submitButton.disabled = controlsDisabled
+  formActions.append(cancelButton, submitButton)
+  form.append(formActions)
+
+  if (discardConfirmation) {
+    form.append(
+      createQuestionDiscardConfirmation(
+        actions,
+        focusReferences,
+        externalInteractionBlock || isSubmitting
+      )
+    )
+  }
+
+  let submissionLocked = false
+  form.addEventListener('submit', (event) => {
+    event.preventDefault()
+    if (
+      submissionLocked ||
+      controlsDisabled ||
+      typeof actions.onSubmitQuestion !== 'function'
+    ) {
+      return
+    }
+
+    submissionLocked = true
+    submitButton.disabled = true
+    actions.onSubmitQuestion()
+  })
+  return form
+}
+
+function createAuthorQuestionCard(
+  question,
+  questionIndex,
+  actions,
+  focusReferences,
+  disabled
+) {
+  const card = createElement('article', 'learning-hub-author-question')
+  const titleId = `learning-hub-author-question-${questionIndex}`
+  const title = createElement(
+    'h6',
+    '',
+    typeof question?.prompt === 'string' ? question.prompt : ''
+  )
+  title.id = titleId
+  const meta = createElement(
+    'p',
+    'learning-hub-author-question__meta',
+    `Schwierigkeit: ${getQuestionDifficultyLabel(question?.difficulty)}`
+  )
+  const options = createElement(
+    'ol',
+    'learning-hub-author-question__options'
+  )
+
+  if (Array.isArray(question?.options)) {
+    question.options.forEach((option) => {
+      const entry = createElement(
+        'li',
+        option?.isCorrect === true
+          ? 'learning-hub-author-question__option learning-hub-author-question__option--correct'
+          : 'learning-hub-author-question__option'
+      )
+      entry.append(
+        createElement(
+          'span',
+          '',
+          typeof option?.label === 'string' ? option.label : ''
+        )
+      )
+      if (option?.isCorrect === true) {
+        entry.append(
+          createElement(
+            'strong',
+            'learning-hub-author-question__correct',
+            'Richtige Antwort'
+          )
+        )
+      }
+      options.append(entry)
+    })
+  }
+
+  card.append(title, meta, options)
+  if (typeof question?.explanation === 'string' && question.explanation) {
+    const explanation = createElement(
+      'p',
+      'learning-hub-author-question__explanation'
+    )
+    explanation.append(
+      createElement('strong', '', 'Erklärung: '),
+      document.createTextNode(question.explanation)
+    )
+    card.append(explanation)
+  }
+  const editButton = createButton(
+    'Testfrage bearbeiten',
+    'button button--secondary',
+    () => actions.onOpenEditQuestion?.(question?.id),
+    { disabled }
+  )
+  editButton.setAttribute('aria-describedby', titleId)
+  focusReferences.questionEditorTriggers.set(
+    getQuestionEditorTriggerKey('edit', question?.id),
+    editButton
+  )
+  card.append(editButton)
+  return card
+}
+
+function createLearningTestQuestions(
+  viewState,
+  actions,
+  focusReferences,
+  testState,
+  isInteractionBlocked
+) {
+  const section = createElement(
+    'section',
+    'learning-hub-test-questions'
+  )
+  section.setAttribute(
+    'aria-labelledby',
+    'learning-hub-test-questions-title'
+  )
+  const bank = testState.bank
+  const editor = testState.editor
+  const isLoading = bank.phase === 'loading'
+  const isUnavailable = ['unavailable', 'loadError', 'error'].includes(
+    bank.phase
+  )
+  const isSubmitting = editor?.isSubmitting === true
+  section.setAttribute(
+    'aria-busy',
+    String(isLoading || isSubmitting)
+  )
+  const header = createElement(
+    'div',
+    'learning-hub-test-questions__header'
+  )
+  const heading = createElement('h5', '', 'Testfragen')
+  heading.id = 'learning-hub-test-questions-title'
+  header.append(
+    heading,
+    createElement(
+      'p',
+      '',
+      'Lokale Single-Choice-Fragen für diesen LearningNode.'
+    )
+  )
+  section.append(header)
+
+  if (shouldHideTestAuthoring(testState)) {
+    const status = createElement(
+      'p',
+      'learning-hub-test-questions__session-lock',
+      'Die Autorenansicht ist während des laufenden Modultests ausgeblendet. Schließe den Test ab oder brich ihn sicher ab, um Testfragen wieder zu verwalten.'
+    )
+    status.setAttribute('role', 'status')
+    section.append(status)
+    return section
+  }
+
+  if (isLoading) {
+    const loading = createElement(
+      'p',
+      'learning-hub-test-questions__load-state',
+      'Testfragen werden aus dem aktuellen Browserprofil geladen.'
+    )
+    loading.setAttribute('role', 'status')
+    loading.setAttribute('aria-live', 'polite')
+    loading.setAttribute('aria-busy', 'true')
+    section.append(loading)
+    return section
+  }
+
+  if (isUnavailable) {
+    const alert = createElement(
+      'div',
+      'learning-hub-test-questions__load-state learning-hub-test-questions__load-state--error'
+    )
+    alert.setAttribute('role', 'alert')
+    alert.setAttribute('aria-live', 'assertive')
+    alert.tabIndex = -1
+    focusReferences.testBankAlert = alert
+    alert.append(
+      createElement(
+        'p',
+        '',
+        bank.errorMessage ||
+          'Die lokale Testfragenbank ist derzeit nicht verfügbar.'
+      ),
+      createButton(
+        'Testfragen erneut laden',
+        'button button--secondary',
+        () => actions.onRetryTestBankLoad?.(),
+        { disabled: isInteractionBlocked }
+      )
+    )
+    section.append(alert)
+    return section
+  }
+
+  if (bank.errorMessage && !editor) {
+    const alert = createElement(
+      'p',
+      'learning-hub-test-feedback learning-hub-test-feedback--error',
+      bank.errorMessage
+    )
+    alert.setAttribute('role', 'alert')
+    alert.setAttribute('aria-live', 'assertive')
+    alert.tabIndex = -1
+    focusReferences.testBankAlert = alert
+    section.append(alert)
+  }
+
+  if (bank.statusMessage) {
+    const status = createElement(
+      'p',
+      'learning-hub-test-feedback learning-hub-test-feedback--success',
+      bank.statusMessage
+    )
+    status.setAttribute('role', 'status')
+    status.setAttribute('aria-live', 'polite')
+    status.tabIndex = -1
+    focusReferences.testBankStatus = status
+    section.append(status)
+  }
+
+  if (editor) {
+    section.append(
+      createQuestionEditor(
+        editor,
+        actions,
+        focusReferences,
+        isInteractionBlocked
+      )
+    )
+  }
+
+  const questionCount = bank.questions.length
+  section.append(
+    createElement(
+      'p',
+      'learning-hub-test-questions__count',
+      formatCount(questionCount, 'Frage', 'Fragen')
+    )
+  )
+  const createButtonElement = createButton(
+    'Testfrage erstellen',
+    'button button--primary',
+    () => actions.onOpenCreateQuestion?.(),
+    { disabled: isInteractionBlocked || Boolean(editor) }
+  )
+  focusReferences.questionEditorTriggers.set(
+    getQuestionEditorTriggerKey('create'),
+    createButtonElement
+  )
+
+  if (questionCount === 0) {
+    const empty = createElement(
+      'div',
+      'learning-hub-test-questions__empty'
+    )
+    empty.append(
+      createElement('h6', '', 'Noch keine Testfragen'),
+      createElement(
+        'p',
+        '',
+        'Erstelle die erste lokale Single-Choice-Frage für diesen LearningNode.'
+      ),
+      createButtonElement
+    )
+    section.append(empty)
+    return section
+  }
+
+  const list = createElement('div', 'learning-hub-author-question-list')
+  bank.questions.forEach((question, questionIndex) => {
+    list.append(
+      createAuthorQuestionCard(
+        question,
+        questionIndex,
+        actions,
+        focusReferences,
+        isInteractionBlocked || Boolean(editor)
+      )
+    )
+  })
+  section.append(list, createButtonElement)
+  return section
+}
+
+function createTestCancelConfirmation(
+  runner,
+  actions,
+  focusReferences,
+  disabled
+) {
+  const isCancelling = runner.phase === 'cancelling'
+  const confirmation = createElement(
+    'fieldset',
+    'learning-hub-test-cancel'
+  )
+  confirmation.setAttribute('aria-busy', String(isCancelling))
+  confirmation.append(
+    createElement('legend', '', 'Laufenden Test abbrechen?'),
+    createElement(
+      'p',
+      '',
+      'Die aktuelle Session und deine ausgewählten Antworten werden verworfen. Es wird kein Versuch gespeichert.'
+    )
+  )
+  const confirmationActions = createElement(
+    'div',
+    'learning-hub-test-cancel__actions'
+  )
+  const continueButton = createButton(
+    'Test fortsetzen',
+    'button button--secondary',
+    () => actions.onContinueModuleTest?.(),
+    { disabled: disabled || isCancelling }
+  )
+  const cancelButton = createButton(
+    isCancelling ? 'Test wird abgebrochen …' : 'Test jetzt abbrechen',
+    'button learning-hub-test-cancel__confirm',
+    () => actions.onConfirmModuleTestCancel?.(),
+    { disabled: disabled || isCancelling }
+  )
+  focusReferences.testCancelConfirmation = continueButton
+  confirmationActions.append(continueButton, cancelButton)
+  confirmation.append(confirmationActions)
+  return confirmation
+}
+
+function createActiveTestRunner(
+  runner,
+  actions,
+  focusReferences
+) {
+  const testSession = runner.testSession
+  const questions = Array.isArray(testSession?.questions)
+    ? testSession.questions
+    : []
+  const isSubmitting = [
+    'submitting',
+    'submissionInProgress',
+  ].includes(runner.phase)
+  const isCancelling = runner.phase === 'cancelling'
+  const controlsDisabled =
+    isSubmitting || isCancelling || runner.cancelConfirmation
+  const runnerSection = createElement(
+    'section',
+    'learning-hub-test-runner'
+  )
+  runnerSection.setAttribute(
+    'aria-labelledby',
+    'learning-hub-test-runner-title'
+  )
+  runnerSection.setAttribute(
+    'aria-busy',
+    String(isSubmitting || isCancelling)
+  )
+  const heading = createElement(
+    'h3',
+    '',
+    'Laufender Modultest'
+  )
+  heading.id = 'learning-hub-test-runner-title'
+  heading.tabIndex = -1
+  focusReferences.testRunnerHeading = heading
+  runnerSection.append(
+    heading,
+    createElement(
+      'p',
+      'learning-hub-test-runner__hint',
+      'Wähle für jede Frage genau eine Antwort. Der Test wird erst über „Test auswerten“ abgegeben.'
+    )
+  )
+
+  if (questions.length === 0) {
+    const alert = createElement(
+      'p',
+      'learning-hub-test-feedback learning-hub-test-feedback--error',
+      'Die laufende Testsession kann nicht sicher angezeigt werden.'
+    )
+    alert.setAttribute('role', 'alert')
+    alert.setAttribute('aria-live', 'assertive')
+    alert.tabIndex = -1
+    focusReferences.testSubmissionAlert = alert
+    runnerSection.append(alert)
+    return runnerSection
+  }
+
+  const form = createElement('form', 'learning-hub-test-runner__form')
+  form.noValidate = true
+  form.setAttribute('aria-busy', String(isSubmitting))
+  let answeredQuestionCount = 0
+  const radioControls = []
+
+  questions.forEach((question, questionIndex) => {
+    const options = Array.isArray(question?.options)
+      ? question.options
+      : []
+    const selectedOptionId = getSelectedOptionId(
+      runner.answers,
+      question?.id
+    )
+    const hasKnownAnswer = options.some(
+      (option) => option?.id === selectedOptionId
+    )
+    if (hasKnownAnswer) answeredQuestionCount += 1
+    const fieldset = createElement(
+      'fieldset',
+      'learning-hub-test-runner__question'
+    )
+    const answerStatusId = `learning-hub-test-answer-status-${questionIndex}`
+    fieldset.setAttribute('aria-describedby', answerStatusId)
+    const legend = createElement(
+      'legend',
+      '',
+      typeof question?.prompt === 'string' ? question.prompt : ''
+    )
+    fieldset.append(
+      legend,
+      createElement(
+        'p',
+        'learning-hub-test-runner__difficulty',
+        `Schwierigkeit: ${getQuestionDifficultyLabel(question?.difficulty)}`
+      )
+    )
+    const optionList = createElement(
+      'div',
+      'learning-hub-test-runner__options'
+    )
+
+    options.forEach((option, optionIndex) => {
+      const optionId = `learning-hub-test-${questionIndex}-${optionIndex}`
+      const optionLabel = createElement(
+        'label',
+        'learning-hub-test-runner__option'
+      )
+      optionLabel.setAttribute('for', optionId)
+      const radio = createElement(
+        'input',
+        'learning-hub-test-runner__radio'
+      )
+      radio.type = 'radio'
+      radio.id = optionId
+      radio.name = `learning-hub-test-question-${questionIndex}`
+      radio.value = typeof option?.id === 'string' ? option.id : ''
+      radio.checked = option?.id === selectedOptionId
+      radio.disabled = controlsDisabled
+      radio.setAttribute('aria-describedby', answerStatusId)
+      radio.addEventListener('change', () => {
+        if (controlsDisabled) return
+        actions.onSelectTestAnswer?.(question?.id, option?.id)
+      })
+      focusReferences.testAnswers.set(
+        createReferenceKey(question?.id, option?.id),
+        radio
+      )
+      if (optionIndex === 0) {
+        focusReferences.testAnswers.set(
+          createReferenceKey(question?.id),
+          radio
+        )
+      }
+      radioControls.push(radio)
+      optionLabel.append(
+        radio,
+        createElement(
+          'span',
+          '',
+          typeof option?.label === 'string' ? option.label : ''
+        )
+      )
+      optionList.append(optionLabel)
+    })
+
+    const answerStatus = createElement(
+      'p',
+      hasKnownAnswer
+        ? 'learning-hub-test-runner__answer-status learning-hub-test-runner__answer-status--answered'
+        : 'learning-hub-test-runner__answer-status',
+      hasKnownAnswer ? 'Antwort ausgewählt.' : 'Noch keine Antwort ausgewählt.'
+    )
+    answerStatus.id = answerStatusId
+    fieldset.append(optionList, answerStatus)
+    form.append(fieldset)
+  })
+
+  const answerProgress = createElement(
+    'p',
+    'learning-hub-test-runner__progress',
+    `${answeredQuestionCount} von ${questions.length} Fragen beantwortet`
+  )
+  answerProgress.setAttribute('role', 'status')
+  form.append(answerProgress)
+
+  if (runner.errorMessage) {
+    const alert = createElement(
+      'p',
+      'learning-hub-test-feedback learning-hub-test-feedback--error',
+      runner.errorMessage
+    )
+    alert.setAttribute('role', 'alert')
+    alert.setAttribute('aria-live', 'assertive')
+    alert.tabIndex = -1
+    focusReferences.testSubmissionAlert = alert
+    form.append(alert)
+  }
+
+  if (runner.statusMessage) {
+    const status = createElement(
+      'p',
+      'learning-hub-test-feedback learning-hub-test-feedback--success',
+      runner.statusMessage
+    )
+    status.setAttribute('role', 'status')
+    status.setAttribute('aria-live', 'polite')
+    form.append(status)
+  }
+
+  if (runner.retryPending) {
+    form.append(
+      createElement(
+        'p',
+        'learning-hub-test-runner__retry-note',
+        'Die bestehende Session bleibt für denselben sicheren Abgabe-Retry erhalten. ' +
+          'Ein kontrollierter Abbruch kann angefragt werden; der Service entscheidet, ' +
+          'ob bereits eine sichere Abgabe vorbereitet wurde und der Abbruch deshalb abgelehnt werden muss.'
+      )
+    )
+  }
+
+  const formActions = createElement(
+    'div',
+    'learning-hub-test-runner__actions'
+  )
+  const cancelButton = createButton(
+    'Test abbrechen',
+    'button button--secondary',
+    () => actions.onOpenTestCancelConfirmation?.(),
+    {
+      disabled: controlsDisabled,
+    }
+  )
+  const submitButton = createElement(
+    'button',
+    'button button--primary',
+    isSubmitting
+      ? 'Test wird ausgewertet …'
+      : runner.retryPending
+        ? 'Auswertung erneut versuchen'
+        : 'Test auswerten'
+  )
+  submitButton.type = 'submit'
+  submitButton.disabled =
+    controlsDisabled || answeredQuestionCount !== questions.length
+  formActions.append(cancelButton, submitButton)
+  form.append(formActions)
+
+  if (runner.cancelConfirmation) {
+    form.append(
+      createTestCancelConfirmation(
+        runner,
+        actions,
+        focusReferences,
+        isSubmitting
+      )
+    )
+  }
+
+  let submissionLocked = false
+  form.addEventListener('submit', (event) => {
+    event.preventDefault()
+    if (
+      submissionLocked ||
+      isSubmitting ||
+      isCancelling ||
+      runner.cancelConfirmation ||
+      answeredQuestionCount !== questions.length ||
+      typeof actions.onSubmitModuleTest !== 'function'
+    ) {
+      return
+    }
+
+    submissionLocked = true
+    submitButton.disabled = true
+    cancelButton.disabled = true
+    radioControls.forEach((radio) => {
+      radio.disabled = true
+    })
+    form.setAttribute('aria-busy', 'true')
+    actions.onSubmitModuleTest()
+  })
+  runnerSection.append(form)
+  return runnerSection
+}
+
+function createCompletedTestResult(result, focusReferences) {
+  const section = createElement(
+    'section',
+    'learning-hub-test-result'
+  )
+  section.setAttribute(
+    'aria-labelledby',
+    'learning-hub-test-result-title'
+  )
+  section.setAttribute('aria-live', 'polite')
+  const heading = createElement('h3', '', 'Testergebnis')
+  heading.id = 'learning-hub-test-result-title'
+  heading.tabIndex = -1
+  focusReferences.testResultHeading = heading
+  section.append(
+    heading,
+    createElement(
+      'p',
+      'learning-hub-test-result__score',
+      `${result.correctAnswerCount} von ${result.totalQuestionCount} richtig · ${result.scorePercent} %`
+    )
+  )
+  if (typeof result.completedAt === 'string') {
+    const completedAt = createElement(
+      'p',
+      'learning-hub-test-result__completed-at'
+    )
+    const time = createElement('time', '', formatCompletedAt(result.completedAt))
+    time.setAttribute('datetime', result.completedAt)
+    completedAt.append(
+      document.createTextNode('Abgeschlossen: '),
+      time
+    )
+    section.append(completedAt)
+  }
+
+  const questions = Array.isArray(result.questions)
+    ? result.questions
+    : []
+  const questionList = createElement(
+    'div',
+    'learning-hub-test-result__questions'
+  )
+  questions.forEach((question, questionIndex) => {
+    const article = createElement(
+      'article',
+      question?.isCorrect === true
+        ? 'learning-hub-test-result-question learning-hub-test-result-question--correct'
+        : 'learning-hub-test-result-question learning-hub-test-result-question--incorrect'
+    )
+    article.append(
+      createElement(
+        'h4',
+        '',
+        typeof question?.prompt === 'string' ? question.prompt : ''
+      ),
+      createElement(
+        'p',
+        'learning-hub-test-result-question__status',
+        question?.isCorrect === true ? 'Richtig' : 'Falsch'
+      )
+    )
+    const options = createElement(
+      'ul',
+      'learning-hub-test-result-question__options'
+    )
+    if (Array.isArray(question?.options)) {
+      question.options.forEach((option) => {
+        const optionEntry = createElement(
+          'li',
+          'learning-hub-test-result-question__option'
+        )
+        optionEntry.append(
+          createElement(
+            'span',
+            '',
+            typeof option?.label === 'string' ? option.label : ''
+          )
+        )
+        const labels = []
+        if (option?.isSelected === true) labels.push('Deine Auswahl')
+        if (option?.isCorrect === true) labels.push('Korrekte Auswahl')
+        if (labels.length > 0) {
+          optionEntry.append(
+            createElement(
+              'strong',
+              'learning-hub-test-result-question__option-state',
+              labels.join(' · ')
+            )
+          )
+        }
+        options.append(optionEntry)
+      })
+    }
+    article.append(options)
+
+    if (typeof question?.explanation === 'string' && question.explanation) {
+      const explanation = createElement(
+        'p',
+        'learning-hub-test-result-question__explanation'
+      )
+      explanation.append(
+        createElement('strong', '', 'Erklärung: '),
+        document.createTextNode(question.explanation)
+      )
+      article.append(explanation)
+    }
+    article.setAttribute(
+      'aria-label',
+      `Ergebnis Frage ${questionIndex + 1}`
+    )
+    questionList.append(article)
+  })
+  section.append(questionList)
+  return section
+}
+
+function createAttemptHistory(
+  history,
+  actions,
+  focusReferences,
+  disabled
+) {
+  const section = createElement(
+    'section',
+    'learning-hub-test-history'
+  )
+  section.setAttribute(
+    'aria-labelledby',
+    'learning-hub-test-history-title'
+  )
+  const heading = createElement('h3', '', 'Versuchshistorie')
+  heading.id = 'learning-hub-test-history-title'
+  section.append(heading)
+
+  if (history.phase === 'loading') {
+    section.setAttribute('aria-busy', 'true')
+    const loading = createElement(
+      'p',
+      'learning-hub-test-history__state',
+      'Versuchshistorie wird aus dem aktuellen Browserprofil geladen.'
+    )
+    loading.setAttribute('role', 'status')
+    loading.setAttribute('aria-live', 'polite')
+    loading.setAttribute('aria-busy', 'true')
+    section.append(loading)
+    return section
+  }
+
+  section.setAttribute('aria-busy', 'false')
+  if (['unavailable', 'loadError', 'error'].includes(history.phase)) {
+    const alert = createElement(
+      'div',
+      'learning-hub-test-history__state learning-hub-test-history__state--error'
+    )
+    alert.setAttribute('role', 'alert')
+    alert.setAttribute('aria-live', 'assertive')
+    alert.tabIndex = -1
+    focusReferences.attemptHistoryAlert = alert
+    alert.append(
+      createElement(
+        'p',
+        '',
+        history.errorMessage ||
+          'Die lokale Versuchshistorie ist derzeit nicht verfügbar.'
+      ),
+      createButton(
+        'Versuchshistorie erneut laden',
+        'button button--secondary',
+        () => actions.onRetryAttemptHistory?.(),
+        { disabled }
+      )
+    )
+    section.append(alert)
+    return section
+  }
+
+  if (history.attempts.length === 0) {
+    section.append(
+      createElement(
+        'p',
+        'learning-hub-test-history__state',
+        'Noch keine abgeschlossenen Versuche für dieses Lernmodul.'
+      )
+    )
+    return section
+  }
+
+  const list = createElement('ol', 'learning-hub-test-history__list')
+  history.attempts.forEach((attempt) => {
+    const entry = createElement('li', 'learning-hub-test-history__attempt')
+    const completedAt = createElement('time', '', formatCompletedAt(attempt?.completedAt))
+    if (typeof attempt?.completedAt === 'string') {
+      completedAt.setAttribute('datetime', attempt.completedAt)
+    }
+    entry.append(
+      completedAt,
+      createElement(
+        'span',
+        '',
+        `${attempt?.correctAnswerCount} von ${attempt?.totalQuestionCount} richtig`
+      ),
+      createElement('strong', '', `${attempt?.scorePercent} %`)
+    )
+    list.append(entry)
+  })
+  section.append(list)
+  return section
+}
+
+function createLocalMockTest(
+  testState,
+  actions,
+  focusReferences,
+  isInteractionBlocked
+) {
+  const runner = testState.runner
+  const bank = testState.bank
+  const hasActiveSession = hasActiveTestSession(testState)
+  const isStarting = runner.phase === 'starting'
+  const isRunnerBusy = [
+    'starting',
+    'submitting',
+    'submissionInProgress',
+    'cancelling',
+  ].includes(runner.phase)
+  const section = createElement('section', 'learning-hub-local-test')
+  section.setAttribute(
+    'aria-labelledby',
+    'learning-hub-local-test-title'
+  )
+  section.setAttribute('aria-busy', String(isRunnerBusy))
+  const header = createElement('div', 'learning-hub-local-test__header')
+  const titleGroup = createElement('div')
+  const heading = createElement('h2', '', 'Lokaler Mock-Test')
+  heading.id = 'learning-hub-local-test-title'
+  titleGroup.append(
+    createElement('span', 'eyebrow', 'Lokale Prüfung'),
+    heading
+  )
+  header.append(titleGroup)
+  const countText = bank.phase === 'ready'
+    ? formatCount(bank.totalQuestionCount, 'verfügbare Frage', 'verfügbare Fragen')
+    : 'Fragenzahl derzeit nicht verfügbar'
+  header.append(
+    createElement(
+      'p',
+      'learning-hub-local-test__count',
+      countText
+    )
+  )
+  section.append(header)
+  const facts = createElement('ul', 'learning-hub-local-test__facts')
+  ;[
+    'Fragen und Optionen bleiben in deterministischer Reihenfolge.',
+    'Die Auswertung verwendet keine KI.',
+    'Testfragen und abgeschlossene Versuche bleiben nur im aktuellen Browserprofil.',
+    'Laufende Tests liegen nur im Arbeitsspeicher und gehen bei einem Reload verloren.',
+  ].forEach((fact) => facts.append(createElement('li', '', fact)))
+  section.append(facts)
+
+  if (!hasActiveSession) {
+    const startPanel = createElement(
+      'div',
+      'learning-hub-local-test__start'
+    )
+    const canStart =
+      bank.phase === 'ready' &&
+      bank.totalQuestionCount > 0 &&
+      !testState.editor &&
+      !isInteractionBlocked &&
+      !isStarting
+    const startButton = createButton(
+      isStarting ? 'Modultest wird gestartet …' : 'Modultest starten',
+      'button button--primary',
+      () => actions.onStartModuleTest?.(),
+      { disabled: !canStart }
+    )
+    focusReferences.testStart = startButton
+
+    if (bank.phase === 'ready' && bank.totalQuestionCount === 0) {
+      startPanel.append(
+        createElement(
+          'p',
+          'learning-hub-local-test__empty',
+          'Für dieses Lernmodul sind noch keine Testfragen vorhanden. Erstelle zuerst eine Frage an einem LearningNode.'
+        )
+      )
+    } else if (testState.editor) {
+      startPanel.append(
+        createElement(
+          'p',
+          'learning-hub-local-test__empty',
+          'Schließe den geöffneten Frageeditor ab, bevor du den Modultest startest.'
+        )
+      )
+    } else if (['unavailable', 'loadError', 'error'].includes(bank.phase)) {
+      const alert = createElement(
+        'div',
+        'learning-hub-test-feedback learning-hub-test-feedback--error'
+      )
+      alert.setAttribute('role', 'alert')
+      alert.setAttribute('aria-live', 'assertive')
+      alert.tabIndex = -1
+      focusReferences.testBankAlert = alert
+      alert.append(
+        createElement(
+          'p',
+          '',
+          bank.errorMessage ||
+            'Die Testfragenbank ist derzeit nicht verfügbar.'
+        ),
+        createButton(
+          'Testfragen erneut laden',
+          'button button--secondary',
+          () => actions.onRetryTestBankLoad?.(),
+          { disabled: isInteractionBlocked }
+        )
+      )
+      startPanel.append(alert)
+    }
+    startPanel.append(startButton)
+    section.append(startPanel)
+  } else {
+    section.append(
+      createActiveTestRunner(
+        runner,
+        actions,
+        focusReferences
+      )
+    )
+  }
+
+  if (!hasActiveSession && runner.errorMessage) {
+    const alert = createElement(
+      'p',
+      'learning-hub-test-feedback learning-hub-test-feedback--error',
+      runner.errorMessage
+    )
+    alert.setAttribute('role', 'alert')
+    alert.setAttribute('aria-live', 'assertive')
+    alert.tabIndex = -1
+    focusReferences.testSubmissionAlert = alert
+    section.append(alert)
+  }
+
+  if (!hasActiveSession && runner.statusMessage) {
+    const status = createElement(
+      'p',
+      'learning-hub-test-feedback learning-hub-test-feedback--success',
+      runner.statusMessage
+    )
+    status.setAttribute('role', 'status')
+    status.setAttribute('aria-live', 'polite')
+    section.append(status)
+  }
+
+  if (!hasActiveSession && runner.result) {
+    section.append(
+      createCompletedTestResult(
+        runner.result,
+        focusReferences
+      )
+    )
+  }
+  section.append(
+    createAttemptHistory(
+      testState.history,
+      actions,
+      focusReferences,
+      isRunnerBusy
+    )
+  )
+  return section
+}
+
 function createSelectedLearningNode(
   learningModule,
   chapter,
   learningNode,
   viewState,
   actions,
-  focusReferences
+  focusReferences,
+  isInteractionBlocked
 ) {
+  const testState = getLearningTestState(viewState)
+  const blockArtifactsForTest =
+    hasActiveTestSession(testState) ||
+    testState.editor?.isSubmitting === true ||
+    testState.editor?.discardConfirmation === true ||
+    ['starting', 'submitting', 'submissionInProgress', 'cancelling'].includes(
+      testState.runner.phase
+    )
   const detail = createElement('section', 'learning-hub-node-detail')
   detail.setAttribute('aria-labelledby', 'learning-hub-selected-node-title')
   const eyebrow = createElement('span', 'eyebrow', 'Ausgewählte Textkarte')
@@ -1595,7 +3341,19 @@ function createSelectedLearningNode(
     eyebrow,
     title,
     content,
-    createLearningArtifacts(viewState, actions, focusReferences)
+    createLearningArtifacts(
+      viewState,
+      actions,
+      focusReferences,
+      blockArtifactsForTest
+    ),
+    createLearningTestQuestions(
+      viewState,
+      actions,
+      focusReferences,
+      testState,
+      isInteractionBlocked
+    )
   )
   return detail
 }
@@ -1776,7 +3534,8 @@ function createChapter(
           selectedLearningNode,
           viewState,
           actions,
-          focusReferences
+          focusReferences,
+          isMutating
         )
       )
     }
@@ -1905,6 +3664,15 @@ function createModuleDetail(
     )
   }
 
+  section.append(
+    createLocalMockTest(
+      getLearningTestState(viewState),
+      actions,
+      focusReferences,
+      isMutating
+    )
+  )
+
   const chaptersSection = createElement(
     'section',
     'learning-hub-chapters'
@@ -1994,6 +3762,54 @@ function resolveFocusTarget(focusTarget, focusReferences) {
       )
     case 'artifactLoadAlert':
       return focusReferences.artifactLoadAlert
+    case 'testBankAlert':
+      return focusReferences.testBankAlert
+    case 'testBankStatus':
+      return focusReferences.testBankStatus
+    case 'questionEditorField':
+      return focusReferences.questionEditorFields.get(
+        getQuestionEditorFieldKey(
+          focusTarget.fieldName,
+          Number.isInteger(focusTarget.optionIndex)
+            ? focusTarget.optionIndex
+            : null
+        )
+      )
+    case 'questionEditorAlert':
+      return focusReferences.questionEditorAlert
+    case 'questionEditorTrigger':
+      return focusReferences.questionEditorTriggers.get(
+        getQuestionEditorTriggerKey(
+          focusTarget.mode,
+          focusTarget.questionId ?? null
+        )
+      )
+    case 'questionDiscardConfirmation':
+      return focusReferences.questionDiscardConfirmation
+    case 'testStart':
+      return focusReferences.testStart
+    case 'testRunnerHeading':
+      return focusReferences.testRunnerHeading
+    case 'testAnswer':
+      return (
+        focusReferences.testAnswers.get(
+          createReferenceKey(
+            focusTarget.questionId,
+            focusTarget.optionId
+          )
+        ) ??
+        focusReferences.testAnswers.get(
+          createReferenceKey(focusTarget.questionId)
+        )
+      )
+    case 'testSubmissionAlert':
+      return focusReferences.testSubmissionAlert
+    case 'testResultHeading':
+      return focusReferences.testResultHeading
+    case 'testCancelConfirmation':
+      return focusReferences.testCancelConfirmation
+    case 'attemptHistoryAlert':
+      return focusReferences.attemptHistoryAlert
     default:
       return null
   }
@@ -2029,10 +3845,31 @@ export function createLearningHubView(rootElement) {
     const artifactPhase = artifactViewState?.phase ?? null
     const isArtifactMutating = artifactPhase === 'mutating'
     const isArtifactLoading = artifactPhase === 'loading'
+    const testState = hasContentView
+      ? getLearningTestState(viewState)
+      : getLearningTestState({})
+    const isQuestionSubmitting = testState.editor?.isSubmitting === true
+    const isTestRunnerMutating = [
+      'starting',
+      'submitting',
+      'submissionInProgress',
+      'cancelling',
+    ].includes(testState.runner.phase)
+    const isTestMutating = isQuestionSubmitting || isTestRunnerMutating
+    const isTestBankLoading =
+      hasContentView && testState.bank.phase === 'loading'
+    const isAttemptHistoryLoading =
+      hasContentView && testState.history.phase === 'loading'
     const isMutating =
-      isContentMutating || isProgressMutating || isArtifactMutating
+      isContentMutating ||
+      isProgressMutating ||
+      isArtifactMutating ||
+      isTestMutating
     const isInteractionBlocked =
-      isMutating || artifactViewState?.mode === 'confirmClear'
+      isMutating ||
+      artifactViewState?.mode === 'confirmClear' ||
+      hasActiveTestSession(testState) ||
+      testState.editor?.discardConfirmation === true
     const header = createHeader(
       modules.length,
       isMutating,
@@ -2089,7 +3926,9 @@ export function createLearningHubView(rootElement) {
         viewState.phase === 'loading' ||
           isMutating ||
           isProgressLoading ||
-          isArtifactLoading
+          isArtifactLoading ||
+          isTestBankLoading ||
+          isAttemptHistoryLoading
       )
     )
     rootElement.replaceChildren(fragment)

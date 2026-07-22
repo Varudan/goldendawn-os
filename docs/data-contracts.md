@@ -18,8 +18,8 @@
 | LearningTestAttemptLog-Schema | `1` |
 | LearningTestAttempt-Persistenznamespace | `v1` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale PromptVault-, LearningHub-Inhalts-, Progress-, LearningArtifact- und LearningTest-Foundation-Verträge implementiert; LearningTest-UI und Sync-Vertrag bleiben Zielzustände |
-| Letzte Aktualisierung | 2026-07-19 |
+| Status | Lokale PromptVault-, LearningHub-Inhalts-, Progress-, LearningArtifact- und LearningTest-Verträge samt deterministischer Mock-Test-UI implementiert; Sync-Vertrag bleibt Zielzustand |
+| Letzte Aktualisierung | 2026-07-20 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
@@ -41,10 +41,12 @@ Die UI-Integration verändert den LearningArtifact-Vertrag nicht. Zusätzlich
 sind die getrennten Schema-1-Verträge für die veränderbare LearningTestBank und
 den append-only LearningTestAttemptLog, ihre privaten Storages, die reine
 deterministische Engine und der referenzprüfende LearningTestService
-implementiert. Diese Foundation besitzt noch keine Anbindung an
-`LearningHubController`, `LearningHubView` oder `src/main.js`. Der vollständige
-LearningHub Local MVP ist deshalb weiterhin in Arbeit. Die externen Sync- und
-Agentenverträge beschreiben den geplanten Zielzustand späterer Versionen.
+implementiert und über `src/main.js`, den vorhandenen
+`LearningHubController` und die `LearningHubView` als lokaler
+deterministischer Mock-Test bedienbar. Der LearningHub Local MVP bleibt bis zur
+separaten Release-Prüfung, abschließenden Dokumentationskontrolle und
+Release-PR in Arbeit. Die externen Sync- und Agentenverträge beschreiben den
+geplanten Zielzustand späterer Versionen.
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
 
@@ -107,37 +109,36 @@ Rückabhängigkeit. `src/main.js` injiziert ihn in den vorhandenen
 Zusammenfassungen lokal bedienbar. Es gibt keinen separaten
 LearningArtifact-Controller.
 
-Davon getrennt ist die lokale LearningTest-Foundation ohne UI-Anbindung
-implementiert:
+Davon getrennt ist der lokale LearningTest-Pfad mit UI-Anbindung implementiert:
 
 ```text
-LearningHubView / LearningHubController        noch nicht angebunden
-                    ↓
-LearningTestService
-  ├→ LearningHubService                        Referenzprüfung
-  ├→ LearningTestBankStorage
-  │    → StorageAdapter
-  │    → localStorage
-  ├→ LearningTestAttemptStorage
-  │    → StorageAdapter
-  │    → localStorage
-  └→ LearningTestEngine                        reine Deterministik
+LearningHubView
+  → LearningHubController
+      → LearningTestService
+          ├→ LearningHubService                Referenzprüfung
+          ├→ LearningTestBankStorage
+          │    → StorageAdapter
+          │    → localStorage
+          ├→ LearningTestAttemptStorage
+          │    → StorageAdapter
+          │    → localStorage
+          └→ LearningTestEngine                reine Deterministik
 ```
 
 Die reine Engine präzisiert und ersetzt für diese Foundation die frühere
 `MockLearningTestProvider`-Platzhalterplanung. Die nutzergesteuerte Testbank
 ist die getrennte Fragenquelle; die Engine bleibt auf Auswahl, öffentliche
-Projektion und Auswertung ohne Seiteneffekte begrenzt. Dies führt weder eine UI
-noch Agenten- oder externe Providerlogik ein.
+Projektion und Auswertung ohne Seiteneffekte begrenzt. Die UI-Anbindung führt
+weder Agenten- noch externe Providerlogik ein.
 
 Sie verwendet nutzerkonfigurierte Single-Choice-Fragen, arbeitet ohne Zufall
 und speichert ausschließlich abgeschlossene Attempts. Laufende Sessions
 bleiben flüchtig. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
 `TestAgent` und ist nicht mit den geplanten externen Aktionen
 `learningTest.create`, `learningTest.evaluate` oder
-`learningTest.result.get` gleichzusetzen. Die spätere UI muss ihn sichtbar als
-„Lokaler Mock-Test“ kennzeichnen; bis zu ihrer Anbindung bleibt `v0.2.1` in
-Arbeit.
+`learningTest.result.get` gleichzusetzen. Die UI kennzeichnet ihn sichtbar als
+„Lokaler Mock-Test“. `v0.2.1` bleibt bis zur separaten Release-Prüfung,
+abschließenden Dokumentationskontrolle und Release-PR in Arbeit.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -692,8 +693,8 @@ Eine öffentliche Frage hat exakt diese Form:
 
 `correctOptionId`, `explanation`, Referenzkette, Revision, Positionen und
 Zeitstempel werden vor der Auswertung nicht öffentlich projiziert. Diese
-Reduktion verhindert eine versehentliche Lösungsweitergabe an die spätere
-View, bildet gegenüber lokalem Same-Origin-JavaScript aber keine technische
+Reduktion verhindert eine versehentliche Lösungsweitergabe an die
+Runner-View, bildet gegenüber lokalem Same-Origin-JavaScript aber keine technische
 Geheimhaltungsgrenze.
 
 Der `LearningTestService` akzeptiert vor dem Engine-Aufruf genau eine bekannte
@@ -728,10 +729,12 @@ zurückgegeben.
 | `updateQuestion({ moduleId, chapterId, learningNodeId, questionId, prompt, difficulty, options, correctOptionIndex, explanation })` | vorhandene Frage ohne unbemerkten Referenzwechsel aktualisieren |
 | `startModuleTest({ moduleId })` | deterministische öffentliche Testsession für ein Modul starten |
 | `submitModuleTest({ testSessionId, answers })` | eingefrorene Session exakt einmal auswerten und Attempt anhängen |
+| `cancelModuleTest({ testSessionId })` | eine sicher abbrechbare flüchtige Session ohne Attempt oder Persistenz beenden |
 | `loadAttemptHistory({ moduleId })` | textfreie Attempt-Projektionen eines Moduls in Append-Reihenfolge laden |
 
-Jede Operation lädt zuerst den aktuellen autoritativen LearningHub. Bank und
-Hub werden vollständig validiert; jede gespeicherte Frage muss auf eine
+Mit Ausnahme des rein speicherinternen `cancelModuleTest` lädt jede Operation
+zuerst den aktuellen autoritativen LearningHub. Bank und Hub werden vollständig
+validiert; jede gespeicherte Frage muss auf eine
 existierende vollständige Modul-, Kapitel- und LearningNode-Kette zeigen.
 Global vorhandene IDs mit falscher Elternzuordnung und verwaiste Referenzen
 werden kontrolliert abgelehnt und nicht repariert. Eine Frage kann durch
@@ -765,6 +768,7 @@ Die stabilen Erfolgsstatus und Ergebnisfelder lauten:
 | `updateQuestion`, identische normalisierte Eingabe | `questionUnchanged` | `testBank`, `question` | `false` |
 | `startModuleTest`, erfolgreich | `testStarted` | `testSession` | `true` |
 | `submitModuleTest`, erfolgreich persistiert | `testCompleted` | `result` | `true` |
+| `cancelModuleTest`, sicher abgebrochen | `testCancelled` | – | `true` |
 | `loadAttemptHistory`, keine Attempts des Moduls | `attemptHistoryEmpty` | `attempts` | `false` |
 | `loadAttemptHistory`, vorhandene Attempts | `attemptHistoryLoaded` | `attempts` | `false` |
 
@@ -787,8 +791,8 @@ Zeitstempel.
 In-Progress-Sessions werden absichtlich nicht persistiert. Nach einem Reload
 oder einer neuen Serviceinstanz muss der Test neu begonnen werden. Änderungen
 an Hub oder Testbank verändern den bereits eingefrorenen Sessionsnapshot
-nicht. Diese Grenze muss eine spätere UI sichtbar behandeln; Wiederaufnahme
-eines nicht gespeicherten Tests wird nicht versprochen.
+nicht. Die UI weist sichtbar auf diese Grenze hin und verspricht keine
+Wiederaufnahme eines nicht gespeicherten Tests.
 
 `submitModuleTest` akzeptiert ausschließlich `{ questionId,
 selectedOptionId }` für genau jede Sessionfrage und bewertet nur anhand des
@@ -799,15 +803,36 @@ Die Session wird erst nach erfolgreichem Append entfernt. Ein Speicherfehler
 erhält sie für einen kontrollierten Retry; nach erfolgreichem Abschluss wird
 eine zweite Abgabe derselben Session ohne zweiten Attempt abgelehnt.
 
+`cancelModuleTest` liest `testSessionId` defensiv genau einmal. Eine bekannte
+Session wird nur entfernt, wenn weder `submissionInProgress` noch
+`pendingSubmission` gesetzt ist. Der sichere Abbruch erzeugt keinen Attempt,
+keinen Storage-Zugriff, keine neue ID und keine Uhrzeit. Während einer laufenden
+Abgabe oder nach einem möglicherweise bereits erfolgten Schreibzugriff liefert
+der Service `conflict` mit `changed: false`, damit Retry beziehungsweise
+Reconciliation möglich bleibt. Eine unbekannte Session liefert kontrolliert
+`notFound`; Sessiondetails oder Dependency-Meldungen werden nicht ausgegeben.
+Abgebrochene Session-IDs bleiben innerhalb derselben Serviceinstanz reserviert.
+
 `loadAttemptHistory` filtert nur anhand der validierten `moduleId`, sortiert
 nicht nach Zeitstempeln und kopiert weder Fragen-, Options- noch
 LearningNode-Texte. Attempts führen keine Progress-Mutation aus und leiten
 keinen Kompetenzstand ab. Fortschritt, LearningArtifacts und Testkompetenz
 bleiben fachlich getrennt.
 
-Controller, View und `src/main.js` sind noch nicht angebunden. Die Foundation
-ist daher noch keine sichtbare Mock-Test-UI; `v0.2.1` bleibt in Arbeit. Der
-spätere externe Zielpfad lautet weiterhin:
+`src/main.js` erzeugt beide Test-Storages über den vorhandenen
+`StorageAdapter`, erzeugt den `LearningTestService` und injiziert ihn in den
+vorhandenen `LearningHubController`. Es gibt keinen separaten Test-Controller.
+Der Controller validiert Bankmutationen gegen unveränderte Schwesterfragen,
+öffentliche Sessions gegen Ziel, Reihenfolge und lösungsfreie Felder,
+`testCompleted` gegen die eingefrorene Session und den abgegebenen
+Antwortpayload sowie Historienprojektionen gegen Modul, Reihenfolge, Zähler und
+`Math.round`. Die View erhält während des Tests keine Lösungen oder
+Erklärungen; historische View-Modelle enthalten nur Abschlusszeit, Zähler und
+Prozentwert.
+
+Die sichtbare lokale Mock-Test-UI ist bedienbar; `v0.2.1` bleibt bis zur
+separaten Release-Prüfung, abschließenden Dokumentationskontrolle und
+Release-PR in Arbeit. Der spätere externe Zielpfad lautet weiterhin:
 
 ```text
 LearningTestService
