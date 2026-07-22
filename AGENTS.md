@@ -45,9 +45,11 @@ Persistenz und sein referenzprüfender Service sind über den vorhandenen
 `LearningHubController` und die `LearningHubView` als lokale Notizen und
 Zusammenfassungen bedienbar. Die getrennte lokale LearningTest-Foundation aus
 Testbank, append-only Attempts, reiner deterministischer Engine und
-referenzprüfendem Service ist ebenfalls umgesetzt. Nur ihre Anbindung an
-`LearningHubController` und `LearningHubView` als sichtbarer lokaler Mock-Test
-bleibt offen; `v0.2.1` ist deshalb noch nicht abgeschlossen.
+referenzprüfendem Service ist ebenfalls umgesetzt und über den vorhandenen
+Controller und die View als sichtbarer `Lokaler Mock-Test` mit
+Fragenverwaltung, Testdurchführung, Ergebnis und Versuchshistorie bedienbar.
+`v0.2.1` bleibt bis zur separaten Release-Prüfung, abschließenden
+Dokumentationskontrolle und Release-PR in Arbeit.
 
 Noch nicht Teil von `v0.2.0` sind:
 
@@ -110,30 +112,38 @@ dokumentiert wurde.
 - Private Lerninhalte und synthetische Portfolio-Demos bleiben klar getrennt.
   Öffentliche Beispieldaten dürfen keine privaten Inhalte ableiten oder
   nachbilden.
-- Der implementierte lokale Foundation-Fluss lautet, solange View und
-  Controller noch nicht angebunden sind:
+- Der implementierte lokale LearningTest-Fluss lautet:
 
 ```text
-LearningHubView / LearningHubController        noch nicht angebunden
-                    ↓
-LearningTestService
-  ├→ LearningHubService                        Referenzprüfung
-  ├→ LearningTestBankStorage
-  │    → StorageAdapter
-  │    → localStorage
-  ├→ LearningTestAttemptStorage
-  │    → StorageAdapter
-  │    → localStorage
-  └→ LearningTestEngine                        reine Deterministik
+LearningHubView
+  → LearningHubController
+      → LearningTestService
+          ├→ LearningHubService                Referenzprüfung
+          ├→ LearningTestBankStorage
+          │    → StorageAdapter
+          │    → localStorage
+          ├→ LearningTestAttemptStorage
+          │    → StorageAdapter
+          │    → localStorage
+          └→ LearningTestEngine                reine Deterministik
 ```
 
 Die `LearningTestEngine` arbeitet rein und deterministisch mit den vollständig
 validierten Fragen der getrennten LearningTestBank. Automatisierte Tests
 verwenden ausschließlich unabhängig erfundene synthetische Inhalte; private
-Produktionsfragen werden nicht als Demo-Daten bereitgestellt. Die spätere
-Oberfläche kennzeichnet diesen Zustand sichtbar als `Lokaler Mock-Test`; er
-verwendet keine KI und darf nicht als KI-Test beschrieben werden. Der spätere
-externe Testfluss lautet:
+Produktionsfragen werden nicht als Demo-Daten bereitgestellt. Die Oberfläche
+kennzeichnet diesen Zustand sichtbar als `Lokaler Mock-Test`; er verwendet
+keine KI und darf nicht als KI-Test beschrieben werden. Laufende Sessions
+bleiben nur im Arbeitsspeicher. `cancelModuleTest` entfernt ausschließlich eine
+sicher abbrechbare Session mit `status: testCancelled` und `changed: true`; der
+Abbruch erzeugt keinen Attempt und führt weder Storage-, ID-, Uhr- noch
+Dependency-Zugriffe aus. Unbekannte Sessions liefern `notFound` /
+`testSessionNotFound`, laufende oder bereits vorbereitete Abgaben `conflict` /
+`learningTestSubmissionInProgress` beziehungsweise
+`learningTestPendingSubmission`, jeweils mit `changed: false` und ohne
+Sessionmutation. Einmal vergebene Session-IDs bleiben auch nach einem Abbruch
+für die Lebensdauer der Serviceinstanz reserviert. Der spätere externe
+Testfluss lautet:
 
 ```text
 LearningTestService

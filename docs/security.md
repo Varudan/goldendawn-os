@@ -6,8 +6,8 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; LearningArtifact-UI und lokale LearningTest-Foundation berücksichtigt |
-| Letzte Aktualisierung | 2026-07-19 |
+| Status | Verbindliche Sicherheitsbasis; LearningArtifact- und lokale deterministische Mock-Test-UI berücksichtigt |
+| Letzte Aktualisierung | 2026-07-20 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -235,16 +235,15 @@ Controller greifen nicht direkt auf `localStorage` zu.
   Fortschritts- oder Attempt-Logs oder sonstigen Rohdaten. Rohe
   `DOMException`- und Dependency-Fehler werden nicht unkontrolliert an höhere
   Schichten weitergereicht; die Foundation erzeugt keine Console-Ausgaben.
-- Die Oberfläche weist sichtbar darauf hin, dass Inhalte, Fortschritt, Notizen
-  und Zusammenfassungen nur im aktuellen Browserprofil ohne Cloud-Sicherung
-  oder geräteübergreifende Synchronisierung liegen und von anderen Skripten
-  derselben Origin grundsätzlich aus dem unverschlüsselten `localStorage`
-  gelesen werden könnten. Sie behauptet weder Echtzeit- noch
-  Multi-Tab-Konsistenz.
-- Die spätere Mock-Test-UI muss denselben Hinweis auf Testfragen und Attempts
-  erweitern. Die Foundation selbst besitzt noch keine Controller-, View- oder
-  `src/main.js`-Anbindung und darf deshalb nicht als bereits sichtbarer
-  „Lokaler Mock-Test“ dargestellt werden.
+- Die Oberfläche weist sichtbar darauf hin, dass Inhalte, Fortschritt, Notizen,
+  Zusammenfassungen, Testfragen und abgeschlossene Versuche nur im aktuellen
+  Browserprofil ohne Cloud-Sicherung oder geräteübergreifende
+  Synchronisierung liegen und von anderen Skripten derselben Origin
+  grundsätzlich aus dem unverschlüsselten `localStorage` gelesen werden
+  könnten. Sie behauptet weder Echtzeit- noch Multi-Tab-Konsistenz.
+- Die Mock-Test-UI weist zusätzlich darauf hin, dass laufende Sessions nur im
+  Arbeitsspeicher liegen und bei einem Reload verloren gehen. Sie ist sichtbar
+  als „Lokaler Mock-Test“ gekennzeichnet und behauptet keine KI-Bewertung.
 - Schema 2 speichert keine Abschluss- oder Fortschrittsdaten. Kapitelabschluss
   und daraus abgeleiteter Modulfortschritt verwenden den separaten
   LearningProgress-Schema-1-Vertrag; Testkompetenz bleibt ein davon getrenntes
@@ -252,12 +251,14 @@ Controller greifen nicht direkt auf `localStorage` zu.
 - Die LearningTestBank unterstützt in Schema 1 ausschließlich
   nutzerkonfigurierte Single-Choice-Fragen mit zwei bis sechs Optionen und
   vollständigen Modul-, Kapitel- und LearningNode-Referenzen. Vor jeder
-  Operation validiert der Service den aktuellen Hub und die vollständige Bank;
-  verwaiste oder falsch zugeordnete Referenzen werden nicht repariert oder
-  überschrieben.
+  fachlichen Operation außer dem rein speicherinternen Session-Abbruch
+  validiert der Service den aktuellen Hub und die vollständige Bank; verwaiste
+  oder falsch zugeordnete Referenzen werden nicht repariert oder überschrieben.
+  `cancelModuleTest` prüft dagegen nur den flüchtigen Sessionzustand und liest
+  weder Hub noch Bank oder Attempt-Storage.
 - Die öffentliche Testprojektion entfernt vor der Abgabe
   `correctOptionId` und `explanation`. Das reduziert versehentliche
-  Lösungsweitergabe an die spätere View, schützt aber nicht vor anderem
+  Lösungsweitergabe an die Runner-View, schützt aber nicht vor anderem
   JavaScript derselben Origin, das lokalen Speicher oder Servicezustand lesen
   kann.
 - Laufende Sessions halten den vollständigen Antwortschlüssel ausschließlich
@@ -332,18 +333,22 @@ Controller greifen nicht direkt auf `localStorage` zu.
   Löschen von Modulen oder Kapiteln benötigt vor der Implementierung eine
   gesonderte Referenz- und Löschrichtlinie; verknüpfte Ereignisse dürfen nicht
   stillschweigend entfernt oder verwaist werden.
-- Die implementierte LearningTest-Foundation arbeitet lokal und
-  deterministisch mit nutzerkonfigurierten Single-Choice-Fragen. Sie verwendet
-  keine KI, keinen `TestAgent`, keine Freitextbewertung und keine externe
-  Kommunikation. Erst die spätere UI muss sie sichtbar als
-  **„Lokaler Mock-Test“** kennzeichnen und darf keine darüber hinausgehende
-  Funktion behaupten.
+- Der implementierte LearningTest-Pfad arbeitet lokal und deterministisch mit
+  nutzerkonfigurierten Single-Choice-Fragen. Er verwendet keine KI, keinen
+  `TestAgent`, keine Freitextbewertung und keine externe Kommunikation. Die
+  UI kennzeichnet ihn sichtbar als **„Lokaler Mock-Test“** und behauptet keine
+  darüber hinausgehende Funktion.
 - Die Artifact-Foundation speichert Notizen und Zusammenfassungen bereits
   ausschließlich hinter Controller-, Service- und Storage-Adapter-Grenzen. Die
   implementierte View greift nicht direkt auf `localStorage` zu. Testbank und
   Attempts liegen ebenfalls ausschließlich hinter Service-, fachlichen
-  Storage- und `StorageAdapter`-Grenzen; Controller und View sind dafür noch
-  nicht angebunden.
+  Storage- und `StorageAdapter`-Grenzen; der vorhandene Controller hält
+  private Snapshots und gibt nur die erforderlichen redigierten Projektionen an
+  die View weiter.
+- Vor der Abgabe gelangen weder korrekte Options-IDs noch Erklärungen oder
+  interne Bank-Snapshots in das Runner-View-Modell. Ein kontrollierter
+  Session-Abbruch schreibt keinen Attempt; laufende oder pending Abgaben werden
+  nicht verworfen, damit Retry und Reconciliation möglich bleiben.
 - Der lokale MVP garantiert noch keine Multi-Tab-Konsistenz und verwendet keine
   Transaktionssperre. Gleichzeitige Änderungen in mehreren Tabs können sich
   überholen; Browser-Quota, fehlende Verschlüsselung und fehlende
@@ -358,9 +363,10 @@ Service und Storage für private Inhalte sowie Vertrag, Projektion, Service und
 Storage einschließlich der zugänglichen Progress-UI sind implementiert. Für
 Notizen und Zusammenfassungen sind Vertrag, Service, Storage, Controller-
 Anbindung und sichere lokale UI implementiert. Für LearningTest sind Bank- und
-Attempt-Vertrag, getrennte private Storages, reine Engine und
-referenzprüfender Service implementiert. Controller-, View- und
-`src/main.js`-Anbindung fehlen weiterhin; deshalb bleibt `v0.2.1` in Arbeit.
+Attempt-Vertrag, getrennte private Storages, reine Engine, referenzprüfender
+Service sowie Controller-, View- und `src/main.js`-Anbindung implementiert.
+`v0.2.1` bleibt bis zur separaten Release-Prüfung, abschließenden
+Dokumentationskontrolle und dem manuellen Release-PR in Arbeit.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
@@ -637,7 +643,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | --- | --- |
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
-| `v0.2.1` | sichere lokale Inhalts-, Progress- und LearningArtifact-UI; validierte private LearningTestBank und append-only Attempts ohne Demo-Seeding, deterministische lösungsfreie Testprojektion, flüchtige Sessions und kontrollierte Referenzprüfung; sichere Mock-Test-UI noch ausstehend |
+| `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; validierte private LearningTestBank und append-only Attempts ohne Demo-Seeding, deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; Release-Prüfung ausstehend |
 | `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
 | `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |

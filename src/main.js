@@ -9,10 +9,13 @@ import { createPromptVaultView } from './modules/prompt-vault/promptVaultView.js
 import { createLearningArtifactService } from './services/learningArtifactService.js'
 import { createLearningHubService } from './services/learningHubService.js'
 import { createLearningProgressService } from './services/learningProgressService.js'
+import { createLearningTestService } from './services/learningTestService.js'
 import { createPromptService } from './services/promptService.js'
 import { createLearningArtifactStorage } from './storage/learningArtifactStorage.js'
 import { createLearningHubStorage } from './storage/learningHubStorage.js'
 import { createLearningProgressStorage } from './storage/learningProgressStorage.js'
+import { createLearningTestAttemptStorage } from './storage/learningTestAttemptStorage.js'
+import { createLearningTestBankStorage } from './storage/learningTestBankStorage.js'
 import { createPromptStorage } from './storage/promptStorage.js'
 import { createStorageAdapter } from './storage/storageAdapter.js'
 import {
@@ -47,7 +50,7 @@ const modules = [
     id: VIEW_LEARNING_HUB,
     name: 'LearningHub',
     description:
-      'Eigene Lernmodule, Kapitel, LearningNodes, Lernfortschritt, Notizen und Zusammenfassungen lokal verwalten',
+      'Eigene Lernmodule, Kapitel, LearningNodes, Lernfortschritt, Notizen, Zusammenfassungen und deterministische Mock-Tests lokal verwalten',
     status: 'In Arbeit',
     statusClass: 'next',
     navigationState: 'In Arbeit',
@@ -201,11 +204,21 @@ const learningArtifactService = createLearningArtifactService({
   learningArtifactStorage,
   learningHubService,
 })
+const learningTestBankStorage = createLearningTestBankStorage(storageAdapter)
+const learningTestAttemptStorage = createLearningTestAttemptStorage(
+  storageAdapter
+)
+const learningTestService = createLearningTestService({
+  learningHubService,
+  learningTestBankStorage,
+  learningTestAttemptStorage,
+})
 const learningHubView = createLearningHubView(viewOutlet)
 const learningHubController = createLearningHubController({
   learningHubService,
   learningProgressService,
   learningArtifactService,
+  learningTestService,
   learningHubView,
 })
 
@@ -226,25 +239,25 @@ function renderCommandCenter() {
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
         <h2 id="focus-title">v0.2.1 – LearningHub Local MVP in Arbeit</h2>
-        <p>Command Center und PromptVault bleiben lokal nutzbar. Im LearningHub sind die private Inhaltsverwaltung für Module, Kapitel und LearningNodes, der Kapitelabschluss und Modulfortschritt sowie lokale Notizen und Zusammenfassungen jetzt bedienbar. Nur der lokale Mock-Test bleibt als nächster getrennter Arbeitsschritt offen.</p>
+        <p>Command Center und PromptVault bleiben lokal nutzbar. Im LearningHub sind Inhalte, Kapitel- und Modulfortschritt, Notizen, Zusammenfassungen sowie der deterministische lokale Mock-Test mit Fragenverwaltung und Versuchshistorie jetzt bedienbar. v0.2.1 bleibt bis zur separaten Release-Prüfung, Dokumentation und Release-PR in Arbeit.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
           <span>Aktueller Teilstand</span>
-          <strong>Lokale Inhalte, Fortschritt und Lernartefakte bedienbar</strong>
+          <strong>LearningHub Local MVP fachlich bedienbar</strong>
         </div>
-        <small>LearningHub-Inhalte, -Fortschritt und -Artefakte bleiben im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung oder geräteübergreifende Synchronisierung.</small>
+        <small>Inhalte, Fortschritt, Lernartefakte, Testfragen und abgeschlossene Versuche bleiben im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung oder geräteübergreifende Synchronisierung; laufende Tests gehen bei einem Reload verloren.</small>
       </div>
     </section>
 
     <aside class="milestone" aria-labelledby="milestone-title">
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
-        <span class="eyebrow">Nächster Ausbauschritt</span>
-        <h2 id="milestone-title">Lokaler Mock-Test</h2>
-        <p>Als Nächstes folgt der lokale, deterministische Mock-Test mit ausschließlich synthetischen Testdaten. Er verwendet keine KI und bleibt von privaten Lernartefakten getrennt.</p>
+        <span class="eyebrow">Nächster Projektschritt</span>
+        <h2 id="milestone-title">Release-Prüfung für v0.2.1</h2>
+        <p>Als Nächstes folgen die separate Abschlussprüfung, die abschließende Dokumentationskontrolle und der manuell von Jan geführte Release-PR. Der lokale Mock-Test verwendet keine KI und bleibt vollständig im Browserprofil.</p>
       </div>
-      <span class="status status--next">Als Nächstes</span>
+      <span class="status status--next">Nächster Schritt</span>
     </aside>
 
     <section class="modules-section" aria-labelledby="modules-title">

@@ -147,6 +147,7 @@ function createServiceSystem({
   idValues = {},
   timestamps = [STARTED_AT, COMPLETED_AT],
   appendImplementation,
+  idImplementation,
   nowImplementation,
 } = {}) {
   let currentBank = structuredClone(bank)
@@ -234,6 +235,15 @@ function createServiceSystem({
 
     if (queuedId instanceof Error) {
       throw queuedId
+    }
+
+    if (idImplementation) {
+      return idImplementation({
+        callNumber: calls.idTypes.length,
+        entityType,
+        service,
+        queuedId,
+      })
     }
 
     if (queuedId !== undefined) {
@@ -941,6 +951,278 @@ test('vergibt eine Session-ID während der Lebensdauer des Service nie erneut', 
   ])
 })
 
+test('reserviert eine reentrant erzeugte und abgebrochene Session-ID noch im ID-Generator', { timeout: 2_000 }, () => {
+  let didReenter = false
+  let reentrantStart
+  let reentrantCancellation
+  const system = createServiceSystem({
+    bank: createBank([createQuestion()]),
+    idValues: {
+      session: [
+        'session-generator-shared',
+        'session-generator-shared',
+        'session-after-generator-reentry',
+      ],
+    },
+    timestamps: [STARTED_AT, UPDATED_AT],
+    idImplementation({
+      callNumber,
+      entityType,
+      service,
+      queuedId,
+    }) {
+      if (
+        !didReenter &&
+        entityType === 'session' &&
+        callNumber === 1
+      ) {
+        didReenter = true
+        reentrantStart = service.startModuleTest({
+          moduleId: 'module-orbit',
+        })
+        reentrantCancellation = service.cancelModuleTest({
+          testSessionId: reentrantStart.testSession.id,
+        })
+      }
+
+      return queuedId
+    },
+  })
+  const outerStart = system.service.startModuleTest({
+    moduleId: 'module-orbit',
+  })
+
+  assert.equal(reentrantStart.testSession.id, 'session-generator-shared')
+  assert.deepEqual(reentrantCancellation, {
+    ok: true,
+    status: 'testCancelled',
+    changed: true,
+  })
+  assert.equal(
+    outerStart.testSession.id,
+    'session-after-generator-reentry'
+  )
+  assert.deepEqual(system.calls.idTypes, [
+    'session',
+    'session',
+    'session',
+  ])
+  assert.equal(system.calls.now, 2)
+  assert.equal(didReenter, true)
+})
+
+test('reserviert eine akzeptierte Session-ID vor reentrantem now und erneutem Abbruch', { timeout: 2_000 }, () => {
+  let didReenter = false
+  let reentrantStart
+  let reentrantCancellation
+  const system = createServiceSystem({
+    bank: createBank([createQuestion()]),
+    idValues: {
+      session: [
+        'session-now-shared',
+        'session-now-shared',
+        'session-after-now-reentry',
+      ],
+    },
+    timestamps: [STARTED_AT, UPDATED_AT],
+    nowImplementation({ callNumber, service, timestamp }) {
+      if (!didReenter && callNumber === 1) {
+        didReenter = true
+        reentrantStart = service.startModuleTest({
+          moduleId: 'module-orbit',
+        })
+        reentrantCancellation = service.cancelModuleTest({
+          testSessionId: reentrantStart.testSession.id,
+        })
+      }
+
+      return timestamp
+    },
+  })
+  const outerStart = system.service.startModuleTest({
+    moduleId: 'module-orbit',
+  })
+
+  assert.equal(outerStart.testSession.id, 'session-now-shared')
+  assert.equal(
+    reentrantStart.testSession.id,
+    'session-after-now-reentry'
+  )
+  assert.deepEqual(reentrantCancellation, {
+    ok: true,
+    status: 'testCancelled',
+    changed: true,
+  })
+  assert.deepEqual(system.calls.idTypes, [
+    'session',
+    'session',
+    'session',
+  ])
+  assert.equal(system.calls.now, 2)
+  assert.equal(didReenter, true)
+})
+
+test('behält eine vor fehlerhaftem now reservierte Session-ID lebenslang gesperrt', () => {
+  const system = createServiceSystem({
+    bank: createBank([createQuestion()]),
+    idValues: {
+      session: [
+        'session-before-invalid-now',
+        'session-before-invalid-now',
+        'session-after-invalid-now',
+      ],
+    },
+    timestamps: ['invalid-private-timestamp', STARTED_AT],
+  })
+  const failedStart = system.service.startModuleTest({
+    moduleId: 'module-orbit',
+  })
+  const successfulStart = system.service.startModuleTest({
+    moduleId: 'module-orbit',
+  })
+
+  assert.equal(failedStart.ok, false)
+  assert.equal(failedStart.status, 'generationFailed')
+  assert.equal(failedStart.error.code, 'invalidLearningTestTimestamp')
+  assert.equal(
+    successfulStart.testSession.id,
+    'session-after-invalid-now'
+  )
+  assert.deepEqual(system.calls.idTypes, [
+    'session',
+    'session',
+    'session',
+  ])
+  assert.equal(system.calls.now, 2)
+})
+
+test('bricht eine sichere Session ohne weitere Seiteneffekte ab und vergibt ihre ID nie erneut', () => {
+  const system = createServiceSystem({
+    bank: createBank([createQuestion()]),
+    idValues: {
+      session: [
+        'session-cancelled',
+        'session-cancelled',
+        'session-after-cancel',
+      ],
+    },
+    timestamps: [STARTED_AT, UPDATED_AT],
+  })
+  const firstStart = system.service.startModuleTest({
+    moduleId: 'module-orbit',
+  })
+  const cancellationInput = Object.create(null)
+  let testSessionIdReads = 0
+
+  Object.defineProperty(cancellationInput, 'testSessionId', {
+    enumerable: true,
+    get() {
+      testSessionIdReads += 1
+      return testSessionIdReads === 1
+        ? firstStart.testSession.id
+        : 'private-changing-session-sentinel'
+    },
+  })
+
+  const callsBeforeCancellation = structuredClone(system.calls)
+  const result = system.service.cancelModuleTest(cancellationInput)
+
+  assert.deepEqual(result, {
+    ok: true,
+    status: 'testCancelled',
+    changed: true,
+  })
+  assert.equal(testSessionIdReads, 1)
+  assert.deepEqual(system.calls, callsBeforeCancellation)
+  assert.equal(system.calls.loadAttempts, 0)
+  assert.equal(system.calls.saveBank, 0)
+  assert.equal(system.calls.appendAttempt, 0)
+  assert.equal(system.getAttemptLog().attempts.length, 0)
+
+  const repeatedCancellation = system.service.cancelModuleTest({
+    testSessionId: firstStart.testSession.id,
+  })
+
+  assert.equal(repeatedCancellation.ok, false)
+  assert.equal(repeatedCancellation.status, 'notFound')
+  assert.equal(repeatedCancellation.changed, false)
+  assert.equal(
+    repeatedCancellation.error.code,
+    'testSessionNotFound'
+  )
+  assert.deepEqual(system.calls, callsBeforeCancellation)
+
+  const secondStart = system.service.startModuleTest({
+    moduleId: 'module-orbit',
+  })
+
+  assert.equal(secondStart.testSession.id, 'session-after-cancel')
+  assert.deepEqual(system.calls.idTypes, [
+    'session',
+    'session',
+    'session',
+  ])
+  assert.equal(system.calls.now, 2)
+})
+
+test('meldet eine unbekannte Session redigiert ohne Dependency-Lesen', () => {
+  const privateMarker = 'private-unknown-session-sentinel'
+  const system = createServiceSystem({
+    bank: createBank([createQuestion()]),
+  })
+  const callsBeforeCancellation = structuredClone(system.calls)
+  const result = system.service.cancelModuleTest({
+    testSessionId: privateMarker,
+  })
+
+  assert.equal(result.ok, false)
+  assert.equal(result.status, 'notFound')
+  assert.equal(result.changed, false)
+  assert.equal(result.error.code, 'testSessionNotFound')
+  assert.equal(JSON.stringify(result).includes(privateMarker), false)
+  assert.deepEqual(system.calls, callsBeforeCancellation)
+})
+
+test('bricht nach einem Fehler vor der vorbereiteten Submission kontrolliert ab', () => {
+  const system = createServiceSystem({
+    bank: createBank([createQuestion()]),
+    idValues: { session: ['session-preparation-failed'] },
+    timestamps: [STARTED_AT],
+  })
+  const session = system.service.startModuleTest({
+    moduleId: 'module-orbit',
+  })
+  const failedSubmission = system.service.submitModuleTest({
+    testSessionId: session.testSession.id,
+    answers: [
+      {
+        questionId: 'question-vector-one',
+        selectedOptionId: 'unknown-option',
+      },
+    ],
+  })
+  const callsBeforeCancellation = structuredClone(system.calls)
+  const cancellation = system.service.cancelModuleTest({
+    testSessionId: session.testSession.id,
+  })
+
+  assert.equal(failedSubmission.ok, false)
+  assert.equal(failedSubmission.status, 'validationFailed')
+  assert.equal(
+    failedSubmission.error.code,
+    'invalidLearningTestAnswers'
+  )
+  assert.deepEqual(cancellation, {
+    ok: true,
+    status: 'testCancelled',
+    changed: true,
+  })
+  assert.deepEqual(system.calls, callsBeforeCancellation)
+  assert.equal(system.calls.loadAttempts, 0)
+  assert.equal(system.calls.appendAttempt, 0)
+  assert.equal(system.getAttemptLog().attempts.length, 0)
+})
+
 test('behält eine Session bei Write-Fehler und verwendet beim Retry denselben vorbereiteten Attempt', () => {
   const appendedIds = []
   const privateDependencyMessage = 'private-attempt-write-sentinel'
@@ -995,6 +1277,116 @@ test('behält eine Session bei Write-Fehler und verwendet beim Retry denselben v
   assert.deepEqual(system.calls.idTypes, ['session', 'attempt'])
   assert.equal(system.calls.now, 2)
   assert.equal(system.getAttemptLog().attempts.length, 1)
+})
+
+test('lehnt den Abbruch während einer laufenden Submission ohne Sessionmutation ab', () => {
+  let cancellationResult
+  const system = createServiceSystem({
+    bank: createBank([createQuestion()]),
+    idValues: {
+      session: ['session-cancel-in-progress'],
+      attempt: ['attempt-cancel-in-progress'],
+    },
+    timestamps: [STARTED_AT, COMPLETED_AT],
+    nowImplementation({ callNumber, service, timestamp }) {
+      if (callNumber === 2) {
+        cancellationResult = service.cancelModuleTest({
+          testSessionId: 'session-cancel-in-progress',
+        })
+      }
+
+      return timestamp
+    },
+  })
+  const session = system.service.startModuleTest({
+    moduleId: 'module-orbit',
+  })
+  const completedResult = system.service.submitModuleTest({
+    testSessionId: session.testSession.id,
+    answers: [
+      {
+        questionId: 'question-vector-one',
+        selectedOptionId: 'option-vector-north',
+      },
+    ],
+  })
+
+  assert.equal(cancellationResult.ok, false)
+  assert.equal(cancellationResult.status, 'conflict')
+  assert.equal(cancellationResult.changed, false)
+  assert.equal(
+    cancellationResult.error.code,
+    'learningTestSubmissionInProgress'
+  )
+  assert.equal(completedResult.status, 'testCompleted')
+  assert.equal(system.calls.appendAttempt, 1)
+  assert.equal(system.getAttemptLog().attempts.length, 1)
+})
+
+test('hält eine möglicherweise persistierte pendingSubmission trotz Abbruchversuch retrybar', () => {
+  const privateMarker = 'private-pending-session-sentinel'
+  const system = createServiceSystem({
+    bank: createBank([createQuestion()]),
+    idValues: {
+      session: ['session-pending-cancel'],
+      attempt: ['attempt-pending-cancel'],
+    },
+    timestamps: [STARTED_AT, COMPLETED_AT],
+    appendImplementation({ attempt, attemptLog, setAttemptLog }) {
+      const nextLog = {
+        ...attemptLog,
+        attempts: [...attemptLog.attempts, attempt],
+      }
+
+      setAttemptLog(nextLog)
+      return { ok: true, status: 'unexpected', privateMarker }
+    },
+  })
+  const session = system.service.startModuleTest({
+    moduleId: 'module-orbit',
+  })
+  const submission = {
+    testSessionId: session.testSession.id,
+    answers: [
+      {
+        questionId: 'question-vector-one',
+        selectedOptionId: 'option-vector-north',
+      },
+    ],
+  }
+  const ambiguousResult = system.service.submitModuleTest(submission)
+  const callsBeforeCancellation = structuredClone(system.calls)
+  const cancellationResult = system.service.cancelModuleTest({
+    testSessionId: session.testSession.id,
+  })
+
+  assert.equal(ambiguousResult.ok, false)
+  assert.equal(ambiguousResult.status, 'storageFailed')
+  assert.equal(cancellationResult.ok, false)
+  assert.equal(cancellationResult.status, 'conflict')
+  assert.equal(cancellationResult.changed, false)
+  assert.equal(
+    cancellationResult.error.code,
+    'learningTestPendingSubmission'
+  )
+  assert.equal(
+    JSON.stringify(cancellationResult).includes(privateMarker),
+    false
+  )
+  assert.equal(
+    JSON.stringify(cancellationResult).includes(session.testSession.id),
+    false
+  )
+  assert.deepEqual(system.calls, callsBeforeCancellation)
+
+  const retryResult = system.service.submitModuleTest(submission)
+
+  assert.equal(retryResult.status, 'testCompleted')
+  assert.equal(retryResult.result.attemptId, 'attempt-pending-cancel')
+  assert.equal(system.calls.appendAttempt, 1)
+  assert.equal(system.getAttemptLog().attempts.length, 1)
+  assert.deepEqual(system.calls.idTypes, ['session', 'attempt'])
+  assert.equal(system.calls.now, 2)
 })
 
 test('reserviert eine pending Attempt-ID gegenüber parallelen Sessions bis zum erfolgreichen Retry', () => {
@@ -1071,7 +1463,7 @@ test('reserviert eine pending Attempt-ID gegenüber parallelen Sessions bis zum 
   assert.equal(system.calls.appendAttempt, 3)
 })
 
-test('erkennt einen trotz unbrauchbarer Rückgabe bereits persistierten Attempt beim Retry ohne zweiten Write', () => {
+test('reconciliert einen trotz unbrauchbarer Rückgabe persistierten Attempt genau einmal und beendet die Session', () => {
   const system = createServiceSystem({
     bank: createBank([createQuestion()]),
     idValues: {
@@ -1109,6 +1501,12 @@ test('erkennt einen trotz unbrauchbarer Rückgabe bereits persistierten Attempt 
     ],
   })
   const recoveredResult = system.service.submitModuleTest(submission)
+  const submissionAfterReconciliation = system.service.submitModuleTest(
+    submission
+  )
+  const cancellationAfterReconciliation = system.service.cancelModuleTest({
+    testSessionId: submission.testSessionId,
+  })
 
   assert.equal(ambiguousResult.ok, false)
   assert.equal(ambiguousResult.status, 'storageFailed')
@@ -1120,6 +1518,18 @@ test('erkennt einen trotz unbrauchbarer Rückgabe bereits persistierten Attempt 
   )
   assert.equal(recoveredResult.ok, true)
   assert.equal(recoveredResult.status, 'testCompleted')
+  assert.equal(submissionAfterReconciliation.ok, false)
+  assert.equal(submissionAfterReconciliation.status, 'notFound')
+  assert.equal(
+    submissionAfterReconciliation.error.code,
+    'testSessionNotFound'
+  )
+  assert.equal(cancellationAfterReconciliation.ok, false)
+  assert.equal(cancellationAfterReconciliation.status, 'notFound')
+  assert.equal(
+    cancellationAfterReconciliation.error.code,
+    'testSessionNotFound'
+  )
   assert.equal(system.calls.appendAttempt, 1)
   assert.equal(system.getAttemptLog().attempts.length, 1)
 })
@@ -1303,7 +1713,7 @@ test('weist eine manipulierte Attempt-Antwortfolge außerhalb der autoritativen 
   assert.equal(result.error.code, 'testAttemptQuestionOrderMismatch')
 })
 
-test('weist unsichere Eingaben aller fünf Schreib- und Leseoperationen vor jeder Dependency redigiert zurück', () => {
+test('weist unsichere Eingaben aller sechs Schreib- und Leseoperationen vor jeder Dependency redigiert zurück', () => {
   const privateMarker = 'private-input-getter-sentinel'
   const createSystem = createServiceSystem()
   const createInput = createQuestionInput()
@@ -1355,6 +1765,19 @@ test('weist unsichere Eingaben aller fünf Schreib- und Leseoperationen vor jede
   const historyResult = historySystem.service.loadAttemptHistory(
     historyProxy.proxy
   )
+  const cancelSystem = createServiceSystem({
+    bank: createBank([createQuestion()]),
+  })
+  const cancelInput = {}
+
+  Object.defineProperty(cancelInput, 'testSessionId', {
+    enumerable: true,
+    get() {
+      throw new Error(privateMarker)
+    },
+  })
+
+  const cancelResult = cancelSystem.service.cancelModuleTest(cancelInput)
 
   for (const [result, system] of [
     [createResult, createSystem],
@@ -1362,6 +1785,7 @@ test('weist unsichere Eingaben aller fünf Schreib- und Leseoperationen vor jede
     [updateResult, updateSystem],
     [startResult, startSystem],
     [historyResult, historySystem],
+    [cancelResult, cancelSystem],
   ]) {
     assert.equal(result.ok, false)
     assert.equal(result.status, 'validationFailed')

@@ -6,8 +6,8 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhalts-, Progress- und LearningArtifact-UI sowie LearningTest-Foundation implementiert, MVP noch nicht vollständig |
-| Letzte Aktualisierung | 2026-07-19 |
+| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhalts-, Progress-, LearningArtifact- und deterministische Mock-Test-UI implementiert, Release-Prüfung noch offen |
+| Letzte Aktualisierung | 2026-07-20 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -496,37 +496,43 @@ benötigt zuvor eine gesonderte Referenz- und Löschrichtlinie. Für die lokalen
 LearningHub-Stores werden weder Migration noch garantierte
 Multi-Tab-Synchronisierung oder Transaktionssperren eingeführt.
 
-Die implementierte LearningTest-Foundation verwendet diesen ausschließlich
-lokalen Pfad; View und Controller sind in diesem Arbeitspaket noch nicht
-angebunden:
+Die implementierte LearningTest-UI verwendet diesen ausschließlich lokalen
+Pfad:
 
 ```text
-LearningHubView / LearningHubController        noch nicht angebunden
-                    ↓
-LearningTestService
-  ├→ LearningHubService                        Referenzprüfung
-  ├→ LearningTestBankStorage
-  │    → StorageAdapter
-  │    → localStorage
-  ├→ LearningTestAttemptStorage
-  │    → StorageAdapter
-  │    → localStorage
-  └→ LearningTestEngine                        reine Deterministik
+LearningHubView
+  → LearningHubController
+      ├→ LearningHubService
+      ├→ LearningProgressService
+      ├→ LearningArtifactService
+      └→ LearningTestService
+          ├→ LearningHubService                Referenzprüfung
+          ├→ LearningTestBankStorage
+          │    → StorageAdapter
+          │    → localStorage
+          ├→ LearningTestAttemptStorage
+          │    → StorageAdapter
+          │    → localStorage
+          └→ LearningTestEngine                reine Deterministik
 ```
 
 Die reine Engine präzisiert und ersetzt in dieser Foundation den früher
 geplanten `MockLearningTestProvider`-Platzhalter. Die nutzergesteuerte Testbank
 ist nun die getrennte Fragenquelle; die Engine übernimmt ausschließlich
-deterministische Auswahl, öffentliche Projektion und Auswertung. Dadurch wird
-weder eine UI- noch eine Agenten- oder externe Provider-Anbindung vorgezogen.
+deterministische Auswahl, öffentliche Projektion und Auswertung. Die
+UI-Anbindung führt weder Agenten- noch externe Providerlogik ein.
 
-`LearningTestService` lädt für jede Operation den aktuellen validen privaten
-Hub und prüft vollständige Modul-, Kapitel- und LearningNode-Referenzketten.
+Mit Ausnahme des rein speicherinternen Abbruchs über `cancelModuleTest` lädt
+`LearningTestService` für jede fachliche Operation den aktuellen validen
+privaten Hub und prüft vollständige Modul-, Kapitel- und
+LearningNode-Referenzketten. Der Abbruch prüft ausschließlich den flüchtigen
+Sessionzustand und liest keine fachliche Dependency.
 Der Inhaltsservice besitzt keine Rückabhängigkeit auf die Testschichten;
 Contract, Engine, Storages und Service greifen nicht direkt auf
 `localStorage` zu. Der Service stellt `loadTestBank`, `createQuestion`,
-`updateQuestion`, `startModuleTest`, `submitModuleTest` und
-`loadAttemptHistory` bereit. Die Testbank ist ein veränderbarer aktueller Bestand
+`updateQuestion`, `startModuleTest`, `submitModuleTest`,
+`cancelModuleTest` und `loadAttemptHistory` bereit. Die Testbank ist ein
+veränderbarer aktueller Bestand
 nutzergesteuerter Fragen und liegt als `LearningTestBank` mit
 `schemaVersion: 1` unter
 `goldendawn.learningHub.testBank.v1`. Schema 1 unterstützt ausschließlich
@@ -554,7 +560,23 @@ der Bank beeinflussen eine bereits gestartete Session nicht. Bei
 Fragen oder Optionen kontrolliert abgelehnt. Erst eine vollständige gültige
 Abgabe erzeugt genau einen konsistenten Attempt; die Session wird erst nach
 erfolgreicher Persistenz entfernt und kann danach nicht doppelt gespeichert
-werden.
+werden. `cancelModuleTest` entfernt eine bekannte sicher abbrechbare Session
+ohne Attempt, Storage-Schreibzugriff, neue ID oder Uhrzeit. Eine laufende
+Submission oder eine für Retry beziehungsweise Reconciliation gehaltene
+`pendingSubmission` wird nicht verworfen; unbekannte Sessions werden
+kontrolliert als nicht gefunden behandelt. Einmal vergebene Session-IDs bleiben
+für die Lebensdauer der Serviceinstanz reserviert.
+
+`src/main.js` erzeugt beide Test-Storages über den vorhandenen
+`StorageAdapter`, erzeugt den `LearningTestService` und injiziert ihn in den
+bestehenden `LearningHubController`. Der Controller hält Bank, Ziele,
+öffentliche Session, Abgabepayload und historische Rohprojektionen in
+getrennten defensiven Snapshots. Während einer laufenden Session enthält sein
+View-Modell weder `correctOptionId`, `explanation` noch einen internen
+Bank-Snapshot. Erst ein gegen Session, Antworten, Options-IDs, Reihenfolge,
+Zähler und `Math.round` vollständig validiertes `testCompleted`-Ergebnis
+wird als redigierte Ergebnisprojektion übernommen. Die Versuchshistorie gibt
+nur Abschlusszeit, Zähler und Prozentwert an die View weiter.
 
 Abgeschlossene Versuche verwenden den getrennten append-only
 `LearningTestAttemptLog` mit `schemaVersion: 1` unter
@@ -583,10 +605,11 @@ Same-Origin-Zugriff und fehlende Synchronisierung bleiben Grenzen.
 Append-only ist eine Service- und Storage-Regel über vollständig neu
 geschriebene JSON-Snapshots, keine kryptografische Manipulationssperre.
 
-Die spätere Oberfläche muss diesen Ablauf sichtbar als „Lokaler Mock-Test“
-kennzeichnen und darf weder KI-Auswertung noch Agentenlogik behaupten. Weil
-Controller-, View- und `src/main.js`-Anbindung noch fehlen, bleibt `v0.2.1` in
-Arbeit.
+Die Oberfläche kennzeichnet diesen Ablauf sichtbar als „Lokaler Mock-Test“ und
+behauptet weder KI-Auswertung noch Agentenlogik. Fragenverwaltung, laufender
+Test, Ergebnis, kontrollierter Abbruch und redigierte Versuchshistorie sind
+lokal bedienbar. `v0.2.1` bleibt bis zur separaten Release-Prüfung,
+abschließenden Dokumentationskontrolle und Release-PR in Arbeit.
 
 Der spätere Zielpfad bleibt:
 
@@ -783,7 +806,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | --- | --- |
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
-| `v0.2.1` | In Arbeit: Inhalts-, Progress- und LearningArtifact-Pfade bis zur bedienbaren UI sowie lokale LearningTest-Foundation umgesetzt; Mock-Test-UI folgt |
+| `v0.2.1` | In Arbeit: Inhalts-, Progress-, LearningArtifact- und lokale deterministische Mock-Test-Pfade bedienbar; Release-Prüfung und Release-PR folgen |
 | `v0.2.2` | LichtwaldLog Local MVP ohne Synchronisierung oder Agentenlogik |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
