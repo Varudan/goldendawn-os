@@ -7,8 +7,8 @@
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | In Arbeit; Inhalts-, Progress-, LearningArtifact- und deterministische Mock-Test-Pfade bedienbar, Release-Prüfung offen |
-| Letzte Aktualisierung | 2026-07-20 |
+| Status | In Arbeit; koordinierter Demo-Erststart sowie Inhalts-, Progress-, LearningArtifact- und deterministische Mock-Test-Pfade bedienbar, Release-Prüfung offen |
+| Letzte Aktualisierung | 2026-07-22 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -350,7 +350,18 @@ geplant.
 - Private LearningHub-Inhalte werden über `LearningHubService`,
   `LearningHubStorage` und `StorageAdapter` unter dem festen Namespace
   `goldendawn.learningHub.content.v1` gespeichert; ein reines Laden des leeren
-  Initialzustands schreibt nichts und übernimmt keine Demo-Daten.
+  Initialzustands schreibt weiterhin nichts.
+- Ein vollständig uninitialisierter Erststart erhält genau einmal das
+  synthetische Modul
+  `[Demo] KI-Grundlagen – vom Datensatz zum Transformer` mit drei Kapiteln,
+  vier LearningNodes, acht ausgefüllten Artefakten und sieben Fragen. Sobald
+  Inhaltsstore, Artifact-Store, Testbank oder Initialisierungsmarker existieren,
+  werden keine Demo-Daten ergänzt oder überschrieben.
+- Der koordinierte Seed validiert alle Fachverträge und Referenzen vor dem
+  ersten Write, schreibt den Marker zuletzt und rollt bei Fehlern ausschließlich
+  noch bytegleiche Seed-Werte zurück. Wiederholte Aufrufe, Bearbeitungen und
+  spätere Löschungen bei erhaltenem Marker lösen keinen neuen Seed aus;
+  Attempt- und Progress-Stores bleiben uninitialisiert.
 - Inhaltsmutationen validieren den vollständigen neuen Hub vor genau einem
   Schreibzugriff und speichern weder ungültige Module ohne Kapitel noch
   Teilzustände.
@@ -394,11 +405,13 @@ geplant.
 
 ### Portfolio-Nachweis für v0.2.1
 
-- tief eingefrorener synthetischer Demo-Hub mit zwei Modulen;
+- eine kanonische, tief eingefrorene synthetische Demo-Definition mit einem
+  vollständigen KI-Modul, acht Artefakten und sieben Fragen;
 - umfassende Schema-2-Vertrags-, Service- und Storage-Tests sowie Controller-
   und View-Tests für den durchgängigen lokalen Inhaltsfluss;
-- dokumentierte Persistenzgrenze mit privatem leeren Initialzustand und ohne
-  automatisches Demo-Seeding;
+- dokumentierte Persistenzgrenze mit schreibfreien einzelnen Leerzuständen,
+  einmaligem koordiniertem Erststartmarker, Nichtüberschreibung und bedingtem
+  Rollback über drei getrennte Fachstores;
 - Vertrags-, Projektions-, Storage- und Service-Tests der separaten
   Progress-Foundation einschließlich Referenzfehlern, No-ops und
   unveränderlichen Eingaben;
@@ -710,9 +723,12 @@ sowie `LearningHubView`, `LearningHubController`,
 `createLearningHubService` und `createLearningHubStorage` für private lokale
 Inhalte sind umgesetzt. Der feste Inhaltsnamespace lautet
 `goldendawn.learningHub.content.v1`; ein fehlender Key liefert ohne
-Schreibzugriff einen leeren privaten Hub, und die synthetische Demo wird nicht
-automatisch übernommen. Die Inhaltsoberfläche ist über die bestehende
-Navigation bedienbar.
+Schreibzugriff einen leeren privaten Hub. Vorgelagert initialisiert ein
+Koordinator genau bei vollständig fehlendem Inhalts-, Artifact-, Testbank- und
+Marker-Key einmalig das klar gekennzeichnete synthetische KI-Demo als private
+lokale Arbeitskopie. Vorhandene Werte werden nie ergänzt oder überschrieben;
+ein stabiler Marker verhindert spätere Rücksetzungen oder erneutes Seeding.
+Die Inhaltsoberfläche ist über die bestehende Navigation bedienbar.
 
 Zusätzlich sind LearningProgress-Vertrag, reine Projektion, lokaler Storage und
 Service unter dem getrennten Namespace
@@ -743,7 +759,9 @@ sowie der referenzprüfende Service für Fragenverwaltung, flüchtige Sessions,
 exakte Auswertung, kontrollierten Abbruch und append-only Attempts. Der
 vorhandene Controller und die View machen Fragenverwaltung, Modultest,
 Ergebnis und redigierte Versuchshistorie als „Lokaler Mock-Test“ bedienbar. Es
-gibt keine Demo-Übernahme, Zufallsauswahl, KI- oder Netzwerkfunktion.
+gibt keine Zufallsauswahl, KI- oder Netzwerkfunktion. Der koordinierte
+Erststart befüllt nur die sieben Demo-Fragen; Attempts, Antworten, Ergebnisse
+und Historieneinträge bleiben leer.
 
 Als nächster LearningHub-Schritt folgen die separate Release-Prüfung, die
 abschließende Dokumentationskontrolle und der manuell von Jan geführte

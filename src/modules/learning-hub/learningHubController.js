@@ -1119,6 +1119,7 @@ function createFormState(type, target = {}, values = {}) {
     fieldErrors: {},
     errorMessage: '',
     isSubmitting: false,
+    returnConfirmation: false,
   }
 }
 
@@ -1839,6 +1840,22 @@ function getSubmission(form, submittedValues) {
   }
 
   return { values, serviceInput }
+}
+
+function createCurrentFormSubmission(form) {
+  const submission = { type: form.type }
+
+  for (const fieldName of ['moduleId', 'chapterId', 'learningNodeId']) {
+    if (form[fieldName] !== null) {
+      submission[fieldName] = form[fieldName]
+    }
+  }
+
+  for (const fieldName of FORM_FIELDS[form.type] ?? []) {
+    submission[fieldName] = form.values[fieldName]
+  }
+
+  return submission
 }
 
 function validateQuestionEditorValues(values) {
@@ -2632,6 +2649,7 @@ export function createLearningHubController({
   let isActive = false
   let cancelScheduledLoad = null
   let viewState = createInitialState()
+  let formBaselineSnapshot = null
   let artifactState = createInitialArtifactState()
   let artifactStoreSnapshot = null
   let artifactTargetSnapshot = null
@@ -2669,6 +2687,9 @@ export function createLearningHubController({
     onUpdateFormField: updateFormField,
     onSubmitForm: submitForm,
     onCancelForm: cancelForm,
+    onSaveFormBeforeReturn: saveFormBeforeReturn,
+    onDiscardFormChanges: discardFormChanges,
+    onContinueFormEditing: continueFormEditing,
     onOpenArtifactEditor: openArtifactEditor,
     onUpdateArtifactDraft: updateArtifactDraft,
     onSaveArtifact: saveArtifact,
@@ -3623,6 +3644,7 @@ export function createLearningHubController({
 
     resetQuestionInteraction()
     resetArtifactInteraction()
+    formBaselineSnapshot = null
     viewState = {
       ...viewState,
       expandedChapterIds: [
@@ -3649,6 +3671,10 @@ export function createLearningHubController({
 
     resetQuestionInteraction()
     resetArtifactInteraction()
+    formBaselineSnapshot =
+      form.type === FORM_TYPES.UPDATE_LEARNING_NODE
+        ? Object.freeze({ ...form.values })
+        : null
     viewState = {
       ...viewState,
       ...stateUpdates,
@@ -5875,6 +5901,8 @@ export function createLearningHubController({
     if (
       !canUseReadyView() ||
       !viewState.form ||
+      viewState.form.isSubmitting ||
+      viewState.form.returnConfirmation === true ||
       !FORM_FIELDS[viewState.form.type]?.includes(fieldName) ||
       typeof value !== 'string'
     ) return
@@ -5904,10 +5932,9 @@ export function createLearningHubController({
     }
   }
 
-  function cancelForm() {
-    if (!canUseReadyView() || !viewState.form) return
-
+  function closeFormWithoutMutation() {
     const cancelledForm = cloneForm(viewState.form)
+    formBaselineSnapshot = null
     viewState = {
       ...viewState,
       form: null,
@@ -5920,6 +5947,93 @@ export function createLearningHubController({
       chapterId: cancelledForm.chapterId,
       learningNodeId: cancelledForm.learningNodeId,
     })
+  }
+
+  function isUpdateLearningNodeFormDirty(form) {
+    return (
+      form.type === FORM_TYPES.UPDATE_LEARNING_NODE &&
+      formBaselineSnapshot !== null &&
+      FORM_FIELDS[FORM_TYPES.UPDATE_LEARNING_NODE].some(
+        (fieldName) =>
+          form.values[fieldName] !== formBaselineSnapshot[fieldName]
+      )
+    )
+  }
+
+  function cancelForm() {
+    if (
+      !canUseReadyView() ||
+      !viewState.form ||
+      viewState.form.isSubmitting
+    ) return
+
+    const form = cloneForm(viewState.form)
+    if (form.returnConfirmation === true) {
+      render({ type: 'formReturnConfirmation' })
+      return
+    }
+
+    if (isUpdateLearningNodeFormDirty(form)) {
+      viewState = {
+        ...viewState,
+        form: {
+          ...form,
+          returnConfirmation: true,
+        },
+      }
+      render({ type: 'formReturnConfirmation' })
+      return
+    }
+
+    closeFormWithoutMutation()
+  }
+
+  function continueFormEditing() {
+    if (
+      !canUseReadyView() ||
+      viewState.form?.type !== FORM_TYPES.UPDATE_LEARNING_NODE ||
+      viewState.form.returnConfirmation !== true ||
+      viewState.form.isSubmitting
+    ) return
+
+    viewState = {
+      ...viewState,
+      form: {
+        ...viewState.form,
+        returnConfirmation: false,
+      },
+    }
+    render({ type: 'formField', fieldName: 'title' })
+  }
+
+  function discardFormChanges() {
+    if (
+      !canUseReadyView() ||
+      viewState.form?.type !== FORM_TYPES.UPDATE_LEARNING_NODE ||
+      viewState.form.returnConfirmation !== true ||
+      viewState.form.isSubmitting
+    ) return
+
+    closeFormWithoutMutation()
+  }
+
+  function saveFormBeforeReturn() {
+    if (
+      !canUseReadyView() ||
+      viewState.form?.type !== FORM_TYPES.UPDATE_LEARNING_NODE ||
+      viewState.form.returnConfirmation !== true ||
+      viewState.form.isSubmitting
+    ) return
+
+    const submission = createCurrentFormSubmission(viewState.form)
+    viewState = {
+      ...viewState,
+      form: {
+        ...viewState.form,
+        returnConfirmation: false,
+      },
+    }
+    submitForm(submission)
   }
 
   function completeSuccessfulMutation(form, result) {
@@ -5954,6 +6068,7 @@ export function createLearningHubController({
     }
 
     nextState = reconcileStateWithHub(nextState, result.hub)
+    formBaselineSnapshot = null
     viewState = nextState
 
     if (
@@ -5988,7 +6103,8 @@ export function createLearningHubController({
     if (
       !canUseReadyView() ||
       !viewState.form ||
-      viewState.form.isSubmitting
+      viewState.form.isSubmitting ||
+      viewState.form.returnConfirmation === true
     ) return
 
     const form = cloneForm(viewState.form)
@@ -6114,6 +6230,7 @@ export function createLearningHubController({
     isActive = false
     cancelPendingLoad()
     viewState = createInitialState()
+    formBaselineSnapshot = null
     artifactState = createInitialArtifactState()
     artifactStoreSnapshot = null
     artifactTargetSnapshot = null

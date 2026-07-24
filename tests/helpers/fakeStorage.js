@@ -5,8 +5,10 @@ export class FakeStorage {
     )
     this.readError = null
     this.writeError = null
+    this.removeError = null
     this.getItemCalls = 0
     this.setItemCalls = 0
+    this.removeItemCalls = 0
   }
 
   getItem(key) {
@@ -31,6 +33,16 @@ export class FakeStorage {
     }
 
     this.entries.set(String(key), String(value))
+  }
+
+  removeItem(key) {
+    this.removeItemCalls += 1
+
+    if (this.removeError) {
+      throw this.removeError
+    }
+
+    this.entries.delete(String(key))
   }
 
   peek(key) {

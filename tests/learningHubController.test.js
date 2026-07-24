@@ -1228,6 +1228,234 @@ test('erstellt und aktualisiert LearningNodes mit stabiler Modul-, Kapitel- und 
   )
 })
 
+test('Node-Bearbeitung erhält Auswahl und Zuordnungen bei Abbruch, Validierungsfehler und Erfolg', () => {
+  const hub = createArtifactHubFixture()
+  const updatedHub = cloneValue(hub)
+  const updatedNode = updatedHub.modules[0].chapters[0].learningNodes.find(
+    (learningNode) => learningNode.id === 'node-pulse'
+  )
+  updatedNode.title = 'Aktualisierter synthetischer Puls'
+  updatedNode.content = 'Aktualisierter frei erfundener Pulsinhalt.'
+  const note = createArtifact()
+  const summary = createArtifact({
+    id: 'artifact-pulse-summary',
+    type: 'summary',
+    content: 'Synthetische Zusammenfassung zum Pulsmuster.',
+    createdAt: '2026-07-19T10:05:00.000Z',
+    updatedAt: '2026-07-19T10:05:00.000Z',
+  })
+  const question = createTestQuestion()
+  const system = createControllerSystem({
+    loadResults: { ok: true, status: 'loaded', hub },
+    artifactLoadResults: createArtifactLoadSuccess(
+      createArtifactStore([note, summary])
+    ),
+    testBankLoadResults: createTestBankLoadSuccess([question]),
+    mutationHandlers: {
+      updateLearningNode: createMutationSuccess(
+        'learningNodeUpdated',
+        updatedHub,
+        { updatedLearningNode: updatedNode }
+      ),
+    },
+  })
+  const actions = openReadyController(system)
+  selectArtifactNode(actions)
+  const artifactValuesBeforeEdit = cloneValue(
+    system.viewRecorder.lastState.artifacts.values
+  )
+  const questionsBeforeEdit = cloneValue(
+    system.viewRecorder.lastState.tests.bank.questions
+  )
+
+  actions.onOpenUpdateLearningNodeForm(
+    'module-orbit',
+    'chapter-signals',
+    'node-pulse'
+  )
+
+  assert.equal(system.viewRecorder.lastState.form.type, 'updateLearningNode')
+  assert.equal(
+    system.viewRecorder.lastState.form.returnConfirmation,
+    false
+  )
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-pulse'
+  )
+
+  actions.onCancelForm()
+
+  assert.equal(system.serviceDouble.calls.updateLearningNode.length, 0)
+  assert.equal(system.viewRecorder.lastState.form, null)
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-pulse'
+  )
+  assert.equal(
+    system.viewRecorder.lastState.hub.modules[0].chapters[0]
+      .learningNodes[0].title,
+    'Synthetischer Puls'
+  )
+  assert.deepEqual(
+    system.viewRecorder.lastState.artifacts.values,
+    artifactValuesBeforeEdit
+  )
+  assert.deepEqual(
+    system.viewRecorder.lastState.tests.bank.questions,
+    questionsBeforeEdit
+  )
+
+  actions.onOpenUpdateLearningNodeForm(
+    'module-orbit',
+    'chapter-signals',
+    'node-pulse'
+  )
+  actions.onUpdateFormField(
+    'title',
+    'Ungespeicherter synthetischer Puls'
+  )
+  actions.onUpdateFormField(
+    'content',
+    'Ungespeicherter frei erfundener Inhalt.'
+  )
+  actions.onCancelForm()
+
+  assert.equal(system.serviceDouble.calls.updateLearningNode.length, 0)
+  assert.equal(system.viewRecorder.lastState.form.type, 'updateLearningNode')
+  assert.equal(
+    system.viewRecorder.lastState.form.returnConfirmation,
+    true
+  )
+  assert.deepEqual(system.viewRecorder.lastState.form.values, {
+    title: 'Ungespeicherter synthetischer Puls',
+    content: 'Ungespeicherter frei erfundener Inhalt.',
+  })
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'formReturnConfirmation',
+  })
+
+  actions.onContinueFormEditing()
+
+  assert.equal(
+    system.viewRecorder.lastState.form.returnConfirmation,
+    false
+  )
+  assert.deepEqual(system.viewRecorder.lastState.form.values, {
+    title: 'Ungespeicherter synthetischer Puls',
+    content: 'Ungespeicherter frei erfundener Inhalt.',
+  })
+  assert.deepEqual(system.viewRecorder.lastState.focusTarget, {
+    type: 'formField',
+    fieldName: 'title',
+  })
+
+  actions.onCancelForm()
+  actions.onDiscardFormChanges()
+
+  assert.equal(system.serviceDouble.calls.updateLearningNode.length, 0)
+  assert.equal(system.viewRecorder.lastState.form, null)
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-pulse'
+  )
+  assert.deepEqual(
+    system.viewRecorder.lastState.artifacts.values,
+    artifactValuesBeforeEdit
+  )
+  assert.deepEqual(
+    system.viewRecorder.lastState.tests.bank.questions,
+    questionsBeforeEdit
+  )
+
+  actions.onOpenUpdateLearningNodeForm(
+    'module-orbit',
+    'chapter-signals',
+    'node-pulse'
+  )
+  actions.onUpdateFormField('title', '   ')
+  actions.onUpdateFormField('content', '\n')
+  actions.onCancelForm()
+  actions.onSaveFormBeforeReturn()
+
+  assert.equal(system.serviceDouble.calls.updateLearningNode.length, 0)
+  assert.equal(system.viewRecorder.lastState.form.type, 'updateLearningNode')
+  assert.equal(
+    system.viewRecorder.lastState.form.returnConfirmation,
+    false
+  )
+  assert.deepEqual(system.viewRecorder.lastState.form.values, {
+    title: '   ',
+    content: '\n',
+  })
+  assert.deepEqual(
+    Object.keys(system.viewRecorder.lastState.form.fieldErrors),
+    ['title', 'content']
+  )
+  assert.match(
+    system.viewRecorder.lastState.form.errorMessage,
+    /markierten Felder/
+  )
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-pulse'
+  )
+  assert.deepEqual(
+    system.viewRecorder.lastState.artifacts.values,
+    artifactValuesBeforeEdit
+  )
+  assert.deepEqual(
+    system.viewRecorder.lastState.tests.bank.questions,
+    questionsBeforeEdit
+  )
+
+  actions.onUpdateFormField('title', updatedNode.title)
+  actions.onUpdateFormField('content', updatedNode.content)
+  actions.onCancelForm()
+  actions.onSaveFormBeforeReturn()
+
+  assert.deepEqual(system.serviceDouble.calls.updateLearningNode, [
+    {
+      moduleId: 'module-orbit',
+      chapterId: 'chapter-signals',
+      learningNodeId: 'node-pulse',
+      title: updatedNode.title,
+      content: updatedNode.content,
+    },
+  ])
+  assert.equal(system.viewRecorder.lastState.form, null)
+  assert.equal(
+    system.viewRecorder.lastState.selectedLearningNodeId,
+    'node-pulse'
+  )
+  assert.ok(
+    system.viewRecorder.lastState.expandedChapterIds.includes(
+      'chapter-signals'
+    )
+  )
+  assert.deepEqual(
+    system.viewRecorder.lastState.hub.modules[0].chapters[0]
+      .learningNodes.find(
+        (learningNode) => learningNode.id === 'node-pulse'
+      ),
+    updatedNode
+  )
+  assert.deepEqual(
+    system.viewRecorder.lastState.artifacts.values,
+    artifactValuesBeforeEdit
+  )
+  assert.deepEqual(
+    system.viewRecorder.lastState.tests.bank.questions,
+    questionsBeforeEdit
+  )
+  assert.equal(system.artifactServiceDouble.calls.saveNote.length, 0)
+  assert.equal(system.artifactServiceDouble.calls.saveSummary.length, 0)
+  assert.equal(system.artifactServiceDouble.calls.clearNote.length, 0)
+  assert.equal(system.artifactServiceDouble.calls.clearSummary.length, 0)
+  assert.equal(system.testServiceDouble.calls.createQuestion.length, 0)
+  assert.equal(system.testServiceDouble.calls.updateQuestion.length, 0)
+})
+
 test('bereinigt Auswahl- und Formular-IDs anhand eines neuen autoritativen Hubs', () => {
   const hubWithoutSelectedChapter = createHubFixture()
   hubWithoutSelectedChapter.modules[0].chapters = [

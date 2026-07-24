@@ -1595,6 +1595,10 @@ textarea.learning-hub-question-form__control {
     flex-direction: column;
   }
 
+  .learning-hub-chapter__heading {
+    flex: 0 1 auto;
+  }
+
   .learning-hub-chapter__actions {
     align-items: stretch;
     flex-direction: column;

@@ -18,8 +18,8 @@
 | LearningTestAttemptLog-Schema | `1` |
 | LearningTestAttempt-Persistenznamespace | `v1` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale PromptVault-, LearningHub-Inhalts-, Progress-, LearningArtifact- und LearningTest-Verträge samt deterministischer Mock-Test-UI implementiert; Sync-Vertrag bleibt Zielzustand |
-| Letzte Aktualisierung | 2026-07-20 |
+| Status | Lokale PromptVault-, LearningHub-Inhalts-, Progress-, LearningArtifact-, LearningTest- und Demo-Initialisierungsverträge samt deterministischer Mock-Test-UI implementiert; Sync-Vertrag bleibt Zielzustand |
+| Letzte Aktualisierung | 2026-07-22 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
@@ -194,12 +194,15 @@ Versionshistorien gehören nicht zu Schema 2. Kapitelabschluss und
 Modulfortschritt verwenden den nachfolgend dokumentierten separaten
 LearningProgress-Vertrag. Testkompetenz bleibt davon getrennt.
 
-Der tief eingefrorene Demo-Hub enthält genau zwei Module, jedes mit mindestens
-einem Kapitel. Mindestens ein Kapitel enthält mehrere LearningNodes und
-mindestens eines noch keine. Seine Inhalte sind unabhängig erfunden und tragen
+Der tief eingefrorene Demo-Hub enthält genau das Modul
+`[Demo] KI-Grundlagen – vom Datensatz zum Transformer` mit drei Kapiteln und
+vier LearningNodes in fester Reihenfolge. Seine Inhalte sind unabhängig
+erfunden und tragen in der kanonischen Repository-Quelle
 `dataOrigin: synthetic`; private Nutzerdaten tragen `dataOrigin: private` und
-verwenden getrennte Datenquellen. Eine Migration ist nicht erforderlich, weil
-keine LearningHub-Nutzerdaten nach Schema 1 persistiert wurden.
+werden nie in diese Quelle übernommen. Die zugehörigen acht Artefakte und
+sieben Fragen stammen aus derselben kanonischen Seed-Definition. Eine
+Migration ist nicht erforderlich, weil keine LearningHub-Nutzerdaten nach
+Schema 1 persistiert wurden.
 
 Schema 2 bleibt ein reiner Inhaltsvertrag. Die lokale Persistenz speichert
 genau diesen Vertrag, ergänzt ihn aber nicht um UI-, Fortschritts-, Notiz- oder
@@ -249,10 +252,54 @@ privaten Hub:
 ```
 
 Dieser reine Lesevorgang schreibt nichts. Erst eine erfolgreiche fachliche
-Mutation persistiert den vollständigen neuen Hub. Die synthetischen Demo-Daten
-aus `learningHubDemo.js` werden weder automatisch importiert noch als privater
-Initialzustand gespeichert. Ein bewusst leerer privater Hub bleibt damit von
-der öffentlichen Demo-Datenquelle getrennt.
+Mutation persistiert den vollständigen neuen Hub. Zusätzlich darf der in
+ADR 0012 definierte vorgelagerte Erststartkoordinator den kanonischen
+synthetischen Demo-Datensatz genau einmal als private, lokal editierbare
+Arbeitskopie speichern. Diese Ausnahme gehört nicht zu `loadLearningHub()` und
+verändert dessen schreibfreies Verhalten nicht.
+
+Der Erststart gilt nur dann als vollständig uninitialisiert, wenn alle vier
+Keys fehlen:
+
+```text
+goldendawn.learningHub.content.v1
+goldendawn.learningHub.artifacts.v1
+goldendawn.learningHub.testBank.v1
+goldendawn.learningHub.demoInitialization.v1
+```
+
+Jeder vorhandene Fachstore verhindert das Seeding, auch wenn sein Vertragswert
+leer oder technisch nicht auswertbar ist. Der Koordinator ergänzt,
+normalisiert oder überschreibt einen solchen Wert nicht. Er validiert Hub,
+Artifact-Store und Testbank vollständig vor dem ersten Write, prüft ihre
+Referenzketten und schreibt danach sequenziell über die bestehenden
+Fachstorages. Progress und Attempts gehören nicht zum Seed.
+
+Der Marker wird als letzter Wert geschrieben und besitzt bei neuen Writes
+exakt diese Form:
+
+```json
+{
+  "schemaVersion": 1,
+  "initializationCompleted": true,
+  "decision": "seeded"
+}
+```
+
+`decision` ist `seeded` oder `skippedExistingData`. Bereits die Existenz des
+Marker-Keys gilt als abgeschlossene Entscheidung; sein Inhalt wird nicht zur
+Freigabe eines erneuten Seeds herangezogen. Wiederholte Aufrufe schreiben
+nichts, lokale Bearbeitungen bleiben erhalten und ein später gelöschtes Demo
+kehrt bei erhaltenem Marker nicht zurück. Nur das vollständige Löschen aller
+lokalen Anwendungsdaten einschließlich Marker ermöglicht einen neuen
+Erststart.
+
+Scheitert ein Fach- oder Marker-Write, gleicht der Koordinator jeden
+möglicherweise angelegten Fachwert mit dem vorbereiteten serialisierten Seed
+ab. Nur ein weiterhin bytegleicher Seed-Wert darf in umgekehrter Reihenfolge
+entfernt werden; fremde oder zwischenzeitlich geänderte Werte bleiben
+unangetastet. Dies ist eine defensive Rollback-Strategie, aber keine
+Multi-Key-Transaktion oder Multi-Tab-Sperre.
 
 Fehlende Daten sind ausdrücklich von ungültigem JSON, ungültigen Schema-Daten,
 einer falschen Datenherkunft und Adapterfehlern zu unterscheiden. Beschädigte
@@ -614,6 +661,10 @@ Es stellt `loadLearningTestAttempts()` und
 mit `schemaVersion: 1`, `dataOrigin: private` und leerem `attempts`-Array. Ein
 erfolgreicher Append liefert `status: appended` und den vollständigen neuen
 defensiv geklonten `attemptLog`.
+
+Der einmalige LearningHub-Demo-Erststart legt diesen Attempt-Key ausdrücklich
+nicht an. Fragen werden vorbefüllt, aber Attempts, Antworten, Ergebnisse und
+Historieneinträge entstehen erst durch eine vom Nutzer abgeschlossene Abgabe.
 
 `LearningTestAttemptStorage` besitzt keinen öffentlichen allgemeinen
 Save-Pfad. Vor dem Schreiben lädt und validiert es den aktuellen vollständigen

@@ -6,8 +6,8 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; LearningArtifact- und lokale deterministische Mock-Test-UI berücksichtigt |
-| Letzte Aktualisierung | 2026-07-20 |
+| Status | Verbindliche Sicherheitsbasis; koordinierter LearningHub-Demo-Erststart und lokale deterministische Mock-Test-UI berücksichtigt |
+| Letzte Aktualisierung | 2026-07-22 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -177,10 +177,24 @@ Controller greifen nicht direkt auf `localStorage` zu.
   Zusammenfassungen, Testfragen, Erklärungen, Antworten und Attempts werden
   weder in das Repository übernommen noch in öffentlichen Demo-Daten oder
   unnötigen Logs verwendet.
-- Der Demo-Hub verwendet ausschließlich unabhängig erfundene synthetische
-  Inhalte mit `dataOrigin: synthetic`. Private Nutzerdaten tragen
-  `dataOrigin: private` und verwenden getrennte Datenquellen. Die Demo wird
-  weder automatisch importiert noch als privater Initialzustand gespeichert.
+- Die kanonische LearningHub-Demoquelle verwendet ausschließlich unabhängig
+  erfundene synthetische Inhalte mit `dataOrigin: synthetic`; private
+  Nutzerdaten fließen niemals in diese Repository-Quelle zurück. ADR 0012
+  erlaubt daraus genau einmal eine defensive Arbeitskopie mit
+  `dataOrigin: private`, weil die lokalen Fachstorages ausschließlich private
+  Arbeitszustände akzeptieren. Das Modul bleibt sichtbar mit `[Demo]`
+  gekennzeichnet und der Vorgang überträgt keine Daten an externe Dienste.
+- Dieser Erststart ist nur erlaubt, wenn Inhaltsstore, Artifact-Store,
+  Testbank und Initialisierungsmarker sämtlich fehlen. Jeder vorhandene Key –
+  auch ein leerer oder beschädigter – verhindert Ergänzung und Überschreiben.
+  Der zuletzt geschriebene Marker hält sowohl einen Seed als auch ein bewusstes
+  Überspringen dauerhaft fest; Bearbeitungen und spätere Löschungen werden
+  nicht durch erneutes Seeding rückgängig gemacht.
+- Vor dem ersten Write werden alle drei Fachverträge und ihre Referenzketten
+  geprüft. Bei einem Teilfehler darf der Rollback ausschließlich noch
+  bytegleiche Seed-Werte entfernen. Fremde oder zwischenzeitlich geänderte
+  Werte bleiben unangetastet. Attempt- und Progress-Stores werden nicht
+  vorbefüllt; es entstehen keine Antworten, Ergebnisse oder Historieneinträge.
 - Ein fehlender Storage-Key liefert nur im Arbeitsspeicher einen leeren
   privaten Hub und löst beim Laden keinen Schreibzugriff aus. Beschädigtes JSON,
   ungültige Schema-Daten oder Adapterfehler werden davon unterschieden und
@@ -643,7 +657,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | --- | --- |
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
-| `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; validierte private LearningTestBank und append-only Attempts ohne Demo-Seeding, deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; Release-Prüfung ausstehend |
+| `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; Release-Prüfung ausstehend |
 | `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
 | `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |

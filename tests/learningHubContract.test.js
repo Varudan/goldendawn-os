@@ -8,7 +8,24 @@ import {
 } from '../src/modules/learning-hub/learningHubContract.js'
 
 function createHub() {
-  return structuredClone(LEARNING_HUB_DEMO)
+  const hub = structuredClone(LEARNING_HUB_DEMO)
+
+  hub.modules[0].chapters = [hub.modules[0].chapters[0]]
+  hub.modules.push({
+    id: 'contract-module-second',
+    title: 'Zweites synthetisches Vertragsmodul',
+    position: 2,
+    chapters: [
+      {
+        id: 'contract-chapter-second',
+        title: 'Leeres synthetisches Vertragskapitel',
+        position: 1,
+        learningNodes: [],
+      },
+    ],
+  })
+
+  return hub
 }
 
 function getChapter(hub, moduleIndex = 0, chapterIndex = 0) {
@@ -29,24 +46,21 @@ function assertDeepFrozen(value) {
   Object.values(value).forEach(assertDeepFrozen)
 }
 
-test('akzeptiert den synthetischen Demo-Hub mit zwei Modulen', () => {
+test('akzeptiert den synthetischen Demo-Hub mit dem vollständigen KI-Modul', () => {
   assert.deepEqual(validateLearningHub(LEARNING_HUB_DEMO), {
     ok: true,
     errors: [],
   })
   assert.equal(LEARNING_HUB_DEMO.schemaVersion, 2)
   assert.equal(LEARNING_HUB_DEMO.dataOrigin, 'synthetic')
-  assert.equal(LEARNING_HUB_DEMO.modules.length, 2)
-  assert.ok(LEARNING_HUB_DEMO.modules.every((module) => module.chapters.length > 0))
-  assert.ok(
-    LEARNING_HUB_DEMO.modules.some((module) =>
-      module.chapters.some((chapter) => chapter.learningNodes.length > 1)
-    )
-  )
-  assert.ok(
-    LEARNING_HUB_DEMO.modules.some((module) =>
-      module.chapters.some((chapter) => chapter.learningNodes.length === 0)
-    )
+  assert.equal(LEARNING_HUB_DEMO.modules.length, 1)
+  assert.equal(LEARNING_HUB_DEMO.modules[0].chapters.length, 3)
+  assert.equal(
+    LEARNING_HUB_DEMO.modules[0].chapters.reduce(
+      (nodeCount, chapter) => nodeCount + chapter.learningNodes.length,
+      0
+    ),
+    4
   )
 })
 

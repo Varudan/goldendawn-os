@@ -148,3 +148,52 @@ test('serialisiert einen erfolgreichen Schreibzugriff genau einmal', () => {
   assert.equal(fakeStorage.setItemCalls, 1)
   assert.equal(fakeStorage.peek('prompts'), JSON.stringify(value))
 })
+
+test('entfernt beim Rollback ausschließlich einen bytegleich erwarteten JSON-Wert', () => {
+  const expectedValue = {
+    schemaVersion: 1,
+    values: ['synthetisch'],
+  }
+  const fakeStorage = new FakeStorage([
+    ['seed', JSON.stringify(expectedValue)],
+  ])
+  const storageAdapter = createStorageAdapter(fakeStorage)
+
+  const result = storageAdapter.removeJsonIfUnchanged(
+    'seed',
+    expectedValue
+  )
+
+  assert.deepEqual(result, { ok: true, status: 'removed' })
+  assert.equal(fakeStorage.peek('seed'), null)
+  assert.equal(fakeStorage.getItemCalls, 1)
+  assert.equal(fakeStorage.removeItemCalls, 1)
+})
+
+test('erhält beim Rollback einen zwischenzeitlich veränderten Wert unverändert', () => {
+  const currentValue = JSON.stringify({ value: 'Nutzerdaten' })
+  const fakeStorage = new FakeStorage([['seed', currentValue]])
+  const storageAdapter = createStorageAdapter(fakeStorage)
+
+  const result = storageAdapter.removeJsonIfUnchanged('seed', {
+    value: 'Demo',
+  })
+
+  assert.equal(result.ok, false)
+  assert.equal(result.status, 'conflict')
+  assert.equal(result.error.code, 'storageValueChanged')
+  assert.equal(fakeStorage.peek('seed'), currentValue)
+  assert.equal(fakeStorage.removeItemCalls, 0)
+})
+
+test('behandelt einen bereits fehlenden Rollback-Wert als sicheren No-op', () => {
+  const fakeStorage = new FakeStorage()
+  const storageAdapter = createStorageAdapter(fakeStorage)
+
+  const result = storageAdapter.removeJsonIfUnchanged('seed', {
+    value: 'Demo',
+  })
+
+  assert.deepEqual(result, { ok: true, status: 'missing' })
+  assert.equal(fakeStorage.removeItemCalls, 0)
+})
