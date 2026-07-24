@@ -161,8 +161,108 @@ export function createStorageAdapter(storageImplementation) {
     }
   }
 
+  function removeJsonIfUnchanged(key, expectedValue) {
+    if (!isValidStorageKey(key)) {
+      return createFailure(
+        'invalidKey',
+        'invalidStorageKey',
+        'Der Storage-Key muss eine nicht leere Zeichenfolge sein.'
+      )
+    }
+
+    if (
+      typeof storageImplementation?.getItem !== 'function' ||
+      typeof storageImplementation?.removeItem !== 'function'
+    ) {
+      return createFailure(
+        'unavailable',
+        'storageUnavailable',
+        'Der lokale Speicher ist nicht verfügbar.'
+      )
+    }
+
+    let expectedSerializedValue
+
+    try {
+      expectedSerializedValue = JSON.stringify(expectedValue)
+    } catch {
+      return createFailure(
+        'serializationFailed',
+        'serializationFailed',
+        'Die Daten konnten nicht für den Abgleich vorbereitet werden.'
+      )
+    }
+
+    if (expectedSerializedValue === undefined) {
+      return createFailure(
+        'serializationFailed',
+        'serializationFailed',
+        'Die Daten konnten nicht für den Abgleich vorbereitet werden.'
+      )
+    }
+
+    let currentSerializedValue
+
+    try {
+      currentSerializedValue = storageImplementation.getItem(key)
+    } catch (error) {
+      if (isSecurityError(error)) {
+        return createFailure(
+          'unavailable',
+          'storageUnavailable',
+          'Der Zugriff auf den lokalen Speicher wurde blockiert.'
+        )
+      }
+
+      return createFailure(
+        'readFailed',
+        'storageReadFailed',
+        'Die lokalen Daten konnten nicht abgeglichen werden.'
+      )
+    }
+
+    if (currentSerializedValue === null) {
+      return {
+        ok: true,
+        status: 'missing',
+      }
+    }
+
+    if (currentSerializedValue !== expectedSerializedValue) {
+      return createFailure(
+        'conflict',
+        'storageValueChanged',
+        'Der lokale Wert wurde zwischenzeitlich verändert.'
+      )
+    }
+
+    try {
+      storageImplementation.removeItem(key)
+    } catch (error) {
+      if (isSecurityError(error)) {
+        return createFailure(
+          'unavailable',
+          'storageUnavailable',
+          'Der Zugriff auf den lokalen Speicher wurde blockiert.'
+        )
+      }
+
+      return createFailure(
+        'removeFailed',
+        'storageRemoveFailed',
+        'Die lokalen Daten konnten nicht entfernt werden.'
+      )
+    }
+
+    return {
+      ok: true,
+      status: 'removed',
+    }
+  }
+
   return Object.freeze({
     readJson,
     writeJson,
+    removeJsonIfUnchanged,
   })
 }

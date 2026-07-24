@@ -6,8 +6,8 @@
 | --- | --- |
 | Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; lokale LearningHub-Inhalts-, Progress-, LearningArtifact- und deterministische Mock-Test-UI implementiert, Release-Prüfung noch offen |
-| Letzte Aktualisierung | 2026-07-20 |
+| Status | Verbindliche Zielarchitektur; koordinierter LearningHub-Demo-Erststart sowie lokale Inhalts-, Progress-, LearningArtifact- und deterministische Mock-Test-UI implementiert, Release-Prüfung noch offen |
+| Letzte Aktualisierung | 2026-07-22 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -131,8 +131,11 @@ Fachliche Storage-Schichten kapseln die lokale Speicherung einer Domäne. Sie
 besitzen feste, nicht nutzerkontrollierte `localStorage`-Keys, validieren
 Domänenobjekte und stellen fachlich benannte Lade- und Speicherfunktionen
 bereit. Der gemeinsame `StorageAdapter` wird per Dependency Injection
-bereitgestellt und übernimmt ausschließlich den technischen JSON-Lese- und
-Schreibzugriff.
+bereitgestellt und übernimmt den technischen JSON-Lese- und Schreibzugriff.
+Für den in ADR 0012 begrenzten Multi-Store-Erststart bietet er zusätzlich
+`removeJsonIfUnchanged`: Der technische Rollback entfernt einen Wert nur,
+wenn dessen aktuelle Serialisierung noch exakt dem erwarteten Seed entspricht.
+Dieser Pfad ist keine allgemeine fachliche Löschoperation.
 
 Fehlende Daten werden von beschädigtem JSON, ungültigen Domänendaten und
 Adapterfehlern unterschieden. Ein fachlicher leerer Initialzustand darf nur für
@@ -301,10 +304,38 @@ Storage-Schichten machen private Schema-2-Inhalte bedienbar und persistieren
 sie unter dem festen Key
 `goldendawn.learningHub.content.v1`. Ein fehlender Key liefert nur im
 Arbeitsspeicher einen frischen leeren privaten Hub und löst keinen
-Schreibzugriff aus. Der öffentliche Demo-Hub trägt `dataOrigin: synthetic`, ist
-tief unveränderlich und wird weder automatisch importiert noch als privater
-Initialzustand gespeichert. Private Nutzerdaten tragen `dataOrigin: private`
-und bleiben von Repository-Demos und deren Datenquellen getrennt.
+Schreibzugriff aus. Dies bleibt das Verhalten der einzelnen Ladeoperation.
+
+Vorgelagert koordiniert `src/main.js` einmalig den vollständig uninitialisierten
+Erststart:
+
+```text
+LearningHubDemoInitializer
+  ├→ LearningHubDemoInitializationStorage → StorageAdapter
+  ├→ LearningHubStorage                   → StorageAdapter
+  ├→ LearningArtifactStorage              → StorageAdapter
+  └→ LearningTestBankStorage              → StorageAdapter
+```
+
+Der tief unveränderliche kanonische Demo-Datensatz trägt
+`dataOrigin: synthetic`. Erst nach vollständiger Produktionsvalidierung und
+gemeinsamer Referenzprüfung erzeugt der Koordinator defensive private
+Arbeitskopien und schreibt sie sequenziell über die drei bestehenden
+Fachstorages. Das ist ausschließlich erlaubt, wenn Inhaltsstore,
+Artifact-Store, Testbank und der Marker
+`goldendawn.learningHub.demoInitialization.v1` sämtlich fehlen. Jeder
+vorhandene Fachstore – auch ein leerer oder nicht auswertbarer – verhindert
+das Seeding und wird nicht verändert. Der zuletzt geschriebene Marker hält die
+Entscheidung `seeded` oder `skippedExistingData` dauerhaft fest.
+
+Bei einem Speicherfehler entfernt der Rollback nur noch bytegenau mit dem
+vorbereiteten Seed übereinstimmende Werte; fremde oder zwischenzeitlich
+geänderte Daten bleiben unangetastet. Wiederholte Aufrufe sind schreibfrei,
+Bearbeitungen bleiben erhalten und ein später gelöschtes Demo kehrt bei
+erhaltenem Marker nicht zurück. Progress und Attempt-Historie werden nicht
+vorbefüllt. Der Ablauf verwendet weder Netzwerk noch KI. Private Nutzerdaten
+werden nie in die synthetische Repository-Quelle übernommen. Die gezielte
+Erweiterung der bisherigen Demo-Trennung ist in ADR 0012 dokumentiert.
 
 Kapitelabschluss und daraus abgeleiteter Modulfortschritt sind in einer davon
 getrennten, implementierten Progress-Foundation modelliert und über dieselbe

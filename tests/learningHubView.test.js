@@ -299,6 +299,7 @@ function createFormState(type, overrides = {}) {
     fieldErrors: {},
     errorMessage: '',
     isSubmitting: false,
+    returnConfirmation: false,
     ...overrides,
   }
 }
@@ -1097,7 +1098,13 @@ test('zeigt leere Kapitel und mehrere Nodes mit richtiger Auswahl- und Aktionsve
       )
     )
 
-    findButton(nodeCards[1], 'LearningNode auswählen').click()
+    assert.equal(
+      findButton(nodeCards[0], 'LearningNode erneut anzeigen'),
+      null
+    )
+    assert.equal(findButton(nodeCards[0], 'LearningNode anzeigen'), null)
+
+    findButton(nodeCards[1], 'LearningNode anzeigen').click()
     findButton(nodeCards[1], 'LearningNode bearbeiten').click()
     createNodeButtons.forEach((button) => button.click())
     findButton(root, 'Kapitel umbenennen').click()
@@ -1115,6 +1122,377 @@ test('zeigt leere Kapitel und mehrere Nodes mit richtiger Auswahl- und Aktionsve
     assert.deepEqual(actionCalls.renameChapter, [
       ['module-orbit', 'chapter-signals'],
     ])
+  })
+})
+
+test('LearningNode-Aktionszustände und Rückkehrbestätigung bleiben eindeutig und exklusiv', () => {
+  withLearningHubView(({ document, root, view }) => {
+    const artifactValues = {
+      note: 'Persistierte synthetische Notiz zum ersten Puls.',
+      summary: 'Persistierte synthetische Zusammenfassung zum ersten Puls.',
+    }
+    const question = createAuthorQuestionFixture()
+    const testsState = createTestsState({
+      bank: {
+        questions: [question],
+        totalQuestionCount: 1,
+      },
+    })
+    let hub = createHubFixture()
+    let formState = null
+    let formBaseline = null
+    let cancelCalls = 0
+    let continueCalls = 0
+    let discardCalls = 0
+    let saveBeforeReturnCalls = 0
+    const openCalls = []
+    const submissions = []
+
+    function getSelectedNode(currentHub = hub) {
+      return currentHub.modules
+        .find((learningModule) => learningModule.id === 'module-orbit')
+        .chapters
+        .find((chapter) => chapter.id === 'chapter-signals')
+        .learningNodes
+        .find((learningNode) => learningNode.id === 'node-first')
+    }
+
+    function getSelectedNodeCard() {
+      return findByClass(root, 'learning-hub-node-card').find(
+        (card) => card.getAttribute('aria-current') === 'true'
+      )
+    }
+
+    function getOtherNodeCard() {
+      return findByClass(root, 'learning-hub-node-card').find(
+        (card) => card.getAttribute('aria-current') !== 'true'
+      )
+    }
+
+    function renderCurrent(focusTarget = null) {
+      view.render(
+        createViewState({
+          phase: 'ready',
+          hub,
+          selectedModuleId: 'module-orbit',
+          expandedChapterIds: ['chapter-signals'],
+          selectedLearningNodeId: 'node-first',
+          form: formState,
+          artifacts: createArtifactState({ values: artifactValues }),
+          tests: testsState,
+          focusTarget,
+        }),
+        actions
+      )
+    }
+
+    function closeForm() {
+      formState = null
+      formBaseline = null
+      renderCurrent({
+        type: 'formTrigger',
+        formType: 'updateLearningNode',
+        moduleId: 'module-orbit',
+        chapterId: 'chapter-signals',
+        learningNodeId: 'node-first',
+      })
+    }
+
+    function persistSubmission(submission) {
+      submissions.push(submission)
+      const updatedHub = structuredClone(hub)
+      const updatedNode = getSelectedNode(updatedHub)
+      updatedNode.title = submission.title
+      updatedNode.content = submission.content
+      hub = updatedHub
+      closeForm()
+    }
+
+    const actions = {
+      onOpenUpdateLearningNodeForm(...identifiers) {
+        openCalls.push(identifiers)
+        const selectedNode = getSelectedNode()
+        formState = createFormState('updateLearningNode', {
+          moduleId: 'module-orbit',
+          chapterId: 'chapter-signals',
+          learningNodeId: selectedNode.id,
+          values: {
+            title: selectedNode.title,
+            content: selectedNode.content,
+          },
+        })
+        formBaseline = { ...formState.values }
+        renderCurrent({ type: 'formField', fieldName: 'title' })
+      },
+      onUpdateFormField(fieldName, value) {
+        formState = {
+          ...formState,
+          values: {
+            ...formState.values,
+            [fieldName]: value,
+          },
+          fieldErrors: {},
+          errorMessage: '',
+        }
+      },
+      onCancelForm() {
+        cancelCalls += 1
+        const isDirty = ['title', 'content'].some(
+          (fieldName) =>
+            formState.values[fieldName] !== formBaseline[fieldName]
+        )
+
+        if (!isDirty) {
+          closeForm()
+          return
+        }
+
+        formState = { ...formState, returnConfirmation: true }
+        renderCurrent({ type: 'formReturnConfirmation' })
+      },
+      onSubmitForm(submission) {
+        persistSubmission(submission)
+      },
+      onContinueFormEditing() {
+        continueCalls += 1
+        formState = { ...formState, returnConfirmation: false }
+        renderCurrent({ type: 'formField', fieldName: 'title' })
+      },
+      onDiscardFormChanges() {
+        discardCalls += 1
+        closeForm()
+      },
+      onSaveFormBeforeReturn() {
+        saveBeforeReturnCalls += 1
+        persistSubmission({
+          type: formState.type,
+          moduleId: formState.moduleId,
+          chapterId: formState.chapterId,
+          learningNodeId: formState.learningNodeId,
+          ...formState.values,
+        })
+      },
+    }
+
+    renderCurrent()
+
+    assert.equal(findByClass(root, 'learning-hub-node-detail').length, 1)
+    assert.equal(findByClass(root, 'learning-hub-form').length, 0)
+    assert.equal(findByClass(root, 'learning-hub-artifacts').length, 1)
+    assert.equal(findByClass(root, 'learning-hub-test-questions').length, 1)
+    assert.ok(root.textContent.includes(artifactValues.note))
+    assert.ok(root.textContent.includes(artifactValues.summary))
+    assert.ok(root.textContent.includes(question.prompt))
+    assert.ok(getSelectedNodeCard().textContent.includes('Ausgewählt'))
+    assert.deepEqual(
+      findByTag(getSelectedNodeCard(), 'button').map(
+        (button) => button.textContent
+      ),
+      ['LearningNode bearbeiten']
+    )
+    assert.deepEqual(
+      findByTag(getOtherNodeCard(), 'button').map(
+        (button) => button.textContent
+      ),
+      ['LearningNode anzeigen', 'LearningNode bearbeiten']
+    )
+    assert.equal(findButton(root, 'LearningNode erneut anzeigen'), null)
+    assert.equal(findButton(root, 'LearningNode auswählen'), null)
+
+    findButton(getSelectedNodeCard(), 'LearningNode bearbeiten').click()
+
+    assert.deepEqual(openCalls, [
+      ['module-orbit', 'chapter-signals', 'node-first'],
+    ])
+    const editorForms = findByClass(root, 'learning-hub-form')
+    assert.equal(editorForms.length, 1)
+    assert.equal(findByClass(root, 'learning-hub-node-detail').length, 0)
+    assert.equal(findByClass(root, 'learning-hub-artifacts').length, 0)
+    assert.equal(findByClass(root, 'learning-hub-test-questions').length, 0)
+    assert.equal(findButton(root, 'Testfrage erstellen'), null)
+    assert.equal(findButton(root, 'Testfrage bearbeiten'), null)
+    assert.equal(root.textContent.includes(artifactValues.note), false)
+    assert.equal(root.textContent.includes(question.prompt), false)
+    assert.ok(
+      editorForms[0].parentNode.classList.contains(
+        'learning-hub-chapter__panel'
+      )
+    )
+    const editorSiblings = editorForms[0].parentNode.children
+    const nodeGrid = findByClass(
+      editorForms[0].parentNode,
+      'learning-hub-node-grid'
+    )[0]
+    assert.equal(
+      editorSiblings.indexOf(editorForms[0]),
+      editorSiblings.indexOf(nodeGrid) + 1
+    )
+    assert.deepEqual(
+      findByTag(editorForms[0], 'button').map(
+        (button) => button.textContent
+      ),
+      ['Abbrechen', 'LearningNode speichern']
+    )
+    assert.deepEqual(
+      findByTag(getSelectedNodeCard(), 'button').map(
+        (button) => button.textContent
+      ),
+      ['Zur Ansicht zurück']
+    )
+    assert.deepEqual(
+      findByTag(getOtherNodeCard(), 'button').map(
+        (button) => button.textContent
+      ),
+      ['LearningNode anzeigen', 'LearningNode bearbeiten']
+    )
+
+    findButton(getSelectedNodeCard(), 'Zur Ansicht zurück').click()
+
+    assert.equal(cancelCalls, 1)
+    assert.deepEqual(submissions, [])
+    assert.equal(findByClass(root, 'learning-hub-form').length, 0)
+    assert.equal(findByClass(root, 'learning-hub-node-detail').length, 1)
+    assert.ok(root.textContent.includes(artifactValues.note))
+    assert.ok(root.textContent.includes(question.prompt))
+
+    findButton(getSelectedNodeCard(), 'LearningNode bearbeiten').click()
+
+    const dirtyTitle = 'Nicht gespeicherter Fantasietitel'
+    const dirtyContent = 'Nicht gespeicherter synthetischer Inhalt.'
+    const titleControl = findControl(root, 'title')
+    const contentControl = findControl(root, 'content')
+    titleControl.value = dirtyTitle
+    titleControl.dispatchEvent({ type: 'input' })
+    contentControl.value = dirtyContent
+    contentControl.dispatchEvent({ type: 'input' })
+
+    findButton(getSelectedNodeCard(), 'Zur Ansicht zurück').click()
+
+    assert.equal(cancelCalls, 2)
+    assert.equal(findByClass(root, 'learning-hub-form').length, 1)
+    assert.equal(findByClass(root, 'learning-hub-node-detail').length, 0)
+    const firstConfirmation = findByClass(
+      root,
+      'learning-hub-form-return'
+    )[0]
+    assert.ok(firstConfirmation)
+    assert.equal(findByClass(root, 'learning-hub-form-return').length, 1)
+    assert.equal(
+      findByTag(firstConfirmation, 'legend')[0].textContent,
+      'Ungespeicherte Änderungen'
+    )
+    assert.deepEqual(
+      findByTag(firstConfirmation, 'button').map(
+        (button) => button.textContent
+      ),
+      ['Speichern', 'Änderungen verwerfen', 'Weiter bearbeiten']
+    )
+    assert.equal(document.activeElement.textContent, 'Weiter bearbeiten')
+    assert.equal(findControl(root, 'title').disabled, true)
+    assert.equal(findControl(root, 'content').disabled, true)
+    assert.equal(
+      findButton(getSelectedNodeCard(), 'Zur Ansicht zurück').disabled,
+      true
+    )
+
+    findButton(firstConfirmation, 'Weiter bearbeiten').click()
+
+    assert.equal(continueCalls, 1)
+    assert.equal(findByClass(root, 'learning-hub-form-return').length, 0)
+    assert.equal(findControl(root, 'title').value, dirtyTitle)
+    assert.equal(findControl(root, 'content').value, dirtyContent)
+    assert.equal(document.activeElement, findControl(root, 'title'))
+
+    findButton(root, 'Abbrechen').click()
+
+    assert.equal(cancelCalls, 3)
+    const escapeConfirmation = findByClass(
+      root,
+      'learning-hub-form-return'
+    )[0]
+    const escapeEvent = { type: 'keydown', key: 'Escape' }
+    escapeConfirmation.dispatchEvent(escapeEvent)
+
+    assert.equal(escapeEvent.defaultPrevented, true)
+    assert.equal(continueCalls, 2)
+    assert.equal(findByClass(root, 'learning-hub-form-return').length, 0)
+    assert.equal(findControl(root, 'title').value, dirtyTitle)
+    assert.equal(findControl(root, 'content').value, dirtyContent)
+
+    formState = {
+      ...formState,
+      fieldErrors: {
+        title: 'Bitte gib einen gültigen Titel ein.',
+      },
+      errorMessage: 'Bitte korrigiere die markierten Felder.',
+    }
+    renderCurrent({ type: 'formField', fieldName: 'title' })
+
+    assert.equal(findByClass(root, 'learning-hub-form').length, 1)
+    assert.equal(findByClass(root, 'learning-hub-node-detail').length, 0)
+    assert.equal(findByClass(root, 'learning-hub-artifacts').length, 0)
+    assert.equal(findByClass(root, 'learning-hub-test-questions').length, 0)
+    assert.equal(findControl(root, 'title').value, dirtyTitle)
+    assert.equal(findControl(root, 'content').value, dirtyContent)
+    assert.ok(
+      findByClass(root, 'learning-hub-form__error')[0].textContent.includes(
+        'Bitte korrigiere die markierten Felder.'
+      )
+    )
+
+    findButton(root, 'Abbrechen').click()
+    findButton(root, 'Änderungen verwerfen').click()
+
+    assert.equal(cancelCalls, 4)
+    assert.equal(discardCalls, 1)
+    assert.deepEqual(submissions, [])
+    assert.equal(findByClass(root, 'learning-hub-form').length, 0)
+    const restoredDetail = findByClass(root, 'learning-hub-node-detail')[0]
+    assert.ok(restoredDetail)
+    assert.ok(
+      restoredDetail.textContent.includes(
+        'Frei erfundener erster Inhalt mit\nmehreren Textzeilen.'
+      )
+    )
+    assert.equal(getSelectedNodeCard().getAttribute('aria-current'), 'true')
+    assert.ok(root.textContent.includes(artifactValues.note))
+    assert.ok(root.textContent.includes(question.prompt))
+
+    findButton(getSelectedNodeCard(), 'LearningNode bearbeiten').click()
+    const updatedTitleControl = findControl(root, 'title')
+    const updatedContentControl = findControl(root, 'content')
+    updatedTitleControl.value = 'Aktualisierter Fantasiepuls'
+    updatedTitleControl.dispatchEvent({ type: 'input' })
+    updatedContentControl.value =
+      'Aktualisierter frei erfundener Text.'
+    updatedContentControl.dispatchEvent({ type: 'input' })
+    findButton(root, 'Abbrechen').click()
+    findButton(root, 'Speichern').click()
+
+    assert.deepEqual(submissions, [
+      {
+        type: 'updateLearningNode',
+        moduleId: 'module-orbit',
+        chapterId: 'chapter-signals',
+        learningNodeId: 'node-first',
+        title: 'Aktualisierter Fantasiepuls',
+        content: 'Aktualisierter frei erfundener Text.',
+      },
+    ])
+    assert.equal(cancelCalls, 5)
+    assert.equal(saveBeforeReturnCalls, 1)
+    assert.equal(findByClass(root, 'learning-hub-form').length, 0)
+    const updatedDetail = findByClass(root, 'learning-hub-node-detail')[0]
+    assert.ok(updatedDetail.textContent.includes('Aktualisierter Fantasiepuls'))
+    assert.ok(
+      updatedDetail.textContent.includes(
+        'Aktualisierter frei erfundener Text.'
+      )
+    )
+    assert.equal(getSelectedNodeCard().getAttribute('aria-current'), 'true')
+    assert.ok(root.textContent.includes(artifactValues.note))
+    assert.ok(root.textContent.includes(artifactValues.summary))
+    assert.ok(root.textContent.includes(question.prompt))
   })
 })
 
@@ -1830,6 +2208,7 @@ test('alle sechs Formulartypen werden nur im passenden UI-Kontext gerendert', ()
       {
         type: 'updateLearningNode',
         selectedModuleId: 'module-orbit',
+        selectedLearningNodeId: 'node-first',
         moduleId: 'module-orbit',
         chapterId: 'chapter-signals',
         learningNodeId: 'node-first',
@@ -1850,6 +2229,8 @@ test('alle sechs Formulartypen werden nur im passenden UI-Kontext gerendert', ()
           hub,
           selectedModuleId: formCase.selectedModuleId,
           expandedChapterIds: formCase.expandedChapterIds,
+          selectedLearningNodeId:
+            formCase.selectedLearningNodeId ?? null,
           form: createFormState(formCase.type, {
             moduleId: formCase.moduleId ?? null,
             chapterId: formCase.chapterId ?? null,
@@ -3520,6 +3901,10 @@ test('LearningTest-CSS bewahrt Touch-Ziele, Umbruch und responsive Anordnung', (
   )
 
   assert.ok(compactStart >= 0)
+  assert.match(
+    compactRules,
+    /\.learning-hub-chapter__heading\s*\{[^}]*flex:\s*0 1 auto;/s
+  )
   assert.match(
     compactRules,
     /\.learning-hub-local-test__start,[^{]*\.learning-hub-test-runner__actions,[^{]*\.learning-hub-test-cancel__actions[^{]*\{[^}]*flex-direction:\s*column;/s

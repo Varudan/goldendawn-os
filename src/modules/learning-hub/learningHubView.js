@@ -312,6 +312,7 @@ function createFocusReferences() {
     moduleHeading: null,
     status: null,
     formAlert: null,
+    formReturnConfirmation: null,
     formFields: new Map(),
     formTriggers: new Map(),
     chapterToggles: new Map(),
@@ -951,12 +952,22 @@ function createForm(
   const config = FORM_CONFIGS[formState?.type]
   if (!formState || !config) return null
 
+  const returnConfirmation =
+    formState.type === 'updateLearningNode' &&
+    formState.returnConfirmation === true
+  const externalInteractionBlock =
+    isInteractionBlocked && !returnConfirmation
+  const controlsDisabled =
+    formState.isSubmitting ||
+    externalInteractionBlock ||
+    returnConfirmation
+
   const form = createElement('form', 'learning-hub-form')
   form.noValidate = true
   form.setAttribute('autocomplete', 'off')
   form.setAttribute(
     'aria-busy',
-    String(formState.isSubmitting || isInteractionBlocked)
+    String(formState.isSubmitting || externalInteractionBlock)
   )
   const header = createElement('div', 'learning-hub-form__header')
   const headingLevel = [
@@ -979,7 +990,7 @@ function createForm(
       actions,
       focusReferences,
       formIndex,
-      isInteractionBlocked
+      controlsDisabled
     )
     controls.set(fieldConfig.name, field.control)
     fields.append(field.element)
@@ -1005,7 +1016,7 @@ function createForm(
     'Abbrechen',
     'button button--secondary',
     () => actions.onCancelForm?.(),
-    { disabled: formState.isSubmitting || isInteractionBlocked }
+    { disabled: controlsDisabled }
   )
   const submitButton = createElement(
     'button',
@@ -1013,13 +1024,23 @@ function createForm(
     formState.isSubmitting ? 'Wird gespeichert …' : config.submitLabel
   )
   submitButton.type = 'submit'
-  submitButton.disabled = formState.isSubmitting || isInteractionBlocked
+  submitButton.disabled = controlsDisabled
   actionsElement.append(cancelButton, submitButton)
   form.append(actionsElement)
 
+  if (returnConfirmation) {
+    form.append(
+      createFormReturnConfirmation(
+        actions,
+        focusReferences,
+        formState.isSubmitting || externalInteractionBlock
+      )
+    )
+  }
+
   form.addEventListener('submit', (event) => {
     event.preventDefault()
-    if (formState.isSubmitting || isInteractionBlocked) return
+    if (controlsDisabled) return
 
     const submission = {
       type: formState.type,
@@ -1042,6 +1063,57 @@ function createForm(
   })
 
   return form
+}
+
+function createFormReturnConfirmation(
+  actions,
+  focusReferences,
+  disabled
+) {
+  const confirmation = createElement(
+    'fieldset',
+    'learning-hub-question-discard learning-hub-form-return'
+  )
+  confirmation.append(
+    createElement('legend', '', 'Ungespeicherte Änderungen'),
+    createElement(
+      'p',
+      '',
+      'Möchtest du die Änderungen speichern, verwerfen oder weiter bearbeiten?'
+    )
+  )
+  const confirmationActions = createElement(
+    'div',
+    'learning-hub-question-discard__actions learning-hub-form-return__actions'
+  )
+  const saveButton = createButton(
+    'Speichern',
+    'button button--primary',
+    () => actions.onSaveFormBeforeReturn?.(),
+    { disabled }
+  )
+  const discardButton = createButton(
+    'Änderungen verwerfen',
+    'button learning-hub-question-discard__confirm',
+    () => actions.onDiscardFormChanges?.(),
+    { disabled }
+  )
+  const continueButton = createButton(
+    'Weiter bearbeiten',
+    'button button--secondary',
+    () => actions.onContinueFormEditing?.(),
+    { disabled }
+  )
+  focusReferences.formReturnConfirmation = continueButton
+  confirmationActions.append(saveButton, discardButton, continueButton)
+  confirmation.append(confirmationActions)
+  confirmation.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || disabled) return
+
+    event.preventDefault()
+    actions.onContinueFormEditing?.()
+  })
+  return confirmation
 }
 
 function createEmptyOverview() {
@@ -1163,6 +1235,20 @@ function createOverview(
   return section
 }
 
+function isUpdatingLearningNode(
+  viewState,
+  learningModule,
+  chapter,
+  learningNode
+) {
+  return (
+    viewState.form?.type === 'updateLearningNode' &&
+    viewState.form.moduleId === learningModule.id &&
+    viewState.form.chapterId === chapter.id &&
+    viewState.form.learningNodeId === learningNode.id
+  )
+}
+
 function createLearningNodeCard(
   learningModule,
   chapter,
@@ -1175,6 +1261,14 @@ function createLearningNodeCard(
 ) {
   const isSelected =
     viewState.selectedLearningNodeId === learningNode.id
+  const isEditingSelectedLearningNode =
+    isSelected &&
+    isUpdatingLearningNode(
+      viewState,
+      learningModule,
+      chapter,
+      learningNode
+    )
   const card = createElement(
     'article',
     `learning-hub-node-card${
@@ -1204,41 +1298,61 @@ function createLearningNodeCard(
     getContentPreview(learningNode.content)
   )
   const cardActions = createElement('div', 'learning-hub-node-card__actions')
-  const selectButton = createButton(
-    isSelected ? 'LearningNode erneut anzeigen' : 'LearningNode auswählen',
-    'button button--secondary',
-    () =>
-      actions.onSelectLearningNode?.(
-        learningModule.id,
-        chapter.id,
-        learningNode.id
-      ),
-    { disabled: isMutating }
-  )
-  selectButton.setAttribute('aria-describedby', titleId)
-  const editButton = createButton(
-    'LearningNode bearbeiten',
-    'button button--secondary',
-    () =>
-      actions.onOpenUpdateLearningNodeForm?.(
-        learningModule.id,
-        chapter.id,
-        learningNode.id
-      ),
-    { disabled: isMutating }
-  )
-  editButton.setAttribute('aria-describedby', titleId)
-  registerFormTrigger(
-    focusReferences,
-    {
-      formType: 'updateLearningNode',
-      moduleId: learningModule.id,
-      chapterId: chapter.id,
-      learningNodeId: learningNode.id,
-    },
-    editButton
-  )
-  cardActions.append(selectButton, editButton)
+
+  if (!isSelected) {
+    const selectButton = createButton(
+      'LearningNode anzeigen',
+      'button button--secondary',
+      () =>
+        actions.onSelectLearningNode?.(
+          learningModule.id,
+          chapter.id,
+          learningNode.id
+        ),
+      { disabled: isMutating }
+    )
+    selectButton.setAttribute('aria-describedby', titleId)
+    cardActions.append(selectButton)
+  }
+
+  if (isEditingSelectedLearningNode) {
+    const returnButton = createButton(
+      'Zur Ansicht zurück',
+      'button button--secondary',
+      () => actions.onCancelForm?.(),
+      {
+        disabled:
+          isMutating || viewState.form.returnConfirmation === true,
+      }
+    )
+    returnButton.setAttribute('aria-describedby', titleId)
+    cardActions.append(returnButton)
+  } else {
+    const editButton = createButton(
+      'LearningNode bearbeiten',
+      'button button--secondary',
+      () =>
+        actions.onOpenUpdateLearningNodeForm?.(
+          learningModule.id,
+          chapter.id,
+          learningNode.id
+        ),
+      { disabled: isMutating }
+    )
+    editButton.setAttribute('aria-describedby', titleId)
+    registerFormTrigger(
+      focusReferences,
+      {
+        formType: 'updateLearningNode',
+        moduleId: learningModule.id,
+        chapterId: chapter.id,
+        learningNodeId: learningNode.id,
+      },
+      editButton
+    )
+    cardActions.append(editButton)
+  }
+
   card.append(header, preview, cardActions)
   return card
 }
@@ -3527,16 +3641,31 @@ function createChapter(
         learningNode.id === viewState.selectedLearningNodeId
     )
     if (selectedLearningNode) {
+      const isUpdatingSelectedLearningNode = isUpdatingLearningNode(
+        viewState,
+        learningModule,
+        chapter,
+        selectedLearningNode
+      )
+
       panel.append(
-        createSelectedLearningNode(
-          learningModule,
-          chapter,
-          selectedLearningNode,
-          viewState,
-          actions,
-          focusReferences,
-          isMutating
-        )
+        isUpdatingSelectedLearningNode
+          ? createForm(
+              viewState,
+              actions,
+              focusReferences,
+              `node-${chapterIndex}`,
+              isMutating
+            )
+          : createSelectedLearningNode(
+              learningModule,
+              chapter,
+              selectedLearningNode,
+              viewState,
+              actions,
+              focusReferences,
+              isMutating
+            )
       )
     }
   }
@@ -3566,9 +3695,7 @@ function createChapter(
   panel.append(addNodeButton)
 
   if (
-    ['addLearningNode', 'updateLearningNode'].includes(
-      viewState.form?.type
-    ) &&
+    viewState.form?.type === 'addLearningNode' &&
     viewState.form.chapterId === chapter.id
   ) {
     panel.append(
@@ -3716,6 +3843,8 @@ function resolveFocusTarget(focusTarget, focusReferences) {
       return focusReferences.status
     case 'formAlert':
       return focusReferences.formAlert
+    case 'formReturnConfirmation':
+      return focusReferences.formReturnConfirmation
     case 'formField':
       return focusReferences.formFields.get(focusTarget.fieldName)
     case 'formTrigger':

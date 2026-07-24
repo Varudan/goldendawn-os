@@ -25,7 +25,9 @@ chapter and module progress, and LearningArtifact notes and summaries are
 implemented. The separate local LearningTest bank, append-only attempts,
 deterministic engine, reference-validating service, question editor, module
 test runner, result view, controlled session cancellation, and redacted
-attempt history are locally operable as `Lokaler Mock-Test`. The milestone
+attempt history are locally operable as `Lokaler Mock-Test`. A completely new
+browser profile is initialized once with one clearly marked, fully synthetic
+demo module spanning content, notes, summaries, and seven questions. The milestone
 remains in progress until its separate release review, final documentation
 check, and release PR are complete. LichtwaldLog `v0.2.2` follows after it and
 is not implemented yet.
@@ -178,6 +180,24 @@ are marked unavailable, and a non-destructive retry is offered. Creating a
 module or chapter refreshes progress without rolling back an already
 successful content change if that refresh fails.
 
+Before the regular LearningHub services are used, a small synchronous
+coordinator handles the one-time first start. It seeds
+`[Demo] KI-Grundlagen – vom Datensatz zum Transformer` only when the content,
+Artifact, test-bank, and demo-initialization keys are all absent. The canonical
+repository data is deeply frozen and synthetic; its validated local working
+copy is persisted through the existing private domain storages. If any domain
+key already exists, even as an empty or unreadable value, no demo data is added
+or overwritten and a stable marker records that decision. The marker also
+prevents edits or a later deletion from being reset on restart. Only clearing
+the complete local application storage, including the marker, creates another
+first start.
+
+All seed contracts and cross-store references are validated before the first
+write. The three domain values are written sequentially and the marker last;
+on failure, rollback may remove only values still byte-identical to the
+prepared seed. Progress and attempt history are not prefilled. This startup
+path is fully local and makes no network, AI, agent, or telemetry calls.
+
 User text is rendered through safe DOM text APIs and form-value properties.
 Native labeled chapter checkboxes, visible numeric progress, accessible
 progress bars, status and alert regions, focus restoration, and isolated busy
@@ -193,7 +213,8 @@ synchronization. Local storage is unencrypted and can in principle be read by
 other scripts on the same origin; browser quota and real-time or multi-tab
 consistency remain limitations. In-progress sessions exist only in the
 service instance and are lost on reload. Private learning data and
-independently invented synthetic portfolio data stay strictly separate.
+the canonical independently invented synthetic repository source stay
+separate; the local working copy remains visibly marked as `[Demo]`.
 
 The implemented local LearningTest path is:
 

@@ -7,12 +7,14 @@ import { createLearningHubView } from './modules/learning-hub/learningHubView.js
 import { createPromptVaultController } from './modules/prompt-vault/promptVaultController.js'
 import { createPromptVaultView } from './modules/prompt-vault/promptVaultView.js'
 import { createLearningArtifactService } from './services/learningArtifactService.js'
+import { createLearningHubDemoInitializer } from './services/learningHubDemoInitializer.js'
 import { createLearningHubService } from './services/learningHubService.js'
 import { createLearningProgressService } from './services/learningProgressService.js'
 import { createLearningTestService } from './services/learningTestService.js'
 import { createPromptService } from './services/promptService.js'
 import { createLearningArtifactStorage } from './storage/learningArtifactStorage.js'
 import { createLearningHubStorage } from './storage/learningHubStorage.js'
+import { createLearningHubDemoInitializationStorage } from './storage/learningHubDemoInitializationStorage.js'
 import { createLearningProgressStorage } from './storage/learningProgressStorage.js'
 import { createLearningTestAttemptStorage } from './storage/learningTestAttemptStorage.js'
 import { createLearningTestBankStorage } from './storage/learningTestBankStorage.js'
@@ -205,6 +207,17 @@ const learningArtifactService = createLearningArtifactService({
   learningHubService,
 })
 const learningTestBankStorage = createLearningTestBankStorage(storageAdapter)
+const learningHubDemoInitializationStorage =
+  createLearningHubDemoInitializationStorage(storageAdapter)
+const learningHubDemoInitializer = createLearningHubDemoInitializer({
+  learningHubDemoInitializationStorage,
+  learningHubStorage,
+  learningArtifactStorage,
+  learningTestBankStorage,
+})
+
+learningHubDemoInitializer.initializeLearningHubDemo()
+
 const learningTestAttemptStorage = createLearningTestAttemptStorage(
   storageAdapter
 )
