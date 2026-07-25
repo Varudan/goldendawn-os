@@ -4,9 +4,9 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.1 – LearningHub Local MVP funktional abgeschlossen` |
+| Projektphase | `v0.2.1 – LearningHub Local MVP vollständig geprüft und veröffentlicht` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; lokaler LearningHub Release Candidate geprüft |
+| Status | Verbindliche Sicherheitsbasis; LearningHub Local MVP veröffentlicht |
 | Letzte Aktualisierung | 2026-07-25 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
@@ -379,8 +379,10 @@ Notizen und Zusammenfassungen sind Vertrag, Service, Storage, Controller-
 Anbindung und sichere lokale UI implementiert. Für LearningTest sind Bank- und
 Attempt-Vertrag, getrennte private Storages, reine Engine, referenzprüfender
 Service sowie Controller-, View- und `src/main.js`-Anbindung implementiert.
-`v0.2.1` ist funktional abgeschlossen und als lokaler Release Candidate
-geprüft. Tag, GitHub Release und öffentliche Freigabe bleiben manuell.
+`v0.2.1` ist vollständig geprüft und veröffentlicht. Der annotierte Tag
+`v0.2.1` und das zugehörige GitHub Release wurden am `2026-07-25`
+veröffentlicht. GoldenDawn OS ist seitdem als öffentlich sichtbares
+Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist der nächste geplante rein lokale
 Meilenstein und noch nicht begonnen oder implementiert.
 
@@ -670,7 +672,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | --- | --- |
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
-| `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; lokaler Release Candidate geprüft |
+| `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; vollständig geprüft und veröffentlicht |
 | `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
 | `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |

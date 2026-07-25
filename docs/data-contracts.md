@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.1 – LearningHub Local MVP funktional abgeschlossen` |
+| Projektphase | `v0.2.1 – LearningHub Local MVP vollständig geprüft und veröffentlicht` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -18,7 +18,7 @@
 | LearningTestAttemptLog-Schema | `1` |
 | LearningTestAttempt-Persistenznamespace | `v1` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale Verträge und deterministische Mock-Test-UI implementiert; LearningHub Release Candidate geprüft; Sync-Vertrag bleibt Zielzustand |
+| Status | Lokale Verträge und deterministische Mock-Test-UI implementiert; LearningHub Local MVP veröffentlicht; Sync-Vertrag bleibt Zielzustand |
 | Letzte Aktualisierung | 2026-07-25 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
@@ -43,10 +43,12 @@ den append-only LearningTestAttemptLog, ihre privaten Storages, die reine
 deterministische Engine und der referenzprüfende LearningTestService
 implementiert und über `src/main.js`, den vorhandenen
 `LearningHubController` und die `LearningHubView` als lokaler
-deterministischer Mock-Test bedienbar. Der LearningHub Local MVP ist funktional
-abgeschlossen und als lokaler Release Candidate geprüft. Tag, GitHub Release
-und öffentliche Freigabe bleiben manuelle Schritte. Die externen Sync- und
-Agentenverträge beschreiben den geplanten Zielzustand späterer Versionen.
+deterministischer Mock-Test bedienbar. Der LearningHub Local MVP ist vollständig
+geprüft und veröffentlicht. Der annotierte Tag `v0.2.1` und das zugehörige
+GitHub Release wurden am `2026-07-25` veröffentlicht; GoldenDawn OS ist
+seitdem als öffentlich sichtbares Portfolio-Repository ohne Open-Source-Lizenz
+verfügbar. Die externen Sync- und Agentenverträge beschreiben den geplanten
+Zielzustand späterer Versionen.
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
 
@@ -137,9 +139,9 @@ bleiben flüchtig. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
 `TestAgent` und ist nicht mit den geplanten externen Aktionen
 `learningTest.create`, `learningTest.evaluate` oder
 `learningTest.result.get` gleichzusetzen. Die UI kennzeichnet ihn sichtbar als
-„Lokaler Mock-Test“. `v0.2.1` ist funktional abgeschlossen und als lokaler
-Release Candidate geprüft. `v0.2.2 – LichtwaldLog Local MVP` ist der nächste
-geplante rein lokale Meilenstein und noch nicht begonnen oder implementiert.
+„Lokaler Mock-Test“. `v0.2.1` ist vollständig geprüft und veröffentlicht.
+`v0.2.2 – LichtwaldLog Local MVP` ist der nächste geplante rein lokale
+Meilenstein und noch nicht begonnen oder implementiert.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -882,9 +884,8 @@ Antwortpayload sowie Historienprojektionen gegen Modul, Reihenfolge, Zähler und
 Erklärungen; historische View-Modelle enthalten nur Abschlusszeit, Zähler und
 Prozentwert.
 
-Die sichtbare lokale Mock-Test-UI ist bedienbar; `v0.2.1` ist funktional
-abgeschlossen und als lokaler Release Candidate geprüft. Der spätere externe
-Zielpfad lautet weiterhin:
+Die sichtbare lokale Mock-Test-UI ist bedienbar; `v0.2.1` ist vollständig
+geprüft und veröffentlicht. Der spätere externe Zielpfad lautet weiterhin:
 
 ```text
 LearningTestService

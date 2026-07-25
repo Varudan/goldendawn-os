@@ -8,7 +8,7 @@
 
 ## Project status
 
-**Current phase:** `v0.2.1 — LearningHub Local MVP functionally complete; release candidate verified`
+**Current release:** `v0.2.1 — LearningHub Local MVP complete, verified, and published`
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -19,8 +19,8 @@ deletion, search, category filters, persistent favorites, immutable version
 history, and restoration as a new version. Git actions for future releases
 remain entirely manual with Jan.
 
-LearningHub `v0.2.1` is functionally complete and verified as a local release
-candidate. Its Schema 2 content path, separate chapter and module progress,
+LearningHub `v0.2.1` is complete, verified, and published. Its Schema 2 content
+path, separate chapter and module progress,
 LearningArtifact notes and summaries, LearningTest bank, append-only attempts,
 deterministic engine, question editor, module test runner, result view,
 controlled session cancellation, and redacted attempt history are locally
@@ -29,9 +29,12 @@ one clearly marked, fully synthetic demo module containing three chapters,
 four LearningNodes, eight LearningArtifacts, and seven questions. The visible
 `Lokaler Mock-Test` uses neither AI nor external communication. Existing
 browser data remains authoritative and is never supplemented or overwritten
-by the initializer. Tagging, the GitHub Release, and public repository
-visibility remain manual owner steps. LichtwaldLog `v0.2.2` is the next
-planned local milestone and has not been implemented or started.
+by the initializer. Final release verification passed 552/552 automated tests
+and the production build. Tag `v0.2.1` and its corresponding GitHub Release
+were published on 2026-07-25, and the repository is publicly visible for
+portfolio and evaluation purposes without an open-source license. LichtwaldLog
+`v0.2.2` is the next planned local milestone and has not been implemented or
+started.
 
 ## Vision
 
@@ -80,7 +83,7 @@ Accepted architecture decisions and their rationale are indexed in
 | --- | --- | --- | --- |
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
-| LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP functionally complete; release candidate verified |
+| LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP complete, verified, and published |
 | LichtwaldLog | Local text journal with search and filters | `v0.2.2` | Planned; not implemented |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
@@ -134,7 +137,7 @@ devices, and can be lost when local browser data is cleared. Import/export,
 webhooks, synchronization, Airtable, a backend, agent logic, user accounts, and
 automatic cloud backup are not implemented.
 
-### LearningHub Local MVP (functionally complete for v0.2.1)
+## LearningHub Local MVP (released in v0.2.1)
 
 LearningHub is a bounded local learning module, not a general-purpose LMS. Its
 implemented Schema 2 foundation uses the hierarchy
@@ -260,7 +263,7 @@ LearningTestService
   → TestAgent
 ```
 
-### LichtwaldLog Local MVP (planned for v0.2.2)
+## LichtwaldLog Local MVP (planned for v0.2.2)
 
 LichtwaldLog is limited to local CRUD for entries with a title, calendar date,
 plain text, and tags, plus local search and filters. Private entries and
@@ -313,7 +316,7 @@ non-binding; see the roadmap for details.
 | --- | --- | --- |
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
-| v0.2.1 | LearningHub Local MVP | Functionally complete and verified as a local release candidate |
+| v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
 | v0.2.2 | LichtwaldLog Local MVP | Next planned local milestone; not started or implemented |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
@@ -354,16 +357,18 @@ process are documented in [the Git workflow guide](docs/git-workflows.md).
 
 ## Verification
 
-The local `v0.2.1` release candidate is verified with:
+The published `v0.2.1` release was finally verified with:
 
 ```bash
 npm test -- --test-concurrency=1
 npm run build
 ```
 
-The exact final test count is recorded in the `v0.2.1` changelog entry. This
-verification does not claim that a tag, GitHub Release, public deployment, or
-current vulnerability audit already exists.
+Final verification passed 552/552 automated tests and the production build.
+The annotated `v0.2.1` tag and its corresponding GitHub Release were published
+on 2026-07-25. This repository is publicly visible as a portfolio repository;
+that visibility does not grant an open-source license or imply a public
+deployment of the application.
 
 ## Security and privacy
 
@@ -389,6 +394,7 @@ Detailed security rules are maintained in
 - **2026-07-15:** The `v0.2.0` Local Dashboard MVP was completed and verified
   with its automated tests and production build, and published as tag `v0.2.0`
   with the corresponding GitHub Release.
+- **2026-07-25:** The `v0.2.1` LearningHub Local MVP was published with its corresponding GitHub Release, and GoldenDawn OS became publicly visible as a portfolio repository.
 
 ## Author and collaboration
 

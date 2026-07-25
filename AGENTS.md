@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.2.1 – LearningHub Local MVP funktional abgeschlossen und als Release Candidate geprüft`
+Aktueller Stand: `v0.2.1 – LearningHub Local MVP vollständig geprüft und veröffentlicht`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -35,8 +35,10 @@ Die abgeschlossene Basis `v0.2.0` umfasst:
 Produktions-Build geprüft und als Tag `v0.2.0` mit dem zugehörigen GitHub
 Release veröffentlicht. Git-Aktionen für zukünftige Releases bleiben
 vollständig manuell bei Jan. Der Meilenstein
-`v0.2.1 – LearningHub Local MVP` ist funktional abgeschlossen und als lokaler
-Release Candidate geprüft. Schema 2, lokale
+`v0.2.1 – LearningHub Local MVP` ist vollständig abgeschlossen, mit 552/552
+automatisierten Tests und einem erfolgreichen Produktions-Build geprüft und am
+`2026-07-25` als annotierter Tag `v0.2.1` mit zugehörigem GitHub Release
+veröffentlicht. Schema 2, lokale
 Inhaltsservices und Persistenz sowie `LearningHubController` und die lokale
 Inhaltsoberfläche für Module, Kapitel und LearningNodes sind umgesetzt. Der
 getrennte Fortschrittsvertrag, seine Persistenz und Projektion sowie die
@@ -49,10 +51,10 @@ Testbank, append-only Attempts, reiner deterministischer Engine und
 referenzprüfendem Service ist ebenfalls umgesetzt und über den vorhandenen
 Controller und die View als sichtbarer `Lokaler Mock-Test` mit
 Fragenverwaltung, Testdurchführung, Ergebnis und Versuchshistorie bedienbar.
-Der Mock-Test verwendet weder KI noch externe Kommunikation. Tag, GitHub
-Release und öffentliche Freigabe bleiben manuelle Schritte. Der nächste
-geplante Meilenstein `v0.2.2 – LichtwaldLog Local MVP` ist noch nicht begonnen
-oder implementiert.
+Der Mock-Test verwendet weder KI noch externe Kommunikation. GoldenDawn OS ist
+seit dem `2026-07-25` als öffentlich sichtbares Portfolio-Repository ohne
+Open-Source-Lizenz verfügbar. Der nächste geplante Meilenstein
+`v0.2.2 – LichtwaldLog Local MVP` ist noch nicht begonnen oder implementiert.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 

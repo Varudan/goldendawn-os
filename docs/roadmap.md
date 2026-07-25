@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.1 – LearningHub Local MVP funktional abgeschlossen` |
+| Projektphase | `v0.2.1 – LearningHub Local MVP vollständig geprüft und veröffentlicht` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Release Candidate geprüft; Tag, GitHub Release und öffentliche Freigabe bleiben manuell |
+| Status | `v0.2.1` veröffentlicht; `v0.2.2` als nächster lokaler Meilenstein geplant |
 | Letzte Aktualisierung | 2026-07-25 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
@@ -48,7 +48,7 @@ nicht starre Kalendertermine.
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
-| `v0.2.1` | LearningHub Local MVP | Funktional abgeschlossen und als lokaler Release Candidate geprüft | ✅ |
+| `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Nächster geplanter lokaler Meilenstein; noch nicht begonnen oder implementiert | ⬜ |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
@@ -725,8 +725,9 @@ aktuellen Browserprofil; dies ist keine Cloud-Sicherung.
 
 Git-Aktionen für zukünftige Releases bleiben vollständig manuell bei Jan.
 
-`v0.2.1 – LearningHub Local MVP` ist funktional abgeschlossen und als lokaler
-Release Candidate geprüft. Die Schema-2-Foundation
+`v0.2.1 – LearningHub Local MVP` ist vollständig abgeschlossen, final mit
+552/552 bestandenen automatisierten Tests sowie dem Produktions-Build geprüft
+und veröffentlicht. Die Schema-2-Foundation
 sowie `LearningHubView`, `LearningHubController`,
 `createLearningHubService` und `createLearningHubStorage` für private lokale
 Inhalte sind umgesetzt. Der feste Inhaltsnamespace lautet
@@ -771,10 +772,11 @@ gibt keine Zufallsauswahl, KI- oder Netzwerkfunktion. Der koordinierte
 Erststart befüllt nur die sieben Demo-Fragen; Attempts, Antworten, Ergebnisse
 und Historieneinträge bleiben leer.
 
-Tag, GitHub Release und öffentliche Freigabe von `v0.2.1` bleiben manuelle
-Schritte. `v0.2.2 – LichtwaldLog Local MVP` ist der nächste geplante
-Meilenstein. Er bleibt rein lokal und ist noch nicht begonnen oder
-implementiert.
+Der annotierte Tag `v0.2.1` und das zugehörige GitHub Release wurden am
+`2026-07-25` veröffentlicht. GoldenDawn OS ist seitdem als öffentlich
+sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
+`v0.2.2 – LichtwaldLog Local MVP` ist der nächste geplante Meilenstein. Er
+bleibt rein lokal und ist noch nicht begonnen oder implementiert.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein Backend, Benutzerkonten und
