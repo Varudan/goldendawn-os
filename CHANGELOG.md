@@ -6,6 +6,62 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
+## v0.2.1 – 2026-07-25
+
+### LearningHub Local MVP
+
+- LearningHub Schema 2 mit mehreren nutzerkonfigurierten LearningModules,
+  LearningChapters und textbasierten LearningNodes umgesetzt.
+- Lokale Inhalts-, Fortschritts- und LearningArtifact-Pfade mit getrennten
+  Verträgen, Services, Storages und UI-Projektionen bereitgestellt.
+- Aktuelle Notizen und Zusammenfassungen pro LearningNode lokal bedienbar
+  gemacht, ohne sie mit Inhalt oder append-only Fortschritt zu vermischen.
+- Veränderbare LearningTestBank und getrennte append-only Versuchshistorie
+  ergänzt; abgeschlossene Attempts bleiben in persistierter Reihenfolge
+  erhalten.
+- Reine deterministische Single-Choice-Engine sowie sichtbar als `Lokaler
+  Mock-Test` gekennzeichnete Fragenverwaltung, Durchführung, Auswertung,
+  kontrollierter Abbruch und Historie umgesetzt.
+
+### Demo-Initialisierung und Datenschutz
+
+- Genau ein kanonisches synthetisches Demo-Modul mit drei Kapiteln, vier
+  LearningNodes, acht LearningArtifacts und sieben Fragen bereitgestellt.
+- Einmalige koordinierte Initialisierung vorgeschaltet, die nur bei gemeinsam
+  fehlenden Inhalts-, Artifact-, Testbank- und Marker-Keys schreibt.
+- Vorhandene Nutzerdaten, bewusst leere oder beschädigte Fachwerte und spätere
+  Bearbeitungen vor Ergänzung oder Überschreiben geschützt; Teilfehler werden
+  nur für weiterhin bytegleiche Seed-Werte kontrolliert zurückgerollt.
+- Die einzelnen Storage- und Service-Loads behalten ihre schreibfreien leeren
+  Zustände bei fehlenden Keys; Progress und Attempt-Historie werden nicht
+  vorbefüllt.
+
+### Bedienung und Accessibility
+
+- Anzeige- und Bearbeitungswechsel der LearningNodes klarer getrennt und die
+  stabile Auswahl bei Abbruch, Validierungsfehlern und erfolgreichem Speichern
+  erhalten.
+- Ungespeicherte Änderungen in den betroffenen Bearbeitungs- und Testflüssen
+  vor unbeabsichtigtem Bereichswechsel oder Verwerfen geschützt.
+- Mobile Kapitelüberschriften durch die begrenzte Flex-Basis korrigiert sowie
+  Umbruch, Touchziele, native Beschriftungen, Fokusführung und zugängliche
+  Status-, Bestätigungs- und Fehlerzustände verbessert.
+
+### Qualität und lokale Grenzen
+
+- Die finale lokale Prüfung umfasst 552 automatisierte Tests; sowohl die
+  vollständige Suite mit erzwungener Einzeldatei-Ausführung als auch der
+  Produktions-Build wurden erfolgreich abgeschlossen.
+- Inhalt, Fortschritt, Notizen, Zusammenfassungen, Fragen und Attempts bleiben
+  im aktuellen Browserprofil; `localStorage` ist unverschlüsselt und weder
+  Synchronisierung noch Cloud-Sicherung.
+- Der lokale Mock-Test verwendet keine KI, Agentenlogik oder externe
+  Kommunikation. Repository-Daten bleiben synthetisch und von privaten
+  Browserdaten getrennt.
+- Umfang und Release Candidate von `v0.2.1` sind funktional abgeschlossen;
+  Tag, GitHub Release und öffentliche Freigabe sind noch nicht erfolgt und
+  bleiben manuelle Schritte.
+
 ## v0.2.0 – 2026-07-15
 
 ### Command Center und Design

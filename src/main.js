@@ -53,9 +53,9 @@ const modules = [
     name: 'LearningHub',
     description:
       'Eigene Lernmodule, Kapitel, LearningNodes, Lernfortschritt, Notizen, Zusammenfassungen und deterministische Mock-Tests lokal verwalten',
-    status: 'In Arbeit',
-    statusClass: 'next',
-    navigationState: 'In Arbeit',
+    status: 'Lokales MVP',
+    statusClass: 'local',
+    navigationState: 'Lokales MVP',
     isNavigable: true,
   },
   {
@@ -75,7 +75,8 @@ const modules = [
   {
     id: 'lichtwald-log',
     name: 'LichtwaldLog',
-    description: 'Erkenntnisse und Reflexionen festhalten',
+    description:
+      'Geplantes lokales Journal für Einträge, Suche und Filter; noch nicht implementiert',
     status: 'Geplant',
     statusClass: 'planned',
   },
@@ -167,8 +168,8 @@ appRoot.innerHTML = `
       </nav>
 
       <footer class="sidebar-footer">
-        <span>Local Dashboard MVP</span>
-        <strong>– v0.2.0</strong>
+        <span>LearningHub Local MVP</span>
+        <strong>– v0.2.1</strong>
       </footer>
     </aside>
 
@@ -251,13 +252,13 @@ function renderCommandCenter() {
     <section class="focus-panel" aria-labelledby="focus-title">
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
-        <h2 id="focus-title">v0.2.1 – LearningHub Local MVP in Arbeit</h2>
-        <p>Command Center und PromptVault bleiben lokal nutzbar. Im LearningHub sind Inhalte, Kapitel- und Modulfortschritt, Notizen, Zusammenfassungen sowie der deterministische lokale Mock-Test mit Fragenverwaltung und Versuchshistorie jetzt bedienbar. v0.2.1 bleibt bis zur separaten Release-Prüfung, Dokumentation und Release-PR in Arbeit.</p>
+        <h2 id="focus-title">v0.2.1 – LearningHub Local MVP abgeschlossen</h2>
+        <p>Command Center und PromptVault bleiben lokal nutzbar. Der LearningHub Local MVP ist mit Inhalten, Kapitel- und Modulfortschritt, Notizen, Zusammenfassungen sowie dem deterministischen lokalen Mock-Test mit Fragenverwaltung und Versuchshistorie funktional abgeschlossen. Der lokale Mock-Test verwendet keine KI und keine externe Kommunikation.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
-          <span>Aktueller Teilstand</span>
-          <strong>LearningHub Local MVP fachlich bedienbar</strong>
+          <span>Release Candidate</span>
+          <strong>LearningHub Local MVP lokal geprüft</strong>
         </div>
         <small>Inhalte, Fortschritt, Lernartefakte, Testfragen und abgeschlossene Versuche bleiben im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung oder geräteübergreifende Synchronisierung; laufende Tests gehen bei einem Reload verloren.</small>
       </div>
@@ -267,10 +268,10 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Projektschritt</span>
-        <h2 id="milestone-title">Release-Prüfung für v0.2.1</h2>
-        <p>Als Nächstes folgen die separate Abschlussprüfung, die abschließende Dokumentationskontrolle und der manuell von Jan geführte Release-PR. Der lokale Mock-Test verwendet keine KI und bleibt vollständig im Browserprofil.</p>
+        <h2 id="milestone-title">v0.2.2 – LichtwaldLog Local MVP</h2>
+        <p>LichtwaldLog ist als nächster rein lokaler Meilenstein geplant, aber noch nicht implementiert. Vorgesehen sind Journal-Einträge mit lokaler Suche und Filtern; Synchronisierung und Agentenlogik gehören nicht zu v0.2.2.</p>
       </div>
-      <span class="status status--next">Nächster Schritt</span>
+      <span class="status status--planned">Geplant</span>
     </aside>
 
     <section class="modules-section" aria-labelledby="modules-title">

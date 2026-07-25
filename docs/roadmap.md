@@ -4,11 +4,11 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
+| Projektphase | `v0.2.1 – LearningHub Local MVP funktional abgeschlossen` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | In Arbeit; koordinierter Demo-Erststart sowie Inhalts-, Progress-, LearningArtifact- und deterministische Mock-Test-Pfade bedienbar, Release-Prüfung offen |
-| Letzte Aktualisierung | 2026-07-22 |
+| Status | Release Candidate geprüft; Tag, GitHub Release und öffentliche Freigabe bleiben manuell |
+| Letzte Aktualisierung | 2026-07-25 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -48,8 +48,8 @@ nicht starre Kalendertermine.
 | --- | --- | --- | --- |
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
-| `v0.2.1` | LearningHub Local MVP | Inhalts-, Progress-, LearningArtifact- und deterministische Mock-Test-UI bedienbar; Release-Prüfung folgt | 🟡 |
-| `v0.2.2` | LichtwaldLog Local MVP | Lokale Reflexions- und Erkenntniseinträge | ⬜ |
+| `v0.2.1` | LearningHub Local MVP | Funktional abgeschlossen und als lokaler Release Candidate geprüft | ✅ |
+| `v0.2.2` | LichtwaldLog Local MVP | Nächster geplanter lokaler Meilenstein; noch nicht begonnen oder implementiert | ⬜ |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
@@ -197,16 +197,20 @@ Bewertung und echte Agentenlogik sind nicht Teil dieses lokalen MVP.
 ### Umfang des LearningHub Local MVP
 
 - ✅ Schema-2-Strukturvertrag für mehrere LearningModules, LearningChapters und
-  LearningNodes einschließlich synthetischer Zwei-Modul-Demo bereitstellen.
+  LearningNodes sowie eine kanonische synthetische Demoquelle mit genau einem
+  Modul, drei Kapiteln und vier LearningNodes bereitstellen.
 - ✅ `createLearningHubStorage` mit `loadLearningHub` und `saveLearningHub`
   hinter dem gemeinsamen `StorageAdapter` sowie dem festen Key
   `goldendawn.learningHub.content.v1` bereitstellen.
 - ✅ `createLearningHubService` mit `loadHub`, `createModule`, `renameModule`,
   `addChapter`, `renameChapter`, `addLearningNode` und `updateLearningNode`
   bereitstellen.
-- ✅ Einen fehlenden Storage-Key als unpersistierten leeren privaten Hub laden,
-  erst bei einer Mutation schreiben und kein automatisches Demo-Seeding
-  durchführen.
+- ✅ Fehlende Fachkeys über die einzelnen Inhalts-, Progress-, Artifact-,
+  Testbank- und Attempt-Loads weiterhin als schreibfreie private Leerzustände
+  behandeln.
+- ✅ Einen vorgeschalteten Demo-Initializer bereitstellen, der genau einmal nur
+  bei gemeinsam fehlendem Inhalts-, Artifact-, Testbank- und Marker-Key das
+  synthetische Demo-Modul mit acht LearningArtifacts und sieben Fragen seedet.
 - ✅ Immutable und atomare Inhaltsmutationen mit vollständiger Schema-2-
   Validierung, injizierbarer begrenzter ID-Erzeugung und kontrollierten
   Storage-Fehlern automatisiert prüfen.
@@ -689,21 +693,24 @@ Vor dem Start einer neuen Version werden folgende Punkte geprüft:
 | Vermischung privater und öffentlicher Daten | Getrennte Datenquellen, Konfigurationen und Deployments verwenden |
 | Dokumentation veraltet | Dokumentationsabgleich als Abnahmekriterium jeder Version verwenden |
 
-## Bewusst nach Version 1 verschoben
+## Ausblick nach v1.0.0
 
-Folgende Ideen bleiben erhalten, sind aber kein Versprechen für Version 1:
+`v1.0.0` vollendet die erste vollständige Produkt- und Portfolio-Phase von
+GoldenDawn OS. Das System soll danach weiterentwickelt werden. Eine konkrete
+Post-`v1.0.0`-Roadmap wird jedoch erst festgelegt, wenn `v1.0.0` fertiggestellt
+und ausgewertet ist. Prioritäten, Versionsnummern und Funktionsumfänge für die
+Zeit danach sind noch nicht zugesagt.
 
-- zusätzliche Fachagenten;
-- agentengestützte, synchronisierte oder automatisierte LichtwaldLog-Prozesse;
-- Weekly Review als eigenständige spätere Funktion;
-- Benutzerkonten und Rollen;
-- eigene relationale Datenbank;
-- PWA-Installation und erweiterte Offline-Synchronisation;
-- Analytics und umfassende Agentenbeobachtung;
-- Kalender-, E-Mail- oder GitHub-Agenten;
-- Mehrbenutzer- oder Teamfunktionen.
+Ausdrücklich unverbindliche mögliche Themen sind:
 
-Diese Punkte werden erst nach dem Portfolio Release bewertet und priorisiert.
+- CareerHub und ResearchAgent;
+- weitere spezialisierte Agenten und Automatisierungen;
+- Cloud- beziehungsweise Serverbetrieb;
+- mobile Nutzung und PWA-Ausbau;
+- erweiterte Lern-, Analyse- und Review-Funktionen.
+
+Keines dieser Themen ist bereits beschlossen oder einer künftigen
+Versionsnummer zugeordnet.
 
 ## Nächster konkreter Schritt
 
@@ -718,7 +725,8 @@ aktuellen Browserprofil; dies ist keine Cloud-Sicherung.
 
 Git-Aktionen für zukünftige Releases bleiben vollständig manuell bei Jan.
 
-`v0.2.1 – LearningHub Local MVP` ist jetzt in Arbeit. Die Schema-2-Foundation
+`v0.2.1 – LearningHub Local MVP` ist funktional abgeschlossen und als lokaler
+Release Candidate geprüft. Die Schema-2-Foundation
 sowie `LearningHubView`, `LearningHubController`,
 `createLearningHubService` und `createLearningHubStorage` für private lokale
 Inhalte sind umgesetzt. Der feste Inhaltsnamespace lautet
@@ -763,12 +771,10 @@ gibt keine Zufallsauswahl, KI- oder Netzwerkfunktion. Der koordinierte
 Erststart befüllt nur die sieben Demo-Fragen; Attempts, Antworten, Ergebnisse
 und Historieneinträge bleiben leer.
 
-Als nächster LearningHub-Schritt folgen die separate Release-Prüfung, die
-abschließende Dokumentationskontrolle und der manuell von Jan geführte
-Release-PR. Der Meilenstein bleibt bis zu diesem Abschluss in Arbeit.
-
-`v0.2.2 – LichtwaldLog Local MVP` folgt anschließend als weiteres rein lokales
-Modul und ist noch nicht implementiert.
+Tag, GitHub Release und öffentliche Freigabe von `v0.2.1` bleiben manuelle
+Schritte. `v0.2.2 – LichtwaldLog Local MVP` ist der nächste geplante
+Meilenstein. Er bleibt rein lokal und ist noch nicht begonnen oder
+implementiert.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein Backend, Benutzerkonten und

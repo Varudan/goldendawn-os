@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.2.1 – LearningHub Local MVP in Arbeit`
+Aktueller Stand: `v0.2.1 – LearningHub Local MVP funktional abgeschlossen und als Release Candidate geprüft`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -35,7 +35,8 @@ Die abgeschlossene Basis `v0.2.0` umfasst:
 Produktions-Build geprüft und als Tag `v0.2.0` mit dem zugehörigen GitHub
 Release veröffentlicht. Git-Aktionen für zukünftige Releases bleiben
 vollständig manuell bei Jan. Der Meilenstein
-`v0.2.1 – LearningHub Local MVP` ist in Arbeit. Schema 2, lokale
+`v0.2.1 – LearningHub Local MVP` ist funktional abgeschlossen und als lokaler
+Release Candidate geprüft. Schema 2, lokale
 Inhaltsservices und Persistenz sowie `LearningHubController` und die lokale
 Inhaltsoberfläche für Module, Kapitel und LearningNodes sind umgesetzt. Der
 getrennte Fortschrittsvertrag, seine Persistenz und Projektion sowie die
@@ -48,10 +49,12 @@ Testbank, append-only Attempts, reiner deterministischer Engine und
 referenzprüfendem Service ist ebenfalls umgesetzt und über den vorhandenen
 Controller und die View als sichtbarer `Lokaler Mock-Test` mit
 Fragenverwaltung, Testdurchführung, Ergebnis und Versuchshistorie bedienbar.
-`v0.2.1` bleibt bis zur separaten Release-Prüfung, abschließenden
-Dokumentationskontrolle und Release-PR in Arbeit.
+Der Mock-Test verwendet weder KI noch externe Kommunikation. Tag, GitHub
+Release und öffentliche Freigabe bleiben manuelle Schritte. Der nächste
+geplante Meilenstein `v0.2.2 – LichtwaldLog Local MVP` ist noch nicht begonnen
+oder implementiert.
 
-Noch nicht Teil von `v0.2.0` sind:
+Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
 - der LearningHub Local MVP aus `v0.2.1`;
 - der LichtwaldLog Local MVP aus `v0.2.2`;
@@ -304,6 +307,17 @@ Regeln:
 
 ## Sicherheit und Datenschutz
 
+- Das Repository enthält ausschließlich Quellcode, Dokumentation und klar
+  gekennzeichnete synthetische Demo-Daten.
+- Private Lern-, Prompt-, Reflexions-, Gesundheits- oder andere persönliche
+  Nutzerdaten gehören nicht in das Repository. Lokale Nutzerinhalte bleiben im
+  aktuellen Browserprofil und werden nicht synchronisiert.
+- `localStorage` ist unverschlüsselt und weder Secret-Store noch
+  Cloud-Sicherung oder geräteübergreifende Speicherung.
+- Ein öffentlich sichtbares Repository enthält keine produktiven Webhooks,
+  Credentials, privaten Airtable-IDs oder persönlichen Daten.
+- Öffentliche Vite-Konfiguration darf nur nicht-sensitive Werte enthalten;
+  jeder `VITE_*`-Wert ist im Browser-Build öffentlich.
 - Speichere niemals API-Schlüssel, Tokens, Passwörter oder Credentials im
   Frontend, Repository oder in Beispieldaten.
 - Behandle alle `VITE_*`-Variablen als öffentlich, da sie in den Frontend-Build

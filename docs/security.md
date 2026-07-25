@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
+| Projektphase | `v0.2.1 – LearningHub Local MVP funktional abgeschlossen` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; koordinierter LearningHub-Demo-Erststart und lokale deterministische Mock-Test-UI berücksichtigt |
-| Letzte Aktualisierung | 2026-07-22 |
+| Status | Verbindliche Sicherheitsbasis; lokaler LearningHub Release Candidate geprüft |
+| Letzte Aktualisierung | 2026-07-25 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -379,8 +379,10 @@ Notizen und Zusammenfassungen sind Vertrag, Service, Storage, Controller-
 Anbindung und sichere lokale UI implementiert. Für LearningTest sind Bank- und
 Attempt-Vertrag, getrennte private Storages, reine Engine, referenzprüfender
 Service sowie Controller-, View- und `src/main.js`-Anbindung implementiert.
-`v0.2.1` bleibt bis zur separaten Release-Prüfung, abschließenden
-Dokumentationskontrolle und dem manuellen Release-PR in Arbeit.
+`v0.2.1` ist funktional abgeschlossen und als lokaler Release Candidate
+geprüft. Tag, GitHub Release und öffentliche Freigabe bleiben manuell.
+`v0.2.2 – LichtwaldLog Local MVP` ist der nächste geplante rein lokale
+Meilenstein und noch nicht begonnen oder implementiert.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
@@ -622,7 +624,18 @@ Sicherheitsrelevante Ereignisse werden nachvollziehbar erfasst:
 
 ## Repository-Sicherheit
 
-- `.env`, `.env.*.local`, lokale Konfigurationen und Logs werden ignoriert.
+- Das Repository enthält ausschließlich Quellcode, Dokumentation und klar
+  gekennzeichnete synthetische Demo-Daten.
+- Private Lern-, Prompt-, Reflexions-, Gesundheits- oder andere persönliche
+  Nutzerdaten gehören nicht in das Repository. Nutzerinhalte bleiben im
+  aktuellen Browserprofil und werden nicht synchronisiert.
+- `localStorage` ist unverschlüsselt und weder Cloud-Sicherung noch
+  geräteübergreifende Speicherung.
+- Ein öffentlich sichtbares Repository enthält keine produktiven Webhooks,
+  Credentials, privaten Airtable-IDs oder persönlichen Daten.
+- Öffentliche Vite-Konfiguration enthält ausschließlich nicht-sensitive Werte,
+  da jeder `VITE_*`-Wert im Browser-Build öffentlich ist.
+- `.env`, `.env.*`, lokale Konfigurationen und Logs werden ignoriert.
 - Eine `.env.example` enthält ausschließlich Platzhalter und Erklärungen.
 - n8n-Credentials gehören nicht in das Frontend-Repository.
 - Workflow-Exporte enthalten keine produktiven Payload-Beispiele.
@@ -657,7 +670,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | --- | --- |
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
-| `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; Release-Prüfung ausstehend |
+| `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; lokaler Release Candidate geprüft |
 | `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
 | `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
