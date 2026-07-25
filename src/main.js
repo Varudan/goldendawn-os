@@ -252,13 +252,13 @@ function renderCommandCenter() {
     <section class="focus-panel" aria-labelledby="focus-title">
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
-        <h2 id="focus-title">v0.2.1 – LearningHub Local MVP abgeschlossen</h2>
-        <p>Command Center und PromptVault bleiben lokal nutzbar. Der LearningHub Local MVP ist mit Inhalten, Kapitel- und Modulfortschritt, Notizen, Zusammenfassungen sowie dem deterministischen lokalen Mock-Test mit Fragenverwaltung und Versuchshistorie funktional abgeschlossen. Der lokale Mock-Test verwendet keine KI und keine externe Kommunikation.</p>
+        <h2 id="focus-title">v0.2.1 – LearningHub Local MVP veröffentlicht</h2>
+        <p>Command Center und PromptVault bleiben lokal nutzbar. Der LearningHub Local MVP ist mit Inhalten, Kapitel- und Modulfortschritt, Notizen, Zusammenfassungen sowie dem deterministischen lokalen Mock-Test mit Fragenverwaltung und Versuchshistorie vollständig umgesetzt, geprüft und veröffentlicht. Der lokale Mock-Test verwendet keine KI und keine externe Kommunikation.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
-          <span>Release Candidate</span>
-          <strong>LearningHub Local MVP lokal geprüft</strong>
+          <span>Veröffentlicht</span>
+          <strong>LearningHub Local MVP vollständig geprüft</strong>
         </div>
         <small>Inhalte, Fortschritt, Lernartefakte, Testfragen und abgeschlossene Versuche bleiben im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung oder geräteübergreifende Synchronisierung; laufende Tests gehen bei einem Reload verloren.</small>
       </div>

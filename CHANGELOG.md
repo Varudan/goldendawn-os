@@ -49,18 +49,19 @@ Release.
 
 ### Qualität und lokale Grenzen
 
-- Die finale lokale Prüfung umfasst 552 automatisierte Tests; sowohl die
-  vollständige Suite mit erzwungener Einzeldatei-Ausführung als auch der
-  Produktions-Build wurden erfolgreich abgeschlossen.
+- Die finale Release-Verifikation umfasst 552/552 bestandene automatisierte
+  Tests; sowohl die vollständige Suite mit erzwungener Einzeldatei-Ausführung
+  als auch der Produktions-Build wurden erfolgreich abgeschlossen.
 - Inhalt, Fortschritt, Notizen, Zusammenfassungen, Fragen und Attempts bleiben
   im aktuellen Browserprofil; `localStorage` ist unverschlüsselt und weder
   Synchronisierung noch Cloud-Sicherung.
 - Der lokale Mock-Test verwendet keine KI, Agentenlogik oder externe
   Kommunikation. Repository-Daten bleiben synthetisch und von privaten
   Browserdaten getrennt.
-- Umfang und Release Candidate von `v0.2.1` sind funktional abgeschlossen;
-  Tag, GitHub Release und öffentliche Freigabe sind noch nicht erfolgt und
-  bleiben manuelle Schritte.
+- Der Umfang von `v0.2.1` ist vollständig abgeschlossen. Der annotierte Tag
+  `v0.2.1` und das zugehörige GitHub Release wurden am `2026-07-25`
+  veröffentlicht; GoldenDawn OS ist seitdem als öffentlich sichtbares
+  Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 
 ## v0.2.0 – 2026-07-15
 

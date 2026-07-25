@@ -4,9 +4,9 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.1 – LearningHub Local MVP funktional abgeschlossen` |
+| Projektphase | `v0.2.1 – LearningHub Local MVP vollständig geprüft und veröffentlicht` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; lokaler LearningHub Release Candidate geprüft |
+| Status | Verbindliche Zielarchitektur; LearningHub Local MVP veröffentlicht |
 | Letzte Aktualisierung | 2026-07-25 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -641,10 +641,12 @@ geschriebene JSON-Snapshots, keine kryptografische Manipulationssperre.
 Die Oberfläche kennzeichnet diesen Ablauf sichtbar als „Lokaler Mock-Test“ und
 behauptet weder KI-Auswertung noch Agentenlogik. Fragenverwaltung, laufender
 Test, Ergebnis, kontrollierter Abbruch und redigierte Versuchshistorie sind
-lokal bedienbar. `v0.2.1` ist funktional abgeschlossen und als lokaler Release
-Candidate geprüft. Tag, GitHub Release und öffentliche Freigabe bleiben
-manuelle Schritte. `v0.2.2 – LichtwaldLog Local MVP` ist als nächster rein
-lokaler Meilenstein geplant, aber noch nicht begonnen oder implementiert.
+lokal bedienbar. `v0.2.1` ist vollständig geprüft und veröffentlicht. Der
+annotierte Tag `v0.2.1` und das zugehörige GitHub Release wurden am
+`2026-07-25` veröffentlicht; GoldenDawn OS ist seitdem als öffentlich
+sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
+`v0.2.2 – LichtwaldLog Local MVP` ist als nächster rein lokaler Meilenstein
+geplant, aber noch nicht begonnen oder implementiert.
 
 Der spätere Zielpfad bleibt:
 
@@ -841,7 +843,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | --- | --- |
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
-| `v0.2.1` | LearningHub Local MVP funktional abgeschlossen und als lokaler Release Candidate geprüft |
+| `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
 | `v0.2.2` | Nächster geplanter lokaler Meilenstein; noch nicht begonnen oder implementiert, ohne Synchronisierung oder Agentenlogik |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
