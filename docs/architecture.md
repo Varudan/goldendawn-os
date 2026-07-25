@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.1 – LearningHub Local MVP in Arbeit` |
+| Projektphase | `v0.2.1 – LearningHub Local MVP funktional abgeschlossen` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; koordinierter LearningHub-Demo-Erststart sowie lokale Inhalts-, Progress-, LearningArtifact- und deterministische Mock-Test-UI implementiert, Release-Prüfung noch offen |
-| Letzte Aktualisierung | 2026-07-22 |
+| Status | Verbindliche Zielarchitektur; lokaler LearningHub Release Candidate geprüft |
+| Letzte Aktualisierung | 2026-07-25 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -318,7 +318,9 @@ LearningHubDemoInitializer
 ```
 
 Der tief unveränderliche kanonische Demo-Datensatz trägt
-`dataOrigin: synthetic`. Erst nach vollständiger Produktionsvalidierung und
+`dataOrigin: synthetic` und enthält genau ein Modul, drei Kapitel, vier
+LearningNodes, acht LearningArtifacts und sieben Fragen. Erst nach
+vollständiger Produktionsvalidierung und
 gemeinsamer Referenzprüfung erzeugt der Koordinator defensive private
 Arbeitskopien und schreibt sie sequenziell über die drei bestehenden
 Fachstorages. Das ist ausschließlich erlaubt, wenn Inhaltsstore,
@@ -639,8 +641,10 @@ geschriebene JSON-Snapshots, keine kryptografische Manipulationssperre.
 Die Oberfläche kennzeichnet diesen Ablauf sichtbar als „Lokaler Mock-Test“ und
 behauptet weder KI-Auswertung noch Agentenlogik. Fragenverwaltung, laufender
 Test, Ergebnis, kontrollierter Abbruch und redigierte Versuchshistorie sind
-lokal bedienbar. `v0.2.1` bleibt bis zur separaten Release-Prüfung,
-abschließenden Dokumentationskontrolle und Release-PR in Arbeit.
+lokal bedienbar. `v0.2.1` ist funktional abgeschlossen und als lokaler Release
+Candidate geprüft. Tag, GitHub Release und öffentliche Freigabe bleiben
+manuelle Schritte. `v0.2.2 – LichtwaldLog Local MVP` ist als nächster rein
+lokaler Meilenstein geplant, aber noch nicht begonnen oder implementiert.
 
 Der spätere Zielpfad bleibt:
 
@@ -837,8 +841,8 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | --- | --- |
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
-| `v0.2.1` | In Arbeit: Inhalts-, Progress-, LearningArtifact- und lokale deterministische Mock-Test-Pfade bedienbar; Release-Prüfung und Release-PR folgen |
-| `v0.2.2` | LichtwaldLog Local MVP ohne Synchronisierung oder Agentenlogik |
+| `v0.2.1` | LearningHub Local MVP funktional abgeschlossen und als lokaler Release Candidate geprüft |
+| `v0.2.2` | Nächster geplanter lokaler Meilenstein; noch nicht begonnen oder implementiert, ohne Synchronisierung oder Agentenlogik |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |

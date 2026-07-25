@@ -8,7 +8,7 @@
 
 ## Project status
 
-**Current phase:** `v0.2.1 — LearningHub Local MVP in progress`
+**Current phase:** `v0.2.1 — LearningHub Local MVP functionally complete; release candidate verified`
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -19,18 +19,19 @@ deletion, search, category filters, persistent favorites, immutable version
 history, and restoration as a new version. Git actions for future releases
 remain entirely manual with Jan.
 
-LearningHub `v0.2.1` is now in progress. Its Schema 2 content contract, local
-service and storage path, controller, private content UI, separate local
-chapter and module progress, and LearningArtifact notes and summaries are
-implemented. The separate local LearningTest bank, append-only attempts,
-deterministic engine, reference-validating service, question editor, module
-test runner, result view, controlled session cancellation, and redacted
-attempt history are locally operable as `Lokaler Mock-Test`. A completely new
-browser profile is initialized once with one clearly marked, fully synthetic
-demo module spanning content, notes, summaries, and seven questions. The milestone
-remains in progress until its separate release review, final documentation
-check, and release PR are complete. LichtwaldLog `v0.2.2` follows after it and
-is not implemented yet.
+LearningHub `v0.2.1` is functionally complete and verified as a local release
+candidate. Its Schema 2 content path, separate chapter and module progress,
+LearningArtifact notes and summaries, LearningTest bank, append-only attempts,
+deterministic engine, question editor, module test runner, result view,
+controlled session cancellation, and redacted attempt history are locally
+operable. A completely new browser profile is initialized once with exactly
+one clearly marked, fully synthetic demo module containing three chapters,
+four LearningNodes, eight LearningArtifacts, and seven questions. The visible
+`Lokaler Mock-Test` uses neither AI nor external communication. Existing
+browser data remains authoritative and is never supplemented or overwritten
+by the initializer. Tagging, the GitHub Release, and public repository
+visibility remain manual owner steps. LichtwaldLog `v0.2.2` is the next
+planned local milestone and has not been implemented or started.
 
 ## Vision
 
@@ -79,7 +80,7 @@ Accepted architecture decisions and their rationale are indexed in
 | --- | --- | --- | --- |
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
-| LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local content, progress, LearningArtifacts, question management, mock-test runner, results, cancellation, and attempt history operable; release review remains open |
+| LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP functionally complete; release candidate verified |
 | LichtwaldLog | Local text journal with search and filters | `v0.2.2` | Planned; not implemented |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
@@ -133,7 +134,7 @@ devices, and can be lost when local browser data is cleared. Import/export,
 webhooks, synchronization, Airtable, a backend, agent logic, user accounts, and
 automatic cloud backup are not implemented.
 
-### LearningHub Local MVP (in progress for v0.2.1)
+### LearningHub Local MVP (functionally complete for v0.2.1)
 
 LearningHub is a bounded local learning module, not a general-purpose LMS. Its
 implemented Schema 2 foundation uses the hierarchy
@@ -190,7 +191,13 @@ key already exists, even as an empty or unreadable value, no demo data is added
 or overwritten and a stable marker records that decision. The marker also
 prevents edits or a later deletion from being reset on restart. Only clearing
 the complete local application storage, including the marker, creates another
-first start.
+first start. The canonical seed contains exactly one module, three chapters,
+four LearningNodes, eight LearningArtifacts, and seven questions.
+
+Each domain storage and service still returns its write-free empty state when
+its own key is missing. Only the preceding coordinator may initialize the
+three domain stores together, and only when all relevant domain keys and the
+initialization marker are absent.
 
 All seed contracts and cross-store references are validated before the first
 write. The three domain values are written sequentially and the marker last;
@@ -298,12 +305,16 @@ work and are not part of the `v0.2.2` Local MVP.
 Detailed milestones and acceptance criteria are maintained in
 [`docs/roadmap.md`](docs/roadmap.md).
 
+GoldenDawn OS is intended to continue beyond the first complete product and
+portfolio phase at `v1.0.0`. Possible long-term themes remain explicitly
+non-binding; see the roadmap for details.
+
 | Version | Milestone | Outcome |
 | --- | --- | --- |
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
-| v0.2.1 | LearningHub Local MVP | Local Schema 2 content, separate progress, LearningArtifacts, and deterministic mock-test UI operable; release review and release PR remain open |
-| v0.2.2 | LichtwaldLog Local MVP | Planned local text-entry CRUD, search, and filters |
+| v0.2.1 | LearningHub Local MVP | Functionally complete and verified as a local release candidate |
+| v0.2.2 | LichtwaldLog Local MVP | Next planned local milestone; not started or implemented |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
@@ -343,21 +354,29 @@ process are documented in [the Git workflow guide](docs/git-workflows.md).
 
 ## Verification
 
-The published `v0.2.0` release was verified with:
+The local `v0.2.1` release candidate is verified with:
 
 ```bash
-npm test
+npm test -- --test-concurrency=1
 npm run build
 ```
 
-Both commands completed successfully for the published release.
+The exact final test count is recorded in the `v0.2.1` changelog entry. This
+verification does not claim that a tag, GitHub Release, public deployment, or
+current vulnerability audit already exists.
 
 ## Security and privacy
 
-GoldenDawn OS remains private during the current local MVP phase. Secrets must
-never be committed to Git or exposed through frontend environment variables.
-The later portfolio version will use dedicated demo data and a separate
-configuration from the private system.
+The repository contains only source code, documentation, and clearly marked
+synthetic demo data. Private learning, prompt, reflection, health, or other
+personal user content does not belong in the repository. Current user content
+remains in the active browser profile and is not synchronized.
+
+`localStorage` is unencrypted browser storage, not a secret store, cloud
+backup, or cross-device synchronization mechanism. A public repository must
+not contain productive webhooks, credentials, private Airtable identifiers,
+or personal data. Public Vite configuration may contain only non-sensitive
+values because every `VITE_*` value is exposed to the browser build.
 
 Detailed security rules are maintained in
 [`docs/security.md`](docs/security.md).
@@ -381,4 +400,11 @@ learned are documented as part of the portfolio.
 
 ## License
 
-A license will be selected before the repository is released publicly.
+Copyright (c) 2026 Jan Slominski. All rights reserved.
+
+This repository is publicly available for portfolio and evaluation purposes.
+No open-source license is granted. Except for the rights provided through
+GitHub's Terms of Service, permission is required to use, modify, distribute,
+or further develop the source code.
+
+For licensing or collaboration inquiries, please contact the author.
