@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.1 – LearningHub Local MVP vollständig geprüft und veröffentlicht` |
+| Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; LearningHub Local MVP veröffentlicht |
-| Letzte Aktualisierung | 2026-07-25 |
+| Status | Verbindliche Sicherheitsbasis; v0.2.1 veröffentlicht; LichtwaldLog Contract Foundation implementiert |
+| Letzte Aktualisierung | 2026-07-26 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -383,19 +383,25 @@ Service sowie Controller-, View- und `src/main.js`-Anbindung implementiert.
 `v0.2.1` und das zugehörige GitHub Release wurden am `2026-07-25`
 veröffentlicht. GoldenDawn OS ist seitdem als öffentlich sichtbares
 Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
-`v0.2.2 – LichtwaldLog Local MVP` ist der nächste geplante rein lokale
-Meilenstein und noch nicht begonnen oder implementiert.
+`v0.2.2 – LichtwaldLog Local MVP` ist als rein lokaler Meilenstein in Arbeit.
+Die Contract Foundation und ADR 0013 sind implementiert; der vollständige MVP
+ist weder abgeschlossen noch veröffentlicht.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
+- Implementiert sind ausschließlich der Schema-1-Vertrag, der reine Validator,
+  synthetische Contract-Tests und ADR 0013.
+- Storage, Service, Controller, View, CRUD, lokale Suche und Filter sind noch
+  nicht implementiert.
 - Private lokale Reflexions- und Erkenntniseinträge bleiben strikt von
   synthetischen öffentlichen Demo-Daten getrennt. Es gibt keinen automatischen
   Fallback oder gemeinsamen Datenfluss zwischen beiden Bereichen.
 - Bilder werden nicht als Base64-Daten in `localStorage` gespeichert.
-- LichtwaldLog-Inhalte werden in `v0.2.2` weder synchronisiert noch an Agenten,
-  Webhooks, Airtable oder andere externe Dienste übertragen.
-- Lokale Datenzugriffe bleiben vollständig hinter Services und
-  Storage-Adaptern gekapselt.
+- Für LichtwaldLog existieren in `v0.2.2` keine externe Kommunikation,
+  Webhooks, Synchronisierung, Agentenlogik oder Airtable-Anbindung.
+- Künftige lokale Datenzugriffe müssen vollständig hinter Services und
+  Storage-Adaptern gekapselt bleiben; diese Schichten sind noch nicht
+  implementiert.
 
 ### Sichere Darstellung
 

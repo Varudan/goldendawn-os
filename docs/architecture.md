@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.1 – LearningHub Local MVP vollständig geprüft und veröffentlicht` |
+| Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; LearningHub Local MVP veröffentlicht |
-| Letzte Aktualisierung | 2026-07-25 |
+| Status | Verbindliche Zielarchitektur; v0.2.1 veröffentlicht; LichtwaldLog Contract Foundation implementiert |
+| Letzte Aktualisierung | 2026-07-26 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -645,8 +645,9 @@ lokal bedienbar. `v0.2.1` ist vollständig geprüft und veröffentlicht. Der
 annotierte Tag `v0.2.1` und das zugehörige GitHub Release wurden am
 `2026-07-25` veröffentlicht; GoldenDawn OS ist seitdem als öffentlich
 sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
-`v0.2.2 – LichtwaldLog Local MVP` ist als nächster rein lokaler Meilenstein
-geplant, aber noch nicht begonnen oder implementiert.
+`v0.2.2 – LichtwaldLog Local MVP` ist als rein lokaler Meilenstein in Arbeit.
+Die Contract Foundation und ADR 0013 sind implementiert; der vollständige MVP
+ist weder abgeschlossen noch veröffentlicht.
 
 Der spätere Zielpfad bleibt:
 
@@ -662,18 +663,22 @@ Semantische Freitextbewertung und echte `TestAgent`-Logik beginnen erst in
 
 #### LichtwaldLog Local MVP in v0.2.2
 
-LichtwaldLog umfasst lokal Reflexions- und Erkenntniseinträge mit Titel,
-Kalenderdatum, Text und Tags. Geplant sind Erstellen, Anzeigen, Bearbeiten,
-Löschen sowie lokale Suche und Filterung. Private lokale Einträge und
-synthetische Demo-Daten bleiben getrennt. Bilder werden nicht als Base64 in
-`localStorage` abgelegt.
+Die implementierte Contract Foundation umfasst den Schema-1-Vertrag, den
+reinen Validator, synthetische Contract-Tests und die in ADR 0013 dokumentierte
+Architekturentscheidung. Der lokale Vertrag bildet Reflexions- und
+Erkenntniseinträge mit Titel, Kalenderdatum, Text und Tags ab.
 
-Für `v0.2.2` werden weder Synchronisierung noch Agentenlogik eingeführt.
-Agentengestützte, synchronisierte oder automatisierte LichtwaldLog-Prozesse
-bleiben einer späteren Phase vorbehalten. Weekly Review ist weiterhin geplant
-und kein stillschweigender Bestandteil dieses lokalen MVP. Auch für
-LichtwaldLog wird in diesem Schritt kein Storage-Key oder Storage-Schema
-festgelegt.
+Storage, Service, Controller, View, Erstellen, Anzeigen, Bearbeiten, Löschen
+sowie lokale Suche und Filterung sind noch nicht implementiert. Für den
+vollständigen Local MVP bleiben private lokale Einträge und synthetische
+Demo-Daten getrennt; Bilder werden nicht als Base64 in `localStorage`
+abgelegt.
+
+Für `v0.2.2` existieren keine externe Kommunikation, Webhooks,
+Synchronisierung, Agentenlogik oder Airtable-Anbindung. Agentengestützte,
+synchronisierte oder automatisierte LichtwaldLog-Prozesse bleiben einer
+späteren Phase vorbehalten. Weekly Review ist weiterhin geplant und kein
+stillschweigender Bestandteil dieses lokalen MVP. Für LichtwaldLog bleiben Storage-Key, Gesamtgrößen-Preflight und Storage-Implementierung offen.
 
 ### Verbundener Modus
 
@@ -844,7 +849,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
-| `v0.2.2` | Nächster geplanter lokaler Meilenstein; noch nicht begonnen oder implementiert, ohne Synchronisierung oder Agentenlogik |
+| `v0.2.2` | In Arbeit; Contract Foundation und ADR 0013 implementiert; übriger Local MVP offen und ohne externe Kommunikation |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
