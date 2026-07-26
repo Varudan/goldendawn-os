@@ -57,10 +57,13 @@ Open-Source-Lizenz verfügbar. `v0.2.2 – LichtwaldLog Local MVP` ist seit dem
 `2026-07-26` in Arbeit. Implementiert sind die LichtwaldLog-Contract-Foundation
 mit Schema-1-Vertrag, reinem Validator, synthetischen Contract-Tests und ADR
 0013 sowie die private Storage-Foundation mit begrenzter
-Full-Snapshot-Persistenz und ADR 0014. Service, Controller, View, CRUD, Suche
-und Filter sind noch offen; `v0.2.2` ist weder abgeschlossen noch
-veröffentlicht. Der Meilenstein bleibt vollständig lokal und besitzt keine
-externe Kommunikation, Webhooks, Agentenlogik oder Airtable-Anbindung.
+Full-Snapshot-Persistenz und ADR 0014. Die LichtwaldLog-Service-Foundation mit
+dem fachlichen Kern für Laden, Erstellen, vollständiges Bearbeiten, Löschen und
+Fokusverwaltung ist ebenfalls umgesetzt. Controller, View, der vollständig
+bedienbare UI-CRUD-Fluss, Suche und Filter sind noch offen; `v0.2.2` ist
+weder abgeschlossen noch veröffentlicht. Der Meilenstein bleibt vollständig
+lokal und besitzt keine externe Kommunikation, Webhooks, Agentenlogik oder
+Airtable-Anbindung.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -170,20 +173,54 @@ Freitextbewertung und die Anbindung des TestAgent gehören erst zu `v0.5.0`.
 - Implementiert sind der Schema-1-Vertrag, der reine Validator, die
   synthetischen Contract-Tests und die in ADR 0013 dokumentierte
   Contract-Entscheidung.
-- Die private Storage-Foundation ist gemäß ADR 0014 als ausschließlich lokaler
-  Datenfluss `LichtwaldLogStorage → StorageAdapter → localStorage`
-  umgesetzt. Sie verwendet den festen Key
+- Die private Storage-Foundation ist gemäß ADR 0014 umgesetzt. Zusammen mit der
+  Service-Foundation lautet der ausschließlich lokale Datenfluss
+  `LichtwaldLogService → LichtwaldLogStorage → StorageAdapter → localStorage`.
+  Der Storage verwendet den festen Key
   `goldendawn.lichtwaldLog.content.v1`, speichert den direkten Schema-1-Root als
   gemeinsamen Full-Snapshot und akzeptiert ausschließlich
   `dataOrigin: private`.
+- `createLichtwaldLogService({ lichtwaldLogStorage, generateLichtwaldLogEntryId })`
+  erhält den ID-Generator optional und liefert eine eingefrorene API mit exakt
+  `loadLog`, `createEntry`, `updateEntry`, `deleteEntry` und
+  `setFeaturedEntry`. `setFeaturedEntry(null)` entfernt den Fokus; eine
+  zusätzliche Clear- oder Toggle-Operation existiert nicht.
+- Der Storage bleibt die einzige veränderliche Wahrheit. Jede gültige
+  Serviceoperation lädt den aktuellen privaten Snapshot neu und der Service
+  hält keinen langlebigen Cache. Ungültige Form- oder Ziel-ID-Eingaben werden
+  vor Storage- und Generatorzugriffen abgelehnt.
+- Kalenderdatum, Titel, Text und Tags werden an den Rändern getrimmt; interne
+  Whitespaces und Zeilenumbrüche bleiben erhalten. Kalenderdaten werden ohne
+  `Date`- oder Zeitzonenumwandlung geprüft. Ziel-IDs werden nicht automatisch
+  getrimmt, sondern müssen bereits gültig sein und werden exakt sowie
+  case-sensitive aufgelöst.
+- Erstellen hängt einen Eintrag ohne Datumssortierung an. Vollständiges
+  Bearbeiten erhält ID, Arrayposition und Fokusreferenz. Löschen erhält die
+  Reihenfolge der übrigen Einträge und setzt beim fokussierten Ziel
+  `featuredEntryId` atomar im selben Kandidaten auf `null`. Die
+  Standard-ID verwendet `lichtwald-entry-${crypto.randomUUID()}`; ungültige,
+  kollidierende oder werfende Generatorresultate sind gemeinsam auf fünf
+  Versuche begrenzt.
+- Jede echte Mutation validiert den vollständigen privaten Kandidaten und ruft
+  an der Servicegrenze höchstens einmal `saveLichtwaldLog` auf. Inhaltlich
+  identische Updates, ein bereits gesetzter Fokus und das Entfernen eines
+  bereits leeren Fokus sind erfolgreiche schreibfreie No-ops. Nach einem
+  fehlgeschlagenen Save bleibt ausschließlich der vorherige vertrauenswürdige
+  Snapshot autoritativ.
+- Servicefehler verwenden ausschließlich allowlist-basierte Status-Code-Paare
+  und statische redigierte Meldungen. Private Eingaben, IDs, Tags,
+  Generatorwerte sowie fremde Storage-, Adapter- oder Exception-Meldungen
+  gelangen weder in `error` noch in Logs oder Console-Ausgaben.
 - Der LichtwaldLog-Snapshot ist auf 500.000 tatsächlich serialisierte
   UTF-16-Codeeinheiten gemäß `String.length` begrenzt; exakt 500.000 sind
   erlaubt. Ein fehlender Key liefert schreibfrei einen frischen privaten
   Leerzustand. Synthetische, beschädigte, inkompatible oder übergroße Bestände
-  werden weder repariert noch automatisch überschrieben. Der Read-Preflight ist
-  keine Transaktion oder Multi-Tab-Sperre.
-- Service, Controller, View, CRUD, Suche und Filter sind noch nicht
-  implementiert.
+  werden weder repariert noch automatisch überschrieben. Größenprüfung,
+  Serialisierung und Read-Preflight bleiben im Storage beziehungsweise
+  `StorageAdapter`; der Preflight ist keine Transaktion, kein
+  Compare-and-Swap und keine Multi-Tab-Sperre.
+- Controller, View, UI-Anbindung, der vollständig bedienbare CRUD-Fluss, Suche
+  und Filter sind noch nicht implementiert.
 - Das Ziel des LichtwaldLog Local MVP bleibt ein lokales Journal-Modul mit CRUD
   für Einträge aus Titel, reinem Kalenderdatum, Text und Tags sowie lokaler
   Suche und Filtern.

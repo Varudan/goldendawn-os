@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; v0.2.1 veröffentlicht; LichtwaldLog Contract- und private Storage-Foundation implementiert |
+| Status | Verbindliche Zielarchitektur; v0.2.1 veröffentlicht; LichtwaldLog Contract-, private Storage- und Service-Foundation implementiert |
 | Letzte Aktualisierung | 2026-07-26 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -658,8 +658,9 @@ annotierte Tag `v0.2.1` und das zugehörige GitHub Release wurden am
 `2026-07-25` veröffentlicht; GoldenDawn OS ist seitdem als öffentlich
 sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist als rein lokaler Meilenstein in Arbeit.
-Die Contract Foundation und private Storage-Foundation mit ADR 0013 und 0014
-sind implementiert; der vollständige MVP ist weder abgeschlossen noch
+Die Contract Foundation, private Storage-Foundation und Service-Foundation sind
+implementiert; ADR 0013 und ADR 0014 bleiben die autoritativen Contract- und
+Storage-Entscheidungen. Der vollständige MVP ist weder abgeschlossen noch
 veröffentlicht.
 
 Der spätere Zielpfad bleibt:
@@ -681,14 +682,31 @@ reinen Validator, synthetische Contract-Tests und die in ADR 0013 dokumentierte
 Architekturentscheidung. Der lokale Vertrag bildet Reflexions- und
 Erkenntniseinträge mit Titel, Kalenderdatum, Text und Tags ab.
 
-Die in ADR 0014 dokumentierte private Storage-Foundation verwendet
-ausschließlich diesen lokalen Datenfluss:
+Die Service-Foundation ergänzt die in ADR 0014 dokumentierte private
+Storage-Foundation ohne neue Datenquelle oder Architekturentscheidung. Der
+implementierte lokale Anwendungsdatenfluss lautet:
 
 ```text
-LichtwaldLogStorage
+LichtwaldLogService
+  → LichtwaldLogStorage
   → StorageAdapter
   → localStorage
 ```
+
+`createLichtwaldLogService` erhält `lichtwaldLogStorage` und optional
+`generateLichtwaldLogEntryId` per Dependency Injection. Die zurückgegebene
+eingefrorene API enthält exakt:
+
+```text
+loadLog()
+createEntry({ calendarDate, title, text, tags })
+updateEntry(entryId, { calendarDate, title, text, tags })
+deleteEntry(entryId)
+setFeaturedEntry(entryIdOrNull)
+```
+
+`setFeaturedEntry(null)` entfernt den Fokus. Eine zusätzliche Clear- oder
+Toggle-Operation und ein zweiter Fokuszustand werden nicht eingeführt.
 
 `createLichtwaldLogStorage` stellt als eingefrorene API ausschließlich
 `loadLichtwaldLog` und `saveLichtwaldLog` bereit. Beide Operationen verwenden
@@ -698,6 +716,47 @@ Der direkte Schema-1-Root wird ohne zweites Envelope als ein vollständiger
 Snapshot gespeichert. Storage-Namespace `v1` und `schemaVersion: 1` werden
 unabhängig versioniert. Der private Pfad akzeptiert ausschließlich
 `dataOrigin: private`.
+
+Der Storage ist die einzige veränderliche Wahrheit. Der Service hält keinen
+langlebigen Cache und lädt für jede gültige Operation den aktuellen Zustand
+erneut. Form- und Ziel-ID-Eingaben werden vor dem ersten Storage-Zugriff
+validiert. Kalenderdatum, Titel, Text und Tags werden nur an den Rändern
+getrimmt; interne Whitespaces und Zeilenumbrüche bleiben erhalten.
+Kalenderdaten werden mit der vorhandenen rein arithmetischen Vertragsprüfung
+und ohne `Date`-, UTC- oder Zeitzonenumwandlung geprüft. Ziel-IDs werden nicht
+automatisch getrimmt, sondern exakt und case-sensitive aufgelöst.
+
+Erstellen hängt den neuen Eintrag ohne implizite Datumssortierung an und lässt
+den Fokus unverändert. Ein Update ersetzt Kalenderdatum, Titel, Text und Tags
+vollständig an derselben Arrayposition, während Entry-ID und Fokusreferenz
+erhalten bleiben. Delete bewahrt die Reihenfolge der übrigen Einträge; beim
+Löschen des fokussierten Eintrags wird `featuredEntryId` im selben
+vollständigen Kandidaten atomar auf `null` gesetzt. Ein Fokus verweist
+ausschließlich über `featuredEntryId` auf eine vorhandene exakte Entry-ID.
+
+Die Standard-ID lautet `lichtwald-entry-${crypto.randomUUID()}`. Ungültige,
+überlange, kollidierende oder werfende Generatorresultate teilen sich höchstens
+fünf Versuche. Ist die Grenze von 1.000 Einträgen bereits erreicht, werden
+weder Generator noch Save aufgerufen; der 1.000. Eintrag darf ausgehend von
+999 Einträgen entstehen.
+
+Jede echte Mutation lädt an der Servicegrenze genau einmal, erzeugt ohne
+Eingabe- oder Bestandsmutation einen privaten Kandidaten, validiert dessen
+vollständigen Schema-1-Vertrag und ruft genau einmal `saveLichtwaldLog` auf.
+Der neue Zustand wird erst nach einem bestätigten `status: saved` autoritativ.
+Ein normalisiert identisches Update, ein bereits gesetzter Fokus und das
+Entfernen eines bereits leeren Fokus sind erfolgreiche schreibfreie No-ops;
+Not-found- und Validierungsfälle speichern ebenfalls nicht. Rückgaben,
+Einzeleinträge und Save-Argumente sind tief von Eingaben, Dependency-Resultaten
+und anderen Rückgaben entkoppelt.
+
+Servicefehler akzeptieren bekannte Dependency-Ergebnisse nur über ausdrückliche
+Status-Code-Allowlists und verwenden eigene statische Meldungen. Private
+Formwerte, IDs, Tags, Generatorwerte und fremde Storage-, Adapter- oder
+Exception-Meldungen werden weder in `error` noch in Logs oder
+Console-Ausgaben übernommen. Nach einem fehlgeschlagenen Save wird nur der
+vorherige vertrauenswürdige Snapshot, niemals der nicht persistierte Kandidat,
+als explizite Nutzlast zurückgegeben.
 
 Die tatsächliche JSON-Zeichenfolge ist gemäß `String.length` auf 500.000
 UTF-16-Codeeinheiten begrenzt; der exakte Grenzwert ist erlaubt. Der gemeinsame
@@ -712,14 +771,19 @@ Storage denselben Key mit demselben Limit. Synthetische, beschädigte,
 inkompatible, übergroße oder nicht sicher lesbare Bestände werden dadurch nicht
 automatisch überschrieben, repariert, migriert oder gelöscht. Dieser
 Read-Preflight ist keine Transaktion, kein Compare-and-Swap, kein Lock und
-verhindert keine TOCTOU- oder Multi-Tab-Rennen.
+verhindert keine TOCTOU- oder Multi-Tab-Rennen. Er bleibt innerhalb des
+Storage-Saves bestehen, sodass ein echter Mutationspfad trotz genau eines Loads
+und eines Saves an der Servicegrenze auf Adapterebene zusätzliche Reads
+ausführen kann. Der Service serialisiert nicht und prüft das Größenlimit nicht
+erneut.
 
-Service, Controller, View, Erstellen, Anzeigen, Bearbeiten, Löschen sowie lokale
-Suche und Filterung sind noch nicht implementiert. Für den vollständigen Local
-MVP bleiben private lokale Einträge und synthetische Demo-Daten getrennt;
-Bilder werden nicht als Base64 in `localStorage` abgelegt. Der Storage ist
-unverschlüsselt und bietet weder Authentifizierung, Zugriffskontrolle,
-Integritätsgarantie, Cloud-Sicherung noch Synchronisierung.
+Controller, View, UI-Anbindung, der vollständig bedienbare CRUD- und
+Fokusfluss, lokale Suche, Filterung und Demo-Integration sind noch nicht
+implementiert. Für den vollständigen Local MVP bleiben private lokale Einträge
+und synthetische Demo-Daten getrennt; Bilder werden nicht als Base64 in
+`localStorage` abgelegt. Der Storage ist unverschlüsselt und bietet weder
+Authentifizierung, Zugriffskontrolle, Integritätsgarantie, Cloud-Sicherung noch
+Synchronisierung.
 
 Für `v0.2.2` existieren keine externe Kommunikation, Webhooks,
 Synchronisierung, Agentenlogik oder Airtable-Anbindung. Agentengestützte,
@@ -847,18 +911,21 @@ src/
 ├── app/
 ├── components/
 ├── modules/
-│   └── learning-hub/
-│       ├── learningArtifactContract.js
-│       ├── learningProgressContract.js
-│       ├── learningProgressProjection.js
-│       ├── learningTestAttemptContract.js
-│       ├── learningTestBankContract.js
-│       └── learningTestEngine.js
+│   ├── learning-hub/
+│   │   ├── learningArtifactContract.js
+│   │   ├── learningProgressContract.js
+│   │   ├── learningProgressProjection.js
+│   │   ├── learningTestAttemptContract.js
+│   │   ├── learningTestBankContract.js
+│   │   └── learningTestEngine.js
+│   └── lichtwald-log/
+│       └── lichtwaldLogContract.js
 ├── services/
 │   ├── learningArtifactService.js
 │   ├── learningHubService.js
 │   ├── learningProgressService.js
 │   ├── learningTestService.js
+│   ├── lichtwaldLogService.js
 │   └── syncService.js
 ├── storage/
 │   ├── learningArtifactStorage.js
@@ -866,6 +933,7 @@ src/
 │   ├── learningProgressStorage.js
 │   ├── learningTestAttemptStorage.js
 │   ├── learningTestBankStorage.js
+│   ├── lichtwaldLogStorage.js
 │   └── storageAdapter.js
 ├── contracts/
 ├── data/
@@ -898,7 +966,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
-| `v0.2.2` | In Arbeit; Contract- und private Storage-Foundation mit ADR 0013 und 0014 implementiert; übriger Local MVP offen und ohne externe Kommunikation |
+| `v0.2.2` | In Arbeit; Contract-, private Storage- und Service-Foundation implementiert; übriger Local MVP offen und ohne externe Kommunikation |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |

@@ -49,7 +49,7 @@ nicht starre Kalendertermine.
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.2.2` | LichtwaldLog Local MVP | Contract- und private Storage-Foundation mit ADR 0013 und 0014 implementiert; übriger Local MVP offen | 🟡 |
+| `v0.2.2` | LichtwaldLog Local MVP | Contract-, private Storage- und Service-Foundation implementiert; übriger Local MVP offen | 🟡 |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
@@ -455,12 +455,18 @@ agentengestützte Prozesse sind nicht Teil dieser Version.
   Schema-1-Full-Snapshot, vollständiger Validierung, defensiven Klonen,
   schreibfreiem Missing-Zustand und Read-Preflight gemäß ADR 0014
   bereitstellen.
-- ⬜ Einträge mit Titel, Kalenderdatum, Text und Tags lokal abbilden.
-- ⬜ Einträge erstellen, anzeigen, bearbeiten und löschen.
+- ✅ Service-Foundation mit der exakt fünfteiligen API `loadLog`,
+  `createEntry`, `updateEntry`, `deleteEntry` und `setFeaturedEntry`
+  für private Einträge aus Kalenderdatum, Titel, Text und Tags bereitstellen.
+- ✅ LichtwaldLog-Datenzugriffe vollständig hinter
+  `LichtwaldLogService`, `LichtwaldLogStorage` und gemeinsamem
+  `StorageAdapter` kapseln.
+- ⬜ Controller und View anbinden, Einträge anzeigen und den vollständigen
+  benutzerbedienbaren CRUD- und Fokusfluss bereitstellen.
 - ⬜ Lokale Textsuche und Filter bereitstellen.
-- ⬜ Datenzugriffe vollständig hinter Services und Storage-Adaptern kapseln.
-- ⬜ Private lokale Einträge und synthetische öffentliche Demo-Daten strikt
-  getrennt halten.
+- ⬜ Eine klar getrennte synthetische öffentliche Demo-Integration
+  bereitstellen, ohne Daten in den ausschließlich privaten Servicepfad zu
+  übernehmen.
 - ⬜ Bilder nicht als Base64-Daten in `localStorage` speichern.
 - ⬜ Lade-, Leer-, Validierungs-, Erfolgs- und Speicherfehlerzustände gestalten.
 - ⬜ Klar kennzeichnen, dass lokale Browserdaten weder synchronisiert noch
@@ -783,10 +789,15 @@ Der annotierte Tag `v0.2.1` und das zugehörige GitHub Release wurden am
 sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist seit dem `2026-07-26` in Arbeit.
 Implementiert sind die Contract Foundation und private Storage-Foundation mit
-ADR 0013 und 0014. Service, Controller, View, CRUD, Suche und Filter bleiben
-offen; der Meilenstein ist weder abgeschlossen noch veröffentlicht. `v0.2.2`
-bleibt vollständig lokal und besitzt keine externe Kommunikation, Webhooks,
-Agentenlogik oder Airtable-Anbindung.
+ADR 0013 und ADR 0014 sowie die darauf aufbauende Service-Foundation. Der
+Service lädt den autoritativen privaten Zustand ohne Cache, normalisiert
+Formeingaben, löst Ziel-IDs exakt auf und kapselt Laden, Erstellen,
+vollständiges Bearbeiten, Löschen und Fokusverwaltung hinter dem fachlichen
+Storage. Controller, View, UI-Anbindung, der vollständig bedienbare CRUD-Fluss,
+Suche, Filter, Demo-Integration und UI-Zustände bleiben offen; der Meilenstein
+ist weder abgeschlossen noch veröffentlicht. `v0.2.2` bleibt vollständig lokal
+und besitzt keine externe Kommunikation, Webhooks, Agentenlogik oder
+Airtable-Anbindung.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein Backend, Benutzerkonten und

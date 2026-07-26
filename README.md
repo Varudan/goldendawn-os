@@ -36,10 +36,11 @@ and the production build. Tag `v0.2.1` and its corresponding GitHub Release
 were published on 2026-07-25, and the repository is publicly visible for
 portfolio and evaluation purposes without an open-source license. LichtwaldLog
 `v0.2.2` has been in progress since 2026-07-26. Its Contract Foundation,
-private Storage Foundation, and ADRs 0013 and 0014 are implemented; service,
-controller, view, CRUD, search, and filters remain open. The milestone is
-neither complete nor published. It remains fully local and includes no
-external communication, webhooks, agent logic, or Airtable integration.
+private Storage Foundation, Service Foundation, and ADRs 0013 and 0014 are
+implemented. Controller, view, UI integration, the fully operable CRUD flow,
+search, and filters remain open. The milestone is neither complete nor
+published. It remains fully local and includes no external communication,
+webhooks, agent logic, or Airtable integration.
 
 ## Vision
 
@@ -89,7 +90,7 @@ Accepted architecture decisions and their rationale are indexed in
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
 | LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP complete, verified, and published |
-| LichtwaldLog | Local text journal with search and filters | `v0.2.2` | In progress; Contract and private Storage Foundations with ADRs 0013 and 0014 implemented; remaining Local MVP open |
+| LichtwaldLog | Local text journal with search and filters | `v0.2.2` | In progress; Contract, private Storage, and Service Foundations implemented; remaining Local MVP open |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
 | Weekly Review | Structured summaries, progress, and next actions | Later, after the LichtwaldLog Local MVP | Planned; not part of `v0.2.2` |
@@ -270,13 +271,15 @@ LearningTestService
 
 ## LichtwaldLog Local MVP (in progress for v0.2.2)
 
-The Contract Foundation and private Storage Foundation are implemented and
-documented by ADRs 0013 and 0014. The contract consists of the Schema 1 model,
-the pure `validateLichtwaldLog` validator, and synthetic contract tests. The
-implemented storage path is:
+The Contract Foundation, private Storage Foundation, and Service Foundation are
+implemented. ADRs 0013 and 0014 document the unchanged contract and storage
+decisions. The contract consists of the Schema 1 model, the pure
+`validateLichtwaldLog` validator, and synthetic contract tests. The complete
+implemented application path is:
 
 ```text
-LichtwaldLogStorage
+LichtwaldLogService
+  → LichtwaldLogStorage
   → StorageAdapter
   → localStorage
 ```
@@ -292,15 +295,49 @@ synthetic, damaged, incompatible, or oversized existing values from automatic
 replacement. The preflight is not a transaction or a multi-tab lock, and the
 application limit is not a browser-quota guarantee.
 
-Service, controller, view, CRUD, local search, and filters are not yet
-implemented. The target Local MVP remains limited to entries with a title,
-calendar date, plain text, and tags, plus local search and filters. Private
-entries and synthetic demo entries remain separate. Images are not stored as
-Base64 in `localStorage`. The unencrypted same-origin storage is neither a
-cloud backup nor cross-device synchronization. `v0.2.2` includes no external
-communication, webhooks, synchronization, agent logic, or Airtable
-integration. Weekly Review is later work and is not part of this milestone.
-`v0.2.2` is neither complete nor published.
+`createLichtwaldLogService({ lichtwaldLogStorage, generateLichtwaldLogEntryId })`
+accepts the ID generator as an optional dependency and returns a frozen API
+containing exactly `loadLog`, `createEntry`, `updateEntry`, `deleteEntry`,
+and `setFeaturedEntry`. Passing `null` to `setFeaturedEntry` clears the
+focus; there is no additional clear or toggle method.
+
+Storage remains the sole mutable source of truth. Every valid operation reloads
+the current private snapshot, and the service keeps no long-lived cache.
+Invalid forms and target IDs are rejected before storage or ID-generator
+access. Calendar date, title, text, and tags are trimmed only at their outer
+edges while internal whitespace and line breaks are preserved. Calendar dates
+are checked without `Date` parsing or timezone conversion. Target IDs are not
+trimmed automatically and resolve exactly and case-sensitively.
+
+Creation appends without date sorting. A full update preserves the entry ID,
+array position, and any valid focus reference. Deletion preserves the order of
+the remaining entries and clears a deleted featured entry atomically in the
+same candidate. The default ID is
+`lichtwald-entry-${crypto.randomUUID()}`; invalid, colliding, or throwing
+generator results share a limit of five attempts. Every real mutation validates
+the complete private candidate and calls `saveLichtwaldLog` at most once at
+the service boundary. Identical normalized updates, an already selected focus,
+and clearing an already empty focus are successful write-free no-ops.
+
+Snapshots, entries, save arguments, and later results are defensively detached.
+After a failed save, only the previous trusted snapshot remains authoritative.
+Service errors use allowlisted status-code pairs and static redacted messages;
+private values and foreign dependency messages are never copied into
+`error`, logs, or console output. Serialization, the 500,000-code-unit limit,
+and the read preflight remain inside storage and the shared adapter. Browser
+quota, unencrypted same-origin access, TOCTOU behavior, and multi-tab races
+remain unchanged limitations.
+
+Controller, view, UI integration, the fully operable create/read/update/delete
+flow, local search, filters, and demo integration are not yet implemented. The
+target Local MVP remains limited to entries with a title, calendar date, plain
+text, and tags, plus local search and filters. Private entries and synthetic
+demo entries remain separate. Images are not stored as Base64 in
+`localStorage`. The local store is neither a cloud backup nor cross-device
+synchronization. `v0.2.2` includes no external communication, webhooks,
+synchronization, agent logic, or Airtable integration. Weekly Review is later
+work and is not part of this milestone. `v0.2.2` is neither complete nor
+published.
 
 ## Development principles
 
@@ -348,7 +385,7 @@ non-binding; see the roadmap for details.
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
-| v0.2.2 | LichtwaldLog Local MVP | In progress; Contract and private Storage Foundations with ADRs 0013 and 0014 implemented; remaining Local MVP open |
+| v0.2.2 | LichtwaldLog Local MVP | In progress; Contract, private Storage, and Service Foundations implemented; remaining Local MVP open |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
