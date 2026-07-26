@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.1 – LearningHub Local MVP vollständig geprüft und veröffentlicht` |
+| Projektphase | `v0.2.2 – LichtwaldLog Contract Foundation` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -17,16 +17,19 @@
 | LearningTestBank-Persistenznamespace | `v1` |
 | LearningTestAttemptLog-Schema | `1` |
 | LearningTestAttempt-Persistenznamespace | `v1` |
+| LichtwaldLog-Schema | `1` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Lokale Verträge und deterministische Mock-Test-UI implementiert; LearningHub Local MVP veröffentlicht; Sync-Vertrag bleibt Zielzustand |
-| Letzte Aktualisierung | 2026-07-25 |
+| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Contract Foundation implementiert; Sync-Vertrag bleibt Zielzustand |
+| Letzte Aktualisierung | 2026-07-26 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
-die lokale LearningTestBank und abgeschlossene LearningTestAttempts sowie die
-maschinenlesbare Sprache zwischen dem GoldenDawn-OS-Frontend, dem SyncAgent,
-dem DataAgent und dem TestAgent. Es konkretisiert die Grenzen aus `AGENTS.md`,
-`docs/architecture.md` und `docs/security.md`.
+die lokale LearningTestBank und abgeschlossene LearningTestAttempts. Es
+dokumentiert außerdem den implementierten, noch nicht persistierten
+LichtwaldLog-Schema-1-Vertrag sowie die maschinenlesbare Sprache zwischen dem
+GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und dem TestAgent. Es
+konkretisiert die Grenzen aus `AGENTS.md`, `docs/architecture.md` und
+`docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
 In `v0.2.1` sind die LearningHub-Schema-2-Foundation, die lokale
@@ -49,6 +52,13 @@ GitHub Release wurden am `2026-07-25` veröffentlicht; GoldenDawn OS ist
 seitdem als öffentlich sichtbares Portfolio-Repository ohne Open-Source-Lizenz
 verfügbar. Die externen Sync- und Agentenverträge beschreiben den geplanten
 Zielzustand späterer Versionen.
+
+Für `v0.2.2` sind nun der reine LichtwaldLog-Schema-1-Vertrag,
+`validateLichtwaldLog` und die zugehörigen synthetischen Contract-Tests
+implementiert. Storage-Key, Persistenz, Service, Controller, View, Suche und
+Filter folgen in getrennten Slices und dürfen noch nicht als umgesetzt gelten.
+Der neue lokale Vertrag führt keine externe Aktion ein.
+
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
 
@@ -58,7 +68,10 @@ Die lokalen Module `v0.2.1` und `v0.2.2` erweitern die externe
 Aktions-Allowlist dieses Dokuments nicht. LearningHub-Inhalt,
 LearningProgress, LearningArtifacts, LearningTestBank und
 LearningTestAttemptLog sind rein interne Datenverträge und führen keine
-externe Aktion ein. Ihre lokalen Persistenzen verwenden die getrennten festen
+externe Aktion ein. Der LichtwaldLog-Schema-1-Vertrag ist ebenfalls rein
+intern, besitzt in diesem Slice aber noch keinen Storage-Key oder
+Persistenzpfad. Die implementierten LearningHub-Persistenzen verwenden die
+getrennten festen
 Namespaces `goldendawn.learningHub.content.v1`,
 `goldendawn.learningHub.progress.v1`,
 `goldendawn.learningHub.artifacts.v1`,
@@ -139,9 +152,10 @@ bleiben flüchtig. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
 `TestAgent` und ist nicht mit den geplanten externen Aktionen
 `learningTest.create`, `learningTest.evaluate` oder
 `learningTest.result.get` gleichzusetzen. Die UI kennzeichnet ihn sichtbar als
-„Lokaler Mock-Test“. `v0.2.1` ist vollständig geprüft und veröffentlicht.
-`v0.2.2 – LichtwaldLog Local MVP` ist der nächste geplante rein lokale
-Meilenstein und noch nicht begonnen oder implementiert.
+„Lokaler Mock-Test“. `v0.2.1` ist vollständig geprüft und veröffentlicht. Von
+`v0.2.2 – LichtwaldLog Local MVP` ist ausschließlich die nachfolgend
+dokumentierte Contract Foundation implementiert; Persistenz, Anwendungslogik
+und Oberfläche bleiben spätere Slices desselben rein lokalen Meilensteins.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -406,7 +420,7 @@ Die Zahlen in den Keys versionieren ausschließlich ihre Persistenz-Namespaces.
 Der LearningTestBank-Vertrag wird unabhängig davon durch
 `schemaVersion: 1` versioniert.
 
-##### Struktur und Validierung
+##### LearningTestBank: Struktur und Validierung
 
 ```json
 {
@@ -918,7 +932,7 @@ Persistenz-Namespaces. Sie ändern die unabhängig versionierten Verträge nicht
 Die Artifact-Foundation führt keine Progress-Ereignisse, kein Schema 3 des
 LearningHubs und keine gemeinsame Sammelpersistenz ein.
 
-##### Struktur und Validierung
+##### LearningArtifact: Struktur und Validierung
 
 Der Root enthält ausschließlich die Vertragsversion, die
 Herkunftsklassifikation und das Artefakt-Array. Jedes Artefakt enthält
@@ -1193,7 +1207,7 @@ Die identische Zahl `1` in Progress-Schema und Progress-Key ist zufällig. Das
 `v1` im Key versioniert den Persistenz-Namespace; `schemaVersion: 1`
 versioniert unabhängig davon die Struktur des gespeicherten Fortschrittslogs.
 
-##### Struktur und Validierung
+##### LearningHub-Fortschritt: Struktur und Validierung
 
 ```json
 {
@@ -1515,17 +1529,167 @@ nicht vorweggenommen.
 
 ### v0.2.2 – LichtwaldLog Local MVP
 
-LichtwaldLog bleibt in `v0.2.2` ein rein lokales Modul. Seine geplanten
-Einträge, lokalen CRUD-Funktionen sowie Suche und Filter führen in diesem
-Schritt weder neue externe Aktionen noch einen verbindlichen Datenvertrag,
-Storage-Key oder ein Storage-Schema ein. Es gibt keine Synchronisierung und
-keinen Zugriff durch `SyncAgent`, `DataAgent` oder `TestAgent`. Der Meilenstein
-ist noch nicht begonnen oder implementiert.
+Die Contract Foundation des rein lokalen LichtwaldLogs ist implementiert. Sie
+umfasst ausschließlich das Schema-1-Modul `lichtwaldLogContract.js`, den reinen
+Validator `validateLichtwaldLog` und synthetische Contract-Tests. Storage,
+Service, Controller, View, CRUD, Suche und Filter sind noch nicht implementiert.
+Der Vertrag führt weder eine externe Aktion noch einen Zugriff durch
+`SyncAgent`, `DataAgent` oder `TestAgent` ein.
 
-Private lokale LichtwaldLog-Inhalte und synthetische öffentliche Demo-Daten
-bleiben strikt getrennt. Agentengestützte, synchronisierte oder automatisierte
-LichtwaldLog-Prozesse gehören zu einem späteren Zielzustand und sind nicht Teil
-der hier beschriebenen Verträge.
+#### LichtwaldLog – Schema 1
+
+Schema 1 beschreibt einen vollständigen flachen Journalzustand. Der Root
+besitzt exakt `schemaVersion`, `dataOrigin`, `featuredEntryId` und `entries`.
+Ein Eintrag besitzt exakt `id`, `calendarDate`, `title`, `text` und `tags`.
+Alle Felder sind eigene Pflichtfelder; unbekannte Root- und Entry-Felder werden
+abgelehnt.
+
+```json
+{
+  "schemaVersion": 1,
+  "dataOrigin": "synthetic",
+  "featuredEntryId": "lichtwald-entry-example",
+  "entries": [
+    {
+      "id": "lichtwald-entry-example",
+      "calendarDate": "2026-07-26",
+      "title": "Vollständig synthetischer Testmoment",
+      "text": "Dieser Inhalt wurde ausschließlich als Testfixture erfunden.",
+      "tags": ["Natur", "Ruhe"]
+    }
+  ]
+}
+```
+
+##### Root-Felder
+
+| Feld | Typ | Regel |
+| --- | --- | --- |
+| `schemaVersion` | Zahl | exakt `1` |
+| `dataOrigin` | String | exakt `private` oder `synthetic` |
+| `featuredEntryId` | String oder `null` | immer vorhanden; bei String bereits getrimmt, 1 bis 100 Zeichen und exakte Referenz auf einen vorhandenen Eintrag |
+| `entries` | Array | dicht, darf leer sein, höchstens 1.000 Einträge |
+
+Bei einem leeren `entries`-Array muss `featuredEntryId` `null` sein. Der
+allgemeine Contract akzeptiert private und synthetische Zustände. Ein späterer
+privater Storage wird ausschließlich `private` akzeptieren; diese noch nicht
+implementierte Herkunftsregel gehört zum Storage-Slice.
+
+##### Entry-Felder
+
+| Feld | Typ | Regel |
+| --- | --- | --- |
+| `id` | String | bereits getrimmt, 1 bis 100 Zeichen, innerhalb von `entries` exakt und case-sensitive eindeutig |
+| `calendarDate` | String | existierendes gregorianisches Datum im exakten Format `YYYY-MM-DD`, Jahr `0001` bis `9999` |
+| `title` | String | bereits getrimmt, 1 bis 120 Zeichen |
+| `text` | String | bereits getrimmt, 1 bis 10.000 Zeichen |
+| `tags` | Array | dicht, 0 bis 8 Strings |
+| `tags[]` | String | bereits getrimmt, 1 bis 30 Zeichen, je Eintrag case-insensitive eindeutig |
+
+Alle Zeichenlimits beziehen sich auf JavaScripts `String.length`. Entry-IDs
+und die Referenz in `featuredEntryId` sind case-sensitive; zwei IDs, die sich
+nur in Groß- und Kleinschreibung unterscheiden, sind daher verschieden. Das
+Datum wird rein arithmetisch nach den gregorianischen Schaltjahrregeln geprüft.
+Der Validator verwendet dafür weder `Date` noch UTC- oder Zeitzonenumwandlung.
+Auch ein gültiges zukünftiges Kalenderdatum ist vertragskonform.
+
+`text` bleibt als Nutzereingabe unverändert. Zeilenumbrüche sowie HTML- oder
+Script-ähnliche Zeichenfolgen sind zulässiger Stringinhalt; der Validator
+bereinigt, interpretiert oder normalisiert sie nicht. Eine spätere View muss
+diesen Inhalt sicher als Text darstellen. Tags verwenden keine Whitelist und
+werden nicht an Kommata aufgeteilt. Ihre Eindeutigkeit wird ohne Mutation
+case-insensitive geprüft, während die eingegebene Schreibweise erhalten
+bleibt.
+
+##### Fokusmodell
+
+`featuredEntryId` ist die einzige Fokusinformation des Vertrags. Der Eintrag
+wird weder in einem zweiten Feld kopiert noch durch ein `isFeatured`-Flag
+markiert. `null` bedeutet, dass kein Eintrag fokussiert ist. Jeder String muss
+exakt auf eine vorhandene Entry-ID verweisen; verwaiste Referenzen sind
+ungültig.
+
+Wenn ein späterer Service den aktuell fokussierten Eintrag löscht, muss er
+`featuredEntryId` innerhalb derselben erfolgreichen Mutation auf `null`
+setzen. Ein zwischenzeitlich persistierter Zustand mit verwaister Referenz ist
+nicht zulässig. Diese Löschoperation ist in der Contract Foundation noch nicht
+implementiert.
+
+##### Validierungsverhalten und Fehlercodes
+
+`validateLichtwaldLog` ist rein, verändert die Eingabe nicht und liefert
+entweder `{ ok: true, errors: [] }` oder `{ ok: false, errors }`. Jeder Fehler
+besitzt die Form `{ code, path, message }`. Der Validator sammelt unabhängig
+prüfbare Fehler in stabiler Reihenfolge, ohne Rohwerte oder private Inhalte in
+Fehlermeldungen aufzunehmen.
+
+Root und einzelne Entries müssen einfache Objekte mit `Object.prototype` oder ohne
+Prototyp sein; Arrays, Klasseninstanzen und Objekte mit benutzerdefiniertem
+Prototyp werden abgelehnt. Die `entries`- und `tags`-Arrays müssen dicht sein.
+Fehlende Pflichtfelder, unbekannte String- oder Symbolfelder, ungültige
+Arraypositionen und nicht lesbare Strukturen werden kontrolliert als Fehler
+gemeldet. Die Prüfung trimmt, sortiert, dedupliziert oder ergänzt keine Werte.
+
+| Code | Bedeutung |
+| --- | --- |
+| `invalidLichtwaldLog` | Der Root ist kein zulässiges Vertragsobjekt. |
+| `unsupportedSchemaVersion` | `schemaVersion` ist nicht exakt `1`. |
+| `invalidDataOrigin` | `dataOrigin` ist weder `private` noch `synthetic`. |
+| `invalidEntries` | `entries` ist kein lesbares Array. |
+| `entryLimitExceeded` | `entries` enthält mehr als 1.000 Positionen. |
+| `invalidEntry` | Eine Entry-Position enthält kein zulässiges Vertragsobjekt. |
+| `unknownProperty` | Root oder Entry enthält ein nicht erlaubtes eigenes Feld. |
+| `missingProperty` | Ein vorgeschriebenes eigenes Feld fehlt. |
+| `invalidId` | Entry-ID oder Fokus-ID ist kein nicht leerer, bereits getrimmter String. |
+| `idTooLong` | Entry-ID oder Fokus-ID überschreitet 100 Zeichen. |
+| `duplicateEntryId` | Eine exakte, case-sensitive Entry-ID kommt mehrfach vor. |
+| `invalidCalendarDate` | Das Kalenderdatum verletzt Format, Jahresbereich oder gregorianische Datumsregeln. |
+| `invalidTitle` | Der Titel ist kein nicht leerer, bereits getrimmter String. |
+| `titleTooLong` | Der Titel überschreitet 120 Zeichen. |
+| `invalidText` | Der Text ist kein nicht leerer, bereits getrimmter String. |
+| `textTooLong` | Der Text überschreitet 10.000 Zeichen. |
+| `invalidTags` | `tags` ist kein lesbares Array. |
+| `tagLimitExceeded` | Ein Eintrag besitzt mehr als acht Tag-Positionen. |
+| `invalidTag` | Eine Tag-Position ist kein nicht leerer, bereits getrimmter String. |
+| `tagTooLong` | Ein Tag überschreitet 30 Zeichen. |
+| `duplicateTag` | Ein Tag kommt im selben Eintrag case-insensitive mehrfach vor. |
+| `featuredEntryNotFound` | Die gültig geformte Fokus-ID referenziert keine gültige vorhandene Entry-ID. |
+
+##### Bewusst aufgeschobene Persistenz und Sicherheit
+
+Ein späterer LichtwaldLog-Storage soll immer den vollständigen Root-Zustand
+als einen Snapshot über `StorageAdapter` speichern. Getrennte Schreibvorgänge
+für `entries` und `featuredEntryId` würden die Referenzkonsistenz gefährden und
+sind nicht vorgesehen. Der konkrete Storage-Key sowie eine Obergrenze und der
+Preflight für die gesamte serialisierte Snapshot-Größe werden erst im
+Storage-Slice festgelegt. Die Feld- und Mengenlimits dieses Vertrags ersetzen
+diese noch ausstehende Gesamtgrößenprüfung nicht.
+
+Der zukünftige private Storage darf ausschließlich Zustände mit
+`dataOrigin: private` annehmen. `dataOrigin` ist jedoch nur eine Klassifikation
+und weder Zugriffsschutz noch Verschlüsselung. `localStorage` ist
+unverschlüsselt, kann von Skripten derselben Origin gelesen werden, besitzt
+browserabhängige Quoten und kann durch das Löschen des Browserprofils verloren
+gehen. Es bietet weder Cloud-Sicherung noch geräteübergreifende Speicherung,
+Transaktionen oder Schutz vor Multi-Tab-Konflikten. Diese Risiken müssen im
+Storage- und Service-Slice kontrolliert behandelt werden.
+
+Repository und automatisierte Tests verwenden ausschließlich klar
+gekennzeichnete, unabhängig erfundene synthetische Inhalte. Private
+Journaltexte dürfen nicht als Fixture, Demo oder Beispieldatensatz in das
+Repository gelangen. Bilder und andere Binärdaten sind für `v0.2.2`
+vollständig ausgeschlossen; dazu zählen insbesondere Base64-Inhalte,
+Dateipfade und Bildmetadaten. Schema 1 enthält außerdem keine Erstellungs- oder
+Änderungszeitstempel. `calendarDate` ist nur ein reines Kalenderdatum.
+Stimmung, Energie, Gesundheitswerte, Trainingsmetriken, Airtable-IDs,
+Sync-Zustände, Agentenmetadaten und KI-Ausgaben sind ebenfalls keine
+Vertragsfelder. Jeder Eintrag bleibt flach und eigenständig.
+
+Der Contract-Validator kommuniziert nicht extern und führt weder Webhooks,
+Airtable, Synchronisierung noch `SyncAgent`, `DataAgent`, `TestAgent` oder
+andere KI-Logik ein. Aus diesem lokalen deterministischen Vertrag wird keine
+formale Konformitäts- oder Risikoklassifizierungsbehauptung nach dem EU AI Act
+abgeleitet.
 
 ## Ziele des Vertrags
 
