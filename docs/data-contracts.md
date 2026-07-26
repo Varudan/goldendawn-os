@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.2 – LichtwaldLog Contract Foundation` |
+| Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -18,18 +18,20 @@
 | LearningTestAttemptLog-Schema | `1` |
 | LearningTestAttempt-Persistenznamespace | `v1` |
 | LichtwaldLog-Schema | `1` |
+| LichtwaldLog-Persistenznamespace | `v1` |
+| LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Contract Foundation implementiert; Sync-Vertrag bleibt Zielzustand |
+| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Contract- und private Storage-Foundation implementiert; Sync-Vertrag bleibt Zielzustand |
 | Letzte Aktualisierung | 2026-07-26 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
 die lokale LearningTestBank und abgeschlossene LearningTestAttempts. Es
-dokumentiert außerdem den implementierten, noch nicht persistierten
-LichtwaldLog-Schema-1-Vertrag sowie die maschinenlesbare Sprache zwischen dem
-GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und dem TestAgent. Es
-konkretisiert die Grenzen aus `AGENTS.md`, `docs/architecture.md` und
-`docs/security.md`.
+dokumentiert außerdem den implementierten LichtwaldLog-Schema-1-Vertrag und
+seine begrenzte private Full-Snapshot-Persistenz sowie die maschinenlesbare
+Sprache zwischen dem GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und
+dem TestAgent. Es konkretisiert die Grenzen aus `AGENTS.md`,
+`docs/architecture.md` und `docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
 In `v0.2.1` sind die LearningHub-Schema-2-Foundation, die lokale
@@ -53,11 +55,12 @@ seitdem als öffentlich sichtbares Portfolio-Repository ohne Open-Source-Lizenz
 verfügbar. Die externen Sync- und Agentenverträge beschreiben den geplanten
 Zielzustand späterer Versionen.
 
-Für `v0.2.2` sind nun der reine LichtwaldLog-Schema-1-Vertrag,
-`validateLichtwaldLog` und die zugehörigen synthetischen Contract-Tests
-implementiert. Storage-Key, Persistenz, Service, Controller, View, Suche und
-Filter folgen in getrennten Slices und dürfen noch nicht als umgesetzt gelten.
-Der neue lokale Vertrag führt keine externe Aktion ein.
+Für `v0.2.2` sind der reine LichtwaldLog-Schema-1-Vertrag,
+`validateLichtwaldLog`, die zugehörigen synthetischen Contract-Tests und die
+private Storage-Foundation unter `goldendawn.lichtwaldLog.content.v1`
+implementiert. Service, Controller, View, CRUD, Suche und Filter folgen in
+getrennten Slices und dürfen noch nicht als umgesetzt gelten. Die lokale
+Foundation führt keine externe Aktion ein.
 
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
@@ -69,9 +72,10 @@ Aktions-Allowlist dieses Dokuments nicht. LearningHub-Inhalt,
 LearningProgress, LearningArtifacts, LearningTestBank und
 LearningTestAttemptLog sind rein interne Datenverträge und führen keine
 externe Aktion ein. Der LichtwaldLog-Schema-1-Vertrag ist ebenfalls rein
-intern, besitzt in diesem Slice aber noch keinen Storage-Key oder
-Persistenzpfad. Die implementierten LearningHub-Persistenzen verwenden die
-getrennten festen
+intern. Seine implementierte private Persistenz verwendet den festen Namespace
+`goldendawn.lichtwaldLog.content.v1`; das `v1` im Key und
+`schemaVersion: 1` werden unabhängig versioniert. Die implementierten
+LearningHub-Persistenzen verwenden die getrennten festen
 Namespaces `goldendawn.learningHub.content.v1`,
 `goldendawn.learningHub.progress.v1`,
 `goldendawn.learningHub.artifacts.v1`,
@@ -153,9 +157,9 @@ bleiben flüchtig. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
 `learningTest.create`, `learningTest.evaluate` oder
 `learningTest.result.get` gleichzusetzen. Die UI kennzeichnet ihn sichtbar als
 „Lokaler Mock-Test“. `v0.2.1` ist vollständig geprüft und veröffentlicht. Von
-`v0.2.2 – LichtwaldLog Local MVP` ist ausschließlich die nachfolgend
-dokumentierte Contract Foundation implementiert; Persistenz, Anwendungslogik
-und Oberfläche bleiben spätere Slices desselben rein lokalen Meilensteins.
+`v0.2.2 – LichtwaldLog Local MVP` sind die nachfolgend dokumentierte Contract-
+und private Storage-Foundation implementiert; Anwendungslogik und Oberfläche
+bleiben spätere Slices desselben rein lokalen Meilensteins.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -1529,12 +1533,13 @@ nicht vorweggenommen.
 
 ### v0.2.2 – LichtwaldLog Local MVP
 
-Die Contract Foundation des rein lokalen LichtwaldLogs ist implementiert. Sie
-umfasst ausschließlich das Schema-1-Modul `lichtwaldLogContract.js`, den reinen
-Validator `validateLichtwaldLog` und synthetische Contract-Tests. Storage,
-Service, Controller, View, CRUD, Suche und Filter sind noch nicht implementiert.
-Der Vertrag führt weder eine externe Aktion noch einen Zugriff durch
-`SyncAgent`, `DataAgent` oder `TestAgent` ein.
+Die Contract Foundation und private Storage-Foundation des rein lokalen
+LichtwaldLogs sind implementiert. Sie umfassen das Schema-1-Modul
+`lichtwaldLogContract.js`, den reinen Validator `validateLichtwaldLog`,
+synthetische Contract-Tests sowie `createLichtwaldLogStorage` hinter dem
+gemeinsamen `StorageAdapter`. Service, Controller, View, CRUD, Suche und Filter
+sind noch nicht implementiert. Vertrag und Storage führen weder eine externe
+Aktion noch einen Zugriff durch `SyncAgent`, `DataAgent` oder `TestAgent` ein.
 
 #### LichtwaldLog – Schema 1
 
@@ -1571,9 +1576,9 @@ abgelehnt.
 | `entries` | Array | dicht, darf leer sein, höchstens 1.000 Einträge |
 
 Bei einem leeren `entries`-Array muss `featuredEntryId` `null` sein. Der
-allgemeine Contract akzeptiert private und synthetische Zustände. Ein späterer
-privater Storage wird ausschließlich `private` akzeptieren; diese noch nicht
-implementierte Herkunftsregel gehört zum Storage-Slice.
+allgemeine Contract akzeptiert private und synthetische Zustände. Der
+implementierte private Storage akzeptiert an seiner Lese- und Schreibgrenze
+ausschließlich `dataOrigin: private`.
 
 ##### Entry-Felder
 
@@ -1655,24 +1660,145 @@ gemeldet. Die Prüfung trimmt, sortiert, dedupliziert oder ergänzt keine Werte.
 | `duplicateTag` | Ein Tag kommt im selben Eintrag case-insensitive mehrfach vor. |
 | `featuredEntryNotFound` | Die gültig geformte Fokus-ID referenziert keine gültige vorhandene Entry-ID. |
 
-##### Bewusst aufgeschobene Persistenz und Sicherheit
+##### Implementierte private LichtwaldLog-Persistenz und Sicherheitsgrenzen
 
-Ein späterer LichtwaldLog-Storage soll immer den vollständigen Root-Zustand
-als einen Snapshot über `StorageAdapter` speichern. Getrennte Schreibvorgänge
-für `entries` und `featuredEntryId` würden die Referenzkonsistenz gefährden und
-sind nicht vorgesehen. Der konkrete Storage-Key sowie eine Obergrenze und der
-Preflight für die gesamte serialisierte Snapshot-Größe werden erst im
-Storage-Slice festgelegt. Die Feld- und Mengenlimits dieses Vertrags ersetzen
-diese noch ausstehende Gesamtgrößenprüfung nicht.
+Die private Storage-Foundation verwendet ausschließlich diesen Datenfluss:
 
-Der zukünftige private Storage darf ausschließlich Zustände mit
-`dataOrigin: private` annehmen. `dataOrigin` ist jedoch nur eine Klassifikation
-und weder Zugriffsschutz noch Verschlüsselung. `localStorage` ist
-unverschlüsselt, kann von Skripten derselben Origin gelesen werden, besitzt
-browserabhängige Quoten und kann durch das Löschen des Browserprofils verloren
-gehen. Es bietet weder Cloud-Sicherung noch geräteübergreifende Speicherung,
-Transaktionen oder Schutz vor Multi-Tab-Konflikten. Diese Risiken müssen im
-Storage- und Service-Slice kontrolliert behandelt werden.
+```text
+LichtwaldLogStorage
+  → StorageAdapter
+  → localStorage
+```
+
+`LICHTWALD_LOG_STORAGE_KEY` ist fest auf
+`goldendawn.lichtwaldLog.content.v1` gesetzt. Das `v1` bezeichnet nur den
+Persistenznamespace und wird unabhängig vom fachlichen `schemaVersion: 1`
+versioniert. Der gespeicherte Wert ist unmittelbar der vollständige
+Schema-1-Root. Es gibt weder ein zweites Envelope noch getrennte Keys für
+`entries` und `featuredEntryId`. Dadurch bleibt die Fokusreferenz Bestandteil
+desselben vollständig validierten JSON-Snapshots.
+
+`LICHTWALD_LOG_MAX_SERIALIZED_LENGTH` ist exakt `500_000`. Gemessen wird die
+tatsächliche, vom gemeinsamen `StorageAdapter` erzeugte JSON-Zeichenfolge mit
+JavaScripts `String.length`, also in UTF-16-Codeeinheiten einschließlich der
+von `JSON.stringify` erzeugten JSON-Escapes. Ein Wert mit exakt 500.000
+Codeeinheiten ist erlaubt; jeder größere Wert wird kontrolliert abgelehnt.
+Diese Grenze ist eine Anwendungsgrenze und keine Garantie für die
+browserabhängige Storage-Quota. Ein `QuotaExceededError` bleibt deshalb ein
+getrennter technischer Fehlerfall.
+
+Der gemeinsame Adapter unterstützt dafür rückwärtskompatibel:
+
+```text
+readJson(key, options?)
+writeJson(key, value, options?)
+```
+
+Ohne `options` beziehungsweise mit `undefined` bleibt das bisherige Verhalten
+aller bestehenden Aufrufer unverändert. Wird `options` angegeben, muss
+`options.maxSerializedLength` eine positive sichere Ganzzahl sein. Eine
+ungültige Konfiguration wird vor jedem Storage- oder Serialisierungszugriff als
+`invalidLimit` / `invalidStorageLimit` abgelehnt.
+
+Beim Lesen ruft der Adapter `getItem` kontrolliert auf und behandelt einen
+fehlenden Key weiterhin als `missing`. Einen vorhandenen String prüft er vor
+`JSON.parse` anhand seiner `String.length`. Eine Überschreitung liefert
+`sizeLimitExceeded` / `storageSizeLimitExceeded`, ohne den Inhalt zu parsen.
+Deshalb hat dieses Ergebnis auch für übergroßes ungültiges JSON Vorrang vor
+`invalidJson`.
+
+Beim Schreiben serialisiert der Adapter den Wert exakt einmal mit
+`JSON.stringify`. Nach einem kontrollierten Serialisierungsfehler prüft er die
+tatsächliche Zeichenfolge vor `setItem`. Eine Überschreitung liefert ebenfalls
+`sizeLimitExceeded` / `storageSizeLimitExceeded`; `setItem` wird in diesem Fall
+nicht aufgerufen. Erst ein Wert innerhalb des Limits führt zu genau einem
+`setItem`-Aufruf. Die JSON-Serialisierung bleibt damit vollständig im
+gemeinsamen Adapter und wird im LichtwaldLog-Storage nicht dupliziert.
+
+Die bestehende Semantik von `removeJsonIfUnchanged` bleibt unverändert. Für
+`readJson`, `writeJson` und `removeJsonIfUnchanged` gilt zusätzlich: Lässt sich
+der `name` eines gefangenen Fehlerobjekts nicht sicher lesen, entkommt keine
+Exception. Der Adapter fällt kontrolliert auf den allgemeinen Lese-, Schreib-
+beziehungsweise Entfernungsfehler zurück.
+
+`createLichtwaldLogStorage(storageAdapter)` gibt eine eingefrorene API mit
+exakt diesen beiden Methoden zurück:
+
+```text
+loadLichtwaldLog()
+saveLichtwaldLog(lichtwaldLog)
+```
+
+Frei wählbare Keys und Methoden für Delete, Clear, Reset, Import, Export,
+Migration, Seeding, Append oder Sync werden nicht angeboten. Ein fehlender Key
+liefert bei jedem Aufruf ohne Schreibzugriff einen frischen privaten
+Leerzustand:
+
+```json
+{
+  "ok": true,
+  "status": "missing",
+  "lichtwaldLog": {
+    "schemaVersion": 1,
+    "dataOrigin": "private",
+    "featuredEntryId": null,
+    "entries": []
+  }
+}
+```
+
+Ein vorhandener Wert wird mit dem festen Größenlimit geladen, vollständig mit
+`validateLichtwaldLog` validiert und zusätzlich auf `dataOrigin: private`
+geprüft. Danach wird er defensiv tief geklont, als Clone erneut vollständig
+validiert und ausschließlich als detached Clone zurückgegeben. Der Erfolg hat
+`status: found` und enthält den Clone in `lichtwaldLog`. Synthetische,
+beschädigte, inkompatible oder übergroße Bestände werden dabei weder
+umklassifiziert noch repariert, gelöscht oder überschrieben.
+
+`saveLichtwaldLog` validiert zuerst den vollständigen Kandidaten und verlangt
+die private Herkunft. Danach wird der Kandidat defensiv tief geklont, als Clone
+erneut vollständig validiert und erneut auf private Herkunft geprüft. Erst
+danach werden die benötigten Adaptermethoden geprüft und der bestehende feste
+Key mit demselben Größenlimit gelesen. Jeder Preflight-Fehler beendet die
+Operation ohne Schreibzugriff. Nur ein fehlender Key oder ein vollständig
+valider privater Bestand erlaubt den anschließenden Full-Snapshot-Write des
+validierten Clones mit festem Key und festem Limit. Ein erfolgreicher Save
+liefert `{ ok: true, status: "saved" }`.
+
+Der Read-Preflight schützt erkennbare synthetische, beschädigte, inkompatible,
+übergroße oder nicht sicher lesbare Rohwerte vor automatischem Überschreiben.
+Er ist keine Transaktion, kein Compare-and-Swap, kein Lock und verhindert
+weder TOCTOU- noch Multi-Tab-Rennen. Die Storage-Foundation führt keine
+Reparatur, Migration, Demo-Übernahme oder automatische Löschung durch.
+
+Die domänenspezifische Fehlergrenze erkennt nur fest erlaubte
+Status-Code-Paare des gemeinsamen Adapters und verwendet eigene statische
+Meldungen. Insbesondere gelten:
+
+| Fall | `status` | `code` |
+| --- | --- | --- |
+| ungültige gespeicherte Vertragsdaten | `invalidStoredData` | `invalidLichtwaldLogData` |
+| nicht private gespeicherte Daten | `invalidStoredData` | `privateLichtwaldLogRequired` |
+| ungültiger Save-Kandidat | `validationFailed` | `invalidLichtwaldLogData` |
+| nicht privater Save-Kandidat | `validationFailed` | `privateLichtwaldLogRequired` |
+| fehlende Adaptermethode | `unavailable` | `storageAdapterUnavailable` |
+| geworfenes, widersprüchliches, unbekanntes oder formal unbrauchbares Adapterresultat | `storageFailed` | `unexpectedStorageResult` |
+
+Bekannte technische Adapterfehler einschließlich ungültiger Keys oder Limits,
+Unavailable-, Read-, Invalid-JSON-, Größen-, Serialisierungs-, Quota- und
+Write-Fehlern behalten ihr dokumentiertes Status-Code-Paar, erhalten an der
+Domänengrenze aber ausschließlich statische LichtwaldLog-Meldungen. Entry-IDs,
+`featuredEntryId`, Titel, Texte, Tags, vollständige JSON-Werte, tatsächliche
+gespeicherte Größen, fremde Adapter- oder `DOMException`-Meldungen, Stacktraces
+und Validator-Rohwerte werden weder in Fehlern noch in Logs ausgegeben.
+
+`dataOrigin` bleibt eine fachliche Klassifikation und ist weder
+Authentifizierung noch Zugriffsschutz oder Verschlüsselung. `localStorage`
+liegt unverschlüsselt im aktuellen Browserprofil, kann von JavaScript derselben
+Origin gelesen oder verändert werden, besitzt browserabhängige Quoten und kann
+durch das Löschen des Browserprofils verloren gehen. Die Foundation bietet
+keine Zugriffskontrolle, Integritätsgarantie, Transaktion, Multi-Tab-Sperre,
+Cloud-Sicherung oder geräteübergreifende Synchronisierung.
 
 Repository und automatisierte Tests verwenden ausschließlich klar
 gekennzeichnete, unabhängig erfundene synthetische Inhalte. Private
@@ -1685,11 +1811,13 @@ Stimmung, Energie, Gesundheitswerte, Trainingsmetriken, Airtable-IDs,
 Sync-Zustände, Agentenmetadaten und KI-Ausgaben sind ebenfalls keine
 Vertragsfelder. Jeder Eintrag bleibt flach und eigenständig.
 
-Der Contract-Validator kommuniziert nicht extern und führt weder Webhooks,
+Contract und Storage kommunizieren nicht extern und führen weder Webhooks,
 Airtable, Synchronisierung noch `SyncAgent`, `DataAgent`, `TestAgent` oder
-andere KI-Logik ein. Aus diesem lokalen deterministischen Vertrag wird keine
-formale Konformitäts- oder Risikoklassifizierungsbehauptung nach dem EU AI Act
-abgeleitet.
+andere KI-Logik ein. Ein späterer Agentenfluss benötigt einen eigenen
+minimierten Vertrag; der private lokale Gesamtsnapshot darf nicht automatisch
+oder vollständig an Agenten weitergegeben werden. Aus dieser lokalen
+Foundation wird weder formale AI-Act- noch allgemeine
+Sicherheitskonformität abgeleitet.
 
 ## Ziele des Vertrags
 

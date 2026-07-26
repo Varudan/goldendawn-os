@@ -13,25 +13,84 @@ function isValidStorageKey(key) {
   return typeof key === 'string' && key.trim().length > 0
 }
 
-function isSecurityError(error) {
-  return error?.name === 'SecurityError'
+function createInvalidLimitFailure() {
+  return createFailure(
+    'invalidLimit',
+    'invalidStorageLimit',
+    'Das Speicherlimit muss eine positive sichere Ganzzahl sein.'
+  )
 }
 
-function isQuotaExceededError(error) {
+function createSizeLimitExceededFailure() {
+  return createFailure(
+    'sizeLimitExceeded',
+    'storageSizeLimitExceeded',
+    'Die serialisierten Daten überschreiten das zulässige Speicherlimit.'
+  )
+}
+
+function resolveMaxSerializedLength(options) {
+  if (options === undefined) {
+    return {
+      ok: true,
+      maxSerializedLength: undefined,
+    }
+  }
+
+  let maxSerializedLength
+
+  try {
+    maxSerializedLength = options?.maxSerializedLength
+  } catch {
+    return { ok: false }
+  }
+
+  if (
+    !Number.isSafeInteger(maxSerializedLength) ||
+    maxSerializedLength <= 0
+  ) {
+    return { ok: false }
+  }
+
+  return {
+    ok: true,
+    maxSerializedLength,
+  }
+}
+
+function readErrorName(error) {
+  try {
+    return error?.name
+  } catch {
+    return undefined
+  }
+}
+
+function isSecurityErrorName(errorName) {
+  return errorName === 'SecurityError'
+}
+
+function isQuotaExceededErrorName(errorName) {
   return (
-    error?.name === 'QuotaExceededError' ||
-    error?.name === 'NS_ERROR_DOM_QUOTA_REACHED'
+    errorName === 'QuotaExceededError' ||
+    errorName === 'NS_ERROR_DOM_QUOTA_REACHED'
   )
 }
 
 export function createStorageAdapter(storageImplementation) {
-  function readJson(key) {
+  function readJson(key, options = undefined) {
     if (!isValidStorageKey(key)) {
       return createFailure(
         'invalidKey',
         'invalidStorageKey',
         'Der Storage-Key muss eine nicht leere Zeichenfolge sein.'
       )
+    }
+
+    const limitResult = resolveMaxSerializedLength(options)
+
+    if (!limitResult.ok) {
+      return createInvalidLimitFailure()
     }
 
     if (typeof storageImplementation?.getItem !== 'function') {
@@ -47,7 +106,9 @@ export function createStorageAdapter(storageImplementation) {
     try {
       serializedValue = storageImplementation.getItem(key)
     } catch (error) {
-      if (isSecurityError(error)) {
+      const errorName = readErrorName(error)
+
+      if (isSecurityErrorName(errorName)) {
         return createFailure(
           'unavailable',
           'storageUnavailable',
@@ -77,6 +138,13 @@ export function createStorageAdapter(storageImplementation) {
       )
     }
 
+    if (
+      limitResult.maxSerializedLength !== undefined &&
+      serializedValue.length > limitResult.maxSerializedLength
+    ) {
+      return createSizeLimitExceededFailure()
+    }
+
     try {
       return {
         ok: true,
@@ -92,13 +160,19 @@ export function createStorageAdapter(storageImplementation) {
     }
   }
 
-  function writeJson(key, value) {
+  function writeJson(key, value, options = undefined) {
     if (!isValidStorageKey(key)) {
       return createFailure(
         'invalidKey',
         'invalidStorageKey',
         'Der Storage-Key muss eine nicht leere Zeichenfolge sein.'
       )
+    }
+
+    const limitResult = resolveMaxSerializedLength(options)
+
+    if (!limitResult.ok) {
+      return createInvalidLimitFailure()
     }
 
     if (typeof storageImplementation?.setItem !== 'function') {
@@ -129,10 +203,19 @@ export function createStorageAdapter(storageImplementation) {
       )
     }
 
+    if (
+      limitResult.maxSerializedLength !== undefined &&
+      serializedValue.length > limitResult.maxSerializedLength
+    ) {
+      return createSizeLimitExceededFailure()
+    }
+
     try {
       storageImplementation.setItem(key, serializedValue)
     } catch (error) {
-      if (isQuotaExceededError(error)) {
+      const errorName = readErrorName(error)
+
+      if (isQuotaExceededErrorName(errorName)) {
         return createFailure(
           'quotaExceeded',
           'storageQuotaExceeded',
@@ -140,7 +223,7 @@ export function createStorageAdapter(storageImplementation) {
         )
       }
 
-      if (isSecurityError(error)) {
+      if (isSecurityErrorName(errorName)) {
         return createFailure(
           'unavailable',
           'storageUnavailable',
@@ -206,7 +289,9 @@ export function createStorageAdapter(storageImplementation) {
     try {
       currentSerializedValue = storageImplementation.getItem(key)
     } catch (error) {
-      if (isSecurityError(error)) {
+      const errorName = readErrorName(error)
+
+      if (isSecurityErrorName(errorName)) {
         return createFailure(
           'unavailable',
           'storageUnavailable',
@@ -239,7 +324,9 @@ export function createStorageAdapter(storageImplementation) {
     try {
       storageImplementation.removeItem(key)
     } catch (error) {
-      if (isSecurityError(error)) {
+      const errorName = readErrorName(error)
+
+      if (isSecurityErrorName(errorName)) {
         return createFailure(
           'unavailable',
           'storageUnavailable',

@@ -54,13 +54,13 @@ Fragenverwaltung, Testdurchführung, Ergebnis und Versuchshistorie bedienbar.
 Der Mock-Test verwendet weder KI noch externe Kommunikation. GoldenDawn OS ist
 seit dem `2026-07-25` als öffentlich sichtbares Portfolio-Repository ohne
 Open-Source-Lizenz verfügbar. `v0.2.2 – LichtwaldLog Local MVP` ist seit dem
-`2026-07-26` in Arbeit. Implementiert sind ausschließlich die LichtwaldLog-
-Contract-Foundation mit Schema-1-Vertrag, reinem Validator und synthetischen
-Contract-Tests sowie die in ADR 0013 dokumentierte Architekturentscheidung.
-Storage, Service, Controller, View, CRUD, Suche und Filter sind noch offen;
-`v0.2.2` ist weder abgeschlossen noch veröffentlicht. Der Meilenstein bleibt
-vollständig lokal und besitzt keine externe Kommunikation, Webhooks,
-Agentenlogik oder Airtable-Anbindung.
+`2026-07-26` in Arbeit. Implementiert sind die LichtwaldLog-Contract-Foundation
+mit Schema-1-Vertrag, reinem Validator, synthetischen Contract-Tests und ADR
+0013 sowie die private Storage-Foundation mit begrenzter
+Full-Snapshot-Persistenz und ADR 0014. Service, Controller, View, CRUD, Suche
+und Filter sind noch offen; `v0.2.2` ist weder abgeschlossen noch
+veröffentlicht. Der Meilenstein bleibt vollständig lokal und besitzt keine
+externe Kommunikation, Webhooks, Agentenlogik oder Airtable-Anbindung.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -167,10 +167,22 @@ Freitextbewertung und die Anbindung des TestAgent gehören erst zu `v0.5.0`.
 
 ### LichtwaldLog Local MVP in v0.2.2
 
-- Implementiert sind ausschließlich der Schema-1-Vertrag, der reine Validator,
-  die synthetischen Contract-Tests und die in ADR 0013 dokumentierte
+- Implementiert sind der Schema-1-Vertrag, der reine Validator, die
+  synthetischen Contract-Tests und die in ADR 0013 dokumentierte
   Contract-Entscheidung.
-- Storage, Service, Controller, View, CRUD, Suche und Filter sind noch nicht
+- Die private Storage-Foundation ist gemäß ADR 0014 als ausschließlich lokaler
+  Datenfluss `LichtwaldLogStorage → StorageAdapter → localStorage`
+  umgesetzt. Sie verwendet den festen Key
+  `goldendawn.lichtwaldLog.content.v1`, speichert den direkten Schema-1-Root als
+  gemeinsamen Full-Snapshot und akzeptiert ausschließlich
+  `dataOrigin: private`.
+- Der LichtwaldLog-Snapshot ist auf 500.000 tatsächlich serialisierte
+  UTF-16-Codeeinheiten gemäß `String.length` begrenzt; exakt 500.000 sind
+  erlaubt. Ein fehlender Key liefert schreibfrei einen frischen privaten
+  Leerzustand. Synthetische, beschädigte, inkompatible oder übergroße Bestände
+  werden weder repariert noch automatisch überschrieben. Der Read-Preflight ist
+  keine Transaktion oder Multi-Tab-Sperre.
+- Service, Controller, View, CRUD, Suche und Filter sind noch nicht
   implementiert.
 - Das Ziel des LichtwaldLog Local MVP bleibt ein lokales Journal-Modul mit CRUD
   für Einträge aus Titel, reinem Kalenderdatum, Text und Tags sowie lokaler

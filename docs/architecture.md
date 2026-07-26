@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; v0.2.1 veröffentlicht; LichtwaldLog Contract Foundation implementiert |
+| Status | Verbindliche Zielarchitektur; v0.2.1 veröffentlicht; LichtwaldLog Contract- und private Storage-Foundation implementiert |
 | Letzte Aktualisierung | 2026-07-26 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -132,10 +132,20 @@ besitzen feste, nicht nutzerkontrollierte `localStorage`-Keys, validieren
 Domänenobjekte und stellen fachlich benannte Lade- und Speicherfunktionen
 bereit. Der gemeinsame `StorageAdapter` wird per Dependency Injection
 bereitgestellt und übernimmt den technischen JSON-Lese- und Schreibzugriff.
+`readJson(key, options?)` und `writeJson(key, value, options?)` akzeptieren
+optional `maxSerializedLength` als positive sichere Ganzzahl. Ohne diese Option
+bleibt das Verhalten aller bestehenden Aufrufer unverändert. Beim Lesen wird
+ein vorhandener String vor dem Parsen, beim Schreiben die exakt einmal erzeugte
+JSON-Zeichenfolge vor dem eigentlichen Storage-Zugriff begrenzt. Eine ungültige
+Limitkonfiguration wird vor Storage- oder Serialisierungszugriffen abgelehnt.
 Für den in ADR 0012 begrenzten Multi-Store-Erststart bietet er zusätzlich
 `removeJsonIfUnchanged`: Der technische Rollback entfernt einen Wert nur,
 wenn dessen aktuelle Serialisierung noch exakt dem erwarteten Seed entspricht.
-Dieser Pfad ist keine allgemeine fachliche Löschoperation.
+Dieser Pfad ist keine allgemeine fachliche Löschoperation und seine Semantik
+wird durch die optionale Größenbegrenzung nicht verändert. Auch ein
+Fehlerobjekt mit nicht sicher lesbarem `name` wird innerhalb des gemeinsamen
+Adapters kontrolliert als allgemeiner Lese-, Schreib- oder Entfernungsfehler
+behandelt.
 
 Fehlende Daten werden von beschädigtem JSON, ungültigen Domänendaten und
 Adapterfehlern unterschieden. Ein fachlicher leerer Initialzustand darf nur für
@@ -159,6 +169,8 @@ loadLearningTestBank()
 saveLearningTestBank(testBank)
 loadLearningTestAttempts()
 appendLearningTestAttempt(attempt)
+loadLichtwaldLog()
+saveLichtwaldLog(lichtwaldLog)
 ```
 
 ### Sync-Service
@@ -646,8 +658,9 @@ annotierte Tag `v0.2.1` und das zugehörige GitHub Release wurden am
 `2026-07-25` veröffentlicht; GoldenDawn OS ist seitdem als öffentlich
 sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist als rein lokaler Meilenstein in Arbeit.
-Die Contract Foundation und ADR 0013 sind implementiert; der vollständige MVP
-ist weder abgeschlossen noch veröffentlicht.
+Die Contract Foundation und private Storage-Foundation mit ADR 0013 und 0014
+sind implementiert; der vollständige MVP ist weder abgeschlossen noch
+veröffentlicht.
 
 Der spätere Zielpfad bleibt:
 
@@ -668,17 +681,53 @@ reinen Validator, synthetische Contract-Tests und die in ADR 0013 dokumentierte
 Architekturentscheidung. Der lokale Vertrag bildet Reflexions- und
 Erkenntniseinträge mit Titel, Kalenderdatum, Text und Tags ab.
 
-Storage, Service, Controller, View, Erstellen, Anzeigen, Bearbeiten, Löschen
-sowie lokale Suche und Filterung sind noch nicht implementiert. Für den
-vollständigen Local MVP bleiben private lokale Einträge und synthetische
-Demo-Daten getrennt; Bilder werden nicht als Base64 in `localStorage`
-abgelegt.
+Die in ADR 0014 dokumentierte private Storage-Foundation verwendet
+ausschließlich diesen lokalen Datenfluss:
+
+```text
+LichtwaldLogStorage
+  → StorageAdapter
+  → localStorage
+```
+
+`createLichtwaldLogStorage` stellt als eingefrorene API ausschließlich
+`loadLichtwaldLog` und `saveLichtwaldLog` bereit. Beide Operationen verwenden
+den festen Key `goldendawn.lichtwaldLog.content.v1`; frei wählbare Keys oder
+weitere Lösch-, Import-, Migrations-, Seed- oder Sync-Operationen gibt es nicht.
+Der direkte Schema-1-Root wird ohne zweites Envelope als ein vollständiger
+Snapshot gespeichert. Storage-Namespace `v1` und `schemaVersion: 1` werden
+unabhängig versioniert. Der private Pfad akzeptiert ausschließlich
+`dataOrigin: private`.
+
+Die tatsächliche JSON-Zeichenfolge ist gemäß `String.length` auf 500.000
+UTF-16-Codeeinheiten begrenzt; der exakte Grenzwert ist erlaubt. Der gemeinsame
+`StorageAdapter` prüft die Grenze beim Lesen vor `JSON.parse` und beim Schreiben
+vor `setItem`. Diese Anwendungsgrenze ersetzt weder Browser-Quota noch deren
+getrennte Fehlerbehandlung.
+
+Ein fehlender Key liefert schreibfrei bei jedem Aufruf einen frischen privaten
+Leerzustand. Gefundene und zu speichernde Werte werden vollständig validiert,
+defensiv tief geklont und als Clone erneut validiert. Vor jedem Save liest der
+Storage denselben Key mit demselben Limit. Synthetische, beschädigte,
+inkompatible, übergroße oder nicht sicher lesbare Bestände werden dadurch nicht
+automatisch überschrieben, repariert, migriert oder gelöscht. Dieser
+Read-Preflight ist keine Transaktion, kein Compare-and-Swap, kein Lock und
+verhindert keine TOCTOU- oder Multi-Tab-Rennen.
+
+Service, Controller, View, Erstellen, Anzeigen, Bearbeiten, Löschen sowie lokale
+Suche und Filterung sind noch nicht implementiert. Für den vollständigen Local
+MVP bleiben private lokale Einträge und synthetische Demo-Daten getrennt;
+Bilder werden nicht als Base64 in `localStorage` abgelegt. Der Storage ist
+unverschlüsselt und bietet weder Authentifizierung, Zugriffskontrolle,
+Integritätsgarantie, Cloud-Sicherung noch Synchronisierung.
 
 Für `v0.2.2` existieren keine externe Kommunikation, Webhooks,
 Synchronisierung, Agentenlogik oder Airtable-Anbindung. Agentengestützte,
 synchronisierte oder automatisierte LichtwaldLog-Prozesse bleiben einer
 späteren Phase vorbehalten. Weekly Review ist weiterhin geplant und kein
-stillschweigender Bestandteil dieses lokalen MVP. Für LichtwaldLog bleiben Storage-Key, Gesamtgrößen-Preflight und Storage-Implementierung offen.
+stillschweigender Bestandteil dieses lokalen MVP. Ein späterer Agentenfluss
+benötigt einen eigenen minimierten Vertrag; der private lokale Gesamtsnapshot
+darf nicht automatisch oder vollständig weitergegeben werden.
 
 ### Verbundener Modus
 
@@ -849,7 +898,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
-| `v0.2.2` | In Arbeit; Contract Foundation und ADR 0013 implementiert; übriger Local MVP offen und ohne externe Kommunikation |
+| `v0.2.2` | In Arbeit; Contract- und private Storage-Foundation mit ADR 0013 und 0014 implementiert; übriger Local MVP offen und ohne externe Kommunikation |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
@@ -881,6 +930,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0011](decisions/0011-local-deterministic-learning-test-foundation.md) | Lokale deterministische LearningTest-Foundation | Angenommen |
 | [0012](decisions/0012-one-time-learning-hub-demo-seed.md) | Einmaliger koordinierter LearningHub-Demo-Erststart | Angenommen |
 | [0013](decisions/0013-lichtwald-log-local-contract.md) | Lokaler LichtwaldLog-Vertrag mit einzelner Fokusreferenz | Angenommen |
+| [0014](decisions/0014-lichtwald-log-private-storage-foundation.md) | Begrenzte private LichtwaldLog-Full-Snapshot-Persistenz | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).

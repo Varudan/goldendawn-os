@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; v0.2.1 veröffentlicht; LichtwaldLog Contract Foundation implementiert |
+| Status | Verbindliche Sicherheitsbasis; v0.2.1 veröffentlicht; LichtwaldLog Contract- und private Storage-Foundation implementiert |
 | Letzte Aktualisierung | 2026-07-26 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
@@ -384,24 +384,54 @@ Service sowie Controller-, View- und `src/main.js`-Anbindung implementiert.
 veröffentlicht. GoldenDawn OS ist seitdem als öffentlich sichtbares
 Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist als rein lokaler Meilenstein in Arbeit.
-Die Contract Foundation und ADR 0013 sind implementiert; der vollständige MVP
-ist weder abgeschlossen noch veröffentlicht.
+Die Contract Foundation und private Storage-Foundation mit ADR 0013 und 0014
+sind implementiert; der vollständige MVP ist weder abgeschlossen noch
+veröffentlicht.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
-- Implementiert sind ausschließlich der Schema-1-Vertrag, der reine Validator,
-  synthetische Contract-Tests und ADR 0013.
-- Storage, Service, Controller, View, CRUD, lokale Suche und Filter sind noch
-  nicht implementiert.
+- Implementiert sind der Schema-1-Vertrag, der reine Validator, synthetische
+  Contract-Tests und ADR 0013 sowie die private Storage-Foundation und ADR 0014.
+- Der implementierte lokale Datenfluss lautet ausschließlich
+  `LichtwaldLogStorage → StorageAdapter → localStorage`. Der Storage verwendet
+  den festen Key `goldendawn.lichtwaldLog.content.v1`, speichert den direkten
+  Schema-1-Root als einen Full-Snapshot ohne zweites Envelope oder getrennte
+  Entry- und Fokus-Keys und akzeptiert nur `dataOrigin: private`.
+- Die tatsächliche serialisierte JSON-Zeichenfolge ist anhand von
+  `String.length` auf 500.000 UTF-16-Codeeinheiten begrenzt. Exakt 500.000 sind
+  erlaubt; größere Werte werden vor `JSON.parse` beziehungsweise vor
+  `setItem` kontrolliert abgelehnt. Dieses Anwendungslimit garantiert keine
+  Browser-Quota, und `QuotaExceededError` bleibt ein eigener Fehlerfall.
+- Ein fehlender Key liefert ohne Initialisierungsschreibzugriff bei jedem Load
+  einen frischen privaten Leerzustand. Gefundene und zu speichernde Snapshots
+  werden vollständig validiert, defensiv tief geklont und als Clone erneut
+  validiert. Eingaben und Rückgabewerte werden nicht mutiert oder geteilt.
+- Vor einem Save schützt ein Read-Preflight synthetische, beschädigte,
+  inkompatible, übergroße oder nicht sicher lesbare Rohbestände vor
+  automatischem Überschreiben. Es erfolgen keine Reparatur, Migration,
+  Demo-Übernahme oder automatische Löschung. Der Preflight ist keine
+  Transaktion, kein Compare-and-Swap, kein Lock und kein Schutz vor TOCTOU- oder
+  Multi-Tab-Rennen.
+- Storage-Fehler verwenden ausschließlich feste domänenspezifische Meldungen.
+  Entry-IDs, `featuredEntryId`, Titel, Texte, Tags, vollständige JSON-Werte,
+  tatsächliche Größen, fremde Adapter- oder Exception-Meldungen, Validator-
+  Rohwerte und Stacktraces werden weder in Fehlern noch in Logs ausgegeben.
 - Private lokale Reflexions- und Erkenntniseinträge bleiben strikt von
   synthetischen öffentlichen Demo-Daten getrennt. Es gibt keinen automatischen
   Fallback oder gemeinsamen Datenfluss zwischen beiden Bereichen.
 - Bilder werden nicht als Base64-Daten in `localStorage` gespeichert.
+- Der private Store liegt unverschlüsselt im aktuellen Browserprofil und kann
+  grundsätzlich von JavaScript derselben Origin gelesen oder verändert werden.
+  Er bietet keine Authentifizierung, Zugriffskontrolle, Integritätsgarantie,
+  Transaktion, Multi-Tab-Sperre, Cloud-Sicherung oder Synchronisierung.
+- Service, Controller, View, CRUD, lokale Suche und Filter sind noch nicht
+  implementiert.
 - Für LichtwaldLog existieren in `v0.2.2` keine externe Kommunikation,
   Webhooks, Synchronisierung, Agentenlogik oder Airtable-Anbindung.
-- Künftige lokale Datenzugriffe müssen vollständig hinter Services und
-  Storage-Adaptern gekapselt bleiben; diese Schichten sind noch nicht
-  implementiert.
+- Ein späterer Agentenfluss benötigt einen eigenen minimierten Vertrag. Der
+  private lokale Gesamtsnapshot darf nicht automatisch oder vollständig an
+  Agenten weitergegeben werden. Aus der lokalen Foundation wird weder formale
+  AI-Act- noch allgemeine Sicherheitskonformität abgeleitet.
 
 ### Sichere Darstellung
 
