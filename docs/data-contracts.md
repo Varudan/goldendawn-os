@@ -21,16 +21,17 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Contract- und private Storage-Foundation implementiert; Sync-Vertrag bleibt Zielzustand |
+| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Contract-, private Storage- und Service-Foundation implementiert; Sync-Vertrag bleibt Zielzustand |
 | Letzte Aktualisierung | 2026-07-26 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
 die lokale LearningTestBank und abgeschlossene LearningTestAttempts. Es
-dokumentiert außerdem den implementierten LichtwaldLog-Schema-1-Vertrag und
-seine begrenzte private Full-Snapshot-Persistenz sowie die maschinenlesbare
-Sprache zwischen dem GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und
-dem TestAgent. Es konkretisiert die Grenzen aus `AGENTS.md`,
+dokumentiert außerdem den implementierten LichtwaldLog-Schema-1-Vertrag, seine
+begrenzte private Full-Snapshot-Persistenz und die darauf aufbauende lokale
+Service-Foundation sowie die maschinenlesbare Sprache zwischen dem
+GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und dem TestAgent. Es
+konkretisiert die Grenzen aus `AGENTS.md`,
 `docs/architecture.md` und `docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
@@ -58,9 +59,12 @@ Zielzustand späterer Versionen.
 Für `v0.2.2` sind der reine LichtwaldLog-Schema-1-Vertrag,
 `validateLichtwaldLog`, die zugehörigen synthetischen Contract-Tests und die
 private Storage-Foundation unter `goldendawn.lichtwaldLog.content.v1`
-implementiert. Service, Controller, View, CRUD, Suche und Filter folgen in
-getrennten Slices und dürfen noch nicht als umgesetzt gelten. Die lokale
-Foundation führt keine externe Aktion ein.
+implementiert. Die darauf aufbauende Service-Foundation stellt den privaten
+fachlichen Kern für Laden, Erstellen, vollständiges Bearbeiten, Löschen und
+Fokusverwaltung bereit. Controller, View, UI-Anbindung, der vollständig
+bedienbare CRUD-Fluss, Suche und Filter folgen in getrennten Slices und dürfen
+noch nicht als umgesetzt gelten. Die lokalen Foundations führen keine externe
+Aktion ein.
 
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
@@ -158,8 +162,10 @@ bleiben flüchtig. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
 `learningTest.result.get` gleichzusetzen. Die UI kennzeichnet ihn sichtbar als
 „Lokaler Mock-Test“. `v0.2.1` ist vollständig geprüft und veröffentlicht. Von
 `v0.2.2 – LichtwaldLog Local MVP` sind die nachfolgend dokumentierte Contract-
-und private Storage-Foundation implementiert; Anwendungslogik und Oberfläche
-bleiben spätere Slices desselben rein lokalen Meilensteins.
+und private Storage-Foundation sowie die darauf aufbauende Service-Foundation
+implementiert. Controller, View, UI-Anbindung, der vollständig bedienbare
+CRUD-Fluss, Suche und Filter bleiben spätere Slices desselben rein lokalen
+Meilensteins.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -1533,13 +1539,15 @@ nicht vorweggenommen.
 
 ### v0.2.2 – LichtwaldLog Local MVP
 
-Die Contract Foundation und private Storage-Foundation des rein lokalen
-LichtwaldLogs sind implementiert. Sie umfassen das Schema-1-Modul
+Contract Foundation, private Storage-Foundation und Service-Foundation des rein
+lokalen LichtwaldLogs sind implementiert. Sie umfassen das Schema-1-Modul
 `lichtwaldLogContract.js`, den reinen Validator `validateLichtwaldLog`,
-synthetische Contract-Tests sowie `createLichtwaldLogStorage` hinter dem
-gemeinsamen `StorageAdapter`. Service, Controller, View, CRUD, Suche und Filter
-sind noch nicht implementiert. Vertrag und Storage führen weder eine externe
-Aktion noch einen Zugriff durch `SyncAgent`, `DataAgent` oder `TestAgent` ein.
+synthetische Contract-Tests, `createLichtwaldLogStorage` hinter dem
+gemeinsamen `StorageAdapter` sowie `createLichtwaldLogService` als
+Anwendungsgrenze. Controller, View, UI-Anbindung, der vollständig bedienbare
+CRUD-Fluss, Suche und Filter sind noch nicht implementiert. Vertrag, Service
+und Storage führen weder eine externe Aktion noch einen Zugriff durch
+`SyncAgent`, `DataAgent` oder `TestAgent` ein.
 
 #### LichtwaldLog – Schema 1
 
@@ -1646,11 +1654,11 @@ markiert. `null` bedeutet, dass kein Eintrag fokussiert ist. Jeder String muss
 exakt auf eine vorhandene Entry-ID verweisen; verwaiste Referenzen sind
 ungültig.
 
-Wenn ein späterer Service den aktuell fokussierten Eintrag löscht, muss er
-`featuredEntryId` innerhalb derselben erfolgreichen Mutation auf `null`
-setzen. Ein zwischenzeitlich persistierter Zustand mit verwaister Referenz ist
-nicht zulässig. Diese Löschoperation ist in der Contract Foundation noch nicht
-implementiert.
+Der implementierte Service setzt `featuredEntryId` beim Löschen des aktuell
+fokussierten Eintrags innerhalb desselben vollständig validierten Kandidaten auf
+`null`. Ein zwischenzeitlich persistierter Zustand mit verwaister Referenz ist
+nicht zulässig. Die Contract Foundation definiert diese Invariante; die
+Service-Foundation setzt sie atomar in genau einer erfolgreichen Mutation um.
 
 ##### Validierungsverhalten und Fehlercodes
 
@@ -1692,6 +1700,200 @@ gemeldet. Die Prüfung trimmt, sortiert, dedupliziert oder ergänzt keine Werte.
 | `tagTooLong` | Ein Tag überschreitet 30 Zeichen. |
 | `duplicateTag` | Ein Tag kommt im selben Eintrag case-insensitive mehrfach vor. |
 | `featuredEntryNotFound` | Die gültig geformte Fokus-ID referenziert keine gültige vorhandene Entry-ID. |
+
+##### Implementierte LichtwaldLog-Service-Foundation
+
+Die Service-Foundation führt keine neue Datenquelle ein. Ihr vollständiger
+lokaler Pfad lautet:
+
+```text
+LichtwaldLogService
+  → LichtwaldLogStorage
+  → StorageAdapter
+  → localStorage
+```
+
+Die Factory wird ausschließlich mit dem fachlichen Storage und dem optionalen
+ID-Generator erzeugt:
+
+```js
+createLichtwaldLogService({
+  lichtwaldLogStorage,
+  generateLichtwaldLogEntryId,
+})
+```
+
+Ihre Rückgabe ist eingefroren und enthält exakt diese fünf Operationen:
+
+```js
+loadLog()
+createEntry({ calendarDate, title, text, tags })
+updateEntry(entryId, { calendarDate, title, text, tags })
+deleteEntry(entryId)
+setFeaturedEntry(entryIdOrNull)
+```
+
+`setFeaturedEntry(null)` entfernt den Fokus. Eine zusätzliche öffentliche
+Clear- oder Toggle-Methode wird nicht angeboten.
+
+###### Autoritativer Zustand und Erfolgsresultate
+
+`LichtwaldLogStorage` bleibt die einzige veränderliche Wahrheit. Der Service
+hält keinen langlebigen Cache. Nach erfolgreicher Eingabeprüfung lädt jede
+gültige Mutation den aktuellen Zustand an ihrer Dependency-Grenze genau einmal
+neu. Akzeptiert werden ausschließlich die dokumentierten Storage-Erfolge
+`missing` und `found` mit einem vollständig gültigen privaten
+Schema-1-Snapshot. Auch `loadLog` prüft und entkoppelt den erhaltenen Zustand
+erneut.
+
+Die Ladeerfolge enthalten keinen Initialisierungsschreibzugriff:
+
+| Storage-Fall | `status` | Weitere Ergebnisfelder |
+| --- | --- | --- |
+| Key fehlt | `empty` | `ok: true`, `initialized: false`, frischer privater `lichtwaldLog` |
+| gültiger privater Bestand | `loaded` | `ok: true`, `initialized: false`, geladener privater `lichtwaldLog` |
+
+Mutationserfolge verwenden exakt diese Status- und Nutzdatenfelder:
+
+| Operation und Fall | `status` | `changed` | Weitere Ergebnisfelder |
+| --- | --- | --- | --- |
+| Eintrag erstellt | `entryCreated` | `true` | `createdEntry`, `lichtwaldLog` |
+| Eintrag tatsächlich oder inhaltlich identisch aktualisiert | `entryUpdated` | `true` oder `false` | `updatedEntry`, `lichtwaldLog` |
+| Eintrag gelöscht | `entryDeleted` | `true` | `deletedEntryId`, `focusCleared`, `lichtwaldLog` |
+| Fokus tatsächlich oder inhaltlich identisch geändert | `featuredEntryUpdated` | `true` oder `false` | `featuredEntryId`, `lichtwaldLog` |
+
+Alle Snapshots und Einzeleinträge in Rückgaben sowie jedes Save-Argument sind
+tief von Formeingaben, Storage-Resultaten, vorherigen Snapshots, internen
+Mutationskandidaten, anderen Rückgaben und späteren Serviceaufrufen entkoppelt.
+Gültige tief eingefrorene Eingaben und Storage-Zustände werden nicht mutiert.
+
+###### Eingabevalidierung und Normalisierung
+
+Form- und Ziel-ID-Eingaben werden vor dem ersten Storage-Zugriff validiert.
+Ungültige Eingaben lösen weder Load noch Save oder ID-Generator aus. Der Service
+liest ausschließlich die erwarteten eigenen Formularfelder und konstruiert
+persistierte Entries aus einer festen Feld-Allowlist; zusätzliche Felder können
+weder ID noch Herkunft oder andere Vertragswerte überschreiben.
+
+Für `calendarDate`, `title` und `text` muss der Eingabewert ein String
+sein. Der Service trimmt nur äußere Whitespaces; interne Whitespaces und
+Zeilenumbrüche bleiben erhalten. Die Längenprüfung verwendet die exportierten
+Vertragsgrenzen. Anschließend wird das Kalenderdatum über die vorhandene
+`isValidCalendarDate`-Prüfung rein arithmetisch geprüft. Der Service verwendet
+weder `Date`-Parsing noch UTC- oder Zeitzonenumwandlung.
+
+`tags` muss ein dichtes Array mit direktem Prototyp `Array.prototype` oder
+`null` sein und darf höchstens acht Positionen enthalten. Jede Position muss
+ein String sein, wird außen getrimmt und muss danach die vorhandene
+Vertragslänge einhalten. Duplikate werden nach der Normalisierung
+case-insensitive abgelehnt. Reihenfolge und Schreibweise gültiger Tags bleiben
+erhalten; der Service teilt nicht an Kommata, sortiert nicht, dedupliziert nicht
+und entfernt keine Position stillschweigend. Sparse Arrays, zusätzliche eigene
+Arrayfelder, geerbte Ersatzpositionen, ungeeignete Prototypen sowie nicht sicher
+lesbare Getter-, Proxy- oder Reflection-Strukturen werden kontrolliert
+abgelehnt.
+
+Ziel-IDs für Update, Delete und Fokus müssen nicht leer, bereits getrimmt und
+höchstens 100 Zeichen lang sein. Sie werden nicht automatisch normalisiert,
+sondern exakt und case-sensitive aufgelöst. `null` ist ausschließlich für
+`setFeaturedEntry` erlaubt.
+
+###### ID-Erzeugung und Kapazitätsgrenze
+
+Der Produktionsdefault erzeugt
+`lichtwald-entry-${crypto.randomUUID()}`. Eine generierte ID muss ein nicht
+leerer, bereits getrimmter String von höchstens 100 Zeichen und im aktuellen
+`entries`-Array exakt sowie case-sensitive eindeutig sein. Ungültige,
+überlange, kollidierende und werfende Generatorresultate teilen sich insgesamt
+höchstens fünf Versuche. Danach endet Create kontrolliert mit
+`generationFailed` / `lichtwaldLogEntryIdGenerationFailed` und ohne Save.
+
+Der Generator wird erst nach erfolgreicher Formvalidierung, autoritativem Load
+und Kapazitätsprüfung aufgerufen. Aus 999 Einträgen darf der 1.000. Eintrag
+entstehen. Bei bereits 1.000 Einträgen folgt `limitReached` /
+`lichtwaldLogEntryLimitReached`, ohne Generator- oder Save-Aufruf.
+
+###### Mutations- und No-op-Semantik
+
+Jede echte Mutation erzeugt ohne Eingabe- oder Bestandsmutation einen neuen
+vollständigen privaten Zustand, validiert ihn mit `validateLichtwaldLog`,
+verlangt weiterhin `dataOrigin: private`, ruft an der Servicegrenze genau
+einmal `saveLichtwaldLog` auf und gibt den Kandidaten erst nach bestätigtem
+`status: saved` als neuen Zustand zurück.
+
+- Create hängt den neuen Entry am Ende des vorhandenen Arrays an, sortiert
+  nicht nach Kalenderdatum und verändert `featuredEntryId` nicht.
+- Update ersetzt Kalenderdatum, Titel, Text und Tags vollständig. Die ID,
+  Arrayposition und eine passende Fokusreferenz bleiben erhalten. Sind alle
+  normalisierten fachlichen Werte identisch, bleibt der Erfolgsstatus
+  `entryUpdated` bei `changed: false` und ohne Save.
+- Delete behandelt ein unbekanntes Ziel als `notFound`, nicht als
+  idempotenten Erfolg. Die Reihenfolge der übrigen Entries bleibt erhalten.
+  Wird der fokussierte Entry gelöscht, werden Entry und Fokus im selben
+  Kandidaten geändert, vollständig validiert und genau einmal gespeichert.
+  Ein verwaister Zwischenzustand wird niemals persistiert.
+- Ein nicht-null Fokus darf nur auf eine vorhandene exakte Entry-ID gesetzt
+  werden. `null` entfernt den Fokus. Ein identischer Fokus oder das erneute
+  Entfernen eines bereits leeren Fokus liefert
+  `featuredEntryUpdated` / `changed: false` ohne Save. Fokusinformation
+  bleibt ausschließlich in `featuredEntryId`; ein `isFeatured`-Feld oder
+  eine Inhaltskopie entsteht nicht.
+
+###### Kontrollierte Servicefehler
+
+Fehler aus Mutationsoperationen haben diese gemeinsame Form:
+
+```js
+{
+  ok: false,
+  status,
+  changed: false,
+  lichtwaldLog: previousTrustedSnapshotOrNull,
+  error: {
+    code,
+    message,
+    fieldErrors,
+  },
+}
+```
+
+`fieldErrors` ist ausschließlich bei Eingabefehlern vorhanden. Vor einem
+erfolgreichen Load ist `lichtwaldLog: null`. Nach einem erfolgreichen Load
+darf ein vollständig entkoppelter Clone des vorherigen vertrauenswürdigen
+Snapshots zurückgegeben werden. Nach einem fehlgeschlagenen Save wird niemals
+der nicht persistierte Kandidat als autoritativ ausgegeben. Das explizite
+`lichtwaldLog`-Nutzdatenfeld bleibt von der redigierten `error`-Struktur
+getrennt.
+
+Mindestens diese servicespezifischen Status-Code-Paare sind stabil:
+
+| Fall | `status` | `code` |
+| --- | --- | --- |
+| ungültige Form- oder Ziel-ID-Eingabe | `validationFailed` | `invalidLichtwaldLogInput` |
+| Eintragsgrenze bereits erreicht | `limitReached` | `lichtwaldLogEntryLimitReached` |
+| Ziel nicht gefunden | `notFound` | `lichtwaldLogEntryNotFound` |
+| ID-Erzeugung nach fünf Versuchen gescheitert | `generationFailed` | `lichtwaldLogEntryIdGenerationFailed` |
+| intern erzeugter Gesamtzustand ungültig | `validationFailed` | `invalidLichtwaldLogState` |
+| Storage-Abhängigkeit fehlt | `unavailable` | `lichtwaldLogStorageUnavailable` |
+| geworfener Lesezugriff | `readFailed` | `lichtwaldLogStorageReadFailed` |
+| geworfener Schreibzugriff | `writeFailed` | `lichtwaldLogStorageWriteFailed` |
+| unbekanntes oder widersprüchliches Storage-Resultat | `storageFailed` | `unexpectedStorageResult` |
+
+Bekannte dokumentierte Status-Code-Paare des LichtwaldLog-Storage dürfen nur
+über eine ausdrückliche Allowlist unterscheidbar bleiben. Der Service verwendet
+für jeden Fall eigene statische Meldungen und kopiert niemals fremde Storage-,
+Adapter- oder Exception-Meldungen. Formwerte, Entry- und Fokus-IDs, Tags,
+Generatorwerte, Getter- oder Proxy-Sentinels und fremde Fehlertexte gelangen
+weder in `error` noch in Logs oder Console-Ausgaben.
+
+Der Service serialisiert nicht, prüft nicht selbst die
+500.000-UTF-16-Codeeinheiten-Grenze, greift weder auf `StorageAdapter` noch
+auf `localStorage` zu und führt keinen zusätzlichen Read-Preflight aus. Der
+vorhandene `saveLichtwaldLog`-Pfad behält seinen eigenen Preflight. Deshalb
+kann eine echte Mutation trotz genau eines Service-Loads und eines
+Service-Saves auf Adapterebene zusätzliche Reads ausführen. Browser-Quota,
+unverschlüsselter Same-Origin-Zugriff, TOCTOU- und Multi-Tab-Rennen bleiben
+unveränderte Grenzen.
 
 ##### Implementierte private LichtwaldLog-Persistenz und Sicherheitsgrenzen
 
@@ -1844,12 +2046,12 @@ Stimmung, Energie, Gesundheitswerte, Trainingsmetriken, Airtable-IDs,
 Sync-Zustände, Agentenmetadaten und KI-Ausgaben sind ebenfalls keine
 Vertragsfelder. Jeder Eintrag bleibt flach und eigenständig.
 
-Contract und Storage kommunizieren nicht extern und führen weder Webhooks,
-Airtable, Synchronisierung noch `SyncAgent`, `DataAgent`, `TestAgent` oder
-andere KI-Logik ein. Ein späterer Agentenfluss benötigt einen eigenen
-minimierten Vertrag; der private lokale Gesamtsnapshot darf nicht automatisch
-oder vollständig an Agenten weitergegeben werden. Aus dieser lokalen
-Foundation wird weder formale AI-Act- noch allgemeine
+Contract, Service und Storage kommunizieren nicht extern und führen weder
+Webhooks, Airtable, Synchronisierung noch `SyncAgent`, `DataAgent`,
+`TestAgent` oder andere KI-Logik ein. Ein späterer Agentenfluss benötigt einen
+eigenen minimierten Vertrag; der private lokale Gesamtsnapshot darf nicht
+automatisch oder vollständig an Agenten weitergegeben werden. Aus dieser
+lokalen Foundation wird weder formale AI-Act- noch allgemeine
 Sicherheitskonformität abgeleitet.
 
 ## Ziele des Vertrags

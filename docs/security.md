@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; v0.2.1 veröffentlicht; LichtwaldLog Contract- und private Storage-Foundation implementiert |
+| Status | Verbindliche Sicherheitsbasis; v0.2.1 veröffentlicht; LichtwaldLog Contract-, private Storage- und Service-Foundation implementiert |
 | Letzte Aktualisierung | 2026-07-26 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
@@ -384,19 +384,49 @@ Service sowie Controller-, View- und `src/main.js`-Anbindung implementiert.
 veröffentlicht. GoldenDawn OS ist seitdem als öffentlich sichtbares
 Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist als rein lokaler Meilenstein in Arbeit.
-Die Contract Foundation und private Storage-Foundation mit ADR 0013 und 0014
-sind implementiert; der vollständige MVP ist weder abgeschlossen noch
-veröffentlicht.
+Die Contract Foundation, private Storage-Foundation und Service-Foundation sind
+implementiert; ADR 0013 und ADR 0014 bleiben unverändert. Der vollständige MVP
+ist weder abgeschlossen noch veröffentlicht.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
 - Implementiert sind der Schema-1-Vertrag, der reine Validator, synthetische
-  Contract-Tests und ADR 0013 sowie die private Storage-Foundation und ADR 0014.
+  Contract-Tests und ADR 0013, die private Storage-Foundation und ADR 0014 sowie
+  die darauf aufbauende Service-Foundation.
 - Der implementierte lokale Datenfluss lautet ausschließlich
-  `LichtwaldLogStorage → StorageAdapter → localStorage`. Der Storage verwendet
-  den festen Key `goldendawn.lichtwaldLog.content.v1`, speichert den direkten
-  Schema-1-Root als einen Full-Snapshot ohne zweites Envelope oder getrennte
-  Entry- und Fokus-Keys und akzeptiert nur `dataOrigin: private`.
+  `LichtwaldLogService → LichtwaldLogStorage → StorageAdapter → localStorage`.
+  Der Storage verwendet den festen Key
+  `goldendawn.lichtwaldLog.content.v1`, speichert den direkten Schema-1-Root
+  als einen Full-Snapshot ohne zweites Envelope oder getrennte Entry- und
+  Fokus-Keys und akzeptiert nur `dataOrigin: private`.
+- `createLichtwaldLogService` besitzt eine eingefrorene API mit exakt
+  `loadLog`, `createEntry`, `updateEntry`, `deleteEntry` und
+  `setFeaturedEntry`. Der letzte Aufruf akzeptiert ausschließlich eine
+  gültige exakte Entry-ID oder `null`; eine zusätzliche Clear- oder
+  Toggle-Operation existiert nicht.
+- Der Storage bleibt die einzige veränderliche Wahrheit. Der Service hält
+  keinen langlebigen Cache, lädt den aktuellen privaten Snapshot für jede
+  gültige Operation neu und akzeptiert ausschließlich vollständig gültige
+  Zustände mit `dataOrigin: private`. Ungültige Form- und Ziel-ID-Eingaben
+  werden vor Storage-, Generator- oder Schreibzugriffen abgelehnt.
+- Formularobjekte und Tags werden über feste Feld- und Container-Allowlists
+  gelesen. Kalenderdatum, Titel, Text und Tags werden nur an den Rändern
+  getrimmt; interne Whitespaces und Zeilenumbrüche bleiben erhalten.
+  Kalenderdaten werden ohne `Date`- oder Zeitzonenumwandlung geprüft.
+  Ziel-IDs werden nicht automatisch normalisiert, sondern bereits getrimmt,
+  längenbegrenzt, exakt und case-sensitive aufgelöst. Werfende Getter, Proxies
+  und Reflection-Fehler werden kontrolliert behandelt.
+- Die Standard-ID verwendet `lichtwald-entry-${crypto.randomUUID()}`.
+  Ungültige, überlange, kollidierende und werfende Generatorresultate sind
+  gemeinsam auf fünf Versuche begrenzt. Bei bereits 1.000 Einträgen erfolgen
+  weder Generator- noch Save-Aufruf.
+- Jede echte Mutation erzeugt einen neuen privaten Kandidaten, validiert den
+  vollständigen Schema-1-Zustand und ruft an der Servicegrenze genau einmal
+  `saveLichtwaldLog` auf. Inhaltlich identische Updates, ein bereits gesetzter
+  Fokus und das Entfernen eines bereits leeren Fokus sind erfolgreiche
+  schreibfreie No-ops. Beim Löschen des fokussierten Eintrags werden Entry und
+  `featuredEntryId` im selben Kandidaten atomar geändert; ein verwaister
+  Zwischenzustand wird nicht persistiert.
 - Die tatsächliche serialisierte JSON-Zeichenfolge ist anhand von
   `String.length` auf 500.000 UTF-16-Codeeinheiten begrenzt. Exakt 500.000 sind
   erlaubt; größere Werte werden vor `JSON.parse` beziehungsweise vor
@@ -405,17 +435,31 @@ veröffentlicht.
 - Ein fehlender Key liefert ohne Initialisierungsschreibzugriff bei jedem Load
   einen frischen privaten Leerzustand. Gefundene und zu speichernde Snapshots
   werden vollständig validiert, defensiv tief geklont und als Clone erneut
-  validiert. Eingaben und Rückgabewerte werden nicht mutiert oder geteilt.
+  validiert. Service-Rückgaben, einzelne Entries und Save-Argumente sind
+  zusätzlich von Eingaben, Dependency-Resultaten, internen Kandidaten und
+  anderen Rückgaben entkoppelt. Eingaben und Rückgabewerte werden nicht mutiert
+  oder geteilt.
 - Vor einem Save schützt ein Read-Preflight synthetische, beschädigte,
   inkompatible, übergroße oder nicht sicher lesbare Rohbestände vor
   automatischem Überschreiben. Es erfolgen keine Reparatur, Migration,
   Demo-Übernahme oder automatische Löschung. Der Preflight ist keine
   Transaktion, kein Compare-and-Swap, kein Lock und kein Schutz vor TOCTOU- oder
-  Multi-Tab-Rennen.
-- Storage-Fehler verwenden ausschließlich feste domänenspezifische Meldungen.
-  Entry-IDs, `featuredEntryId`, Titel, Texte, Tags, vollständige JSON-Werte,
-  tatsächliche Größen, fremde Adapter- oder Exception-Meldungen, Validator-
-  Rohwerte und Stacktraces werden weder in Fehlern noch in Logs ausgegeben.
+  Multi-Tab-Rennen. Er bleibt im Storage bestehen; deshalb kann eine Mutation
+  trotz genau eines Loads und eines Saves an der Servicegrenze auf Adapterebene
+  zusätzliche Reads ausführen. Der Service serialisiert nicht und dupliziert
+  weder Preflight noch Größenprüfung.
+- Service und Storage akzeptieren Dependency-Status nur über ausdrückliche
+  Allowlists und verwenden ausschließlich feste domänenspezifische Meldungen.
+  Entry-IDs, `featuredEntryId`, Titel, Texte, Tags, Generatorwerte,
+  vollständige JSON-Werte, tatsächliche Größen, fremde Getter-, Proxy-,
+  Adapter- oder Exception-Meldungen, Validator-Rohwerte und Stacktraces werden
+  weder in `error` noch in Logs oder Console-Ausgaben übernommen.
+- Nach einem fehlgeschlagenen Save darf das explizite
+  `lichtwaldLog`-Nutzdatenfeld höchstens einen vollständig entkoppelten
+  vorherigen vertrauenswürdigen Snapshot enthalten. Der nicht persistierte
+  Kandidat wird nie als autoritativ ausgegeben; vor einem erfolgreichen Load
+  ist dieses Feld `null`. Private Inhalte bleiben vollständig außerhalb der
+  redigierten `error`-Struktur.
 - Private lokale Reflexions- und Erkenntniseinträge bleiben strikt von
   synthetischen öffentlichen Demo-Daten getrennt. Es gibt keinen automatischen
   Fallback oder gemeinsamen Datenfluss zwischen beiden Bereichen.
@@ -424,7 +468,8 @@ veröffentlicht.
   grundsätzlich von JavaScript derselben Origin gelesen oder verändert werden.
   Er bietet keine Authentifizierung, Zugriffskontrolle, Integritätsgarantie,
   Transaktion, Multi-Tab-Sperre, Cloud-Sicherung oder Synchronisierung.
-- Service, Controller, View, CRUD, lokale Suche und Filter sind noch nicht
+- Controller, View, UI-Anbindung, der vollständig bedienbare CRUD- und
+  Fokusfluss, lokale Suche, Filter und Demo-Integration sind noch nicht
   implementiert.
 - Für LichtwaldLog existieren in `v0.2.2` keine externe Kommunikation,
   Webhooks, Synchronisierung, Agentenlogik oder Airtable-Anbindung.
@@ -709,7 +754,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
 | `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; vollständig geprüft und veröffentlicht |
-| `v0.2.2` | getrennte private Reflexions- und synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
+| `v0.2.2` | privater allowlist-basierter Service- und Storage-Pfad mit statisch redigierten Fehlern und atomarer Fokusbereinigung; getrennte synthetische Demo-Daten, keine Base64-Bilder in `localStorage`, keine externe Übertragung |
 | `v0.3.0` | Beginn externer Kommunikation: Webhook-Allowlist, Schema- und Größenprüfung, kontrollierte CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
 | `v0.5.0` | Prompt-Injection-Schutz, strukturierter TestAgent-Output, keine Direktzugriffe |
