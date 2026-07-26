@@ -48,6 +48,22 @@ function assertHasError(result, code, path) {
   )
 }
 
+function assertSingleError(result, code, path) {
+  assert.equal(result.ok, false)
+  assert.equal(result.errors.length, 1)
+  assert.equal(result.errors[0].code, code)
+  assert.equal(result.errors[0].path, path)
+  assert.equal(typeof result.errors[0].message, 'string')
+}
+
+function assertErrorsDoNotContain(result, markers) {
+  const serializedErrors = JSON.stringify(result.errors)
+
+  for (const marker of markers) {
+    assert.equal(serializedErrors.includes(marker), false)
+  }
+}
+
 function deepFreeze(value) {
   if (value && typeof value === 'object' && !Object.isFrozen(value)) {
     Reflect.ownKeys(value).forEach((key) => deepFreeze(value[key]))
@@ -259,19 +275,457 @@ test('weist ein typfremdes entries-Feld zurück', () => {
   }
 })
 
+test('akzeptiert gewöhnliche, tief eingefrorene und dichte Null-Prototyp-Arrays', () => {
+  const regularLog = createLog([
+    createEntry({ tags: ['Prisma', 'Fiktiv'] }),
+  ])
+  const nullPrototypeTags = ['Spektrum', 'Erfunden']
+  const nullPrototypeEntries = [createEntry({
+    id: 'lichtwald-entry-null-array-fixture',
+    title: 'Synthetischer Null-Array-Moment',
+    tags: nullPrototypeTags,
+  })]
+
+  Object.setPrototypeOf(nullPrototypeTags, null)
+  Object.setPrototypeOf(nullPrototypeEntries, null)
+
+  const nullPrototypeLog = createLog(nullPrototypeEntries)
+
+  assert.deepEqual(validateLichtwaldLog(regularLog), {
+    ok: true,
+    errors: [],
+  })
+  assert.deepEqual(validateLichtwaldLog(deepFreeze(regularLog)), {
+    ok: true,
+    errors: [],
+  })
+  assert.deepEqual(validateLichtwaldLog(nullPrototypeLog), {
+    ok: true,
+    errors: [],
+  })
+  assert.equal(Object.getPrototypeOf(nullPrototypeEntries), null)
+  assert.equal(Object.getPrototypeOf(nullPrototypeTags), null)
+})
+
+test('weist zusätzliche String- und Symbolfelder auf Vertragsarrays redigiert zurück', () => {
+  const markers = [
+    'fixture-enumerable-entry-array-field',
+    'fixture-enumerable-tag-array-field',
+    'fixture-hidden-entry-array-field',
+    'fixture-hidden-tag-array-field',
+    'fixture-entry-array-symbol',
+    'fixture-tag-array-symbol',
+    'fixture-array-private-value',
+  ]
+  const cases = [
+    {
+      path: '$.entries.*',
+      createInvalidLog() {
+        const entries = [createEntry()]
+        entries[markers[0]] = markers[6]
+        return createLog(entries)
+      },
+    },
+    {
+      path: '$.entries[0].tags.*',
+      createInvalidLog() {
+        const tags = ['Prisma']
+        tags[markers[1]] = markers[6]
+        return createLog([createEntry({ tags })])
+      },
+    },
+    {
+      path: '$.entries.*',
+      createInvalidLog() {
+        const entries = [createEntry()]
+        Object.defineProperty(entries, '01', {
+          configurable: true,
+          value: markers[2],
+        })
+        return createLog(entries)
+      },
+    },
+    {
+      path: '$.entries[0].tags.*',
+      createInvalidLog() {
+        const tags = ['Prisma']
+        Object.defineProperty(tags, '01', {
+          configurable: true,
+          value: markers[3],
+        })
+        return createLog([createEntry({ tags })])
+      },
+    },
+    {
+      path: '$.entries.*',
+      createInvalidLog() {
+        const entries = [createEntry()]
+        entries[Symbol(markers[4])] = markers[6]
+        return createLog(entries)
+      },
+    },
+    {
+      path: '$.entries[0].tags.*',
+      createInvalidLog() {
+        const tags = ['Prisma']
+        tags[Symbol(markers[5])] = markers[6]
+        return createLog([createEntry({ tags })])
+      },
+    },
+  ]
+
+  for (const testCase of cases) {
+    const result = validateLichtwaldLog(testCase.createInvalidLog())
+
+    assertSingleError(result, 'unknownProperty', testCase.path)
+    assertErrorsDoNotContain(result, markers)
+  }
+})
+
+test('meldet je malformed Array nur einen Shape-Fehler und liest Zusatzgetter nie', () => {
+  const privateMarker = 'fixture-array-extra-getter-sentinel'
+  let entriesGetterCalls = 0
+  let tagsGetterCalls = 0
+  const entries = [createEntry()]
+  const tags = ['Prisma']
+
+  Object.defineProperties(entries, {
+    fixtureFirstExtra: {
+      configurable: true,
+      enumerable: true,
+      get() {
+        entriesGetterCalls += 1
+        throw new Error(privateMarker)
+      },
+    },
+    fixtureSecondExtra: {
+      configurable: true,
+      value: privateMarker,
+    },
+  })
+  Object.defineProperties(tags, {
+    fixtureFirstExtra: {
+      configurable: true,
+      enumerable: true,
+      get() {
+        tagsGetterCalls += 1
+        throw new Error(privateMarker)
+      },
+    },
+    fixtureSecondExtra: {
+      configurable: true,
+      value: privateMarker,
+    },
+  })
+
+  const entriesResult = validateLichtwaldLog(createLog(entries))
+  const tagsResult = validateLichtwaldLog(createLog([
+    createEntry({ tags }),
+  ]))
+
+  assertSingleError(entriesResult, 'unknownProperty', '$.entries.*')
+  assertSingleError(tagsResult, 'unknownProperty', '$.entries[0].tags.*')
+  assert.equal(entriesGetterCalls, 0)
+  assert.equal(tagsGetterCalls, 0)
+  assertErrorsDoNotContain(entriesResult, [privateMarker])
+  assertErrorsDoNotContain(tagsResult, [privateMarker])
+})
+
+test('weist dichte Arrays mit benutzerdefiniertem Prototyp auf Arrayebene zurück', () => {
+  const entries = [createEntry()]
+  const tags = ['Prisma']
+
+  Object.setPrototypeOf(entries, Object.create(Array.prototype))
+  Object.setPrototypeOf(tags, Object.create(Array.prototype))
+
+  const entriesResult = validateLichtwaldLog(createLog([], {
+    entries,
+    featuredEntryId: entries[0].id,
+  }))
+  const tagsResult = validateLichtwaldLog(createLog([
+    createEntry({ tags }),
+  ]))
+
+  assertSingleError(entriesResult, 'invalidEntries', '$.entries')
+  assertSingleError(tagsResult, 'invalidTags', '$.entries[0].tags')
+  assert.equal(
+    getErrorCodes(entriesResult).includes('featuredEntryNotFound'),
+    false
+  )
+})
+
+test('geerbte Werte machen Sparse-Lücken nicht zu eigenen Arraypositionen', () => {
+  const inheritedEntryIndex = '1'
+  const inheritedTagIndex = '2'
+  const previousEntryDescriptor = Object.getOwnPropertyDescriptor(
+    Array.prototype,
+    inheritedEntryIndex
+  )
+  const previousTagDescriptor = Object.getOwnPropertyDescriptor(
+    Array.prototype,
+    inheritedTagIndex
+  )
+  const inheritedEntry = createEntry({
+    id: 'lichtwald-entry-inherited-fixture',
+    title: 'Vollständig synthetischer geerbter Testmoment',
+    tags: ['Geerbt', 'Erfunden'],
+  })
+
+  Object.defineProperty(Array.prototype, inheritedEntryIndex, {
+    configurable: true,
+    writable: true,
+    value: inheritedEntry,
+  })
+  Object.defineProperty(Array.prototype, inheritedTagIndex, {
+    configurable: true,
+    writable: true,
+    value: 'Vollständig synthetischer geerbter Tag',
+  })
+
+  try {
+    const entries = [createEntry()]
+    const tags = ['Prisma', 'Ruhe']
+    entries.length = 2
+    tags.length = 3
+
+    const entriesResult = validateLichtwaldLog(createLog(entries, {
+      featuredEntryId: inheritedEntry.id,
+    }))
+    const tagsResult = validateLichtwaldLog(createLog([
+      createEntry({ tags }),
+    ]))
+
+    assertHasError(entriesResult, 'invalidEntry', '$.entries[1]')
+    assertHasError(
+      entriesResult,
+      'featuredEntryNotFound',
+      '$.featuredEntryId'
+    )
+    assertHasError(tagsResult, 'invalidTag', '$.entries[0].tags[2]')
+  } finally {
+    if (previousEntryDescriptor) {
+      Object.defineProperty(
+        Array.prototype,
+        inheritedEntryIndex,
+        previousEntryDescriptor
+      )
+    } else {
+      delete Array.prototype[inheritedEntryIndex]
+    }
+
+    if (previousTagDescriptor) {
+      Object.defineProperty(
+        Array.prototype,
+        inheritedTagIndex,
+        previousTagDescriptor
+      )
+    } else {
+      delete Array.prototype[inheritedTagIndex]
+    }
+  }
+})
+
+test('weist widerrufene Array-Proxies kontrolliert und redigiert zurück', () => {
+  const privateMarker = 'fixture-revoked-array-private-sentinel'
+  const revokedEntries = Proxy.revocable([createEntry()], {})
+  const revokedTags = Proxy.revocable(['Prisma'], {})
+  const entriesLog = createLog([], {
+    entries: revokedEntries.proxy,
+    featuredEntryId: 'lichtwald-entry-prisma',
+  })
+  const tagsLog = createLog([
+    createEntry({ tags: revokedTags.proxy }),
+  ])
+
+  revokedEntries.revoke()
+  revokedTags.revoke()
+
+  let entriesResult
+  let tagsResult
+
+  assert.doesNotThrow(() => {
+    entriesResult = validateLichtwaldLog(entriesLog)
+    tagsResult = validateLichtwaldLog(tagsLog)
+  })
+
+  assertSingleError(entriesResult, 'invalidEntries', '$.entries')
+  assertSingleError(tagsResult, 'invalidTags', '$.entries[0].tags')
+  assert.equal(
+    getErrorCodes(entriesResult).includes('featuredEntryNotFound'),
+    false
+  )
+  assertErrorsDoNotContain(entriesResult, [privateMarker, 'revoked'])
+  assertErrorsDoNotContain(tagsResult, [privateMarker, 'revoked'])
+})
+
+test('fängt werfende Array-Reflection-Traps stabil und ohne Fremdmeldung ab', () => {
+  const privateMarkers = [
+    'fixture-array-prototype-trap-sentinel',
+    'fixture-array-own-keys-trap-sentinel',
+    'fixture-array-length-trap-sentinel',
+  ]
+  const proxyFactories = [
+    (arrayValue) => new Proxy(arrayValue, {
+      getPrototypeOf() {
+        throw new Error(privateMarkers[0])
+      },
+    }),
+    (arrayValue) => new Proxy(arrayValue, {
+      ownKeys() {
+        throw new Error(privateMarkers[1])
+      },
+    }),
+    (arrayValue) => new Proxy(arrayValue, {
+      get(target, propertyName, receiver) {
+        if (propertyName === 'length') {
+          throw new Error(privateMarkers[2])
+        }
+
+        return Reflect.get(target, propertyName, receiver)
+      },
+    }),
+  ]
+
+  for (const createProxy of proxyFactories) {
+    const entries = createProxy([createEntry()])
+    const tags = createProxy(['Prisma'])
+    const entriesLog = createLog([], {
+      entries,
+      featuredEntryId: 'lichtwald-entry-prisma',
+    })
+    const tagsLog = createLog([createEntry({ tags })])
+    let entriesResult
+    let tagsResult
+
+    assert.doesNotThrow(() => {
+      entriesResult = validateLichtwaldLog(entriesLog)
+      tagsResult = validateLichtwaldLog(tagsLog)
+    })
+
+    assertSingleError(entriesResult, 'invalidEntries', '$.entries')
+    assertSingleError(tagsResult, 'invalidTags', '$.entries[0].tags')
+    assert.equal(
+      getErrorCodes(entriesResult).includes('featuredEntryNotFound'),
+      false
+    )
+    assertErrorsDoNotContain(entriesResult, privateMarkers)
+    assertErrorsDoNotContain(tagsResult, privateMarkers)
+    assert.deepEqual(validateLichtwaldLog(entriesLog), entriesResult)
+    assert.deepEqual(validateLichtwaldLog(tagsLog), tagsResult)
+  }
+})
+
+test('unterdrückt bei werfendem Entry-Get-Trap nur den unbewiesenen Fokusfehler', () => {
+  const privateMarker = 'fixture-entry-position-get-trap-sentinel'
+  const focusedEntry = createEntry({
+    id: 'lichtwald-entry-get-trap-focus-fixture',
+    title: 'Vollständig synthetischer Get-Trap-Testmoment',
+  })
+  const entriesTarget = [focusedEntry]
+  const targetSnapshot = structuredClone(entriesTarget)
+  const directLog = createLog(entriesTarget, {
+    dataOrigin: 'private',
+    featuredEntryId: focusedEntry.id,
+  })
+
+  assert.deepEqual(validateLichtwaldLog(directLog), {
+    ok: true,
+    errors: [],
+  })
+
+  let positionGetCalls = 0
+  const entries = new Proxy(entriesTarget, {
+    get(target, propertyName, receiver) {
+      if (propertyName === '0') {
+        positionGetCalls += 1
+        throw new Error(privateMarker)
+      }
+
+      return Reflect.get(target, propertyName, receiver)
+    },
+  })
+  const log = createLog([], {
+    dataOrigin: 'private',
+    featuredEntryId: focusedEntry.id,
+    entries,
+  })
+  let firstResult
+
+  assert.doesNotThrow(() => {
+    firstResult = validateLichtwaldLog(log)
+  })
+
+  const secondResult = validateLichtwaldLog(log)
+
+  assertSingleError(firstResult, 'invalidEntry', '$.entries[0]')
+  assert.equal(
+    getErrorCodes(firstResult).includes('featuredEntryNotFound'),
+    false
+  )
+  assertErrorsDoNotContain(firstResult, [privateMarker])
+  assert.deepEqual(secondResult, firstResult)
+  assert.equal(positionGetCalls, 2)
+  assert.deepEqual(entriesTarget, targetSnapshot)
+  assert.equal(Object.getPrototypeOf(entriesTarget), Array.prototype)
+})
+
+test('unterdrückt bei werfendem Entry-Descriptor-Trap nur den unbewiesenen Fokusfehler', () => {
+  const privateMarker = 'fixture-entry-position-descriptor-trap-sentinel'
+  const focusedEntry = createEntry({
+    id: 'lichtwald-entry-descriptor-trap-focus-fixture',
+    title: 'Vollständig synthetischer Descriptor-Trap-Testmoment',
+  })
+  const entriesTarget = [focusedEntry]
+  const targetSnapshot = structuredClone(entriesTarget)
+  const directLog = createLog(entriesTarget, {
+    dataOrigin: 'private',
+    featuredEntryId: focusedEntry.id,
+  })
+
+  assert.deepEqual(validateLichtwaldLog(directLog), {
+    ok: true,
+    errors: [],
+  })
+
+  let positionDescriptorCalls = 0
+  const entries = new Proxy(entriesTarget, {
+    getOwnPropertyDescriptor(target, propertyName) {
+      if (propertyName === '0') {
+        positionDescriptorCalls += 1
+        throw new Error(privateMarker)
+      }
+
+      return Reflect.getOwnPropertyDescriptor(target, propertyName)
+    },
+  })
+  const log = createLog([], {
+    dataOrigin: 'private',
+    featuredEntryId: focusedEntry.id,
+    entries,
+  })
+  let firstResult
+
+  assert.doesNotThrow(() => {
+    firstResult = validateLichtwaldLog(log)
+  })
+
+  const secondResult = validateLichtwaldLog(log)
+
+  assertSingleError(firstResult, 'invalidEntry', '$.entries[0]')
+  assert.equal(
+    getErrorCodes(firstResult).includes('featuredEntryNotFound'),
+    false
+  )
+  assertErrorsDoNotContain(firstResult, [privateMarker])
+  assert.deepEqual(secondResult, firstResult)
+  assert.equal(positionDescriptorCalls, 2)
+  assert.deepEqual(entriesTarget, targetSnapshot)
+  assert.equal(Object.getPrototypeOf(entriesTarget), Array.prototype)
+})
+
 test('erkennt Sparse-Array-Lücken im entries-Array', () => {
   const entries = [createEntry()]
-  const inheritedEntries = []
-  inheritedEntries[1] = createEntry({
-    id: 'lichtwald-entry-inherited-one',
-    title: 'Synthetischer geerbter Moment eins',
-  })
-  inheritedEntries[2] = createEntry({
-    id: 'lichtwald-entry-inherited-two',
-    title: 'Synthetischer geerbter Moment zwei',
-  })
   entries.length = 3
-  Object.setPrototypeOf(entries, inheritedEntries)
   const result = validateLichtwaldLog(createLog(entries))
 
   assertHasError(result, 'invalidEntry', '$.entries[1]')
@@ -551,6 +1005,65 @@ test('begrenzt die Prüfung eines deutlich überlangen Sparse-Tag-Arrays', () =>
   ), false)
 })
 
+test('überspringt Own-Key-Reflection überlanger Arrays, prüft aber ihren Prototyp', () => {
+  const privateMarker = 'fixture-overlong-array-own-keys-sentinel'
+  let entriesOwnKeysCalls = 0
+  let tagsOwnKeysCalls = 0
+  const entriesTarget = [createEntry()]
+  const tagsTarget = ['Prisma']
+  entriesTarget.length = 10000
+  tagsTarget.length = 10000
+
+  const entries = new Proxy(entriesTarget, {
+    ownKeys() {
+      entriesOwnKeysCalls += 1
+      throw new Error(privateMarker)
+    },
+  })
+  const tags = new Proxy(tagsTarget, {
+    ownKeys() {
+      tagsOwnKeysCalls += 1
+      throw new Error(privateMarker)
+    },
+  })
+
+  const entriesResult = validateLichtwaldLog(createLog([], {
+    entries,
+    featuredEntryId: null,
+  }))
+  const tagsResult = validateLichtwaldLog(createLog([
+    createEntry({ tags }),
+  ]))
+
+  assert.equal(entriesOwnKeysCalls, 0)
+  assert.equal(tagsOwnKeysCalls, 0)
+  assertHasError(entriesResult, 'entryLimitExceeded', '$.entries')
+  assertHasError(tagsResult, 'tagLimitExceeded', '$.entries[0].tags')
+  assertErrorsDoNotContain(entriesResult, [privateMarker])
+  assertErrorsDoNotContain(tagsResult, [privateMarker])
+
+  const customEntries = [createEntry()]
+  const customTags = ['Prisma']
+  customEntries.length = 10000
+  customTags.length = 10000
+  Object.setPrototypeOf(customEntries, Object.create(Array.prototype))
+  Object.setPrototypeOf(customTags, Object.create(Array.prototype))
+
+  assertSingleError(
+    validateLichtwaldLog(createLog([], {
+      entries: customEntries,
+      featuredEntryId: null,
+    })),
+    'invalidEntries',
+    '$.entries'
+  )
+  assertSingleError(
+    validateLichtwaldLog(createLog([createEntry({ tags: customTags })])),
+    'invalidTags',
+    '$.entries[0].tags'
+  )
+})
+
 test('weist ein typfremdes tags-Feld kontrolliert zurück', () => {
   for (const tags of [null, {}, 'tags', 7]) {
     assertHasError(
@@ -563,11 +1076,7 @@ test('weist ein typfremdes tags-Feld kontrolliert zurück', () => {
 
 test('erkennt Sparse-Array-Lücken im tags-Array', () => {
   const tags = ['Prisma']
-  const inheritedTags = []
-  inheritedTags[1] = 'Ruhe'
-  inheritedTags[2] = 'Licht'
   tags.length = 3
-  Object.setPrototypeOf(tags, inheritedTags)
   const result = validateLichtwaldLog(createLog([createEntry({ tags })]))
 
   assertHasError(result, 'invalidTag', '$.entries[0].tags[1]')
@@ -685,6 +1194,67 @@ test('verändert gültige, ungültige und tief eingefrorene Eingaben nicht', () 
   assert.deepEqual(validLog, validSnapshot)
   assert.deepEqual(invalidLog, invalidSnapshot)
   assert.deepEqual(validateLichtwaldLog(deepFreeze(validLog)), {
+    ok: true,
+    errors: [],
+  })
+})
+
+test('verändert Array-Keys, Deskriptoren und Prototypen nicht', () => {
+  const arraySymbol = Symbol('fixture-array-nonmutation-symbol')
+  const tags = ['Prisma']
+  const entries = [createEntry({ tags })]
+
+  Object.defineProperty(entries, 'fixtureHiddenField', {
+    configurable: true,
+    value: 'Vollständig synthetischer unveränderter Wert',
+  })
+  Object.defineProperty(tags, arraySymbol, {
+    configurable: true,
+    value: 'Vollständig synthetischer Symbolwert',
+  })
+
+  const entriesKeys = Reflect.ownKeys(entries)
+  const tagsKeys = Reflect.ownKeys(tags)
+  const entriesDescriptors = Object.getOwnPropertyDescriptors(entries)
+  const tagsDescriptors = Object.getOwnPropertyDescriptors(tags)
+  const entriesPrototype = Object.getPrototypeOf(entries)
+  const tagsPrototype = Object.getPrototypeOf(tags)
+
+  validateLichtwaldLog(createLog(entries))
+
+  assert.deepEqual(Reflect.ownKeys(entries), entriesKeys)
+  assert.deepEqual(Reflect.ownKeys(tags), tagsKeys)
+  assert.deepEqual(
+    Object.getOwnPropertyDescriptors(entries),
+    entriesDescriptors
+  )
+  assert.deepEqual(Object.getOwnPropertyDescriptors(tags), tagsDescriptors)
+  assert.equal(Object.getPrototypeOf(entries), entriesPrototype)
+  assert.equal(Object.getPrototypeOf(tags), tagsPrototype)
+})
+
+test('bewahrt einen gültigen synthetischen Standard-Snapshot im JSON-Roundtrip', () => {
+  const entries = [
+    createEntry(),
+    createEntry({
+      id: 'lichtwald-entry-json-spektrum',
+      calendarDate: '2026-08-03',
+      title: 'Vollständig synthetischer Spektrummoment',
+      text: 'Ein frei erfundener Fixture-Text für den JSON-Roundtrip.',
+      tags: ['Spektrum', 'Erfunden'],
+    }),
+  ]
+  const snapshot = createLog(entries, {
+    featuredEntryId: entries[1].id,
+  })
+  const roundTrippedSnapshot = JSON.parse(JSON.stringify(snapshot))
+
+  assert.deepEqual(roundTrippedSnapshot, snapshot)
+  assert.deepEqual(validateLichtwaldLog(snapshot), {
+    ok: true,
+    errors: [],
+  })
+  assert.deepEqual(validateLichtwaldLog(roundTrippedSnapshot), {
     ok: true,
     errors: [],
   })
