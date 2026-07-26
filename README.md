@@ -10,6 +10,8 @@
 
 **Current release:** `v0.2.1 — LearningHub Local MVP complete, verified, and published`
 
+**Current milestone:** `v0.2.2 — LichtwaldLog Local MVP in progress`
+
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
 corresponding GitHub Release. The responsive
@@ -33,8 +35,11 @@ by the initializer. Final release verification passed 552/552 automated tests
 and the production build. Tag `v0.2.1` and its corresponding GitHub Release
 were published on 2026-07-25, and the repository is publicly visible for
 portfolio and evaluation purposes without an open-source license. LichtwaldLog
-`v0.2.2` is the next planned local milestone and has not been implemented or
-started.
+`v0.2.2` has been in progress since 2026-07-26. Its Contract Foundation and
+ADR 0013 are implemented; storage, service, controller, view, CRUD, search, and
+filters remain open. The milestone is neither complete nor published. It
+remains fully local and includes no external communication, webhooks, agent
+logic, or Airtable integration.
 
 ## Vision
 
@@ -84,7 +89,7 @@ Accepted architecture decisions and their rationale are indexed in
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
 | LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP complete, verified, and published |
-| LichtwaldLog | Local text journal with search and filters | `v0.2.2` | Planned; not implemented |
+| LichtwaldLog | Local text journal with search and filters | `v0.2.2` | In progress; Contract Foundation and ADR 0013 implemented; remaining Local MVP open |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
 | Weekly Review | Structured summaries, progress, and next actions | Later, after the LichtwaldLog Local MVP | Planned; not part of `v0.2.2` |
@@ -263,13 +268,20 @@ LearningTestService
   → TestAgent
 ```
 
-## LichtwaldLog Local MVP (planned for v0.2.2)
+## LichtwaldLog Local MVP (in progress for v0.2.2)
 
-LichtwaldLog is limited to local CRUD for entries with a title, calendar date,
+The Contract Foundation and ADR 0013 are implemented. The foundation consists
+of the Schema 1 contract, the pure `validateLichtwaldLog` validator, and
+synthetic contract tests. Storage, service, controller, view, CRUD, local
+search, and filters are not yet implemented.
+
+The target Local MVP remains limited to entries with a title, calendar date,
 plain text, and tags, plus local search and filters. Private entries and
 synthetic demo entries will remain separate. Images will not be stored as
-Base64 in `localStorage`. Synchronization, agents, and Weekly Review are later
-work and are not part of the `v0.2.2` Local MVP.
+Base64 in `localStorage`. `v0.2.2` remains fully local and includes no
+external communication, webhooks, synchronization, agent logic, or Airtable
+integration. Weekly Review is later work and is not part of this milestone.
+`v0.2.2` is neither complete nor published.
 
 ## Development principles
 
@@ -317,7 +329,7 @@ non-binding; see the roadmap for details.
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
-| v0.2.2 | LichtwaldLog Local MVP | Next planned local milestone; not started or implemented |
+| v0.2.2 | LichtwaldLog Local MVP | In progress; Contract Foundation and ADR 0013 implemented; remaining Local MVP open |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |

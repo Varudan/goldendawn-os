@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.2.1 – LearningHub Local MVP vollständig geprüft und veröffentlicht`
+Aktueller Stand: `v0.2.2 – LichtwaldLog Local MVP in Arbeit`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -53,8 +53,14 @@ Controller und die View als sichtbarer `Lokaler Mock-Test` mit
 Fragenverwaltung, Testdurchführung, Ergebnis und Versuchshistorie bedienbar.
 Der Mock-Test verwendet weder KI noch externe Kommunikation. GoldenDawn OS ist
 seit dem `2026-07-25` als öffentlich sichtbares Portfolio-Repository ohne
-Open-Source-Lizenz verfügbar. Der nächste geplante Meilenstein
-`v0.2.2 – LichtwaldLog Local MVP` ist noch nicht begonnen oder implementiert.
+Open-Source-Lizenz verfügbar. `v0.2.2 – LichtwaldLog Local MVP` ist seit dem
+`2026-07-26` in Arbeit. Implementiert sind ausschließlich die LichtwaldLog-
+Contract-Foundation mit Schema-1-Vertrag, reinem Validator und synthetischen
+Contract-Tests sowie die in ADR 0013 dokumentierte Architekturentscheidung.
+Storage, Service, Controller, View, CRUD, Suche und Filter sind noch offen;
+`v0.2.2` ist weder abgeschlossen noch veröffentlicht. Der Meilenstein bleibt
+vollständig lokal und besitzt keine externe Kommunikation, Webhooks,
+Agentenlogik oder Airtable-Anbindung.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -161,15 +167,21 @@ Freitextbewertung und die Anbindung des TestAgent gehören erst zu `v0.5.0`.
 
 ### LichtwaldLog Local MVP in v0.2.2
 
-- LichtwaldLog bleibt ein lokales Journal-Modul mit CRUD für Einträge aus
-  Titel, reinem Kalenderdatum, Text und Tags sowie lokaler Suche und Filtern.
+- Implementiert sind ausschließlich der Schema-1-Vertrag, der reine Validator,
+  die synthetischen Contract-Tests und die in ADR 0013 dokumentierte
+  Contract-Entscheidung.
+- Storage, Service, Controller, View, CRUD, Suche und Filter sind noch nicht
+  implementiert.
+- Das Ziel des LichtwaldLog Local MVP bleibt ein lokales Journal-Modul mit CRUD
+  für Einträge aus Titel, reinem Kalenderdatum, Text und Tags sowie lokaler
+  Suche und Filtern.
 - Kalenderdaten werden als `YYYY-MM-DD` gespeichert.
 - Bilder werden nicht als Base64 in localStorage gespeichert.
 - Private Einträge und synthetische Demo-Einträge müssen getrennt und sichtbar
   unterscheidbar bleiben.
-- Synchronisierung, Agentenanbindung und Weekly Review gehören nicht zu
-  `v0.2.2` und dürfen für diesen Meilenstein nicht als umgesetzt dargestellt
-  werden.
+- Externe Kommunikation, Webhooks, Synchronisierung, Agentenanbindung,
+  Airtable und Weekly Review gehören nicht zu `v0.2.2` und dürfen für diesen
+  Meilenstein nicht als umgesetzt dargestellt werden.
 
 ## Technischer Rahmen
 
