@@ -49,7 +49,7 @@ nicht starre Kalendertermine.
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.2.2` | LichtwaldLog Local MVP | Contract Foundation und ADR 0013 implementiert; übriger Local MVP offen | 🟡 |
+| `v0.2.2` | LichtwaldLog Local MVP | Contract- und private Storage-Foundation mit ADR 0013 und 0014 implementiert; übriger Local MVP offen | 🟡 |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
@@ -451,6 +451,10 @@ agentengestützte Prozesse sind nicht Teil dieser Version.
 
 - ✅ Contract Foundation mit Schema-1-Vertrag, reinem Validator, synthetischen
   Contract-Tests und ADR 0013 bereitstellen.
+- ✅ Private Storage-Foundation mit festem Key, begrenztem
+  Schema-1-Full-Snapshot, vollständiger Validierung, defensiven Klonen,
+  schreibfreiem Missing-Zustand und Read-Preflight gemäß ADR 0014
+  bereitstellen.
 - ⬜ Einträge mit Titel, Kalenderdatum, Text und Tags lokal abbilden.
 - ⬜ Einträge erstellen, anzeigen, bearbeiten und löschen.
 - ⬜ Lokale Textsuche und Filter bereitstellen.
@@ -778,11 +782,11 @@ Der annotierte Tag `v0.2.1` und das zugehörige GitHub Release wurden am
 `2026-07-25` veröffentlicht. GoldenDawn OS ist seitdem als öffentlich
 sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist seit dem `2026-07-26` in Arbeit.
-Implementiert sind die Contract Foundation und ADR 0013. Storage, Service,
-Controller, View, CRUD, Suche und Filter bleiben offen; der Meilenstein ist
-weder abgeschlossen noch veröffentlicht. `v0.2.2` bleibt vollständig lokal
-und besitzt keine externe Kommunikation, Webhooks, Agentenlogik oder
-Airtable-Anbindung.
+Implementiert sind die Contract Foundation und private Storage-Foundation mit
+ADR 0013 und 0014. Service, Controller, View, CRUD, Suche und Filter bleiben
+offen; der Meilenstein ist weder abgeschlossen noch veröffentlicht. `v0.2.2`
+bleibt vollständig lokal und besitzt keine externe Kommunikation, Webhooks,
+Agentenlogik oder Airtable-Anbindung.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein Backend, Benutzerkonten und
