@@ -111,14 +111,114 @@ function readArrayLength(value) {
 }
 
 function readArrayEntry(value, index) {
-  try {
-    if (!Object.prototype.hasOwnProperty.call(value, index)) {
-      return { ok: false, value: undefined }
-    }
+  let hasOwnPosition
 
-    return { ok: true, value: value[index] }
+  try {
+    hasOwnPosition = Object.prototype.hasOwnProperty.call(value, index)
   } catch {
-    return { ok: false, value: undefined }
+    return { status: 'unreadable' }
+  }
+
+  if (!hasOwnPosition) {
+    return { status: 'missing' }
+  }
+
+  try {
+    return { status: 'found', value: value[index] }
+  } catch {
+    return { status: 'unreadable' }
+  }
+}
+
+function isCanonicalArrayPosition(propertyName, arrayLength) {
+  if (typeof propertyName !== 'string' || propertyName.length === 0) {
+    return false
+  }
+
+  const index = Number(propertyName)
+
+  return (
+    Number.isSafeInteger(index) &&
+    index >= 0 &&
+    index < arrayLength &&
+    String(index) === propertyName
+  )
+}
+
+function validateArrayShape(
+  value,
+  path,
+  maximumPositionCount,
+  errors,
+  invalidCode,
+  invalidMessage
+) {
+  if (!isArray(value)) {
+    addError(errors, invalidCode, path, invalidMessage)
+    return { isInspectable: false, length: null, positionsFullyChecked: false }
+  }
+
+  let prototype
+
+  try {
+    prototype = Object.getPrototypeOf(value)
+  } catch {
+    addError(errors, invalidCode, path, invalidMessage)
+    return { isInspectable: false, length: null, positionsFullyChecked: false }
+  }
+
+  if (prototype !== Array.prototype && prototype !== null) {
+    addError(errors, invalidCode, path, invalidMessage)
+    return { isInspectable: false, length: null, positionsFullyChecked: false }
+  }
+
+  const length = readArrayLength(value)
+
+  if (length === null) {
+    addError(errors, invalidCode, path, invalidMessage)
+    return { isInspectable: false, length: null, positionsFullyChecked: false }
+  }
+
+  if (length > maximumPositionCount) {
+    return {
+      isInspectable: true,
+      length,
+      positionsFullyChecked: false,
+    }
+  }
+
+  let ownKeys
+
+  try {
+    ownKeys = Reflect.ownKeys(value)
+  } catch {
+    addError(errors, invalidCode, path, invalidMessage)
+    return { isInspectable: false, length: null, positionsFullyChecked: false }
+  }
+
+  if (!ownKeys.includes('length')) {
+    addError(errors, invalidCode, path, invalidMessage)
+    return { isInspectable: false, length: null, positionsFullyChecked: false }
+  }
+
+  const hasUnknownProperty = ownKeys.some((propertyName) => (
+    propertyName !== 'length' &&
+    !isCanonicalArrayPosition(propertyName, length)
+  ))
+
+  if (hasUnknownProperty) {
+    addError(
+      errors,
+      LICHTWALD_LOG_ERROR_CODES.UNKNOWN_PROPERTY,
+      `${path}.*`,
+      'Der Vertrag enthält ein nicht unterstütztes Feld.'
+    )
+  }
+
+  return {
+    isInspectable: true,
+    length,
+    positionsFullyChecked: true,
   }
 }
 
@@ -369,27 +469,20 @@ function validateTag(tag, path, context) {
 }
 
 function validateTags(tags, path, errors) {
-  if (!isArray(tags)) {
-    addError(
-      errors,
-      LICHTWALD_LOG_ERROR_CODES.INVALID_TAGS,
-      path,
-      'tags muss ein Array sein.'
-    )
+  const shapeResult = validateArrayShape(
+    tags,
+    path,
+    LICHTWALD_LOG_MAX_TAG_COUNT,
+    errors,
+    LICHTWALD_LOG_ERROR_CODES.INVALID_TAGS,
+    'tags muss ein Array sein.'
+  )
+
+  if (!shapeResult.isInspectable) {
     return
   }
 
-  const tagCount = readArrayLength(tags)
-
-  if (tagCount === null) {
-    addError(
-      errors,
-      LICHTWALD_LOG_ERROR_CODES.INVALID_TAGS,
-      path,
-      'tags muss ein Array sein.'
-    )
-    return
-  }
+  const tagCount = shapeResult.length
 
   if (tagCount > LICHTWALD_LOG_MAX_TAG_COUNT) {
     addError(
@@ -411,7 +504,7 @@ function validateTags(tags, path, errors) {
     const tagPath = `${path}[${index}]`
 
     validateTag(
-      tagResult.ok ? tagResult.value : undefined,
+      tagResult.status === 'found' ? tagResult.value : undefined,
       tagPath,
       context
     )
@@ -469,29 +562,25 @@ function validateEntry(entry, path, context) {
 }
 
 function validateEntries(entries, errors) {
-  const context = { errors, entryIds: new Set() }
+  const context = {
+    errors,
+    entryIds: new Set(),
+    focusResolutionReliable: false,
+  }
+  const shapeResult = validateArrayShape(
+    entries,
+    '$.entries',
+    LICHTWALD_LOG_MAX_ENTRY_COUNT,
+    errors,
+    LICHTWALD_LOG_ERROR_CODES.INVALID_ENTRIES,
+    'entries muss ein Array sein.'
+  )
 
-  if (!isArray(entries)) {
-    addError(
-      errors,
-      LICHTWALD_LOG_ERROR_CODES.INVALID_ENTRIES,
-      '$.entries',
-      'entries muss ein Array sein.'
-    )
+  if (!shapeResult.isInspectable) {
     return context
   }
 
-  const entryCount = readArrayLength(entries)
-
-  if (entryCount === null) {
-    addError(
-      errors,
-      LICHTWALD_LOG_ERROR_CODES.INVALID_ENTRIES,
-      '$.entries',
-      'entries muss ein Array sein.'
-    )
-    return context
-  }
+  const entryCount = shapeResult.length
 
   if (entryCount > LICHTWALD_LOG_MAX_ENTRY_COUNT) {
     addError(
@@ -506,13 +595,18 @@ function validateEntries(entries, errors) {
     entryCount,
     LICHTWALD_LOG_MAX_ENTRY_COUNT
   )
+  context.focusResolutionReliable = shapeResult.positionsFullyChecked
 
   for (let index = 0; index < entryPositionCount; index += 1) {
     const entryResult = readArrayEntry(entries, index)
     const entryPath = `$.entries[${index}]`
 
+    if (entryResult.status === 'unreadable') {
+      context.focusResolutionReliable = false
+    }
+
     validateEntry(
-      entryResult.ok ? entryResult.value : undefined,
+      entryResult.status === 'found' ? entryResult.value : undefined,
       entryPath,
       context
     )
@@ -578,7 +672,7 @@ export function validateLichtwaldLog(lichtwaldLog) {
   if (
     featuredEntryId !== null &&
     hasValidFeaturedEntryId &&
-    isArray(entries) &&
+    entriesContext.focusResolutionReliable &&
     !entriesContext.entryIds.has(featuredEntryId)
   ) {
     addError(

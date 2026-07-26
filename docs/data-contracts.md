@@ -1573,7 +1573,7 @@ abgelehnt.
 | `schemaVersion` | Zahl | exakt `1` |
 | `dataOrigin` | String | exakt `private` oder `synthetic` |
 | `featuredEntryId` | String oder `null` | immer vorhanden; bei String bereits getrimmt, 1 bis 100 Zeichen und exakte Referenz auf einen vorhandenen Eintrag |
-| `entries` | Array | dicht, darf leer sein, höchstens 1.000 Einträge |
+| `entries` | Array | dichtes Vertragsarray, darf leer sein, höchstens 1.000 Einträge |
 
 Bei einem leeren `entries`-Array muss `featuredEntryId` `null` sein. Der
 allgemeine Contract akzeptiert private und synthetische Zustände. Der
@@ -1588,7 +1588,7 @@ ausschließlich `dataOrigin: private`.
 | `calendarDate` | String | existierendes gregorianisches Datum im exakten Format `YYYY-MM-DD`, Jahr `0001` bis `9999` |
 | `title` | String | bereits getrimmt, 1 bis 120 Zeichen |
 | `text` | String | bereits getrimmt, 1 bis 10.000 Zeichen |
-| `tags` | Array | dicht, 0 bis 8 Strings |
+| `tags` | Array | dichtes Vertragsarray, 0 bis 8 Strings |
 | `tags[]` | String | bereits getrimmt, 1 bis 30 Zeichen, je Eintrag case-insensitive eindeutig |
 
 Alle Zeichenlimits beziehen sich auf JavaScripts `String.length`. Entry-IDs
@@ -1605,6 +1605,38 @@ diesen Inhalt sicher als Text darstellen. Tags verwenden keine Whitelist und
 werden nicht an Kommata aufgeteilt. Ihre Eindeutigkeit wird ohne Mutation
 case-insensitive geprüft, während die eingegebene Schreibweise erhalten
 bleibt.
+
+##### Arraycontainer für `entries` und `tags`
+
+`entries` und jedes `tags`-Feld sind dichte Vertragsarrays. Ihr direkter
+Prototyp muss entweder `Array.prototype` oder `null` sein. Ihre Länge muss als
+nicht negative sichere Ganzzahl lesbar sein. Neben der eigenen
+`length`-Eigenschaft sind ausschließlich kanonische eigene Arraypositionen
+zulässig. Eine solche Position ist ein String-Key, der exakt der dezimalen
+Darstellung seines Index entspricht und innerhalb der Arraylänge liegt.
+Zusätzliche eigene Stringfelder wie `note` oder `01`, nicht enumerierbare
+Stringfelder und eigene Symbolfelder sind nicht Teil des Schema-1-Vertrags.
+
+Zusätzliche Arrayfelder erzeugen je betroffenem Container genau einen
+redigierten `unknownProperty`-Fehler an `$.entries.*` beziehungsweise
+`$.entries[n].tags.*`. Ein benutzerdefinierter direkter Prototyp oder ein nicht
+sicher inspizierbarer Container erzeugt stattdessen `invalidEntries` an
+`$.entries` beziehungsweise `invalidTags` an `$.entries[n].tags`. Feldnamen,
+Symbolbeschreibungen, Werte und fremde Exception-Meldungen werden nicht in das
+Fehlerresultat übernommen.
+
+Bei mehr als 1.000 Entries beziehungsweise mehr als acht Tags darf die
+vollständige Own-Key-Aufzählung bewusst übersprungen werden, damit die Prüfung
+begrenzt bleibt. Die kontrollierte Prototyp- und Längenprüfung findet weiterhin
+statt; für die überschrittene Containergrenze reicht der bestehende
+`entryLimitExceeded`- beziehungsweise `tagLimitExceeded`-Fehler aus. Dadurch
+werden zusätzliche Felder eines überlangen Arrays nicht vertragsgültig: Der
+Container ist bereits wegen seiner überschrittenen Grenze ungültig.
+
+Reguläre, mit `JSON.parse` erzeugte und bisher vertragsgültige Snapshots bleiben
+kompatibel. Das Array-Hardening ändert weder `schemaVersion: 1` noch den
+Storage-Key `goldendawn.lichtwaldLog.content.v1` oder dessen
+Persistenznamespace `v1`; eine Migration ist nicht erforderlich.
 
 ##### Fokusmodell
 
@@ -1628,9 +1660,10 @@ besitzt die Form `{ code, path, message }`. Der Validator sammelt unabhängig
 prüfbare Fehler in stabiler Reihenfolge, ohne Rohwerte oder private Inhalte in
 Fehlermeldungen aufzunehmen.
 
-Root und einzelne Entries müssen einfache Objekte mit `Object.prototype` oder ohne
-Prototyp sein; Arrays, Klasseninstanzen und Objekte mit benutzerdefiniertem
-Prototyp werden abgelehnt. Die `entries`- und `tags`-Arrays müssen dicht sein.
+Root und einzelne Entries müssen einfache Objekte mit `Object.prototype` oder
+ohne Prototyp sein; Arrays, Klasseninstanzen und Objekte mit
+benutzerdefiniertem Prototyp werden abgelehnt. Die `entries`- und
+`tags`-Container folgen zusätzlich der oben beschriebenen dichten Arrayform.
 Fehlende Pflichtfelder, unbekannte String- oder Symbolfelder, ungültige
 Arraypositionen und nicht lesbare Strukturen werden kontrolliert als Fehler
 gemeldet. Die Prüfung trimmt, sortiert, dedupliziert oder ergänzt keine Werte.
@@ -1640,10 +1673,10 @@ gemeldet. Die Prüfung trimmt, sortiert, dedupliziert oder ergänzt keine Werte.
 | `invalidLichtwaldLog` | Der Root ist kein zulässiges Vertragsobjekt. |
 | `unsupportedSchemaVersion` | `schemaVersion` ist nicht exakt `1`. |
 | `invalidDataOrigin` | `dataOrigin` ist weder `private` noch `synthetic`. |
-| `invalidEntries` | `entries` ist kein lesbares Array. |
+| `invalidEntries` | `entries` ist kein Array mit zulässigem direktem Prototyp oder sein Container ist nicht sicher inspizierbar. |
 | `entryLimitExceeded` | `entries` enthält mehr als 1.000 Positionen. |
 | `invalidEntry` | Eine Entry-Position enthält kein zulässiges Vertragsobjekt. |
-| `unknownProperty` | Root oder Entry enthält ein nicht erlaubtes eigenes Feld. |
+| `unknownProperty` | Root, Entry, `entries` oder `tags` enthält ein nicht erlaubtes eigenes String- oder Symbolfeld. |
 | `missingProperty` | Ein vorgeschriebenes eigenes Feld fehlt. |
 | `invalidId` | Entry-ID oder Fokus-ID ist kein nicht leerer, bereits getrimmter String. |
 | `idTooLong` | Entry-ID oder Fokus-ID überschreitet 100 Zeichen. |
@@ -1653,7 +1686,7 @@ gemeldet. Die Prüfung trimmt, sortiert, dedupliziert oder ergänzt keine Werte.
 | `titleTooLong` | Der Titel überschreitet 120 Zeichen. |
 | `invalidText` | Der Text ist kein nicht leerer, bereits getrimmter String. |
 | `textTooLong` | Der Text überschreitet 10.000 Zeichen. |
-| `invalidTags` | `tags` ist kein lesbares Array. |
+| `invalidTags` | `tags` ist kein Array mit zulässigem direktem Prototyp oder sein Container ist nicht sicher inspizierbar. |
 | `tagLimitExceeded` | Ein Eintrag besitzt mehr als acht Tag-Positionen. |
 | `invalidTag` | Eine Tag-Position ist kein nicht leerer, bereits getrimmter String. |
 | `tagTooLong` | Ein Tag überschreitet 30 Zeichen. |

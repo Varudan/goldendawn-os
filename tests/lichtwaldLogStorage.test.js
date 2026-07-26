@@ -1044,6 +1044,108 @@ test('weist zusätzliche Felder, Custom-Prototypen und Sparse Arrays ohne Adapte
   assert.equal(writeCalls, 0)
 })
 
+test('blockiert ungültige Arrayformen vor Save-Zugriff und beim Load kontrolliert', () => {
+  const privateMarkers = [
+    'fixture-private-entry-array-field-sentinel',
+    'fixture-private-tag-array-field-sentinel',
+    'fixture-private-entry-array-symbol-sentinel',
+    'fixture-private-tag-array-symbol-sentinel',
+    'fixture-private-array-value-sentinel',
+    'fixture-private-load-array-field-sentinel',
+  ]
+  const entryFieldLog = createPrivateLog()
+  const tagFieldLog = createPrivateLog()
+  const entrySymbolLog = createPrivateLog()
+  const tagSymbolLog = createPrivateLog()
+  const customEntriesLog = createPrivateLog()
+  const customTagsLog = createPrivateLog()
+
+  entryFieldLog.entries[privateMarkers[0]] = privateMarkers[4]
+  tagFieldLog.entries[0].tags[privateMarkers[1]] = privateMarkers[4]
+  entrySymbolLog.entries[Symbol(privateMarkers[2])] = privateMarkers[4]
+  tagSymbolLog.entries[0].tags[Symbol(privateMarkers[3])] = privateMarkers[4]
+  Object.setPrototypeOf(
+    customEntriesLog.entries,
+    Object.create(Array.prototype)
+  )
+  Object.setPrototypeOf(
+    customTagsLog.entries[0].tags,
+    Object.create(Array.prototype)
+  )
+
+  let saveReadCalls = 0
+  let saveWriteCalls = 0
+  const saveStorage = createLichtwaldLogStorage({
+    readJson() {
+      saveReadCalls += 1
+      return { ok: true, status: 'missing' }
+    },
+    writeJson() {
+      saveWriteCalls += 1
+      return { ok: true, status: 'saved' }
+    },
+  })
+
+  for (const invalidLog of [
+    entryFieldLog,
+    tagFieldLog,
+    entrySymbolLog,
+    tagSymbolLog,
+    customEntriesLog,
+    customTagsLog,
+  ]) {
+    const result = saveStorage.saveLichtwaldLog(invalidLog)
+
+    assertFailure(
+      result,
+      'validationFailed',
+      'invalidLichtwaldLogData'
+    )
+    assertDoesNotContain(result, privateMarkers)
+  }
+
+  assert.equal(saveReadCalls, 0)
+  assert.equal(saveWriteCalls, 0)
+
+  const invalidStoredLog = createPrivateLog()
+  Object.defineProperty(
+    invalidStoredLog.entries,
+    privateMarkers[5],
+    {
+      configurable: true,
+      value: privateMarkers[4],
+    }
+  )
+
+  let loadReadCalls = 0
+  let loadWriteCalls = 0
+  const loadStorage = createLichtwaldLogStorage({
+    readJson() {
+      loadReadCalls += 1
+      return {
+        ok: true,
+        status: 'found',
+        value: invalidStoredLog,
+      }
+    },
+    writeJson() {
+      loadWriteCalls += 1
+      return { ok: true, status: 'saved' }
+    },
+  })
+  const loadResult = loadStorage.loadLichtwaldLog()
+
+  assertFailure(
+    loadResult,
+    'invalidStoredData',
+    'invalidLichtwaldLogData'
+  )
+  assert.equal(loadReadCalls, 1)
+  assert.equal(loadWriteCalls, 0)
+  assert.equal(Object.hasOwn(loadResult, 'lichtwaldLog'), false)
+  assertDoesNotContain(loadResult, privateMarkers)
+})
+
 test('behandelt nicht klonbare, aber zunächst validierbare Werte kontrolliert', () => {
   const privateMarker = 'fixture-unclonable-proxy-sentinel'
   const sourceLog = createPrivateLog([
