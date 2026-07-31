@@ -21,7 +21,7 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Contract-, private Storage-, Service- und Controller-Foundation implementiert; Sync-Vertrag bleibt Zielzustand |
+| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Contract-, private Storage-, Service-, Controller- sowie isolierte View- und CSS-Foundation implementiert; Sync-Vertrag bleibt Zielzustand |
 | Letzte Aktualisierung | 2026-07-31 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
@@ -29,9 +29,9 @@ PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
 die lokale LearningTestBank und abgeschlossene LearningTestAttempts. Es
 dokumentiert außerdem den implementierten LichtwaldLog-Schema-1-Vertrag, seine
 begrenzte private Full-Snapshot-Persistenz und die darauf aufbauenden lokalen
-Service- und Controller-Foundations sowie die maschinenlesbare Sprache zwischen
-dem GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und dem TestAgent. Es
-konkretisiert die Grenzen aus `AGENTS.md`,
+Service-, Controller- sowie isolierte View- und CSS-Foundation sowie die
+maschinenlesbare Sprache zwischen dem GoldenDawn-OS-Frontend, dem SyncAgent,
+dem DataAgent und dem TestAgent. Es konkretisiert die Grenzen aus `AGENTS.md`,
 `docs/architecture.md` und `docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
@@ -62,10 +62,12 @@ private Storage-Foundation unter `goldendawn.lichtwaldLog.content.v1`
 implementiert. Die darauf aufbauende Service-Foundation stellt den privaten
 fachlichen Kern für Laden, Erstellen, vollständiges Bearbeiten, Löschen und
 Fokusverwaltung bereit. Die Controller-Foundation koordiniert diesen Kern über
-eine flüchtige, defensiv validierte UI-Projektion. View, `src/main.js`-Anbindung,
-der vollständig bedienbare UI-CRUD- und Fokusfluss, Suche, Filter und
-Demo-Integration folgen in getrennten Slices und dürfen noch nicht als
-umgesetzt gelten. Die lokalen Foundations führen keine externe Aktion ein.
+eine flüchtige, defensiv validierte UI-Projektion. Die isolierte View- und
+CSS-Foundation stellt diese Projektion sicher dar, bleibt aber außerhalb der
+`src/main.js`-Komposition. Navigation, der vollständig über die Anwendung
+bedienbare UI-CRUD- und Fokusfluss, reale Browserintegration, Suche, Filter und
+Demo-Integration folgen in getrennten Slices. Die lokalen Foundations führen
+keine externe Aktion ein.
 
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
@@ -164,9 +166,11 @@ bleiben flüchtig. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
 „Lokaler Mock-Test“. `v0.2.1` ist vollständig geprüft und veröffentlicht. Von
 `v0.2.2 – LichtwaldLog Local MVP` sind die nachfolgend dokumentierte Contract-
 und private Storage-Foundation sowie die darauf aufbauenden Service- und
-Controller-Foundations implementiert. View, `src/main.js`-Anbindung, der
-vollständig bedienbare UI-CRUD- und Fokusfluss, Suche, Filter und
-Demo-Integration bleiben spätere Slices desselben rein lokalen Meilensteins.
+Controller-Foundations und die isolierte View- und CSS-Foundation
+implementiert. `src/main.js`-Anbindung, Navigation, der vollständig über die
+Anwendung bedienbare UI-CRUD- und Fokusfluss, reale Browserintegration, Suche,
+Filter und Demo-Integration bleiben spätere Slices desselben rein lokalen
+Meilensteins.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -1540,18 +1544,19 @@ nicht vorweggenommen.
 
 ### v0.2.2 – LichtwaldLog Local MVP
 
-Contract Foundation, private Storage-Foundation, Service-Foundation und
-Controller-Foundation des rein lokalen LichtwaldLogs sind implementiert. Sie
-umfassen das Schema-1-Modul
+Contract Foundation, private Storage-Foundation, Service-Foundation,
+Controller-Foundation sowie isolierte View- und CSS-Foundation des rein lokalen
+LichtwaldLogs sind implementiert. Sie umfassen das Schema-1-Modul
 `lichtwaldLogContract.js`, den reinen Validator `validateLichtwaldLog`,
 synthetische Contract-Tests, `createLichtwaldLogStorage` hinter dem
 gemeinsamen `StorageAdapter` sowie `createLichtwaldLogService` als
 Anwendungsgrenze und `createLichtwaldLogController` als flüchtige
-UI-Koordinationsgrenze. View, `src/main.js`-Anbindung, der vollständig
-bedienbare UI-CRUD- und Fokusfluss, Suche, Filter und Demo-Integration sind
-noch nicht implementiert. Vertrag, Controller, Service und Storage führen weder
-eine externe Aktion noch einen Zugriff durch `SyncAgent`, `DataAgent` oder
-`TestAgent` ein.
+UI-Koordinationsgrenze und `createLichtwaldLogView` als isolierte DOM-Grenze.
+`src/main.js`-Anbindung, Navigation, der vollständig über die Anwendung
+bedienbare UI-CRUD- und Fokusfluss, reale Browserintegration, Suche, Filter und
+Demo-Integration sind noch nicht implementiert. Vertrag, View, Controller,
+Service und Storage führen weder eine externe Aktion noch einen Zugriff durch
+`SyncAgent`, `DataAgent` oder `TestAgent` ein.
 
 #### LichtwaldLog – Schema 1
 
@@ -1711,7 +1716,8 @@ Die Controller-Foundation ergänzt den lokalen Pfad, ohne den Schema-1- oder
 Persistenzvertrag zu verändern:
 
 ```text
-LichtwaldLogController
+LichtwaldLogView
+  → LichtwaldLogController
   → LichtwaldLogService
   → LichtwaldLogStorage
   → StorageAdapter
@@ -1736,8 +1742,10 @@ close
 ```
 
 Der injizierte View-Port ist ausschließlich auf `render(viewModel, actions)`
-und `unmount()` begrenzt. Er besitzt in diesem Slice keine produktive
-Implementierung. Jeder Render erhält dieselbe eingefrorene Action-API mit exakt:
+und `unmount()` begrenzt. `createLichtwaldLogView(rootElement)` implementiert
+ihn als isolierte DOM-Foundation und liefert eine eingefrorene API mit exakt
+den eigenen Data-Properties `render` und `unmount`. Jeder Render erhält
+dieselbe eingefrorene Action-API mit exakt:
 
 ```text
 onRetryLoad
@@ -1812,14 +1820,77 @@ Fokusziel ist defensiv entkoppelt.
 
 Gültiger LichtwaldLog-Text bleibt ungeparster, nicht vertrauenswürdiger Plain
 Text. Der Controller interpretiert, bereinigt oder interpoliert HTML-, Script-
-oder markupähnliche Inhalte nicht. Die sichere Ausgabe über `textContent` und
-andere sichere DOM-APIs bleibt eine offene Verantwortung der späteren
-produktiven View.
+oder markupähnliche Inhalte nicht. Die isolierte View gibt ihn ausschließlich
+über `textContent`, `createTextNode`, Formcontrol-Werte und feste Attribute
+sicher aus.
 
 Die Controller-Foundation ändert weder den Read-Preflight noch das
 500.000-UTF-16-Codeeinheiten-Limit. Browser-Quota, unverschlüsselter
 Same-Origin-Zugriff, TOCTOU- und Multi-Tab-Verhalten bleiben ebenfalls
 unverändert.
+
+##### Implementierte isolierte LichtwaldLog-View-Foundation
+
+`createLichtwaldLogView(rootElement)` liest ausschließlich das defensive,
+tief eingefrorene Controller-View-Modell und die oben dokumentierte
+zwölfteilige Action-API. Sie liest weder `schemaVersion`, `dataOrigin` noch den
+rohen Schema-1-Root und führt keine zweite Vertrags-, Service- oder
+Storagevalidierung ein. Jeder Render baut einen frischen DOM-Baum auf und
+bewahrt Entry- und Tag-Reihenfolge sowie die gespeicherte Schreibweise.
+
+Private Titel, Texte, Tags und Formwerte bleiben ungeparster Plain Text.
+Entry-IDs dienen ausschließlich unverändert als Action-Ziele in Closures und
+renderlokalen Maps. Sie werden weder angezeigt noch in DOM-/ARIA-IDs,
+Selektoren, Klassen, `data-*`-Attribute, URLs oder View-eigene Meldungen
+übernommen. Die View verwendet keine dynamische HTML- oder Markup-Auswertung.
+
+Die Create-Submitform ist exakt:
+
+```js
+{
+  type: 'createEntry',
+  calendarDate,
+  title,
+  text,
+  tags,
+}
+```
+
+Die Update-Submitform ist exakt:
+
+```js
+{
+  type: 'updateEntry',
+  entryId,
+  calendarDate,
+  title,
+  text,
+  tags,
+}
+```
+
+Die Update-ID stammt ausschließlich aus dem gebundenen View-Modell. Tags
+werden über getrennte Eingabefelder als jeweils neues dichtes Standard-Array
+übergeben. Die View trimmt, splittet, sortiert, dedupliziert oder normalisiert
+sie nicht und entfernt insbesondere keine leeren Draftpositionen. Kommas
+bleiben regulärer Bestandteil eines einzelnen Tagstrings.
+
+Lade-, Leer-, Busy-, Erfolgs-, Notice-, Validierungs- und Fehlerzustände werden
+zugänglich dargestellt. Nach dem vollständigen DOM-Austausch löst die View die
+Controller-Fokusziele `heading`, `entry`, `formField`, `formAlert`,
+`formTrigger`, `deleteConfirmation`, `deleteAlert`, `featuredAlert` und
+`status` kontrolliert auf. Fokusaktionen verwenden ausschließlich den
+ausdrücklichen Endzustand als exakte Entry-ID oder `null`; die View projiziert
+Inhalt, Löschung und Fokus nicht optimistisch.
+
+`unmount()` entfernt sämtliche privaten Inhalte und `aria-busy` aus dem
+dedizierten Root und verwirft nur flüchtige Fokus- und Caret-Metadaten. Die
+View bildet keine persistente oder fachlich autoritative Zustandsquelle;
+Storage und Service bleiben die autoritativen Grenzen. Das responsive
+Modul-CSS besitzt Reduced-Motion-Regeln, ist jedoch ebenso wie die View noch
+nicht in `src/main.js` eingebunden. Der bestehende Storage-Key, das
+500.000-Codeeinheiten-Limit, Browser-Quota, Read-Preflight, TOCTOU- und
+Multi-Tab-Grenzen bleiben unverändert.
 
 ##### Implementierte LichtwaldLog-Service-Foundation
 
