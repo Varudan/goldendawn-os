@@ -49,7 +49,7 @@ nicht starre Kalendertermine.
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.2.2` | LichtwaldLog Local MVP | Contract-, private Storage- und Service-Foundation implementiert; übriger Local MVP offen | 🟡 |
+| `v0.2.2` | LichtwaldLog Local MVP | Contract-, private Storage-, Service- und Controller-Foundation implementiert; View und übriger Local MVP offen | 🟡 |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
@@ -461,16 +461,48 @@ agentengestützte Prozesse sind nicht Teil dieser Version.
 - ✅ LichtwaldLog-Datenzugriffe vollständig hinter
   `LichtwaldLogService`, `LichtwaldLogStorage` und gemeinsamem
   `StorageAdapter` kapseln.
-- ⬜ Controller und View anbinden, Einträge anzeigen und den vollständigen
-  benutzerbedienbaren CRUD- und Fokusfluss bereitstellen.
+- ✅ Controller-Foundation mit eingefrorener `{ open, close }`-API, exakt
+  zwölfteiliger Action-API, vollständig geprüften privaten Service-Snapshots
+  und flüchtigen Lade-, Leer-, Auswahl-, Formular-, Bestätigungs-, Busy-,
+  Erfolgs- und Fehlerzuständen bereitstellen.
+- ⬜ Produktive View und `src/main.js` anbinden, Einträge anzeigen und den
+  vollständigen benutzerbedienbaren CRUD- und Fokusfluss bereitstellen.
 - ⬜ Lokale Textsuche und Filter bereitstellen.
 - ⬜ Eine klar getrennte synthetische öffentliche Demo-Integration
   bereitstellen, ohne Daten in den ausschließlich privaten Servicepfad zu
   übernehmen.
 - ⬜ Bilder nicht als Base64-Daten in `localStorage` speichern.
-- ⬜ Lade-, Leer-, Validierungs-, Erfolgs- und Speicherfehlerzustände gestalten.
+- ⬜ Die Lade-, Leer-, Validierungs-, Erfolgs- und Speicherfehlerzustände in der
+  späteren View tatsächlich zugänglich gestalten.
 - ⬜ Klar kennzeichnen, dass lokale Browserdaten weder synchronisiert noch
   automatisch in der Cloud gesichert werden.
+
+Der implementierte lokale Pfad lautet nun:
+
+```text
+LichtwaldLogController
+  → LichtwaldLogService
+  → LichtwaldLogStorage
+  → StorageAdapter
+  → localStorage
+```
+
+Der Controller hält ausschließlich eine flüchtige, defensiv entkoppelte
+UI-Projektion und verwendet pro akzeptierter Intention exakt eine passende
+Serviceoperation. Nach Mutationen lädt er nicht zusätzlich und nimmt keine
+optimistischen Inhalts-, Delete- oder Fokusänderungen vor. Auswahl,
+Formularbearbeitung und -abbruch sowie Anfordern und Abbrechen einer
+Löschbestätigung bleiben service- und schreibfrei; Update- und Fokus-No-ops
+entscheidet weiterhin ausschließlich der Service. Ziel-IDs bleiben exakt und
+case-sensitive, der Fokusendzustand wird ausdrücklich als ID oder `null`
+übergeben, und die Entry- sowie Tag-Reihenfolge bleibt unverändert.
+
+Die injizierte View-Grenze ist noch keine produktive View. Sichere DOM-Ausgabe
+des ungeparsten, nicht vertrauenswürdigen Plain Texts, die
+`src/main.js`-Anbindung, UI-Bedienbarkeit, Suche, Filter und Demo-Integration
+bleiben offen. Storage und Service bleiben die autoritativen fachlichen
+Grenzen. Read-Preflight, 500.000-Codeeinheiten-Limit, Browser-Quota, TOCTOU-
+und Multi-Tab-Verhalten ändern sich durch die Controller-Foundation nicht.
 
 `v0.2.2` enthält keine Synchronisierung und keine Agentenlogik. Auch der Weekly
 Review gehört nicht zu diesem lokalen MVP. Agentengestützte, synchronisierte
@@ -789,14 +821,17 @@ Der annotierte Tag `v0.2.1` und das zugehörige GitHub Release wurden am
 sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist seit dem `2026-07-26` in Arbeit.
 Implementiert sind die Contract Foundation und private Storage-Foundation mit
-ADR 0013 und ADR 0014 sowie die darauf aufbauende Service-Foundation. Der
-Service lädt den autoritativen privaten Zustand ohne Cache, normalisiert
-Formeingaben, löst Ziel-IDs exakt auf und kapselt Laden, Erstellen,
-vollständiges Bearbeiten, Löschen und Fokusverwaltung hinter dem fachlichen
-Storage. Controller, View, UI-Anbindung, der vollständig bedienbare CRUD-Fluss,
-Suche, Filter, Demo-Integration und UI-Zustände bleiben offen; der Meilenstein
-ist weder abgeschlossen noch veröffentlicht. `v0.2.2` bleibt vollständig lokal
-und besitzt keine externe Kommunikation, Webhooks, Agentenlogik oder
+ADR 0013 und ADR 0014 sowie die darauf aufbauenden Service- und
+Controller-Foundations. Der Service lädt den autoritativen privaten Zustand
+ohne Cache, normalisiert Formeingaben, löst Ziel-IDs exakt auf und kapselt
+Laden, Erstellen, vollständiges Bearbeiten, Löschen und Fokusverwaltung hinter
+dem fachlichen Storage. Der Controller koordiniert diese Operationen über
+vollständig geprüfte private Service-Snapshots und ausschließlich flüchtige
+Darstellungszustände. Produktive View, `src/main.js`-Anbindung, der vollständig
+bedienbare UI-CRUD- und Fokusfluss, Suche, Filter, Demo-Integration und die
+tatsächliche zugängliche UI-Gestaltung bleiben offen; der Meilenstein ist weder
+abgeschlossen noch veröffentlicht. `v0.2.2` bleibt vollständig lokal und
+besitzt keine externe Kommunikation, Webhooks, Agentenlogik oder
 Airtable-Anbindung.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
