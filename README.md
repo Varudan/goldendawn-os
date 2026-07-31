@@ -37,10 +37,11 @@ were published on 2026-07-25, and the repository is publicly visible for
 portfolio and evaluation purposes without an open-source license. LichtwaldLog
 `v0.2.2` has been in progress since 2026-07-26. Its Contract Foundation,
 private Storage Foundation, Service Foundation, Controller Foundation, and
-ADRs 0013 and 0014 are implemented. The view is only an injected port in the
-Controller Foundation. Its productive implementation, `src/main.js`
-integration, the fully operable UI CRUD and focus flow, search, filters, and
-demo integration remain open. The milestone is neither complete nor
+isolated View and CSS Foundation, together with ADRs 0013 and 0014, are
+implemented. The view implements the injected Controller port but remains
+outside the `src/main.js` composition. Application navigation, the fully
+operable UI CRUD and focus flow, real browser integration, search, filters,
+and demo integration remain open. The milestone is neither complete nor
 published. It remains fully local and includes no external communication,
 webhooks, agent logic, or Airtable integration.
 
@@ -92,7 +93,7 @@ Accepted architecture decisions and their rationale are indexed in
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
 | LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP complete, verified, and published |
-| LichtwaldLog | Local text journal with search and filters | `v0.2.2` | In progress; Contract, private Storage, Service, and Controller Foundations implemented; view and remaining Local MVP open |
+| LichtwaldLog | Local text journal with search and filters | `v0.2.2` | In progress; Contract, private Storage, Service, Controller, and isolated View and CSS Foundations implemented; application integration and remaining Local MVP open |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
 | Weekly Review | Structured summaries, progress, and next actions | Later, after the LichtwaldLog Local MVP | Planned; not part of `v0.2.2` |
@@ -273,14 +274,16 @@ LearningTestService
 
 ## LichtwaldLog Local MVP (in progress for v0.2.2)
 
-The Contract Foundation, private Storage Foundation, Service Foundation, and
-Controller Foundation are implemented. ADRs 0013 and 0014 document the
-unchanged contract and storage decisions. The contract consists of the Schema
-1 model, the pure `validateLichtwaldLog` validator, and synthetic contract
-tests. The complete implemented application path is:
+The Contract Foundation, private Storage Foundation, Service Foundation,
+Controller Foundation, and isolated View and CSS Foundation are implemented.
+ADRs 0013 and 0014 document the unchanged contract and storage decisions. The
+contract consists of the Schema 1 model, the pure `validateLichtwaldLog`
+validator, and synthetic contract tests. The isolated implemented module path,
+which is not yet composed in `src/main.js`, is:
 
 ```text
-LichtwaldLogController
+LichtwaldLogView
+  → LichtwaldLogController
   → LichtwaldLogService
   → LichtwaldLogStorage
   → StorageAdapter
@@ -306,9 +309,10 @@ focus; there is no additional clear or toggle method.
 
 `createLichtwaldLogController({ lichtwaldLogService, lichtwaldLogView,
 scheduleTask })` returns a frozen API containing exactly `open` and `close`.
-The view is an injected port limited to `render(viewModel, actions)` and
-`unmount()`; no productive view is implemented yet. Every render receives the
-same frozen action API with exactly:
+The injected port remains limited to `render(viewModel, actions)` and
+`unmount()`. `createLichtwaldLogView(rootElement)` implements it and returns a
+frozen API with exactly the own data properties `render` and `unmount`. Every
+render receives the same frozen action API with exactly:
 
 ```text
 onRetryLoad
@@ -324,6 +328,25 @@ onCancelDeleteEntry
 onConfirmDeleteEntry
 onSetFeaturedEntry
 ```
+
+Each render creates a fresh DOM tree using safe DOM and form-control APIs.
+Titles, text, tags, and form values remain unparsed plain text. Entry IDs stay
+in closures and render-local maps and never become visible text, DOM or ARIA
+IDs, selectors, classes, `data-*` attributes, or view-owned messages. Entry and
+tag order and spelling remain unchanged.
+
+Create and update forms use separate tag controls rather than comma parsing.
+Tag edits produce fresh dense arrays without trimming, sorting,
+deduplication, or case normalization. Submit payloads remain flat and limited
+to the controller contract.
+
+The view renders accessible loading, empty, busy, success, notice, validation,
+and error states and resolves every controller focus target after replacing the
+DOM. Focus actions express an entry ID or `null`, and content, deletion, and
+focus are never projected optimistically. `unmount()` removes private DOM
+content and transient focus and caret metadata. The namespaced CSS includes
+responsive and reduced-motion rules but is not imported into the application
+build graph yet.
 
 The controller coordinates transient loading, empty, selection, form,
 confirmation, busy, success, and error states. Its snapshot is only a
@@ -344,7 +367,7 @@ Every view model is a fresh defensive projection without the raw Schema 1
 root. Entry and tag order remain unchanged. Controller feedback uses only
 static allowlisted messages and never copies private values or foreign error
 messages. Valid entry text remains opaque, unparsed, untrusted plain text;
-safe DOM rendering remains the responsibility of the later productive view.
+the isolated view renders it only through safe DOM and form-control APIs.
 
 Storage remains the sole mutable source of truth. Every valid operation reloads
 the current private snapshot, and the service keeps no long-lived cache.
@@ -373,11 +396,12 @@ and the read preflight remain inside storage and the shared adapter. Browser
 quota, unencrypted same-origin access, TOCTOU behavior, and multi-tab races
 remain unchanged limitations.
 
-The productive view, `src/main.js` integration, the fully operable UI
-create/read/update/delete and focus flow, local search, filters, and demo
-integration are not yet implemented. The target Local MVP remains limited to
-entries with a title, calendar date, plain text, and tags, plus local search
-and filters. Private entries and synthetic demo entries remain separate.
+`src/main.js` integration, application navigation, the fully operable UI
+create/read/update/delete and focus flow through GoldenDawn OS, real browser
+integration, local search, filters, and demo integration are not yet
+implemented. The target Local MVP remains limited to entries with a title,
+calendar date, plain text, and tags, plus local search and filters. Private
+entries and synthetic demo entries remain separate.
 Images are not stored as Base64 in `localStorage`. The local store is neither
 a cloud backup nor cross-device synchronization. Its existing 500,000
 UTF-16-code-unit limit, browser quota, read preflight, TOCTOU, and multi-tab
@@ -432,7 +456,7 @@ non-binding; see the roadmap for details.
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
-| v0.2.2 | LichtwaldLog Local MVP | In progress; Contract, private Storage, Service, and Controller Foundations implemented; view and remaining Local MVP open |
+| v0.2.2 | LichtwaldLog Local MVP | In progress; Contract, private Storage, Service, Controller, and isolated View and CSS Foundations implemented; application integration and remaining Local MVP open |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |

@@ -1,0 +1,826 @@
+.lichtwald-log,
+.lichtwald-log > *,
+.lichtwald-log-header,
+.lichtwald-log-header > *,
+.lichtwald-log-introduction,
+.lichtwald-log-introduction > *,
+.lichtwald-log-feedback,
+.lichtwald-log-featured-state,
+.lichtwald-log-state,
+.lichtwald-log-state > *,
+.lichtwald-log-overview,
+.lichtwald-log-section-heading,
+.lichtwald-log-section-heading > *,
+.lichtwald-log-entry-grid,
+.lichtwald-log-entry-card,
+.lichtwald-log-entry-card > *,
+.lichtwald-log-entry-card__header,
+.lichtwald-log-entry-card__header > *,
+.lichtwald-log-entry-card__actions,
+.lichtwald-log-tags,
+.lichtwald-log-tags__list,
+.lichtwald-log-tags__tag,
+.lichtwald-log-detail,
+.lichtwald-log-detail > *,
+.lichtwald-log-detail__header,
+.lichtwald-log-detail__header > *,
+.lichtwald-log-detail__actions,
+.lichtwald-log-form-section,
+.lichtwald-log-form,
+.lichtwald-log-form > *,
+.lichtwald-log-form__header,
+.lichtwald-log-form__header > *,
+.lichtwald-log-form__fields,
+.lichtwald-log-form__field,
+.lichtwald-log-form__actions,
+.lichtwald-log-tags-editor,
+.lichtwald-log-tags-editor__list,
+.lichtwald-log-tags-editor__row,
+.lichtwald-log-confirmation,
+.lichtwald-log-confirmation__actions,
+.lichtwald-log-privacy {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.lichtwald-log {
+  width: 100%;
+}
+
+.lichtwald-log-header,
+.lichtwald-log-section-heading,
+.lichtwald-log-entry-card__header,
+.lichtwald-log-entry-card__actions,
+.lichtwald-log-detail__header,
+.lichtwald-log-detail__actions,
+.lichtwald-log-form__header,
+.lichtwald-log-form__actions,
+.lichtwald-log-confirmation__actions {
+  flex-wrap: wrap;
+}
+
+.lichtwald-log button:disabled {
+  cursor: default;
+}
+
+.lichtwald-log
+  :is(
+    .lichtwald-log-state,
+    .lichtwald-log-overview,
+    .lichtwald-log-detail,
+    .lichtwald-log-form-section,
+    .lichtwald-log-form,
+    .lichtwald-log-tags-editor,
+    .lichtwald-log-confirmation,
+    .lichtwald-log-featured-state
+  )[aria-busy='true']
+  button:disabled {
+  cursor: progress;
+}
+
+.lichtwald-log
+  :is(button, input, textarea, fieldset):focus-visible {
+  outline: 3px solid var(--gold-soft);
+  outline-offset: 3px;
+}
+
+.lichtwald-log-header__title {
+  min-width: 0;
+}
+
+.lichtwald-log-header h1 {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-introduction {
+  margin-top: var(--s3);
+  padding: 1.125rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  border: 1px solid #3d503f;
+  border-radius: var(--r-md);
+  background: linear-gradient(
+    130deg,
+    rgb(25 45 35 / 88%),
+    rgb(14 28 22 / 88%)
+  );
+}
+
+.lichtwald-log-introduction__title {
+  margin-bottom: var(--s2);
+  color: var(--gold-soft);
+  font-size: 1.15rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-introduction__text p {
+  max-width: 48rem;
+}
+
+.lichtwald-log-count {
+  flex: none;
+  padding: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: rgb(6 15 11 / 38%);
+  font-size: .78rem;
+  white-space: nowrap;
+}
+
+.lichtwald-log-count strong {
+  color: var(--gold-soft);
+  font-size: 1.45rem;
+}
+
+.lichtwald-log-feedback {
+  margin-top: var(--s3);
+  padding: .75rem var(--s3);
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-feedback--success {
+  border-color: rgb(115 182 142 / 36%);
+  color: #b9dfc7;
+  background: rgb(74 139 96 / 13%);
+}
+
+.lichtwald-log-feedback--notice {
+  border-color: rgb(213 173 92 / 42%);
+  border-style: dashed;
+  color: var(--gold-soft);
+  background: rgb(213 173 92 / 11%);
+}
+
+.lichtwald-log-feedback--error {
+  border-color: rgb(217 130 117 / 42%);
+  color: #f3b7ad;
+  background: rgb(117 52 45 / 18%);
+}
+
+.lichtwald-log-featured-state {
+  margin-top: var(--s3);
+  padding: var(--s3);
+  display: grid;
+  gap: var(--s2);
+  border: 1px solid #6f623f;
+  border-radius: var(--r-sm);
+  background: rgb(213 173 92 / 8%);
+}
+
+.lichtwald-log-featured-state__busy {
+  color: var(--gold-soft);
+  font-size: .82rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.lichtwald-log-featured-state .lichtwald-log-feedback {
+  margin-top: 0;
+}
+
+.lichtwald-log-state {
+  margin-top: 1.125rem;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: rgb(16 32 25 / 82%);
+  box-shadow: var(--shadow);
+}
+
+.lichtwald-log-state h2,
+.lichtwald-log-state h3 {
+  margin-top: var(--s2);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-state p {
+  max-width: 46rem;
+  margin-top: var(--s2);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-state .button {
+  margin-top: var(--s3);
+}
+
+.lichtwald-log-state--loading {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.lichtwald-log-state--loading h2 {
+  margin-top: 0;
+}
+
+.lichtwald-log-state--error {
+  border-color: rgb(217 130 117 / 42%);
+  background: linear-gradient(
+    145deg,
+    rgb(117 52 45 / 18%),
+    rgb(16 32 25 / 82%)
+  );
+}
+
+.lichtwald-log-state--empty {
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.lichtwald-log-state__icon,
+.lichtwald-log-loading-indicator {
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  border: 1px solid #6f623f;
+  border-radius: 50%;
+  color: var(--gold-soft);
+}
+
+.lichtwald-log-loading-indicator {
+  border-color: rgb(213 173 92 / 20%);
+  border-top-color: var(--gold);
+  animation: lichtwald-log-loading 900ms linear infinite;
+}
+
+@keyframes lichtwald-log-loading {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+.lichtwald-log-overview,
+.lichtwald-log-detail,
+.lichtwald-log-form-section {
+  margin-top: var(--s4);
+}
+
+.lichtwald-log-section-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.lichtwald-log-section-heading h2 {
+  margin-top: var(--s1);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-entry-grid {
+  margin-top: 1.125rem;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s3);
+}
+
+.lichtwald-log-entry-card {
+  padding: 1.125rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: rgb(16 32 25 / 82%);
+}
+
+.lichtwald-log-entry-card--featured {
+  border-color: var(--gold);
+  box-shadow: inset 3px 0 0 var(--gold);
+}
+
+.lichtwald-log-entry-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.lichtwald-log-entry-card__title,
+.lichtwald-log-detail__title {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-entry-card__date,
+.lichtwald-log-detail__date {
+  color: var(--muted);
+  font-size: .8rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-entry-card__date strong,
+.lichtwald-log-detail__date strong {
+  color: var(--text);
+}
+
+.lichtwald-log-featured-badge {
+  width: fit-content;
+  max-width: 100%;
+  padding: .35rem .55rem;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .4rem;
+  border: 1px solid rgb(213 173 92 / 42%);
+  border-radius: 999px;
+  color: var(--gold-soft);
+  background: rgb(213 173 92 / 13%);
+  font-size: .68rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.lichtwald-log-featured-badge__mark {
+  color: var(--text);
+  font-size: .62rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.lichtwald-log-tags__list {
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+  list-style: none;
+}
+
+.lichtwald-log-tags__tag {
+  padding: .3rem .55rem;
+  border: 1px solid #4c5f53;
+  border-radius: 999px;
+  color: var(--text);
+  background: rgb(6 15 11 / 34%);
+  font-size: .72rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-tags__empty {
+  color: var(--muted);
+  font-size: .76rem;
+}
+
+.lichtwald-log-entry-card__actions,
+.lichtwald-log-detail__actions,
+.lichtwald-log-form__actions,
+.lichtwald-log-confirmation__actions {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s2);
+}
+
+.lichtwald-log-entry-card__actions {
+  margin-top: auto;
+  flex-direction: column;
+}
+
+.lichtwald-log-entry-card__actions .button {
+  width: 100%;
+}
+
+.lichtwald-log-detail__back {
+  margin-bottom: var(--s3);
+}
+
+.lichtwald-log-detail {
+  padding: clamp(1.125rem, 2.5vw, 1.5rem);
+  border: 1px solid #6f623f;
+  border-radius: var(--r-md);
+  background: linear-gradient(
+    145deg,
+    rgb(27 43 33 / 94%),
+    rgb(14 29 23 / 94%)
+  );
+}
+
+.lichtwald-log-detail__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.lichtwald-log-detail__header h2 {
+  margin-top: var(--s1);
+  color: var(--gold-soft);
+}
+
+.lichtwald-log-detail__date {
+  flex: none;
+}
+
+.lichtwald-log-detail__text {
+  margin-top: var(--s4);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  background: rgb(6 15 11 / 30%);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-detail__tags {
+  margin-top: var(--s3);
+}
+
+.lichtwald-log-detail__actions {
+  margin-top: var(--s4);
+  justify-content: flex-end;
+}
+
+.lichtwald-log-detail__delete {
+  border-color: rgb(217 130 117 / 34%);
+  color: #f3b7ad;
+}
+
+.lichtwald-log-form {
+  padding: clamp(1.125rem, 2.5vw, 1.5rem);
+  border: 1px solid #6f623f;
+  border-radius: var(--r-md);
+  background: linear-gradient(
+    145deg,
+    rgb(25 45 35 / 96%),
+    rgb(13 27 21 / 96%)
+  );
+}
+
+.lichtwald-log-form__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.lichtwald-log-form__header h2 {
+  color: var(--gold-soft);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-form__header p {
+  max-width: 30rem;
+  font-size: .8rem;
+  text-align: right;
+}
+
+.lichtwald-log-form__alert {
+  margin-top: var(--s3);
+  padding: var(--s3);
+  display: grid;
+  gap: var(--s1);
+  border: 1px solid rgb(217 130 117 / 42%);
+  border-radius: var(--r-sm);
+  color: #f3b7ad;
+  background: rgb(117 52 45 / 18%);
+  font-size: .82rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-form__fields {
+  margin-top: 1.125rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s3);
+}
+
+.lichtwald-log-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+
+.lichtwald-log-form__field:nth-child(3),
+.lichtwald-log-tags-editor {
+  grid-column: 1 / -1;
+}
+
+.lichtwald-log-form__label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  color: var(--text);
+  font-size: .84rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-form__requirement {
+  flex: none;
+  color: var(--muted);
+  font-size: .64rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.lichtwald-log-form__control,
+.lichtwald-log-tags-editor__input {
+  width: 100%;
+  min-width: 0;
+}
+
+textarea.lichtwald-log-form__control {
+  min-height: 14rem;
+  resize: vertical;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.lichtwald-log-form__hint {
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-form__field-error {
+  color: #f3b7ad;
+  font-size: .76rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-form__dirty-state {
+  margin-top: var(--s3);
+  color: var(--muted);
+  font-size: .76rem;
+}
+
+.lichtwald-log-form__actions {
+  margin-top: var(--s3);
+  justify-content: flex-end;
+}
+
+.lichtwald-log-tags-editor {
+  margin: 0;
+  padding: var(--s3);
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: rgb(6 15 11 / 24%);
+}
+
+.lichtwald-log-tags-editor[aria-invalid='true'] {
+  border-color: #b6675e;
+}
+
+.lichtwald-log-tags-editor legend {
+  padding: 0 .35rem;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.lichtwald-log-tags-editor__list {
+  margin-top: var(--s3);
+  display: grid;
+  gap: var(--s3);
+}
+
+.lichtwald-log-tags-editor__row {
+  padding: var(--s3);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--s2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: rgb(16 32 25 / 72%);
+}
+
+.lichtwald-log-tags-editor__row .lichtwald-log-form__label {
+  grid-column: 1 / -1;
+}
+
+.lichtwald-log-tags-editor__empty {
+  color: var(--muted);
+  font-size: .76rem;
+}
+
+.lichtwald-log-tags-editor__add {
+  margin-top: var(--s3);
+}
+
+.lichtwald-log-confirmation {
+  margin: var(--s3) 0 0;
+  padding: var(--s3);
+  width: 100%;
+  border: 1px solid rgb(217 130 117 / 42%);
+  border-radius: var(--r-sm);
+  background: rgb(117 52 45 / 18%);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-confirmation legend {
+  padding: 0 .35rem;
+  color: #f3b7ad;
+  font-weight: 700;
+}
+
+.lichtwald-log-confirmation p {
+  font-size: .8rem;
+}
+
+.lichtwald-log-confirmation__alert {
+  margin-top: var(--s3);
+  padding: var(--s2);
+  border-left: 3px solid #d98275;
+  color: #f3b7ad;
+  background: rgb(6 15 11 / 24%);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-confirmation__actions {
+  margin-top: var(--s3);
+}
+
+.lichtwald-log-confirmation__confirm {
+  border: 1px solid rgb(217 130 117 / 38%);
+  border-radius: var(--r-sm);
+  color: #f3b7ad;
+  background: rgb(117 52 45 / 24%);
+}
+
+.lichtwald-log-confirmation__confirm:hover {
+  border-color: #d98275;
+  background: rgb(117 52 45 / 32%);
+}
+
+.lichtwald-log-confirmation__confirm:disabled {
+  opacity: .62;
+}
+
+.lichtwald-log-privacy {
+  margin-top: var(--s4);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: rgb(6 15 11 / 32%);
+}
+
+.lichtwald-log-privacy__title {
+  margin-bottom: var(--s1);
+  color: var(--gold-soft);
+  font-size: .9rem;
+}
+
+.lichtwald-log-privacy p {
+  font-size: .76rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+@media(max-width: 1100px) {
+  .lichtwald-log-entry-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media(max-width: 760px) {
+  .lichtwald-log-entry-grid,
+  .lichtwald-log-form__fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lichtwald-log-form__field:nth-child(3),
+  .lichtwald-log-tags-editor {
+    grid-column: auto;
+  }
+}
+
+@media(max-width: 620px) {
+  .lichtwald-log-header {
+    align-items: flex-start;
+  }
+
+  .lichtwald-log-introduction,
+  .lichtwald-log-section-heading,
+  .lichtwald-log-entry-card__header,
+  .lichtwald-log-detail__header,
+  .lichtwald-log-form__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lichtwald-log-count {
+    align-self: flex-start;
+  }
+
+  .lichtwald-log-section-heading > .button,
+  .lichtwald-log-entry-card__actions,
+  .lichtwald-log-entry-card__actions .button,
+  .lichtwald-log-detail__actions,
+  .lichtwald-log-detail__actions .button,
+  .lichtwald-log-form__actions,
+  .lichtwald-log-form__actions .button,
+  .lichtwald-log-confirmation__actions,
+  .lichtwald-log-confirmation__actions .button {
+    width: 100%;
+  }
+
+  .lichtwald-log-detail__actions,
+  .lichtwald-log-form__actions,
+  .lichtwald-log-confirmation__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .lichtwald-log-detail,
+  .lichtwald-log-form,
+  .lichtwald-log-entry-card,
+  .lichtwald-log-tags-editor,
+  .lichtwald-log-confirmation {
+    padding: var(--s3);
+  }
+
+  .lichtwald-log-form__header p {
+    text-align: left;
+  }
+
+  .lichtwald-log-tags-editor__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lichtwald-log-tags-editor__row
+    .lichtwald-log-form__label {
+    grid-column: auto;
+  }
+
+  .lichtwald-log-tags-editor__remove,
+  .lichtwald-log-tags-editor__add {
+    width: 100%;
+  }
+}
+
+@media(max-width: 390px) {
+  .lichtwald-log-header .system-state {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .lichtwald-log
+    :is(
+      .button,
+      input,
+      textarea,
+      .lichtwald-log-tags-editor,
+      .lichtwald-log-confirmation
+    ) {
+    min-height: 44px;
+  }
+
+  .lichtwald-log-introduction,
+  .lichtwald-log-state,
+  .lichtwald-log-detail,
+  .lichtwald-log-form,
+  .lichtwald-log-entry-card,
+  .lichtwald-log-tags-editor,
+  .lichtwald-log-confirmation,
+  .lichtwald-log-featured-state {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .lichtwald-log-entry-card__title,
+  .lichtwald-log-detail__title,
+  .lichtwald-log-detail__text,
+  .lichtwald-log-form__label,
+  .lichtwald-log-form__hint,
+  .lichtwald-log-tags__tag,
+  .lichtwald-log-tags-editor legend,
+  .lichtwald-log-confirmation legend {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
+
+@media(prefers-reduced-motion: reduce) {
+  .lichtwald-log-loading-indicator {
+    animation: none;
+    border-color: var(--gold);
+  }
+}
