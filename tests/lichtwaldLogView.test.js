@@ -2800,10 +2800,6 @@ test('Produktionsquelle verwendet nur Safe-DOM, Contractgrenzen und die zwölf A
     ),
     'utf8'
   )
-  const mainSource = readFileSync(
-    new URL('../src/main.js', import.meta.url),
-    'utf8'
-  )
   const usedActionNames = [...new Set(
     source.match(/\bon[A-Z][A-Za-z]+\b/g) ?? []
   )].filter((name) => name !== 'onClick').sort()
@@ -2834,7 +2830,6 @@ test('Produktionsquelle verwendet nur Safe-DOM, Contractgrenzen und die zwölf A
   )
   assert.doesNotMatch(source, /console\.(?:log|warn|error|info|debug|trace)/)
   assert.doesNotMatch(source, /import\s+[']\.\/lichtwaldLog\.css[']/)
-  assert.doesNotMatch(mainSource, /lichtwaldLogView|lichtwaldLog\.css/)
 })
 
 test('Modul-CSS kapselt sichere responsive, Fokus- und Reduced-Motion-Regeln', () => {

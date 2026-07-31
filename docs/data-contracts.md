@@ -21,17 +21,18 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Contract-, private Storage-, Service-, Controller- sowie isolierte View- und CSS-Foundation implementiert; Sync-Vertrag bleibt Zielzustand |
+| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Foundations sowie Anwendungskomposition, Navigation und lokaler CRUD-/Fokusfluss implementiert; Sync-Vertrag bleibt Zielzustand |
 | Letzte Aktualisierung | 2026-07-31 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
 die lokale LearningTestBank und abgeschlossene LearningTestAttempts. Es
 dokumentiert außerdem den implementierten LichtwaldLog-Schema-1-Vertrag, seine
-begrenzte private Full-Snapshot-Persistenz und die darauf aufbauenden lokalen
-Service-, Controller- sowie isolierte View- und CSS-Foundation sowie die
+begrenzte private Full-Snapshot-Persistenz, die darauf aufbauenden lokalen
+Service-, Controller- sowie isolierte View- und CSS-Foundation und deren
+Anwendungskomposition in `src/main.js`. Es dokumentiert außerdem die
 maschinenlesbare Sprache zwischen dem GoldenDawn-OS-Frontend, dem SyncAgent,
-dem DataAgent und dem TestAgent. Es konkretisiert die Grenzen aus `AGENTS.md`,
+dem DataAgent und dem TestAgent und konkretisiert die Grenzen aus `AGENTS.md`,
 `docs/architecture.md` und `docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
@@ -63,11 +64,14 @@ implementiert. Die darauf aufbauende Service-Foundation stellt den privaten
 fachlichen Kern für Laden, Erstellen, vollständiges Bearbeiten, Löschen und
 Fokusverwaltung bereit. Die Controller-Foundation koordiniert diesen Kern über
 eine flüchtige, defensiv validierte UI-Projektion. Die isolierte View- und
-CSS-Foundation stellt diese Projektion sicher dar, bleibt aber außerhalb der
-`src/main.js`-Komposition. Navigation, der vollständig über die Anwendung
-bedienbare UI-CRUD- und Fokusfluss, reale Browserintegration, Suche, Filter und
-Demo-Integration folgen in getrennten Slices. Die lokalen Foundations führen
-keine externe Aktion ein.
+CSS-Foundation stellt diese Projektion sicher dar und ist über den gemeinsamen
+`StorageAdapter` in `src/main.js` komponiert. LichtwaldLog ist über die
+Navigation mit dem sichtbaren Status `In Arbeit` erreichbar; der lokale
+UI-CRUD- und Fokusfluss ist vollständig über die Anwendung bedienbar und real
+im Browser auf Desktop mit `1440 × 1000` sowie bei exakt `390 × 844` geprüft.
+Suche, Filter und die getrennte synthetische Demo-Integration folgen in
+weiteren Slices. Die lokalen Foundations und ihre Komposition führen keine
+externe Aktion ein.
 
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
@@ -167,9 +171,11 @@ bleiben flüchtig. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
 `v0.2.2 – LichtwaldLog Local MVP` sind die nachfolgend dokumentierte Contract-
 und private Storage-Foundation sowie die darauf aufbauenden Service- und
 Controller-Foundations und die isolierte View- und CSS-Foundation
-implementiert. `src/main.js`-Anbindung, Navigation, der vollständig über die
-Anwendung bedienbare UI-CRUD- und Fokusfluss, reale Browserintegration, Suche,
-Filter und Demo-Integration bleiben spätere Slices desselben rein lokalen
+implementiert. `src/main.js` komponiert sie über den gemeinsamen
+`StorageAdapter`; Navigation und der vollständig über die Anwendung bedienbare
+UI-CRUD- und Fokusfluss sind ebenfalls implementiert und real im Browser auf
+Desktop sowie bei exakt `390 × 844` geprüft. Suche, Filter und die getrennte
+synthetische Demo-Integration bleiben spätere Slices desselben rein lokalen
 Meilensteins.
 
 #### Interner LearningHub-Vertrag – Schema 2
@@ -1546,17 +1552,27 @@ nicht vorweggenommen.
 
 Contract Foundation, private Storage-Foundation, Service-Foundation,
 Controller-Foundation sowie isolierte View- und CSS-Foundation des rein lokalen
-LichtwaldLogs sind implementiert. Sie umfassen das Schema-1-Modul
+LichtwaldLogs sind implementiert und über den gemeinsamen `StorageAdapter` in
+`src/main.js` komponiert. Sie umfassen das Schema-1-Modul
 `lichtwaldLogContract.js`, den reinen Validator `validateLichtwaldLog`,
 synthetische Contract-Tests, `createLichtwaldLogStorage` hinter dem
 gemeinsamen `StorageAdapter` sowie `createLichtwaldLogService` als
 Anwendungsgrenze und `createLichtwaldLogController` als flüchtige
 UI-Koordinationsgrenze und `createLichtwaldLogView` als isolierte DOM-Grenze.
-`src/main.js`-Anbindung, Navigation, der vollständig über die Anwendung
-bedienbare UI-CRUD- und Fokusfluss, reale Browserintegration, Suche, Filter und
-Demo-Integration sind noch nicht implementiert. Vertrag, View, Controller,
-Service und Storage führen weder eine externe Aktion noch einen Zugriff durch
-`SyncAgent`, `DataAgent` oder `TestAgent` ein.
+LichtwaldLog ist über die Navigation mit dem sichtbaren Status `In Arbeit`
+erreichbar; Anzeigen, Erstellen, vollständiges Bearbeiten, dauerhaftes Löschen
+sowie explizites Setzen und Entfernen des Fokus sind vollständig über die
+Anwendung bedienbar. Die reale Browserprüfung war in einem frischen isolierten
+temporären Chrome-Profil auf Desktop mit `1440 × 1000` sowie bei exakt
+`390 × 844` erfolgreich. Der vollständige lokale Navigations-, CRUD-, Fokus-,
+Dirty-Guard-, Delete- und Reload-Fluss, Tastaturfokus, Live-Regionen, der
+sichtbare `3px`-Fokusrahmen sowie fehlender horizontaler Seitenoverflow wurden
+bestätigt. Es gab 0 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions und
+0 externe Requests. Suche, Filter und die getrennte synthetische
+Demo-Integration sind noch offen.
+Vertrag, View, Controller, Service, Storage und Anwendungskomposition führen
+weder eine externe Aktion noch einen Zugriff durch `SyncAgent`, `DataAgent`
+oder `TestAgent` ein.
 
 #### LichtwaldLog – Schema 1
 
@@ -1887,10 +1903,10 @@ Inhalt, Löschung und Fokus nicht optimistisch.
 dedizierten Root und verwirft nur flüchtige Fokus- und Caret-Metadaten. Die
 View bildet keine persistente oder fachlich autoritative Zustandsquelle;
 Storage und Service bleiben die autoritativen Grenzen. Das responsive
-Modul-CSS besitzt Reduced-Motion-Regeln, ist jedoch ebenso wie die View noch
-nicht in `src/main.js` eingebunden. Der bestehende Storage-Key, das
-500.000-Codeeinheiten-Limit, Browser-Quota, Read-Preflight, TOCTOU- und
-Multi-Tab-Grenzen bleiben unverändert.
+Modul-CSS besitzt Reduced-Motion-Regeln und ist ebenso wie die View über
+`src/main.js` in die Anwendungskomposition eingebunden. Der bestehende
+Storage-Key, das 500.000-Codeeinheiten-Limit, Browser-Quota, Read-Preflight,
+TOCTOU- und Multi-Tab-Grenzen bleiben unverändert.
 
 ##### Implementierte LichtwaldLog-Service-Foundation
 

@@ -8,7 +8,7 @@
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
 | Status | `v0.2.1` vollständig geprüft und veröffentlicht; `v0.2.2` in Arbeit |
-| Letzte Aktualisierung | 2026-07-26 |
+| Letzte Aktualisierung | 2026-07-31 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -49,7 +49,7 @@ nicht starre Kalendertermine.
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.2.2` | LichtwaldLog Local MVP | Contract-, private Storage-, Service-, Controller- sowie isolierte View- und CSS-Foundation implementiert; App-Integration und übriger Local MVP offen | 🟡 |
+| `v0.2.2` | LichtwaldLog Local MVP | Foundations, App-Komposition, Navigation und lokaler CRUD-/Fokusfluss implementiert; reale Browserprüfung erfolgreich; ausstehend sind Suche, Filter und Demo-Integration | 🟡 |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
@@ -470,11 +470,11 @@ agentengestützte Prozesse sind nicht Teil dieser Version.
   zugänglichen Zuständen, vollständiger Fokuszielauflösung, DOM-Unmount-Grenze,
   statischem lokalen Speicherhinweis sowie responsiven und
   Reduced-Motion-Regeln bereitstellen.
-- ⬜ View und CSS in `src/main.js` einbinden, die Navigation ergänzen und den
+- ✅ View und CSS in `src/main.js` einbinden, die Navigation ergänzen und den
   vollständigen über GoldenDawn OS bedienbaren CRUD- und Fokusfluss
   bereitstellen.
-- ⬜ Die eingebundene Oberfläche real im Browser und im Anwendungskontext
-  prüfen.
+- ✅ Die eingebundene Oberfläche in einem frischen temporären Browserkontext
+  auf Desktop und bei exakt `390 × 844` real prüfen.
 - ⬜ Lokale Textsuche und Filter bereitstellen.
 - ⬜ Eine klar getrennte synthetische öffentliche Demo-Integration
   bereitstellen, ohne Daten in den ausschließlich privaten Servicepfad zu
@@ -506,12 +506,20 @@ Die isolierte View- und CSS-Foundation implementiert den injizierten View-Port
 mit sicherer Plain-Text-DOM-Ausgabe, verlustfreien Tagcontrols, zugänglichen
 Zuständen, vollständiger Fokuszielauflösung und einer privaten
 DOM-Unmount-Grenze. Sie bewahrt die Controller-Projektion und führt keine
-eigene fachliche oder persistente Wahrheit ein. `src/main.js`-Anbindung,
-Navigation, vollständige Bedienbarkeit über die Anwendung, reale
-Browserintegration, Suche, Filter und Demo-Integration bleiben offen. Storage
-und Service bleiben die autoritativen fachlichen Grenzen. Read-Preflight,
-500.000-Codeeinheiten-Limit, Browser-Quota, TOCTOU- und Multi-Tab-Verhalten
-ändern sich durch Controller und isolierte View nicht.
+eigene fachliche oder persistente Wahrheit ein. `src/main.js` komponiert sie
+über den gemeinsamen `StorageAdapter`; Navigation und der vollständig über
+GoldenDawn OS bedienbare lokale CRUD- und Fokusfluss sind implementiert. Die
+reale Browserprüfung war in einem frischen isolierten temporären Chrome-Profil
+auf Desktop mit `1440 × 1000` sowie bei exakt `390 × 844` erfolgreich. Der
+vollständige lokale Navigations-, CRUD-, Fokus-, Dirty-Guard-, Delete- und
+Reload-Fluss, Tastaturfokus, Live-Regionen, der sichtbare `3px`-Fokusrahmen und
+fehlender horizontaler Seitenoverflow wurden bestätigt. Es gab 0
+Console-Warnungen oder -Fehler, 0 Runtime-Exceptions und 0 externe Requests.
+Suche, Filter und die getrennte synthetische Demo-Integration bleiben offen.
+Storage und Service bleiben die autoritativen fachlichen Grenzen.
+Read-Preflight, 500.000-Codeeinheiten-Limit, Browser-Quota, TOCTOU- und
+Multi-Tab-Verhalten ändern sich durch Anwendungskomposition, Controller und
+View nicht.
 
 `v0.2.2` enthält keine Synchronisierung und keine Agentenlogik. Auch der Weekly
 Review gehört nicht zu diesem lokalen MVP. Agentengestützte, synchronisierte
@@ -831,19 +839,23 @@ sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist seit dem `2026-07-26` in Arbeit.
 Implementiert sind die Contract Foundation und private Storage-Foundation mit
 ADR 0013 und ADR 0014 sowie die darauf aufbauenden Service- und
-Controller-Foundations sowie die isolierte View- und CSS-Foundation. Der
-Service lädt den autoritativen privaten Zustand ohne Cache, normalisiert
-Formeingaben, löst Ziel-IDs exakt auf und kapselt Laden, Erstellen,
-vollständiges Bearbeiten, Löschen und Fokusverwaltung hinter dem fachlichen
-Storage. Der Controller koordiniert diese Operationen über vollständig geprüfte
-private Service-Snapshots und ausschließlich flüchtige Darstellungszustände.
-Die View stellt diese Projektion sicher und zugänglich dar, bleibt aber
-außerhalb der Anwendungskomposition. `src/main.js`-Anbindung, Navigation, der
-vollständig über GoldenDawn OS bedienbare UI-CRUD- und Fokusfluss, reale
-Browserintegration, Suche, Filter und Demo-Integration bleiben offen; der
-Meilenstein ist weder abgeschlossen noch veröffentlicht. `v0.2.2` bleibt
-vollständig lokal und besitzt keine externe Kommunikation, Webhooks,
-Agentenlogik oder Airtable-Anbindung.
+Controller-Foundations und die isolierte View- und CSS-Foundation. Der Service
+lädt den autoritativen privaten Zustand ohne Cache, normalisiert Formeingaben,
+löst Ziel-IDs exakt auf und kapselt Laden, Erstellen, vollständiges Bearbeiten,
+Löschen und Fokusverwaltung hinter dem fachlichen Storage. Der Controller
+koordiniert diese Operationen über vollständig geprüfte private
+Service-Snapshots und ausschließlich flüchtige Darstellungszustände. Die View
+stellt diese Projektion sicher und zugänglich dar. `src/main.js` komponiert den
+Pfad über den gemeinsamen `StorageAdapter`; LichtwaldLog ist über die Navigation
+mit dem sichtbaren Status `In Arbeit` erreichbar. Anzeigen, Erstellen,
+vollständiges Bearbeiten, dauerhaftes Löschen sowie explizites Setzen und
+Entfernen des Fokus sind vollständig über GoldenDawn OS bedienbar. Die reale
+Browserprüfung auf Desktop und bei exakt `390 × 844` ist erfolgreich
+abgeschlossen. Als nächste Schritte bleiben lokale Suche und Filter sowie die
+getrennte synthetische Demo-Integration offen; der Meilenstein ist weder
+abgeschlossen noch veröffentlicht. `v0.2.2` bleibt vollständig lokal und
+besitzt keine externe Kommunikation, Webhooks, Agentenlogik oder
+Airtable-Anbindung.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein Backend, Benutzerkonten und

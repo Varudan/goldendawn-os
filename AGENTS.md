@@ -57,15 +57,22 @@ Open-Source-Lizenz verfügbar. `v0.2.2 – LichtwaldLog Local MVP` ist seit dem
 `2026-07-26` in Arbeit. Implementiert sind die LichtwaldLog-Contract-Foundation
 mit Schema-1-Vertrag, reinem Validator, synthetischen Contract-Tests und ADR
 0013, die private Storage-Foundation mit begrenzter
-Full-Snapshot-Persistenz und ADR 0014, die Service-Foundation sowie die
-Controller-Foundation sowie die isolierte View- und CSS-Foundation. Die View
-implementiert den injizierten Port produktiv, bleibt aber noch außerhalb der
-`src/main.js`-Komposition. `src/main.js`-Anbindung, Navigation, der vollständig
-über GoldenDawn OS bedienbare UI-CRUD- und Fokusfluss, reale
-Browserintegration, Suche, Filter und Demo-Integration sind weiter offen;
-`v0.2.2` ist weder abgeschlossen noch veröffentlicht. Der Meilenstein bleibt
-vollständig lokal und besitzt keine externe Kommunikation, Webhooks,
-Agentenlogik oder Airtable-Anbindung.
+Full-Snapshot-Persistenz und ADR 0014, die Service- und Controller-Foundation,
+die isolierte View- und CSS-Foundation sowie deren Anwendungskomposition in
+`src/main.js` über den gemeinsamen `StorageAdapter`. LichtwaldLog ist über die
+Navigation mit dem sichtbaren Status `In Arbeit` erreichbar. Anzeigen,
+Erstellen, vollständiges Bearbeiten, dauerhaftes Löschen sowie explizites
+Setzen und Entfernen des Fokus sind vollständig über GoldenDawn OS bedienbar.
+Die reale Browserprüfung war in einem frischen isolierten temporären
+Chrome-Profil auf Desktop mit `1440 × 1000` sowie bei exakt `390 × 844`
+erfolgreich. Geprüft wurden der vollständige lokale Navigations-, CRUD-, Fokus-,
+Dirty-Guard-, Delete- und Reload-Fluss, Tastaturfokus, Live-Regionen, der
+sichtbare `3px`-Fokusrahmen und fehlender horizontaler Seitenoverflow; es gab
+0 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions und 0 externe Requests.
+Suche, Filter und die getrennte synthetische Demo-Integration sind
+weiter offen; `v0.2.2` ist weder abgeschlossen noch veröffentlicht. Der
+Meilenstein bleibt vollständig lokal und besitzt keine externe Kommunikation,
+Webhooks, Agentenlogik oder Airtable-Anbindung.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -224,8 +231,8 @@ onSetFeaturedEntry
   explizite Fokusendzustände statt eines Toggles. Sie projiziert weder Inhalt,
   Delete noch Fokus optimistisch. `unmount()` entfernt private DOM-Inhalte und
   verwirft ausschließlich flüchtige Fokus- und Caret-Metadaten. Das gekapselte
-  CSS enthält responsive und Reduced-Motion-Regeln, ist aber noch nicht in den
-  `src/main.js`-Buildgraph eingebunden.
+  CSS enthält responsive und Reduced-Motion-Regeln und ist über `src/main.js`
+  in den Buildgraph eingebunden.
 - Der Controller hält ausschließlich eine flüchtige, validierte und defensiv
   entkoppelte UI-Projektion. Er prüft jeden Service-Snapshot vollständig mit
   `validateLichtwaldLog` und akzeptiert nur `dataOrigin: private`. Der rohe
@@ -282,9 +289,11 @@ onSetFeaturedEntry
   Serialisierung und Read-Preflight bleiben im Storage beziehungsweise
   `StorageAdapter`; der Preflight ist keine Transaktion, kein
   Compare-and-Swap und keine Multi-Tab-Sperre.
-- `src/main.js`-Anbindung, Navigation, der vollständig über die Anwendung
-  bedienbare CRUD- und Fokusfluss, reale Browserintegration, Suche, Filter und
-  Demo-Integration sind noch nicht implementiert.
+- `src/main.js`-Anbindung über den gemeinsamen `StorageAdapter`, Navigation und
+  der vollständig über die Anwendung bedienbare CRUD- und Fokusfluss sind
+  implementiert und real im Browser auf Desktop sowie bei exakt `390 × 844`
+  geprüft. Suche, Filter und die getrennte synthetische Demo-Integration sind
+  noch offen.
 - Das Ziel des LichtwaldLog Local MVP bleibt ein lokales Journal-Modul mit CRUD
   für Einträge aus Titel, reinem Kalenderdatum, Text und Tags sowie lokaler
   Suche und Filtern.

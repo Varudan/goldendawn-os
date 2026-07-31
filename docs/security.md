@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; v0.2.1 veröffentlicht; LichtwaldLog Contract-, private Storage-, Service-, Controller- sowie isolierte View- und CSS-Foundation implementiert |
+| Status | Verbindliche Sicherheitsbasis; v0.2.1 veröffentlicht; LichtwaldLog Foundations sowie Anwendungskomposition, Navigation und lokaler CRUD-/Fokusfluss implementiert |
 | Letzte Aktualisierung | 2026-07-31 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
@@ -386,15 +386,21 @@ Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist als rein lokaler Meilenstein in Arbeit.
 Die Contract Foundation, private Storage-Foundation, Service-Foundation und
 Controller-Foundation sowie die isolierte View- und CSS-Foundation sind
-implementiert; ADR 0013 und ADR 0014 bleiben unverändert. Der vollständige MVP
-ist weder abgeschlossen noch veröffentlicht.
+implementiert und über den gemeinsamen `StorageAdapter` in `src/main.js`
+komponiert. LichtwaldLog ist über die Navigation mit dem sichtbaren Status
+`In Arbeit` erreichbar; der lokale CRUD- und Fokusfluss ist vollständig über
+GoldenDawn OS bedienbar und real im Browser auf Desktop mit `1440 × 1000` sowie
+bei exakt `390 × 844` geprüft. Suche, Filter und die getrennte synthetische
+Demo-Integration bleiben offen. ADR 0013 und ADR 0014 bleiben unverändert. Der
+vollständige MVP ist weder abgeschlossen noch veröffentlicht.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
 - Implementiert sind der Schema-1-Vertrag, der reine Validator, synthetische
-  Contract-Tests und ADR 0013, die private Storage-Foundation und ADR 0014 sowie
-  die darauf aufbauenden Service- und Controller-Foundations und die isolierte
-  View- und CSS-Foundation.
+  Contract-Tests und ADR 0013, die private Storage-Foundation und ADR 0014, die
+  darauf aufbauenden Service- und Controller-Foundations und die isolierte View-
+  und CSS-Foundation sowie deren Anwendungskomposition über den gemeinsamen
+  `StorageAdapter` in `src/main.js`.
 - Der implementierte lokale Datenfluss lautet ausschließlich
   `LichtwaldLogView → LichtwaldLogController → LichtwaldLogService → LichtwaldLogStorage → StorageAdapter → localStorage`.
   Der Storage verwendet den festen Key
@@ -520,9 +526,18 @@ ist weder abgeschlossen noch veröffentlicht.
   grundsätzlich von JavaScript derselben Origin gelesen oder verändert werden.
   Er bietet keine Authentifizierung, Zugriffskontrolle, Integritätsgarantie,
   Transaktion, Multi-Tab-Sperre, Cloud-Sicherung oder Synchronisierung.
-- `src/main.js`-Anbindung, Navigation und Anwendungskomposition, der vollständig
-  über GoldenDawn OS bedienbare CRUD- und Fokusfluss, reale Browserintegration,
-  lokale Suche, Filter und Demo-Integration sind noch nicht implementiert.
+- `src/main.js`-Anbindung, Navigation mit dem sichtbaren Status `In Arbeit` und
+  Anwendungskomposition sowie der vollständig über GoldenDawn OS bedienbare
+  CRUD- und Fokusfluss sind implementiert. Die Komposition umgeht weder
+  Storage-, Service- und Controller-Grenzen noch die DOM-Unmount-Grenze. Die
+  reale Browserprüfung war in einem frischen isolierten temporären
+  Chrome-Profil auf Desktop mit `1440 × 1000` sowie bei exakt `390 × 844`
+  erfolgreich. Der vollständige lokale Navigations-, CRUD-, Fokus-,
+  Dirty-Guard-, Delete- und Reload-Fluss, Tastaturfokus, Live-Regionen, der
+  sichtbare `3px`-Fokusrahmen und fehlender horizontaler Seitenoverflow wurden
+  bestätigt. Es gab 0 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions und
+  0 externe Requests. Lokale Suche, Filter und die getrennte synthetische
+  Demo-Integration sind noch offen.
 - Für LichtwaldLog existieren in `v0.2.2` keine externe Kommunikation,
   Webhooks, Synchronisierung, Agentenlogik oder Airtable-Anbindung.
 - Ein späterer Agentenfluss benötigt einen eigenen minimierten Vertrag. Der

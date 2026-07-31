@@ -1,9 +1,12 @@
 import './style.css'
 import './modules/prompt-vault/promptVault.css'
 import './modules/learning-hub/learningHub.css'
+import './modules/lichtwald-log/lichtwaldLog.css'
 
 import { createLearningHubController } from './modules/learning-hub/learningHubController.js'
 import { createLearningHubView } from './modules/learning-hub/learningHubView.js'
+import { createLichtwaldLogController } from './modules/lichtwald-log/lichtwaldLogController.js'
+import { createLichtwaldLogView } from './modules/lichtwald-log/lichtwaldLogView.js'
 import { createPromptVaultController } from './modules/prompt-vault/promptVaultController.js'
 import { createPromptVaultView } from './modules/prompt-vault/promptVaultView.js'
 import { createLearningArtifactService } from './services/learningArtifactService.js'
@@ -11,6 +14,7 @@ import { createLearningHubDemoInitializer } from './services/learningHubDemoInit
 import { createLearningHubService } from './services/learningHubService.js'
 import { createLearningProgressService } from './services/learningProgressService.js'
 import { createLearningTestService } from './services/learningTestService.js'
+import { createLichtwaldLogService } from './services/lichtwaldLogService.js'
 import { createPromptService } from './services/promptService.js'
 import { createLearningArtifactStorage } from './storage/learningArtifactStorage.js'
 import { createLearningHubStorage } from './storage/learningHubStorage.js'
@@ -18,6 +22,7 @@ import { createLearningHubDemoInitializationStorage } from './storage/learningHu
 import { createLearningProgressStorage } from './storage/learningProgressStorage.js'
 import { createLearningTestAttemptStorage } from './storage/learningTestAttemptStorage.js'
 import { createLearningTestBankStorage } from './storage/learningTestBankStorage.js'
+import { createLichtwaldLogStorage } from './storage/lichtwaldLogStorage.js'
 import { createPromptStorage } from './storage/promptStorage.js'
 import { createStorageAdapter } from './storage/storageAdapter.js'
 import {
@@ -28,6 +33,7 @@ import {
 const VIEW_COMMAND_CENTER = 'command-center'
 const VIEW_PROMPT_VAULT = 'prompt-vault'
 const VIEW_LEARNING_HUB = 'learning-hub'
+const VIEW_LICHTWALD_LOG = 'lichtwald-log'
 
 const modules = [
   {
@@ -73,12 +79,14 @@ const modules = [
     statusClass: 'planned',
   },
   {
-    id: 'lichtwald-log',
+    id: VIEW_LICHTWALD_LOG,
     name: 'LichtwaldLog',
     description:
-      'Geplantes lokales Journal für Einträge, Suche und Filter; noch nicht implementiert',
-    status: 'Geplant',
-    statusClass: 'planned',
+      'Private Einträge lokal erstellen, anzeigen, bearbeiten, dauerhaft löschen und als Lichtwald-Fokus setzen oder entfernen',
+    status: 'In Arbeit',
+    statusClass: 'next',
+    navigationState: 'In Arbeit',
+    isNavigable: true,
   },
   {
     id: 'weekly-review',
@@ -188,6 +196,15 @@ try {
 }
 
 const storageAdapter = createStorageAdapter(storageImplementation)
+const lichtwaldLogStorage = createLichtwaldLogStorage(storageAdapter)
+const lichtwaldLogService = createLichtwaldLogService({
+  lichtwaldLogStorage,
+})
+const lichtwaldLogView = createLichtwaldLogView(viewOutlet)
+const lichtwaldLogController = createLichtwaldLogController({
+  lichtwaldLogService,
+  lichtwaldLogView,
+})
 const promptStorage = createPromptStorage(storageAdapter)
 const promptService = createPromptService({ promptStorage })
 const promptVaultView = createPromptVaultView(viewOutlet)
@@ -252,15 +269,15 @@ function renderCommandCenter() {
     <section class="focus-panel" aria-labelledby="focus-title">
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
-        <h2 id="focus-title">v0.2.1 – LearningHub Local MVP veröffentlicht</h2>
-        <p>Command Center und PromptVault bleiben lokal nutzbar. Der LearningHub Local MVP ist mit Inhalten, Kapitel- und Modulfortschritt, Notizen, Zusammenfassungen sowie dem deterministischen lokalen Mock-Test mit Fragenverwaltung und Versuchshistorie vollständig umgesetzt, geprüft und veröffentlicht. Der lokale Mock-Test verwendet keine KI und keine externe Kommunikation.</p>
+        <h2 id="focus-title">v0.2.2 – LichtwaldLog Local MVP in Arbeit</h2>
+        <p>Contract-, Storage-, Service-, Controller- und View-Foundation sind jetzt in GoldenDawn OS komponiert. Einträge lassen sich lokal erstellen, anzeigen, bearbeiten und dauerhaft löschen; der Lichtwald-Fokus lässt sich explizit setzen und entfernen.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
-          <span>Veröffentlicht</span>
-          <strong>LearningHub Local MVP vollständig geprüft</strong>
+          <span>In Arbeit</span>
+          <strong>Lokaler Eintrags- und Fokusfluss bedienbar</strong>
         </div>
-        <small>Inhalte, Fortschritt, Lernartefakte, Testfragen und abgeschlossene Versuche bleiben im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung oder geräteübergreifende Synchronisierung; laufende Tests gehen bei einem Reload verloren.</small>
+        <small>Private Einträge bleiben unverschlüsselt im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung, Synchronisierung oder externe Kommunikation.</small>
       </div>
     </section>
 
@@ -268,10 +285,10 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Projektschritt</span>
-        <h2 id="milestone-title">v0.2.2 – LichtwaldLog Local MVP</h2>
-        <p>LichtwaldLog ist als nächster rein lokaler Meilenstein geplant, aber noch nicht implementiert. Vorgesehen sind Journal-Einträge mit lokaler Suche und Filtern; Synchronisierung und Agentenlogik gehören nicht zu v0.2.2.</p>
+        <h2 id="milestone-title">v0.2.2 – Suche, Filter und Demo-Integration</h2>
+        <p>Als nächste Schritte folgen lokale Suche und Filter sowie ein klar getrennter synthetischer Demo-Pfad. Das lokale MVP bleibt in Arbeit; Synchronisierung und Agentenlogik gehören nicht zu v0.2.2.</p>
       </div>
-      <span class="status status--planned">Geplant</span>
+      <span class="status status--next">In Arbeit</span>
     </aside>
 
     <section class="modules-section" aria-labelledby="modules-title">
@@ -351,6 +368,13 @@ function showView(viewName, { moveFocus = false } = {}) {
   }
 
   if (
+    activeView === VIEW_LICHTWALD_LOG &&
+    lichtwaldLogController.close() === false
+  ) {
+    return
+  }
+
+  if (
     activeView === VIEW_LEARNING_HUB &&
     learningHubController.close() === false
   ) {
@@ -370,6 +394,9 @@ function showView(viewName, { moveFocus = false } = {}) {
   } else if (activeView === VIEW_LEARNING_HUB) {
     document.title = 'GoldenDawn OS – LearningHub'
     learningHubController.open()
+  } else if (activeView === VIEW_LICHTWALD_LOG) {
+    document.title = 'GoldenDawn OS – LichtwaldLog'
+    lichtwaldLogController.open()
   } else {
     document.title = 'GoldenDawn OS – Command Center'
     renderCommandCenter()
