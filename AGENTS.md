@@ -56,14 +56,14 @@ seit dem `2026-07-25` als öffentlich sichtbares Portfolio-Repository ohne
 Open-Source-Lizenz verfügbar. `v0.2.2 – LichtwaldLog Local MVP` ist seit dem
 `2026-07-26` in Arbeit. Implementiert sind die LichtwaldLog-Contract-Foundation
 mit Schema-1-Vertrag, reinem Validator, synthetischen Contract-Tests und ADR
-0013 sowie die private Storage-Foundation mit begrenzter
-Full-Snapshot-Persistenz und ADR 0014. Die LichtwaldLog-Service-Foundation mit
-dem fachlichen Kern für Laden, Erstellen, vollständiges Bearbeiten, Löschen und
-Fokusverwaltung ist ebenfalls umgesetzt. Controller, View, der vollständig
-bedienbare UI-CRUD-Fluss, Suche und Filter sind noch offen; `v0.2.2` ist
-weder abgeschlossen noch veröffentlicht. Der Meilenstein bleibt vollständig
-lokal und besitzt keine externe Kommunikation, Webhooks, Agentenlogik oder
-Airtable-Anbindung.
+0013, die private Storage-Foundation mit begrenzter
+Full-Snapshot-Persistenz und ADR 0014, die Service-Foundation sowie die
+Controller-Foundation. Die injizierte View-Grenze besitzt noch keine
+produktive Implementierung. View, `src/main.js`-Anbindung, der vollständig
+bedienbare UI-CRUD- und Fokusfluss, Suche, Filter und Demo-Integration sind
+weiter offen; `v0.2.2` ist weder abgeschlossen noch veröffentlicht. Der
+Meilenstein bleibt vollständig lokal und besitzt keine externe Kommunikation,
+Webhooks, Agentenlogik oder Airtable-Anbindung.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -173,9 +173,10 @@ Freitextbewertung und die Anbindung des TestAgent gehören erst zu `v0.5.0`.
 - Implementiert sind der Schema-1-Vertrag, der reine Validator, die
   synthetischen Contract-Tests und die in ADR 0013 dokumentierte
   Contract-Entscheidung.
-- Die private Storage-Foundation ist gemäß ADR 0014 umgesetzt. Zusammen mit der
-  Service-Foundation lautet der ausschließlich lokale Datenfluss
-  `LichtwaldLogService → LichtwaldLogStorage → StorageAdapter → localStorage`.
+- Die private Storage-Foundation ist gemäß ADR 0014 umgesetzt. Zusammen mit
+  Service- und Controller-Foundation lautet der ausschließlich lokale
+  Datenfluss
+  `LichtwaldLogController → LichtwaldLogService → LichtwaldLogStorage → StorageAdapter → localStorage`.
   Der Storage verwendet den festen Key
   `goldendawn.lichtwaldLog.content.v1`, speichert den direkten Schema-1-Root als
   gemeinsamen Full-Snapshot und akzeptiert ausschließlich
@@ -185,6 +186,48 @@ Freitextbewertung und die Anbindung des TestAgent gehören erst zu `v0.5.0`.
   `loadLog`, `createEntry`, `updateEntry`, `deleteEntry` und
   `setFeaturedEntry`. `setFeaturedEntry(null)` entfernt den Fokus; eine
   zusätzliche Clear- oder Toggle-Operation existiert nicht.
+- `createLichtwaldLogController({ lichtwaldLogService, lichtwaldLogView,
+  scheduleTask })` liefert eine eingefrorene API mit exakt `open` und `close`.
+  Die noch nicht produktiv implementierte View wird ausschließlich über
+  `render(viewModel, actions)` und `unmount()` injiziert. Jeder Render erhält
+  dieselbe eingefrorene Action-API mit exakt:
+
+```text
+onRetryLoad
+onSelectEntry
+onBackToOverview
+onOpenCreateEntryForm
+onOpenUpdateEntryForm
+onUpdateFormField
+onSubmitForm
+onCancelForm
+onRequestDeleteEntry
+onCancelDeleteEntry
+onConfirmDeleteEntry
+onSetFeaturedEntry
+```
+
+- Der Controller hält ausschließlich eine flüchtige, validierte und defensiv
+  entkoppelte UI-Projektion. Er prüft jeden Service-Snapshot vollständig mit
+  `validateLichtwaldLog` und akzeptiert nur `dataOrigin: private`. Der rohe
+  Schema-1-Root wird nicht an die View weitergegeben. Storage bleibt die
+  einzige veränderliche Wahrheit; der Service bleibt die autoritative
+  fachliche Mutationsgrenze.
+- Pro akzeptierter Benutzerintention ruft der Controller exakt eine passende
+  Serviceoperation auf. Nach einer Mutation erfolgt kein zusätzlicher Load,
+  und Inhalte oder Fokus werden nicht optimistisch verändert. Auswahl,
+  Formularänderungen, Abbruch sowie Anfordern und Abbrechen einer
+  Löschbestätigung bleiben service- und schreibfrei. Update- und Fokus-No-ops
+  entscheidet ausschließlich der Service.
+- Ziel-IDs werden im Controller exakt und case-sensitive gegen den aktuellen
+  vertrauenswürdigen Snapshot aufgelöst. Fokus wird explizit als Ziel-ID oder
+  `null` gesetzt; es gibt keine Toggle-Aktion. Entry- und Tag-Reihenfolge
+  bleiben in den defensiven View-Projektionen unverändert.
+- Controllerfehler und Statusmeldungen stammen ausschließlich aus statischen
+  Allowlists. Private Inhalte, IDs sowie fremde Service-, Dependency- oder
+  Exception-Meldungen werden nicht übernommen. Gültige Texte bleiben
+  ungeparster, nicht vertrauenswürdiger Plain Text. Ihre sichere DOM-Ausgabe
+  ist Aufgabe der späteren View und in diesem Slice noch nicht umgesetzt.
 - Der Storage bleibt die einzige veränderliche Wahrheit. Jede gültige
   Serviceoperation lädt den aktuellen privaten Snapshot neu und der Service
   hält keinen langlebigen Cache. Ungültige Form- oder Ziel-ID-Eingaben werden
@@ -219,8 +262,9 @@ Freitextbewertung und die Anbindung des TestAgent gehören erst zu `v0.5.0`.
   Serialisierung und Read-Preflight bleiben im Storage beziehungsweise
   `StorageAdapter`; der Preflight ist keine Transaktion, kein
   Compare-and-Swap und keine Multi-Tab-Sperre.
-- Controller, View, UI-Anbindung, der vollständig bedienbare CRUD-Fluss, Suche
-  und Filter sind noch nicht implementiert.
+- View, `src/main.js`-Anbindung, der vollständig bedienbare CRUD- und
+  Fokusfluss, Suche, Filter und Demo-Integration sind noch nicht
+  implementiert.
 - Das Ziel des LichtwaldLog Local MVP bleibt ein lokales Journal-Modul mit CRUD
   für Einträge aus Titel, reinem Kalenderdatum, Text und Tags sowie lokaler
   Suche und Filtern.

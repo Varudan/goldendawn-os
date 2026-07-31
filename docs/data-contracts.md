@@ -21,16 +21,16 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Contract-, private Storage- und Service-Foundation implementiert; Sync-Vertrag bleibt Zielzustand |
-| Letzte Aktualisierung | 2026-07-26 |
+| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Contract-, private Storage-, Service- und Controller-Foundation implementiert; Sync-Vertrag bleibt Zielzustand |
+| Letzte Aktualisierung | 2026-07-31 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
 die lokale LearningTestBank und abgeschlossene LearningTestAttempts. Es
 dokumentiert außerdem den implementierten LichtwaldLog-Schema-1-Vertrag, seine
-begrenzte private Full-Snapshot-Persistenz und die darauf aufbauende lokale
-Service-Foundation sowie die maschinenlesbare Sprache zwischen dem
-GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und dem TestAgent. Es
+begrenzte private Full-Snapshot-Persistenz und die darauf aufbauenden lokalen
+Service- und Controller-Foundations sowie die maschinenlesbare Sprache zwischen
+dem GoldenDawn-OS-Frontend, dem SyncAgent, dem DataAgent und dem TestAgent. Es
 konkretisiert die Grenzen aus `AGENTS.md`,
 `docs/architecture.md` und `docs/security.md`.
 
@@ -61,10 +61,11 @@ Für `v0.2.2` sind der reine LichtwaldLog-Schema-1-Vertrag,
 private Storage-Foundation unter `goldendawn.lichtwaldLog.content.v1`
 implementiert. Die darauf aufbauende Service-Foundation stellt den privaten
 fachlichen Kern für Laden, Erstellen, vollständiges Bearbeiten, Löschen und
-Fokusverwaltung bereit. Controller, View, UI-Anbindung, der vollständig
-bedienbare CRUD-Fluss, Suche und Filter folgen in getrennten Slices und dürfen
-noch nicht als umgesetzt gelten. Die lokalen Foundations führen keine externe
-Aktion ein.
+Fokusverwaltung bereit. Die Controller-Foundation koordiniert diesen Kern über
+eine flüchtige, defensiv validierte UI-Projektion. View, `src/main.js`-Anbindung,
+der vollständig bedienbare UI-CRUD- und Fokusfluss, Suche, Filter und
+Demo-Integration folgen in getrennten Slices und dürfen noch nicht als
+umgesetzt gelten. Die lokalen Foundations führen keine externe Aktion ein.
 
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
@@ -162,10 +163,10 @@ bleiben flüchtig. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
 `learningTest.result.get` gleichzusetzen. Die UI kennzeichnet ihn sichtbar als
 „Lokaler Mock-Test“. `v0.2.1` ist vollständig geprüft und veröffentlicht. Von
 `v0.2.2 – LichtwaldLog Local MVP` sind die nachfolgend dokumentierte Contract-
-und private Storage-Foundation sowie die darauf aufbauende Service-Foundation
-implementiert. Controller, View, UI-Anbindung, der vollständig bedienbare
-CRUD-Fluss, Suche und Filter bleiben spätere Slices desselben rein lokalen
-Meilensteins.
+und private Storage-Foundation sowie die darauf aufbauenden Service- und
+Controller-Foundations implementiert. View, `src/main.js`-Anbindung, der
+vollständig bedienbare UI-CRUD- und Fokusfluss, Suche, Filter und
+Demo-Integration bleiben spätere Slices desselben rein lokalen Meilensteins.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -1539,15 +1540,18 @@ nicht vorweggenommen.
 
 ### v0.2.2 – LichtwaldLog Local MVP
 
-Contract Foundation, private Storage-Foundation und Service-Foundation des rein
-lokalen LichtwaldLogs sind implementiert. Sie umfassen das Schema-1-Modul
+Contract Foundation, private Storage-Foundation, Service-Foundation und
+Controller-Foundation des rein lokalen LichtwaldLogs sind implementiert. Sie
+umfassen das Schema-1-Modul
 `lichtwaldLogContract.js`, den reinen Validator `validateLichtwaldLog`,
 synthetische Contract-Tests, `createLichtwaldLogStorage` hinter dem
 gemeinsamen `StorageAdapter` sowie `createLichtwaldLogService` als
-Anwendungsgrenze. Controller, View, UI-Anbindung, der vollständig bedienbare
-CRUD-Fluss, Suche und Filter sind noch nicht implementiert. Vertrag, Service
-und Storage führen weder eine externe Aktion noch einen Zugriff durch
-`SyncAgent`, `DataAgent` oder `TestAgent` ein.
+Anwendungsgrenze und `createLichtwaldLogController` als flüchtige
+UI-Koordinationsgrenze. View, `src/main.js`-Anbindung, der vollständig
+bedienbare UI-CRUD- und Fokusfluss, Suche, Filter und Demo-Integration sind
+noch nicht implementiert. Vertrag, Controller, Service und Storage führen weder
+eine externe Aktion noch einen Zugriff durch `SyncAgent`, `DataAgent` oder
+`TestAgent` ein.
 
 #### LichtwaldLog – Schema 1
 
@@ -1700,6 +1704,122 @@ gemeldet. Die Prüfung trimmt, sortiert, dedupliziert oder ergänzt keine Werte.
 | `tagTooLong` | Ein Tag überschreitet 30 Zeichen. |
 | `duplicateTag` | Ein Tag kommt im selben Eintrag case-insensitive mehrfach vor. |
 | `featuredEntryNotFound` | Die gültig geformte Fokus-ID referenziert keine gültige vorhandene Entry-ID. |
+
+##### Implementierte LichtwaldLog-Controller-Foundation
+
+Die Controller-Foundation ergänzt den lokalen Pfad, ohne den Schema-1- oder
+Persistenzvertrag zu verändern:
+
+```text
+LichtwaldLogController
+  → LichtwaldLogService
+  → LichtwaldLogStorage
+  → StorageAdapter
+  → localStorage
+```
+
+Die Factory erhält ausschließlich Service, View-Port und optionalen Scheduler:
+
+```js
+createLichtwaldLogController({
+  lichtwaldLogService,
+  lichtwaldLogView,
+  scheduleTask,
+})
+```
+
+Ihre Rückgabe ist eingefroren und enthält exakt:
+
+```text
+open
+close
+```
+
+Der injizierte View-Port ist ausschließlich auf `render(viewModel, actions)`
+und `unmount()` begrenzt. Er besitzt in diesem Slice keine produktive
+Implementierung. Jeder Render erhält dieselbe eingefrorene Action-API mit exakt:
+
+```text
+onRetryLoad
+onSelectEntry
+onBackToOverview
+onOpenCreateEntryForm
+onOpenUpdateEntryForm
+onUpdateFormField
+onSubmitForm
+onCancelForm
+onRequestDeleteEntry
+onCancelDeleteEntry
+onConfirmDeleteEntry
+onSetFeaturedEntry
+```
+
+Das View-Modell projiziert ausschließlich die Phasen `loading`, `empty`,
+`ready`, `loadError` und `mutating`, die Eintrags- und Fokusprojektion sowie
+flüchtige Auswahl-, Formular-, Löschbestätigungs-, Fokusmutations-, Status-,
+Fehler- und Fokuszielzustände. Es wird für jeden Render frisch erzeugt, tief
+eingefroren und von internen sowie früheren Referenzen entkoppelt. Der rohe
+Schema-1-Root, `schemaVersion`, `dataOrigin`, Service-, Storage- und
+Adapterresultate sowie Lifecycle- und Operationstokens werden nicht an die View
+weitergegeben. Ein ausgewählter Entry wird nicht als zweite Inhaltskopie im
+View-Modell gehalten.
+
+Der intern gehaltene LichtwaldLog-Snapshot ist ausschließlich eine flüchtige
+UI- und Reconciliation-Projektion. Jeder vom Service gelieferte Snapshot wird
+erneut vollständig mit `validateLichtwaldLog` geprüft, tief entkoppelt und nur
+mit `dataOrigin: private` akzeptiert. Synthetische oder unvollständige
+Snapshots werden kontrolliert abgelehnt. Der Controller konstruiert aus seiner
+Projektion niemals einen Persistenzkandidaten. Storage bleibt die einzige
+veränderliche Wahrheit; der Service bleibt die autoritative fachliche
+Operationsgrenze.
+
+Pro akzeptierter Benutzerintention wird exakt eine passende Servicemethode
+aufgerufen:
+
+- Initiales Laden und ein ausdrücklich akzeptierter Retry rufen jeweils einmal
+  `loadLog` auf.
+- Ein Create- oder Update-Submit ruft einmal `createEntry(input)`
+  beziehungsweise `updateEntry(entryId, input)` auf.
+- Eine bestätigte Löschung ruft einmal `deleteEntry(entryId)` auf.
+- Fokus setzen oder entfernen ruft einmal
+  `setFeaturedEntry(entryIdOrNull)` auf.
+- Auswahl, Rückkehr zur Übersicht, Öffnen und Ändern eines Formulars,
+  Formularabbruch sowie Anfordern und Abbrechen einer Löschbestätigung rufen
+  keinen Service auf und bleiben schreibfrei.
+
+Nach Mutationen erfolgt kein zusätzlicher `loadLog`-Aufruf, kein automatischer
+Retry und kein Storage-Fallback. Der Controller verändert Inhalte, Delete-Ziele
+oder Fokus nicht optimistisch, sondern ersetzt seine Projektion erst mit einem
+vollständig akzeptierten Service-Snapshot. Ein scheinbar identisches Update
+oder Fokusziel wird nicht controllerseitig abgekürzt; ausschließlich der
+Service entscheidet anhand des aktuellen Storagezustands über einen
+schreibfreien No-op.
+
+Auswahl-, Update-, Delete- und Fokusziele werden ausschließlich als bereits
+getrimmte, exakte und case-sensitive IDs aus dem aktuellen vertrauenswürdigen
+Snapshot akzeptiert. `onSetFeaturedEntry` erhält den ausdrücklichen Endzustand
+als Entry-ID oder `null`; es existiert weder eine Toggle- noch eine zusätzliche
+Clear-Aktion. Akzeptierte Service-Snapshots ersetzen die alte Projektion
+vollständig. Ihre Entry- und Tag-Reihenfolge bleibt unverändert.
+
+Serviceergebnisse werden ausschließlich über erlaubte eigene Data-Properties
+und dokumentierte Status-Code-Kombinationen geprüft. Controllerfehler,
+Feldfehler und Statusmeldungen stammen aus festen Allowlists. Private Werte,
+IDs, Tags, fremde Getter-, Proxy-, Service-, Dependency- oder
+Exception-Meldungen werden nicht in Feedback, Logs oder Console-Ausgaben
+übernommen. Jeder View-Entry, jedes Tag-Array, jeder Formularwert und jedes
+Fokusziel ist defensiv entkoppelt.
+
+Gültiger LichtwaldLog-Text bleibt ungeparster, nicht vertrauenswürdiger Plain
+Text. Der Controller interpretiert, bereinigt oder interpoliert HTML-, Script-
+oder markupähnliche Inhalte nicht. Die sichere Ausgabe über `textContent` und
+andere sichere DOM-APIs bleibt eine offene Verantwortung der späteren
+produktiven View.
+
+Die Controller-Foundation ändert weder den Read-Preflight noch das
+500.000-UTF-16-Codeeinheiten-Limit. Browser-Quota, unverschlüsselter
+Same-Origin-Zugriff, TOCTOU- und Multi-Tab-Verhalten bleiben ebenfalls
+unverändert.
 
 ##### Implementierte LichtwaldLog-Service-Foundation
 
@@ -2046,8 +2166,8 @@ Stimmung, Energie, Gesundheitswerte, Trainingsmetriken, Airtable-IDs,
 Sync-Zustände, Agentenmetadaten und KI-Ausgaben sind ebenfalls keine
 Vertragsfelder. Jeder Eintrag bleibt flach und eigenständig.
 
-Contract, Service und Storage kommunizieren nicht extern und führen weder
-Webhooks, Airtable, Synchronisierung noch `SyncAgent`, `DataAgent`,
+Contract, Controller, Service und Storage kommunizieren nicht extern und führen
+weder Webhooks, Airtable, Synchronisierung noch `SyncAgent`, `DataAgent`,
 `TestAgent` oder andere KI-Logik ein. Ein späterer Agentenfluss benötigt einen
 eigenen minimierten Vertrag; der private lokale Gesamtsnapshot darf nicht
 automatisch oder vollständig an Agenten weitergegeben werden. Aus dieser
