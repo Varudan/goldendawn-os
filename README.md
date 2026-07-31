@@ -38,12 +38,15 @@ portfolio and evaluation purposes without an open-source license. LichtwaldLog
 `v0.2.2` has been in progress since 2026-07-26. Its Contract Foundation,
 private Storage Foundation, Service Foundation, Controller Foundation, and
 isolated View and CSS Foundation, together with ADRs 0013 and 0014, are
-implemented. The view implements the injected Controller port but remains
-outside the `src/main.js` composition. Application navigation, the fully
-operable UI CRUD and focus flow, real browser integration, search, filters,
-and demo integration remain open. The milestone is neither complete nor
-published. It remains fully local and includes no external communication,
-webhooks, agent logic, or Airtable integration.
+implemented and composed in `src/main.js` through the shared `StorageAdapter`.
+LichtwaldLog is reachable from the application navigation with the visible
+status `In Arbeit`. Viewing, creating, fully editing, permanently deleting, and
+explicitly setting or clearing the featured entry are operable through
+GoldenDawn OS. Real-browser verification passed in a fresh isolated temporary
+Chrome profile at desktop `1440 × 1000` and exactly `390 × 844`. Local search,
+filters, and the separate synthetic demo integration remain open. The milestone
+is neither complete nor published. It remains fully local and includes no
+external communication, webhooks, agent logic, or Airtable integration.
 
 ## Vision
 
@@ -93,7 +96,7 @@ Accepted architecture decisions and their rationale are indexed in
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
 | LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP complete, verified, and published |
-| LichtwaldLog | Local text journal with search and filters | `v0.2.2` | In progress; Contract, private Storage, Service, Controller, and isolated View and CSS Foundations implemented; application integration and remaining Local MVP open |
+| LichtwaldLog | Local text journal with search and filters | `v0.2.2` | In progress; Foundations, application composition, navigation, local CRUD/focus flow, and real-browser verification completed; remaining scope: search, filters, and demo integration |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
 | Weekly Review | Structured summaries, progress, and next actions | Later, after the LichtwaldLog Local MVP | Planned; not part of `v0.2.2` |
@@ -278,8 +281,8 @@ The Contract Foundation, private Storage Foundation, Service Foundation,
 Controller Foundation, and isolated View and CSS Foundation are implemented.
 ADRs 0013 and 0014 document the unchanged contract and storage decisions. The
 contract consists of the Schema 1 model, the pure `validateLichtwaldLog`
-validator, and synthetic contract tests. The isolated implemented module path,
-which is not yet composed in `src/main.js`, is:
+validator, and synthetic contract tests. The implemented application path is
+composed in `src/main.js` through the shared `StorageAdapter`:
 
 ```text
 LichtwaldLogView
@@ -345,8 +348,8 @@ and error states and resolves every controller focus target after replacing the
 DOM. Focus actions express an entry ID or `null`, and content, deletion, and
 focus are never projected optimistically. `unmount()` removes private DOM
 content and transient focus and caret metadata. The namespaced CSS includes
-responsive and reduced-motion rules but is not imported into the application
-build graph yet.
+responsive and reduced-motion rules and is imported into the application build
+graph through `src/main.js`.
 
 The controller coordinates transient loading, empty, selection, form,
 confirmation, busy, success, and error states. Its snapshot is only a
@@ -396,12 +399,20 @@ and the read preflight remain inside storage and the shared adapter. Browser
 quota, unencrypted same-origin access, TOCTOU behavior, and multi-tab races
 remain unchanged limitations.
 
-`src/main.js` integration, application navigation, the fully operable UI
-create/read/update/delete and focus flow through GoldenDawn OS, real browser
-integration, local search, filters, and demo integration are not yet
-implemented. The target Local MVP remains limited to entries with a title,
-calendar date, plain text, and tags, plus local search and filters. Private
-entries and synthetic demo entries remain separate.
+`src/main.js` composes the module through the shared `StorageAdapter` and makes
+it reachable through application navigation with the visible status
+`In Arbeit`. The local UI supports viewing, creating, fully editing,
+permanently deleting, and explicitly setting or clearing the featured entry
+through GoldenDawn OS. Real-browser verification passed in a fresh isolated
+temporary Chrome profile at desktop `1440 × 1000` and exactly `390 × 844`.
+The complete local navigation, CRUD, explicit-focus, dirty-guard, delete, and
+reload flow succeeded. Keyboard focus, live regions, the visible `3px` focus
+ring, and the absence of horizontal page overflow were verified. The run
+produced 0 console warnings or errors, 0 runtime exceptions, and 0 external
+requests. Local search, filters, and the separate synthetic demo integration
+are not yet complete. The target Local MVP remains limited to entries with a
+title, calendar date, plain text, and tags, plus local search and filters.
+Private entries and synthetic demo entries remain separate.
 Images are not stored as Base64 in `localStorage`. The local store is neither
 a cloud backup nor cross-device synchronization. Its existing 500,000
 UTF-16-code-unit limit, browser quota, read preflight, TOCTOU, and multi-tab
@@ -456,7 +467,7 @@ non-binding; see the roadmap for details.
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
-| v0.2.2 | LichtwaldLog Local MVP | In progress; Contract, private Storage, Service, Controller, and isolated View and CSS Foundations implemented; application integration and remaining Local MVP open |
+| v0.2.2 | LichtwaldLog Local MVP | In progress; Foundations, application composition, navigation, local CRUD/focus flow, and real-browser verification completed; remaining scope: search, filters, and demo integration |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |

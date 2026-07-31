@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; v0.2.1 veröffentlicht; LichtwaldLog Contract-, private Storage-, Service-, Controller- sowie isolierte View- und CSS-Foundation implementiert |
+| Status | Verbindliche Zielarchitektur; v0.2.1 veröffentlicht; LichtwaldLog Foundations sowie Anwendungskomposition, Navigation und lokaler CRUD-/Fokusfluss implementiert |
 | Letzte Aktualisierung | 2026-07-31 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -660,9 +660,14 @@ sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist als rein lokaler Meilenstein in Arbeit.
 Die Contract Foundation, private Storage-Foundation, Service-Foundation und
 Controller-Foundation sowie die isolierte View- und CSS-Foundation sind
-implementiert; ADR 0013 und ADR 0014 bleiben die autoritativen Contract- und
-Storage-Entscheidungen. Der vollständige MVP ist weder abgeschlossen noch
-veröffentlicht.
+implementiert und über den gemeinsamen `StorageAdapter` in `src/main.js`
+komponiert. LichtwaldLog ist über die Navigation mit dem sichtbaren Status
+`In Arbeit` erreichbar; der lokale CRUD- und Fokusfluss ist vollständig über
+GoldenDawn OS bedienbar und real im Browser auf Desktop mit `1440 × 1000` sowie
+bei exakt `390 × 844` geprüft. Suche, Filter und die getrennte synthetische
+Demo-Integration bleiben offen. Der vollständige MVP ist weder abgeschlossen
+noch veröffentlicht. ADR 0013 und ADR 0014 bleiben die autoritativen Contract-
+und Storage-Entscheidungen.
 
 Der spätere Zielpfad bleibt:
 
@@ -685,8 +690,8 @@ Erkenntniseinträge mit Titel, Kalenderdatum, Text und Tags ab.
 
 Service-, Controller- sowie isolierte View- und CSS-Foundation ergänzen die in
 ADR 0014 dokumentierte private Storage-Foundation ohne neue Datenquelle oder
-Architekturentscheidung. Der isoliert implementierte lokale Moduldatenfluss,
-der noch nicht in `src/main.js` komponiert ist, lautet:
+Architekturentscheidung. Der nun über den gemeinsamen `StorageAdapter` in
+`src/main.js` komponierte lokale Anwendungsdatenfluss lautet:
 
 ```text
 LichtwaldLogView
@@ -772,9 +777,12 @@ der View.
 
 `unmount()` entfernt alle Kinder und den Busy-Zustand des dedizierten Roots und
 bildet damit eine DOM-Datenschutzgrenze. Das gekapselte Modul-CSS enthält
-Long-Word-, responsive, `focus-visible`- und Reduced-Motion-Regeln. View und CSS
-bleiben in diesem Slice außerhalb des `src/main.js`-Buildgraphs; GoldenDawn OS
-stellt das Modul noch nicht über Navigation oder Anwendungskomposition bereit.
+Long-Word-, responsive, `focus-visible`- und Reduced-Motion-Regeln und ist über
+`src/main.js` in den Buildgraph eingebunden. `src/main.js` komponiert den
+gemeinsamen `StorageAdapter`, LichtwaldLog-Storage, Service, View und Controller
+und stellt das Modul über die Navigation mit dem sichtbaren Status `In Arbeit`
+bereit. Die bestehende `close()`-/`unmount()`-Grenze entfernt private
+DOM-Inhalte beim Verlassen des Moduls.
 
 Der Controller koordiniert ausschließlich flüchtige Lade-, Leer-, Auswahl-,
 Formular-, Bestätigungs-, Busy-, Erfolgs- und Fehlerzustände. Sein intern
@@ -876,16 +884,23 @@ und eines Saves an der Servicegrenze auf Adapterebene zusätzliche Reads
 ausführen kann. Der Service serialisiert nicht und prüft das Größenlimit nicht
 erneut.
 
-`src/main.js`-Anbindung, Navigation und Anwendungskomposition, der vollständig
-über GoldenDawn OS bedienbare CRUD- und Fokusfluss, die reale Browser- und
-Integrationsprüfung, lokale Suche, Filterung und Demo-Integration sind noch
-nicht implementiert. Für den vollständigen Local MVP bleiben private lokale
-Einträge und synthetische Demo-Daten getrennt; Bilder werden nicht als Base64
-in `localStorage` abgelegt. Der Storage ist unverschlüsselt und bietet weder
-Authentifizierung, Zugriffskontrolle, Integritätsgarantie, Cloud-Sicherung noch
-Synchronisierung. Read-Preflight, 500.000-Codeeinheiten-Limit, Browser-Quota,
-TOCTOU- und Multi-Tab-Verhalten bleiben durch Controller und isolierte View
-unverändert.
+`src/main.js`-Anbindung über den gemeinsamen `StorageAdapter`, Navigation und
+Anwendungskomposition sowie der vollständig über GoldenDawn OS bedienbare
+CRUD- und Fokusfluss sind implementiert. Die reale Browser- und
+Integrationsprüfung war in einem frischen isolierten temporären Chrome-Profil
+auf Desktop mit `1440 × 1000` sowie bei exakt `390 × 844` erfolgreich. Sie
+deckte den vollständigen lokalen Navigations-, CRUD-, Fokus-, Dirty-Guard-,
+Delete- und Reload-Fluss ab. Tastaturfokus, Live-Regionen, der sichtbare
+`3px`-Fokusrahmen und fehlender horizontaler Seitenoverflow wurden bestätigt;
+es gab 0 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions und 0 externe
+Requests. Lokale Suche, Filterung und die getrennte synthetische
+Demo-Integration bleiben offen. Für den vollständigen Local MVP bleiben
+private lokale Einträge und synthetische Demo-Daten getrennt; Bilder werden
+nicht als Base64 in `localStorage` abgelegt. Der Storage ist unverschlüsselt
+und bietet weder Authentifizierung, Zugriffskontrolle, Integritätsgarantie,
+Cloud-Sicherung noch Synchronisierung. Read-Preflight,
+500.000-Codeeinheiten-Limit, Browser-Quota, TOCTOU- und Multi-Tab-Verhalten
+bleiben durch Anwendungskomposition, Controller und View unverändert.
 
 Für `v0.2.2` existieren keine externe Kommunikation, Webhooks,
 Synchronisierung, Agentenlogik oder Airtable-Anbindung. Agentengestützte,
@@ -1069,7 +1084,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
-| `v0.2.2` | In Arbeit; Contract-, private Storage-, Service-, Controller- sowie isolierte View- und CSS-Foundation implementiert; App-Integration und übriger Local MVP offen und ohne externe Kommunikation |
+| `v0.2.2` | In Arbeit; Foundations, App-Komposition, Navigation und lokaler CRUD-/Fokusfluss implementiert; reale Browserprüfung erfolgreich; ausstehend sind Suche, Filter und Demo-Integration; keine externe Kommunikation |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
