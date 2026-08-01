@@ -8,7 +8,7 @@
 
 ## Project status
 
-**Current release:** `v0.2.1 — LearningHub Local MVP complete, verified, and published`
+**Current release and package version:** `v0.2.1 — LearningHub Local MVP complete, verified, and published`
 
 **Current milestone:** `v0.2.2 — LichtwaldLog Local MVP in progress`
 
@@ -42,11 +42,16 @@ implemented and composed in `src/main.js` through the shared `StorageAdapter`.
 LichtwaldLog is reachable from the application navigation with the visible
 status `In Arbeit`. Viewing, creating, fully editing, permanently deleting, and
 explicitly setting or clearing the featured entry are operable through
-GoldenDawn OS. Real-browser verification passed in a fresh isolated temporary
-Chrome profile at desktop `1440 × 1000` and exactly `390 × 844`. Local search,
-filters, and the separate synthetic demo integration remain open. The milestone
-is neither complete nor published. It remains fully local and includes no
-external communication, webhooks, agent logic, or Airtable integration.
+GoldenDawn OS. Local text search across calendar date, title, text, and tags,
+together with exact calendar-date and tag filters, is also implemented. These
+criteria are combined with logical AND exclusively over the transient
+controller projection and are never persisted. Real-browser verification of
+the complete navigation, CRUD, focus, dirty-guard, delete, reload, search, and
+filter flow passed in fresh isolated temporary Chrome profiles at desktop
+`1440 × 1000` and exactly `390 × 844`. Only the separate synthetic demo
+integration remains as an open functional slice. The milestone is neither
+complete nor published. It remains fully local and includes no external
+communication, webhooks, agent logic, or Airtable integration.
 
 ## Vision
 
@@ -96,7 +101,7 @@ Accepted architecture decisions and their rationale are indexed in
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
 | LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP complete, verified, and published |
-| LichtwaldLog | Local text journal with search and filters | `v0.2.2` | In progress; Foundations, application composition, navigation, local CRUD/focus flow, and real-browser verification completed; remaining scope: search, filters, and demo integration |
+| LichtwaldLog | Local text journal with search and exact calendar-date and tag filters | `v0.2.2` | In progress; Foundations, application composition, navigation, local CRUD/focus/search/filter flow, and permanent regression coverage implemented; remaining functional slice: separate synthetic demo integration |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
 | Weekly Review | Structured summaries, progress, and next actions | Later, after the LichtwaldLog Local MVP | Planned; not part of `v0.2.2` |
@@ -330,7 +335,25 @@ onRequestDeleteEntry
 onCancelDeleteEntry
 onConfirmDeleteEntry
 onSetFeaturedEntry
+onChangeSearchQuery
+onChangeCalendarDateFilter
+onChangeTagFilter
+onResetFilters
 ```
+
+`lichtwaldLogSearch.js` is a pure module with exactly the public constants
+`ALL_LICHTWALD_LOG_TAGS` and `LICHTWALD_LOG_SEARCH_QUERY_MAX_LENGTH` and the
+functions `getLichtwaldLogFilterTags(entries)` and
+`filterLichtwaldLogEntries(entries, filters)`. Search trims only outer query
+whitespace for comparison, normalizes canonically with NFC, folds case with
+`toLowerCase()`, and then performs literal contiguous substring matching only
+against `calendarDate`, `title`, `text`, and each tag. Internal spaces, tabs,
+and line breaks remain significant. The exact calendar-date filter uses the
+existing arithmetic contract validation without `Date` or timezone conversion.
+The exact tag filter uses the same NFC and case normalization. Tag options come
+from every authoritative entry, preserve first spelling and source order, and
+are deduplicated by normalized identity. Query, date, and tag combine with
+logical AND without sorting, ranking, or mutating entries.
 
 Each render creates a fresh DOM tree using safe DOM and form-control APIs.
 Titles, text, tags, and form values remain unparsed plain text. Entry IDs stay
@@ -343,28 +366,39 @@ Tag edits produce fresh dense arrays without trimming, sorting,
 deduplication, or case normalization. Submit payloads remain flat and limited
 to the controller contract.
 
-The view renders accessible loading, empty, busy, success, notice, validation,
-and error states and resolves every controller focus target after replacing the
-DOM. Focus actions express an entry ID or `null`, and content, deletion, and
-focus are never projected optimistically. `unmount()` removes private DOM
-content and transient focus and caret metadata. The namespaced CSS includes
+The view renders accessible loading, authoritative-empty, filtered-empty, busy,
+success, notice, validation, result-status, and error states and resolves every
+controller focus target after replacing the DOM. Its overview filter panel uses
+safe form-control APIs and fixed public IDs. Search focus and caret, calendar
+date focus, and tag focus are restored without moving focus to a result card.
+Focus actions express an entry ID or `null`, and content, deletion, and focus
+are never projected optimistically. `unmount()` removes private DOM content and
+transient filter, focus, and caret metadata. The namespaced CSS includes
 responsive and reduced-motion rules and is imported into the application build
 graph through `src/main.js`.
 
 The controller coordinates transient loading, empty, selection, form,
-confirmation, busy, success, and error states. Its snapshot is only a
-validated, detached UI projection. Every service snapshot is fully revalidated
-as private Schema 1 data; the raw schema root and service results are not
-passed to the view. Storage remains the sole mutable source of truth, and the
-service remains the authoritative domain boundary.
+confirmation, busy, success, error, search, and filter states. `entries` remains
+the complete validated snapshot projection; `visibleEntryIds`, available tags,
+the three criteria, active-state flag, and filtered-empty flag are freshly
+derived and deeply frozen for the view. Details and forms still resolve from all
+entries. These fields are not part of Schema 1 and are never persisted. Every
+service snapshot is fully revalidated as private Schema 1 data; the raw schema
+root and service results are not passed to the view. Storage remains the sole
+mutable source of truth, and the service remains the authoritative domain
+boundary.
 
-Each accepted intention invokes exactly one matching service operation. A
-mutation triggers no additional controller load and no optimistic content,
-delete, or focus change. Selection, form editing and cancellation, and opening
-or cancelling delete confirmation remain service- and write-free. The service
-alone decides write-free update and focus no-ops. Target IDs resolve exactly
-and case-sensitively, while focus always receives an explicit entry ID or
-`null` instead of using a toggle.
+Each accepted load or mutation intention invokes exactly one matching service
+operation. Search and filter actions invoke no service, storage, adapter,
+generator, or scheduler operation. A mutation triggers no additional controller
+load and no optimistic content, delete, or focus change. Selection, form editing
+and cancellation, and opening or cancelling delete confirmation remain service-
+and write-free. The service alone decides write-free update and focus no-ops.
+Overview selection accepts only currently visible entry IDs; detail and form
+state may continue to show an authoritative entry that no longer matches until
+the user returns to the overview. The filter state survives detail, form, and
+mutation flows within one open lifecycle, but resets on open, load retry, close,
+and a truly empty snapshot.
 
 Every view model is a fresh defensive projection without the raw Schema 1
 root. Entry and tag order remain unchanged. Controller feedback uses only
@@ -405,14 +439,17 @@ it reachable through application navigation with the visible status
 permanently deleting, and explicitly setting or clearing the featured entry
 through GoldenDawn OS. Real-browser verification passed in a fresh isolated
 temporary Chrome profile at desktop `1440 × 1000` and exactly `390 × 844`.
-The complete local navigation, CRUD, explicit-focus, dirty-guard, delete, and
-reload flow succeeded. Keyboard focus, live regions, the visible `3px` focus
-ring, and the absence of horizontal page overflow were verified. The run
-produced 0 console warnings or errors, 0 runtime exceptions, and 0 external
-requests. Local search, filters, and the separate synthetic demo integration
-are not yet complete. The target Local MVP remains limited to entries with a
-title, calendar date, plain text, and tags, plus local search and filters.
-Private entries and synthetic demo entries remain separate.
+The complete local navigation, CRUD, explicit-focus, dirty-guard, delete,
+reload, literal-search, exact-filter, combined-filter, empty-result, and reset
+flow succeeded. Keyboard and caret focus, live regions, `44px` minimum control
+heights, the visible `3px` focus ring, and the absence of horizontal page
+overflow were verified. The run produced 0 console warnings or errors, 0
+runtime exceptions, and 0 external requests. Search and filter actions left the
+private snapshot byte-identical and caused no storage write; service, storage,
+and shared adapter APIs remain unchanged. Only the separate synthetic demo integration is
+not yet complete. The target Local MVP remains limited to entries with a title,
+calendar date, plain text, and tags, plus local search and filters. Private
+entries and synthetic demo entries remain separate.
 Images are not stored as Base64 in `localStorage`. The local store is neither
 a cloud backup nor cross-device synchronization. Its existing 500,000
 UTF-16-code-unit limit, browser quota, read preflight, TOCTOU, and multi-tab
@@ -467,7 +504,7 @@ non-binding; see the roadmap for details.
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
-| v0.2.2 | LichtwaldLog Local MVP | In progress; Foundations, application composition, navigation, local CRUD/focus flow, and real-browser verification completed; remaining scope: search, filters, and demo integration |
+| v0.2.2 | LichtwaldLog Local MVP | In progress; Foundations, application composition, navigation, local CRUD/focus/search/filter flow, and permanent regression coverage implemented; remaining functional slice: separate synthetic demo integration |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |

@@ -1,4 +1,13 @@
-import { validateLichtwaldLog } from './lichtwaldLogContract.js'
+import {
+  isValidCalendarDate,
+  validateLichtwaldLog,
+} from './lichtwaldLogContract.js'
+import {
+  ALL_LICHTWALD_LOG_TAGS,
+  LICHTWALD_LOG_SEARCH_QUERY_MAX_LENGTH,
+  filterLichtwaldLogEntries,
+  getLichtwaldLogFilterTags,
+} from './lichtwaldLogSearch.js'
 
 const PRIVATE_DATA_ORIGIN = 'private'
 
@@ -188,6 +197,9 @@ const MUTATION_FAILURE_PAIR_SETS = Object.freeze({
 
 const FOCUS_TARGET_TYPES = new Set([
   'heading',
+  'searchInput',
+  'calendarDateFilter',
+  'tagFilter',
   'formField',
   'formAlert',
   'formTrigger',
@@ -489,6 +501,13 @@ function createInitialState() {
   return {
     phase: 'loading',
     snapshot: null,
+    searchQuery: '',
+    calendarDateFilter: '',
+    selectedTag: ALL_LICHTWALD_LOG_TAGS,
+    availableTags: [],
+    visibleEntryIds: [],
+    hasActiveFilters: false,
+    filteredEmptyState: false,
     selectedEntryId: null,
     form: null,
     deleteState: {
@@ -504,6 +523,74 @@ function createInitialState() {
     statusMessage: '',
     statusMessageTone: 'success',
     errorMessage: '',
+  }
+}
+
+function normalizeFilterComparison(value) {
+  return value.normalize('NFC').toLowerCase()
+}
+
+function hasActiveSearchQuery(searchQuery) {
+  return normalizeFilterComparison(searchQuery.trim()).length > 0
+}
+
+function reconcileSelectedTag(selectedTag, availableTags) {
+  if (selectedTag === ALL_LICHTWALD_LOG_TAGS) {
+    return ALL_LICHTWALD_LOG_TAGS
+  }
+
+  const normalizedSelectedTag = normalizeFilterComparison(selectedTag)
+  return availableTags.find(
+    (tag) => normalizeFilterComparison(tag) === normalizedSelectedTag
+  ) ?? ALL_LICHTWALD_LOG_TAGS
+}
+
+function deriveFilterState(
+  snapshot,
+  {
+    searchQuery = '',
+    calendarDateFilter = '',
+    selectedTag = ALL_LICHTWALD_LOG_TAGS,
+  } = {}
+) {
+  if (!snapshot || snapshot.entries.length === 0) {
+    return {
+      searchQuery: '',
+      calendarDateFilter: '',
+      selectedTag: ALL_LICHTWALD_LOG_TAGS,
+      availableTags: [],
+      visibleEntryIds: [],
+      hasActiveFilters: false,
+      filteredEmptyState: false,
+    }
+  }
+
+  const availableTags = getLichtwaldLogFilterTags(snapshot.entries)
+  const reconciledSelectedTag = reconcileSelectedTag(
+    selectedTag,
+    availableTags
+  )
+  const visibleEntries = filterLichtwaldLogEntries(snapshot.entries, {
+    query: searchQuery,
+    calendarDate: calendarDateFilter,
+    tag: reconciledSelectedTag,
+  })
+  const visibleEntryIds = visibleEntries.map((entry) => entry.id)
+  const hasActiveFilters = (
+    hasActiveSearchQuery(searchQuery) ||
+    calendarDateFilter !== '' ||
+    reconciledSelectedTag !== ALL_LICHTWALD_LOG_TAGS
+  )
+
+  return {
+    searchQuery,
+    calendarDateFilter,
+    selectedTag: reconciledSelectedTag,
+    availableTags,
+    visibleEntryIds,
+    hasActiveFilters,
+    filteredEmptyState:
+      hasActiveFilters && visibleEntryIds.length === 0,
   }
 }
 
@@ -1182,6 +1269,10 @@ export function createLichtwaldLogController(options = {}) {
     onCancelDeleteEntry: cancelDeleteEntry,
     onConfirmDeleteEntry: confirmDeleteEntry,
     onSetFeaturedEntry: setFeaturedEntry,
+    onChangeSearchQuery: changeSearchQuery,
+    onChangeCalendarDateFilter: changeCalendarDateFilter,
+    onChangeTagFilter: changeTagFilter,
+    onResetFilters: resetFilters,
   })
 
   function createSafeFocusTarget(focusTarget) {
@@ -1221,6 +1312,13 @@ export function createLichtwaldLogController(options = {}) {
     return deepFreeze({
       phase: state.phase,
       entries,
+      visibleEntryIds: [...state.visibleEntryIds],
+      availableTags: [...state.availableTags],
+      searchQuery: state.searchQuery,
+      calendarDateFilter: state.calendarDateFilter,
+      selectedTag: state.selectedTag,
+      hasActiveFilters: state.hasActiveFilters,
+      filteredEmptyState: state.filteredEmptyState,
       featuredEntryId: state.snapshot?.featuredEntryId ?? null,
       selectedEntryId: state.selectedEntryId,
       form: cloneForm(state.form),
@@ -1266,7 +1364,10 @@ export function createLichtwaldLogController(options = {}) {
     }
   }
 
-  function reconcileStateWithSnapshot(snapshot) {
+  function reconcileStateWithSnapshot(
+    snapshot,
+    { resetFilters = false } = {}
+  ) {
     const selectedEntryId = (
       state.selectedEntryId !== null &&
       hasEntry(snapshot, state.selectedEntryId)
@@ -1281,10 +1382,21 @@ export function createLichtwaldLogController(options = {}) {
       state.featuredState.targetEntryId !== null &&
       hasEntry(snapshot, state.featuredState.targetEntryId)
     )
+    const filterState = deriveFilterState(
+      snapshot,
+      resetFilters
+        ? undefined
+        : {
+            searchQuery: state.searchQuery,
+            calendarDateFilter: state.calendarDateFilter,
+            selectedTag: state.selectedTag,
+          }
+    )
 
     state = {
       ...state,
       snapshot,
+      ...filterState,
       selectedEntryId,
       deleteState: hasDeleteTarget
         ? { ...state.deleteState }
@@ -1340,8 +1452,10 @@ export function createLichtwaldLogController(options = {}) {
       state = {
         ...createInitialState(),
         phase: derivePhase(parsedResult.snapshot),
-        snapshot: parsedResult.snapshot,
       }
+      reconcileStateWithSnapshot(parsedResult.snapshot, {
+        resetFilters: true,
+      })
       formBaseline = null
       render({ type: 'heading' })
       return
@@ -1449,13 +1563,120 @@ export function createLichtwaldLogController(options = {}) {
     )
   }
 
+  function canChangeFilters() {
+    return (
+      canUseSnapshot() &&
+      state.snapshot.entries.length > 0 &&
+      state.selectedEntryId === null &&
+      !hasBlockingInteraction()
+    )
+  }
+
+  function applyFilterState(nextFilterState, focusType) {
+    state = {
+      ...state,
+      ...deriveFilterState(state.snapshot, nextFilterState),
+      statusMessage: '',
+    }
+    render({ type: focusType })
+  }
+
+  function changeSearchQuery(searchQuery) {
+    if (
+      !canChangeFilters() ||
+      typeof searchQuery !== 'string' ||
+      searchQuery.length > LICHTWALD_LOG_SEARCH_QUERY_MAX_LENGTH ||
+      searchQuery === state.searchQuery
+    ) {
+      return
+    }
+
+    applyFilterState(
+      {
+        searchQuery,
+        calendarDateFilter: state.calendarDateFilter,
+        selectedTag: state.selectedTag,
+      },
+      'searchInput'
+    )
+  }
+
+  function changeCalendarDateFilter(calendarDateOrEmpty) {
+    if (
+      !canChangeFilters() ||
+      typeof calendarDateOrEmpty !== 'string' ||
+      (
+        calendarDateOrEmpty !== '' &&
+        !isValidCalendarDate(calendarDateOrEmpty)
+      ) ||
+      calendarDateOrEmpty === state.calendarDateFilter
+    ) {
+      return
+    }
+
+    applyFilterState(
+      {
+        searchQuery: state.searchQuery,
+        calendarDateFilter: calendarDateOrEmpty,
+        selectedTag: state.selectedTag,
+      },
+      'calendarDateFilter'
+    )
+  }
+
+  function changeTagFilter(tagOrAllTags) {
+    if (
+      !canChangeFilters() ||
+      typeof tagOrAllTags !== 'string' ||
+      (
+        tagOrAllTags !== ALL_LICHTWALD_LOG_TAGS &&
+        !state.availableTags.includes(tagOrAllTags)
+      ) ||
+      tagOrAllTags === state.selectedTag
+    ) {
+      return
+    }
+
+    applyFilterState(
+      {
+        searchQuery: state.searchQuery,
+        calendarDateFilter: state.calendarDateFilter,
+        selectedTag: tagOrAllTags,
+      },
+      'tagFilter'
+    )
+  }
+
+  function resetFilters() {
+    if (
+      !canChangeFilters() ||
+      (
+        state.searchQuery === '' &&
+        state.calendarDateFilter === '' &&
+        state.selectedTag === ALL_LICHTWALD_LOG_TAGS
+      )
+    ) {
+      return
+    }
+
+    applyFilterState(
+      {
+        searchQuery: '',
+        calendarDateFilter: '',
+        selectedTag: ALL_LICHTWALD_LOG_TAGS,
+      },
+      'searchInput'
+    )
+  }
+
   function selectEntry(entryId) {
     if (
       !canUseSnapshot() ||
       hasBlockingInteraction() ||
+      state.selectedEntryId !== null ||
       typeof entryId !== 'string' ||
       !hasEntry(state.snapshot, entryId) ||
-      state.selectedEntryId === entryId
+      !state.visibleEntryIds.includes(entryId)
     ) {
       return
     }
@@ -1976,10 +2197,17 @@ export function createLichtwaldLogController(options = {}) {
     const failure = parseMutationFailure(result, 'delete', entryId)
     adoptFailureSnapshot(failure)
     const targetStillExists = hasEntry(state.snapshot, entryId)
+    const targetRemainsActionable = (
+      targetStillExists &&
+      (
+        state.selectedEntryId === entryId ||
+        state.visibleEntryIds.includes(entryId)
+      )
+    )
     const errorMessage = getMutationErrorMessage('delete', failure)
     state = {
       ...state,
-      deleteState: targetStillExists
+      deleteState: targetRemainsActionable
         ? {
             entryId,
             isSubmitting: false,
@@ -1991,11 +2219,11 @@ export function createLichtwaldLogController(options = {}) {
             errorMessage: '',
           },
       statusMessage: '',
-      errorMessage: targetStillExists ? '' : errorMessage,
+      errorMessage: targetRemainsActionable ? '' : errorMessage,
     }
     restoreReadyPhase()
     render(
-      targetStillExists
+      targetRemainsActionable
         ? { type: 'deleteAlert', entryId }
         : { type: 'heading' }
     )

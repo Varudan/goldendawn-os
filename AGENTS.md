@@ -63,14 +63,22 @@ die isolierte View- und CSS-Foundation sowie deren Anwendungskomposition in
 Navigation mit dem sichtbaren Status `In Arbeit` erreichbar. Anzeigen,
 Erstellen, vollständiges Bearbeiten, dauerhaftes Löschen sowie explizites
 Setzen und Entfernen des Fokus sind vollständig über GoldenDawn OS bedienbar.
+Die reine lokale Textsuche über Kalenderdatum, Titel, Text und Tags sowie der
+exakte Kalenderdatum- und Tagfilter sind ebenfalls implementiert. Alle drei
+Kriterien werden ausschließlich aus der flüchtigen Controller-Projektion
+abgeleitet, logisch mit AND kombiniert und nicht persistiert.
 Die reale Browserprüfung war in einem frischen isolierten temporären
 Chrome-Profil auf Desktop mit `1440 × 1000` sowie bei exakt `390 × 844`
 erfolgreich. Geprüft wurden der vollständige lokale Navigations-, CRUD-, Fokus-,
-Dirty-Guard-, Delete- und Reload-Fluss, Tastaturfokus, Live-Regionen, der
-sichtbare `3px`-Fokusrahmen und fehlender horizontaler Seitenoverflow; es gab
-0 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions und 0 externe Requests.
-Suche, Filter und die getrennte synthetische Demo-Integration sind
-weiter offen; `v0.2.2` ist weder abgeschlossen noch veröffentlicht. Der
+Dirty-Guard-, Delete-, Reload-, Such- und Filterfluss einschließlich literalem
+Matching, AND-Verknüpfung, Leerzustand und Reset. Tastatur- und Caretfokus,
+Live-Regionen, mindestens `44px` hohe Controls, der sichtbare
+`3px`-Fokusrahmen und fehlender horizontaler Seitenoverflow wurden bestätigt;
+es gab 0 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions, 0 externe
+Requests und keine Storage-Schreiboperation durch Suche oder Filter.
+Die getrennte synthetische Demo-Integration bleibt als einziger fachlicher
+Slice offen; `v0.2.2` ist weder abgeschlossen noch veröffentlicht. Paketversion
+und letztes veröffentlichtes Release bleiben `v0.2.1`. Der
 Meilenstein bleibt vollständig lokal und besitzt keine externe Kommunikation,
 Webhooks, Agentenlogik oder Airtable-Anbindung.
 
@@ -216,8 +224,27 @@ onRequestDeleteEntry
 onCancelDeleteEntry
 onConfirmDeleteEntry
 onSetFeaturedEntry
+onChangeSearchQuery
+onChangeCalendarDateFilter
+onChangeTagFilter
+onResetFilters
 ```
 
+- Das reine Modul `lichtwaldLogSearch.js` exportiert ausschließlich
+  `ALL_LICHTWALD_LOG_TAGS`, `LICHTWALD_LOG_SEARCH_QUERY_MAX_LENGTH`,
+  `getLichtwaldLogFilterTags` und `filterLichtwaldLogEntries`. Die Suche trimmt
+  nur äußere Query-Whitespace für den Vergleich, normalisiert kanonisch mit
+  NFC und vereinheitlicht Groß-/Kleinschreibung mit `toLowerCase()`. Sie sucht
+  anschließend literal und zusammenhängend ausschließlich in `calendarDate`,
+  `title`, `text` und `tags[]`; interne Whitespaces bleiben bedeutungsvoll.
+- `''` bedeutet für Datum und Tag jeweils keine Einschränkung. Andere
+  Kalenderdatum-Filter werden mit `isValidCalendarDate` ohne `Date`- oder
+  Zeitzonenumwandlung geprüft und exakt verglichen. Der Tagfilter vergleicht
+  vollständige Tags nach NFC- und Case-Normalisierung. Tagoptionen stammen aus
+  allen autoritativen Einträgen, werden nach dieser Identität dedupliziert und
+  bewahren die erste gespeicherte Schreibweise sowie Entry- und Tag-Reihenfolge.
+  Suche, Datum und Tag werden mit AND kombiniert; Ergebnisse werden nie
+  sortiert oder gewichtet.
 - Jeder View-Render baut einen frischen DOM-Baum ausschließlich mit sicheren
   DOM- und Formcontrol-APIs. Private Titel, Texte, Tags und Formwerte bleiben
   ungeparster Plain Text. Entry-IDs werden ausschließlich als unveränderte
@@ -233,20 +260,31 @@ onSetFeaturedEntry
   verwirft ausschließlich flüchtige Fokus- und Caret-Metadaten. Das gekapselte
   CSS enthält responsive und Reduced-Motion-Regeln und ist über `src/main.js`
   in den Buildgraph eingebunden.
+- Der Controller hält zusätzlich ausschließlich flüchtig `searchQuery`,
+  `calendarDateFilter`, `selectedTag`, `availableTags`, `visibleEntryIds`,
+  `hasActiveFilters` und `filteredEmptyState`. `entries` bleibt die vollständige
+  autoritative UI-Projektion. Die Übersicht verwendet `visibleEntryIds`,
+  während Detail und Formulare weiterhin aus dem vollständigen Snapshot
+  aufgelöst werden. Alle neuen Werte und Arrays werden defensiv entkoppelt und
+  tief eingefroren; sie sind keine Schema-1-Felder und werden nicht gespeichert.
 - Der Controller hält ausschließlich eine flüchtige, validierte und defensiv
   entkoppelte UI-Projektion. Er prüft jeden Service-Snapshot vollständig mit
   `validateLichtwaldLog` und akzeptiert nur `dataOrigin: private`. Der rohe
   Schema-1-Root wird nicht an die View weitergegeben. Storage bleibt die
   einzige veränderliche Wahrheit; der Service bleibt die autoritative
   fachliche Mutationsgrenze.
-- Pro akzeptierter Benutzerintention ruft der Controller exakt eine passende
-  Serviceoperation auf. Nach einer Mutation erfolgt kein zusätzlicher Load,
+- Pro akzeptierter Lade- oder Mutationsintention ruft der Controller exakt eine
+  passende Serviceoperation auf. Such- und Filteraktionen rufen dagegen weder
+  Service, Storage, Adapter, ID-Generator noch Scheduler auf. Nach einer
+  Mutation erfolgt kein zusätzlicher Load,
   und Inhalte oder Fokus werden nicht optimistisch verändert. Auswahl,
   Formularänderungen, Abbruch sowie Anfordern und Abbrechen einer
   Löschbestätigung bleiben service- und schreibfrei. Update- und Fokus-No-ops
   entscheidet ausschließlich der Service.
 - Ziel-IDs werden im Controller exakt und case-sensitive gegen den aktuellen
-  vertrauenswürdigen Snapshot aufgelöst. Fokus wird explizit als Ziel-ID oder
+  vertrauenswürdigen Snapshot aufgelöst. Ein Auswahlziel aus der Übersicht muss
+  zusätzlich zur aktuell sichtbaren Ergebnismenge gehören. Fokus wird explizit
+  als Ziel-ID oder
   `null` gesetzt; es gibt keine Toggle-Aktion. Entry- und Tag-Reihenfolge
   bleiben in den defensiven View-Projektionen unverändert.
 - Controllerfehler und Statusmeldungen stammen ausschließlich aus statischen
@@ -292,8 +330,10 @@ onSetFeaturedEntry
 - `src/main.js`-Anbindung über den gemeinsamen `StorageAdapter`, Navigation und
   der vollständig über die Anwendung bedienbare CRUD- und Fokusfluss sind
   implementiert und real im Browser auf Desktop sowie bei exakt `390 × 844`
-  geprüft. Suche, Filter und die getrennte synthetische Demo-Integration sind
-  noch offen.
+  geprüft. Lokale Suche sowie exakte Kalenderdatum- und Tagfilter sind
+  implementiert und greifen nur auf die flüchtige Controller-Projektion zu.
+  Die APIs von Service, Storage und gemeinsamem Adapter bleiben unverändert.
+  Nur die getrennte synthetische Demo-Integration ist fachlich noch offen.
 - Das Ziel des LichtwaldLog Local MVP bleibt ein lokales Journal-Modul mit CRUD
   für Einträge aus Titel, reinem Kalenderdatum, Text und Tags sowie lokaler
   Suche und Filtern.

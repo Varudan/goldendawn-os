@@ -71,15 +71,21 @@ function createManualScheduler() {
   }
 }
 
-function createStack(storage = new TrackingFakeStorage()) {
+function createStack(
+  storage = new TrackingFakeStorage(),
+  { generatedEntryIds = [SYNTHETIC_ENTRY_ID] } = {}
+) {
   const fakeDom = createFakeDom()
   const scheduler = createManualScheduler()
   const storageAdapter = createStorageAdapter(storage)
   const lichtwaldLogStorage = createLichtwaldLogStorage(storageAdapter)
+  let generatedEntryIdIndex = 0
   const lichtwaldLogService = createLichtwaldLogService({
     lichtwaldLogStorage,
     generateLichtwaldLogEntryId() {
-      return SYNTHETIC_ENTRY_ID
+      const generatedEntryId = generatedEntryIds[generatedEntryIdIndex]
+      generatedEntryIdIndex += 1
+      return generatedEntryId
     },
   })
   const lichtwaldLogView = createLichtwaldLogView(fakeDom.root)
@@ -106,7 +112,30 @@ function findButton(root, label) {
 function findControl(root, name) {
   return findByTag(root, 'input')
     .concat(findByTag(root, 'textarea'))
+    .concat(findByTag(root, 'select'))
     .find((control) => control.name === name) ?? null
+}
+
+function changeFilter(root, name, value, eventType) {
+  const control = findControl(root, name)
+  assert.ok(control)
+  control.value = value
+  control.dispatchEvent({ type: eventType })
+}
+
+function readOverviewTitles(root) {
+  return findByClass(root, 'lichtwald-log-entry-card').map(
+    (card) => findByTag(card, 'h3')[0].textContent
+  )
+}
+
+function readStorageOperationCounts(storage) {
+  return {
+    getItemCalls: storage.getItemCalls,
+    setItemCalls: storage.setItemCalls,
+    removeItemCalls: storage.removeItemCalls,
+    operationCount: storage.operations.length,
+  }
 }
 
 function updateFormField(root, fieldName, value) {
@@ -213,7 +242,9 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   assert.match(moduleSource, /statusClass: 'next'/u)
   assert.match(moduleSource, /navigationState: 'In Arbeit'/u)
   assert.match(moduleSource, /isNavigable: true/u)
-  assert.doesNotMatch(moduleSource, /Suche|Filter|Demo/u)
+  assert.match(moduleSource, /Suche/u)
+  assert.match(moduleSource, /Filter/u)
+  assert.doesNotMatch(moduleSource, /Demo/u)
 
   const showViewStart = mainSource.indexOf('function showView(')
   const showViewEnd = mainSource.indexOf(
@@ -391,6 +422,298 @@ test('bedient CRUD und Fokus durch den vollständigen lokalen Stack und lädt pe
     assert.deepEqual(readPersistedLog(storage), atomicDeleteSnapshot)
 
     assert.ok(storage.operations.length > 0)
+    assert.ok(storage.operations.every(
+      ({ key }) => key === LICHTWALD_LOG_STORAGE_KEY
+    ))
+    assert.deepEqual(
+      [...storage.entries.keys()],
+      [LICHTWALD_LOG_STORAGE_KEY]
+    )
+    assert.equal(storage.removeItemCalls, 0)
+  } finally {
+    controller.close()
+    restore()
+  }
+})
+
+test('durchsucht und filtert den realen privaten Stack rein transient und reconciliert autoritative Mutationen', () => {
+  const initialEntries = [
+    {
+      id: 'lichtwald-entry-composition-prism-1',
+      calendarDate: '2044-03-17',
+      title: 'Erfundene Ätherlaterne',
+      text: 'Eine synthetische Passage über kristallene Funken.',
+      tags: ['Wald', 'Prisma'],
+    },
+    {
+      id: 'lichtwald-entry-composition-orbit-2',
+      calendarDate: '2039-11-05',
+      title: 'Synthetische Orbitkarte',
+      text: 'Eine frei erfundene Zeile über schwebenden Nebel.',
+      tags: ['Waldweg', 'Fiktiv'],
+    },
+    {
+      id: 'lichtwald-entry-composition-echo-3',
+      calendarDate: '2044-03-17',
+      title: 'Erfundenes Klangarchiv',
+      text: 'Literalzeichen .* und <script> bleiben gewöhnlicher Text.',
+      tags: ['Äther', 'Fiktiv'],
+    },
+  ]
+  const initialRoot = {
+    schemaVersion: 1,
+    dataOrigin: 'private',
+    featuredEntryId: null,
+    entries: initialEntries,
+  }
+  const storage = new TrackingFakeStorage([
+    [LICHTWALD_LOG_STORAGE_KEY, JSON.stringify(initialRoot)],
+  ])
+  const createdEntryId = 'lichtwald-entry-composition-moon-4'
+  const stack = createStack(storage, {
+    generatedEntryIds: [createdEntryId],
+  })
+  const {
+    controller,
+    restore,
+    root,
+    scheduler,
+  } = stack
+  const assertTitles = (expectedTitles) => {
+    assert.deepEqual(readOverviewTitles(root), expectedTitles)
+  }
+  const resetFilters = () => {
+    const resetButton = findButton(
+      root,
+      'Suche und Filter zurücksetzen'
+    )
+    assert.ok(resetButton)
+    resetButton.click()
+  }
+
+  try {
+    controller.open()
+    scheduler.run(0)
+    assertTitles(initialEntries.map((entry) => entry.title))
+    assert.equal(
+      findByClass(root, 'lichtwald-log-results-status')[0].textContent,
+      '3 Einträge'
+    )
+
+    const serializedBeforeFilters = storage.peek(
+      LICHTWALD_LOG_STORAGE_KEY
+    )
+    const operationCountsBeforeFilters = readStorageOperationCounts(storage)
+
+    changeFilter(root, 'lichtwaldLogSearch', '2044-03-17', 'input')
+    assertTitles([initialEntries[0].title, initialEntries[2].title])
+    resetFilters()
+    changeFilter(root, 'lichtwaldLogSearch', 'A\u0308THERLATERNE', 'input')
+    assertTitles([initialEntries[0].title])
+    resetFilters()
+    changeFilter(root, 'lichtwaldLogSearch', 'schwebenden Nebel', 'input')
+    assertTitles([initialEntries[1].title])
+    resetFilters()
+    changeFilter(root, 'lichtwaldLogSearch', 'prisma', 'input')
+    assertTitles([initialEntries[0].title])
+    resetFilters()
+    changeFilter(root, 'lichtwaldLogSearch', '.*', 'input')
+    assertTitles([initialEntries[2].title])
+    resetFilters()
+    changeFilter(root, 'lichtwaldLogSearch', '<SCRIPT>', 'input')
+    assertTitles([initialEntries[2].title])
+    resetFilters()
+
+    changeFilter(
+      root,
+      'lichtwaldLogCalendarDateFilter',
+      '2044-03-17',
+      'change'
+    )
+    assertTitles([initialEntries[0].title, initialEntries[2].title])
+    resetFilters()
+    changeFilter(root, 'lichtwaldLogTagFilter', 'Wald', 'change')
+    assertTitles([initialEntries[0].title])
+    assert.equal(root.textContent.includes(initialEntries[1].title), false)
+    resetFilters()
+
+    changeFilter(root, 'lichtwaldLogSearch', 'erfunden', 'input')
+    changeFilter(
+      root,
+      'lichtwaldLogCalendarDateFilter',
+      '2044-03-17',
+      'change'
+    )
+    changeFilter(root, 'lichtwaldLogTagFilter', 'Fiktiv', 'change')
+    assertTitles([initialEntries[2].title])
+    assert.equal(
+      findByClass(root, 'lichtwald-log-results-status')[0].textContent,
+      '1 von 3 Einträgen'
+    )
+
+    changeFilter(
+      root,
+      'lichtwaldLogSearch',
+      'vollständig abwesende Suche',
+      'input'
+    )
+    assertTitles([])
+    assert.equal(
+      findByClass(root, 'lichtwald-log-state--filtered-empty').length,
+      1
+    )
+    assert.equal(
+      findByClass(root, 'lichtwald-log-results-status')[0].textContent,
+      '0 von 3 Einträgen'
+    )
+    resetFilters()
+    assertTitles(initialEntries.map((entry) => entry.title))
+
+    assert.equal(
+      storage.peek(LICHTWALD_LOG_STORAGE_KEY),
+      serializedBeforeFilters
+    )
+    assert.deepEqual(
+      readStorageOperationCounts(storage),
+      operationCountsBeforeFilters
+    )
+    assert.deepEqual(
+      [...storage.entries.keys()],
+      [LICHTWALD_LOG_STORAGE_KEY]
+    )
+
+    const staleCardButton = findButton(
+      findByClass(root, 'lichtwald-log-entry-card')[0],
+      'Eintrag öffnen'
+    )
+    const staleSearch = findControl(root, 'lichtwaldLogSearch')
+    staleSearch.value = 'orbitkarte'
+    staleSearch.dispatchEvent({ type: 'input' })
+    assertTitles([initialEntries[1].title])
+    staleSearch.value = 'prisma'
+    staleSearch.dispatchEvent({ type: 'input' })
+    staleCardButton.click()
+    assertTitles([initialEntries[1].title])
+    assert.equal(findByClass(root, 'lichtwald-log-detail').length, 0)
+    resetFilters()
+
+    changeFilter(root, 'lichtwaldLogSearch', 'kristallene', 'input')
+    assertTitles([initialEntries[0].title])
+    findButton(root, 'Eintrag öffnen').click()
+    assert.equal(findByClass(root, 'lichtwald-log-detail').length, 1)
+    assert.ok(root.textContent.includes(initialEntries[0].text))
+    findButton(root, '← Zur Übersicht').click()
+    assert.equal(findControl(root, 'lichtwaldLogSearch').value, 'kristallene')
+    assertTitles([initialEntries[0].title])
+
+    findButton(root, 'Eintrag öffnen').click()
+    findButton(root, 'Eintrag bearbeiten').click()
+    updateFormField(
+      root,
+      'text',
+      'Eine autoritativ aktualisierte synthetische Passage.'
+    )
+    submitForm(root)
+    assert.equal(findByClass(root, 'lichtwald-log-detail').length, 1)
+    assert.ok(root.textContent.includes(initialEntries[0].title))
+    findButton(root, '← Zur Übersicht').click()
+    assertTitles([])
+    assert.equal(
+      findByClass(root, 'lichtwald-log-state--filtered-empty').length,
+      1
+    )
+    resetFilters()
+
+    changeFilter(root, 'lichtwaldLogTagFilter', 'Fiktiv', 'change')
+    assertTitles([initialEntries[1].title, initialEntries[2].title])
+    findButton(
+      findByClass(root, 'lichtwald-log-entry-card')[0],
+      'Eintrag öffnen'
+    ).click()
+    findButton(root, 'Als Lichtwald-Fokus setzen').click()
+    assert.equal(
+      readPersistedLog(storage).featuredEntryId,
+      initialEntries[1].id
+    )
+    findButton(root, '← Zur Übersicht').click()
+    assert.equal(findControl(root, 'lichtwaldLogTagFilter').value, 'Fiktiv')
+    assertTitles([initialEntries[1].title, initialEntries[2].title])
+
+    findButton(
+      findByClass(root, 'lichtwald-log-entry-card')[0],
+      'Eintrag öffnen'
+    ).click()
+    findButton(root, 'Eintrag dauerhaft löschen').click()
+    findButton(root, 'Dauerhaft löschen').click()
+    assert.equal(readPersistedLog(storage).featuredEntryId, null)
+    assert.equal(findControl(root, 'lichtwaldLogTagFilter').value, 'Fiktiv')
+    assertTitles([initialEntries[2].title])
+
+    findButton(root, 'Neuen Eintrag erstellen').click()
+    updateFormField(root, 'calendarDate', '2051-08-09')
+    updateFormField(root, 'title', 'Synthetische Mondlaterne')
+    updateFormField(root, 'text', 'Ein vollständig erfundener neuer Eintrag.')
+    findButton(root, 'Tag hinzufügen').click()
+    updateFormField(root, 'tag-0', 'Mondpfad')
+    submitForm(root)
+    assert.ok(root.textContent.includes('Synthetische Mondlaterne'))
+    findButton(root, '← Zur Übersicht').click()
+    assert.equal(findControl(root, 'lichtwaldLogTagFilter').value, 'Fiktiv')
+    assertTitles([initialEntries[2].title])
+
+    const persistedAfterMutations = readPersistedLog(storage)
+    assert.equal(persistedAfterMutations.schemaVersion, 1)
+    assert.equal(persistedAfterMutations.dataOrigin, 'private')
+    assert.deepEqual(
+      persistedAfterMutations.entries.map((entry) => entry.id),
+      [initialEntries[0].id, initialEntries[2].id, createdEntryId]
+    )
+    for (const transientPropertyName of [
+      'searchQuery',
+      'calendarDateFilter',
+      'selectedTag',
+      'availableTags',
+      'visibleEntryIds',
+      'hasActiveFilters',
+      'filteredEmptyState',
+    ]) {
+      assert.equal(
+        Object.hasOwn(persistedAfterMutations, transientPropertyName),
+        false
+      )
+    }
+
+    assert.equal(controller.close(), true)
+    controller.open()
+    scheduler.run()
+    assert.equal(findControl(root, 'lichtwaldLogSearch').value, '')
+    assert.equal(
+      findControl(root, 'lichtwaldLogCalendarDateFilter').value,
+      ''
+    )
+    assert.equal(findControl(root, 'lichtwaldLogTagFilter').value, '')
+    assertTitles([
+      initialEntries[0].title,
+      initialEntries[2].title,
+      'Synthetische Mondlaterne',
+    ])
+    assert.deepEqual(readPersistedLog(storage), persistedAfterMutations)
+
+    const serializedBeforeDirtyClose = storage.peek(
+      LICHTWALD_LOG_STORAGE_KEY
+    )
+    findButton(root, 'Neuen Eintrag erstellen').click()
+    updateFormField(root, 'title', 'Synthetischer schmutziger Entwurf')
+    assert.equal(controller.close(), false)
+    assert.equal(
+      storage.peek(LICHTWALD_LOG_STORAGE_KEY),
+      serializedBeforeDirtyClose
+    )
+    assert.ok(root.textContent.includes('Speichere den Eintrag'))
+    findButton(root, 'Abbrechen').click()
+    assert.equal(controller.close(), true)
+    assert.equal(root.children.length, 0)
+
     assert.ok(storage.operations.every(
       ({ key }) => key === LICHTWALD_LOG_STORAGE_KEY
     ))

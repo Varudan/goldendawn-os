@@ -30,6 +30,10 @@ const ACTION_NAMES = Object.freeze([
   'onCancelDeleteEntry',
   'onConfirmDeleteEntry',
   'onSetFeaturedEntry',
+  'onChangeSearchQuery',
+  'onChangeCalendarDateFilter',
+  'onChangeTagFilter',
+  'onResetFilters',
 ])
 
 // Alle Inhalte und IDs in dieser Datei sind vollständig frei erfunden.
@@ -76,9 +80,22 @@ function createForm(type = 'createEntry', overrides = {}) {
 }
 
 function createViewModel(overrides = {}) {
+  const entries = Object.hasOwn(overrides, 'entries')
+    ? overrides.entries
+    : [createEntry(), createSecondEntry()]
+
   return {
     phase: 'ready',
-    entries: [createEntry(), createSecondEntry()],
+    entries,
+    visibleEntryIds: Array.isArray(entries)
+      ? entries.map((entry) => entry.id)
+      : [],
+    availableTags: ['Prisma', 'Fiktiv', 'beta', 'ALPHA'],
+    searchQuery: '',
+    calendarDateFilter: '',
+    selectedTag: '',
+    hasActiveFilters: false,
+    filteredEmptyState: false,
     featuredEntryId: null,
     selectedEntryId: null,
     form: null,
@@ -154,6 +171,7 @@ function findButton(root, label) {
 function findControl(root, name) {
   return findByTag(root, 'input')
     .concat(findByTag(root, 'textarea'))
+    .concat(findByTag(root, 'select'))
     .find((control) => control.name === name) ?? null
 }
 
@@ -763,6 +781,442 @@ test('stellt Loading, LoadError und Empty semantisch und aktionsgenau dar', () =
     assert.ok(empty.textContent.toLowerCase().includes('keine'))
     findButton(root, 'Neuen Eintrag erstellen').click()
     assert.deepEqual(recorder.calls.onOpenCreateEntryForm, [[]])
+  })
+})
+
+test('zeigt das vollständig beschriftete Filterpanel nur in der nicht leeren Übersicht', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const entries = [createEntry(), createSecondEntry()]
+    const model = createViewModel({
+      entries,
+      availableTags: ['Prisma', 'Waldweg', 'Äther'],
+    })
+
+    view.render(model)
+
+    const panel = findByClass(root, 'lichtwald-log-filters')[0]
+    assert.ok(panel)
+    assert.equal(
+      findByTag(panel, 'h3')[0].textContent,
+      'Einträge durchsuchen und filtern'
+    )
+    assert.equal(
+      panel.getAttribute('aria-labelledby'),
+      'lichtwald-log-filters-heading'
+    )
+
+    const search = findControl(panel, 'lichtwaldLogSearch')
+    const calendarDate = findControl(
+      panel,
+      'lichtwaldLogCalendarDateFilter'
+    )
+    const tag = findControl(panel, 'lichtwaldLogTagFilter')
+    assert.equal(getControlType(search), 'search')
+    assert.equal(search.maxLength, 200)
+    assert.equal(search.getAttribute('maxlength'), '200')
+    assert.equal(search.autocomplete, 'off')
+    assert.equal(search.getAttribute('autocomplete'), 'off')
+    assert.equal(search.spellcheck, false)
+    assert.equal(search.getAttribute('spellcheck'), 'false')
+    assert.equal(getControlType(calendarDate), 'date')
+    assert.equal(tag.tagName, 'SELECT')
+    assert.equal(
+      findByTag(panel, 'label').find(
+        (label) => label.textContent === 'Einträge durchsuchen'
+      ).getAttribute('for'),
+      search.id
+    )
+    assert.equal(
+      findByTag(panel, 'label').find(
+        (label) => label.textContent === 'Nach Kalenderdatum filtern'
+      ).getAttribute('for'),
+      calendarDate.id
+    )
+    assert.equal(
+      findByTag(panel, 'label').find(
+        (label) => label.textContent === 'Nach Tag filtern'
+      ).getAttribute('for'),
+      tag.id
+    )
+    assert.ok(
+      panel.textContent.includes(
+        'Durchsucht Kalenderdatum, Titel, Text und Tags. Groß- und Kleinschreibung werden nicht unterschieden.'
+      )
+    )
+    assert.deepEqual(
+      findByTag(tag, 'option').map((option) => ({
+        text: option.textContent,
+        value: option.value,
+      })),
+      [
+        { text: 'Alle Tags', value: '' },
+        { text: 'Prisma', value: 'Prisma' },
+        { text: 'Waldweg', value: 'Waldweg' },
+        { text: 'Äther', value: 'Äther' },
+      ]
+    )
+    assert.equal(findButton(panel, 'Suche und Filter zurücksetzen'), null)
+
+    view.render(createViewModel({
+      entries,
+      selectedEntryId: entries[0].id,
+    }))
+    assert.equal(findByClass(root, 'lichtwald-log-filters').length, 0)
+
+    view.render(createViewModel({ phase: 'empty', entries: [] }))
+    assert.equal(findByClass(root, 'lichtwald-log-filters').length, 0)
+  })
+})
+
+test('rendert ausschließlich sichtbare Overview-Entries und trennt gefilterte von echter Leere', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const first = createEntry({
+      title: 'Verborgene synthetische Karte',
+      text: 'VERBORGENER-SYNTHETISCHER-TEXT',
+    })
+    const second = createSecondEntry({
+      title: 'Sichtbare synthetische Karte',
+    })
+    const filteredModel = createViewModel({
+      entries: [first, second],
+      visibleEntryIds: [second.id],
+      searchQuery: 'sichtbar',
+      hasActiveFilters: true,
+    })
+
+    view.render(filteredModel)
+    const cards = findByClass(root, 'lichtwald-log-entry-card')
+    assert.equal(cards.length, 1)
+    assert.equal(findHeading(cards[0]).textContent, second.title)
+    assert.equal(root.textContent.includes(first.title), false)
+    assert.equal(root.textContent.includes(first.text), false)
+    const resultStatus = findByClass(
+      root,
+      'lichtwald-log-results-status'
+    )[0]
+    assert.equal(resultStatus.textContent, '1 von 2 Einträgen')
+    assert.equal(resultStatus.getAttribute('role'), 'status')
+    assert.equal(resultStatus.getAttribute('aria-live'), 'polite')
+    assert.equal(resultStatus.getAttribute('aria-atomic'), 'true')
+    assert.ok(findButton(root, 'Suche und Filter zurücksetzen'))
+
+    view.render(createViewModel({
+      entries: [first, second],
+      visibleEntryIds: [],
+      searchQuery: 'kein Treffer',
+      hasActiveFilters: true,
+      filteredEmptyState: true,
+    }))
+    assert.equal(findByClass(root, 'lichtwald-log-entry-card').length, 0)
+    const filteredEmpty = findByClass(
+      root,
+      'lichtwald-log-state--filtered-empty'
+    )[0]
+    assert.ok(filteredEmpty)
+    assert.ok(filteredEmpty.textContent.includes('Keine passenden Einträge'))
+    assert.ok(
+      filteredEmpty.textContent.includes(
+        'Passe die Suche oder Filter an, um wieder Einträge anzuzeigen.'
+      )
+    )
+    assert.ok(findButton(filteredEmpty, 'Suche und Filter zurücksetzen'))
+    assert.equal(
+      findByClass(root, 'lichtwald-log-state--empty').length,
+      0
+    )
+    assert.equal(
+      findByClass(root, 'lichtwald-log-results-status')[0].textContent,
+      '0 von 2 Einträgen'
+    )
+
+    view.render(createViewModel({ phase: 'empty', entries: [] }))
+    assert.equal(findByClass(root, 'lichtwald-log-state--empty').length, 1)
+    assert.equal(
+      findByClass(root, 'lichtwald-log-state--filtered-empty').length,
+      0
+    )
+    assert.equal(
+      findByClass(root, 'lichtwald-log-results-status')[0].textContent,
+      '0 Einträge'
+    )
+
+    view.render(createViewModel({ entries: [first] }))
+    assert.equal(
+      findByClass(root, 'lichtwald-log-results-status')[0].textContent,
+      '1 Eintrag'
+    )
+
+    view.render(createViewModel({
+      entries: [first, second],
+      visibleEntryIds: [second.id],
+      selectedEntryId: first.id,
+      searchQuery: 'sichtbar',
+      hasActiveFilters: true,
+    }))
+    const detail = findByClass(root, 'lichtwald-log-detail')[0]
+    assert.ok(detail)
+    assert.ok(detail.textContent.includes(first.title))
+    assert.equal(findByClass(root, 'lichtwald-log-filters').length, 0)
+  })
+})
+
+test('verdrahtet Such-, Datums-, Tag- und Reset-Events exakt einmal mit skalaren Payloads', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const recorder = createActionRecorder()
+    view.render(createViewModel({
+      searchQuery: 'Prisma',
+      calendarDateFilter: '2044-03-17',
+      selectedTag: 'Prisma',
+      hasActiveFilters: true,
+    }), recorder.actions)
+
+    const search = findControl(root, 'lichtwaldLogSearch')
+    const calendarDate = findControl(
+      root,
+      'lichtwaldLogCalendarDateFilter'
+    )
+    const tag = findControl(root, 'lichtwaldLogTagFilter')
+    search.value = 'neue Suche'
+    search.selectionStart = 4
+    search.selectionEnd = 7
+    search.dispatchEvent({ type: 'input' })
+    calendarDate.value = '2039-11-05'
+    calendarDate.dispatchEvent({ type: 'change' })
+    tag.value = 'Fiktiv'
+    tag.dispatchEvent({ type: 'change' })
+    findButton(root, 'Suche und Filter zurücksetzen').click()
+
+    assert.deepEqual(recorder.calls.onChangeSearchQuery, [['neue Suche']])
+    assert.deepEqual(
+      recorder.calls.onChangeCalendarDateFilter,
+      [['2039-11-05']]
+    )
+    assert.deepEqual(recorder.calls.onChangeTagFilter, [['Fiktiv']])
+    assert.deepEqual(recorder.calls.onResetFilters, [[]])
+    assert.equal(
+      recorder.calls.onChangeSearchQuery.flat().every(
+        (value) => typeof value === 'string'
+      ),
+      true
+    )
+  })
+})
+
+test('stellt Filterfokus und geklemmten Such-Caret nach synchronem Rerender wieder her', () => {
+  withLichtwaldLogView(({ document, root, view }) => {
+    let model = createViewModel()
+    let recorder
+    const rerender = (changes) => {
+      model = createViewModel({ ...model, ...changes })
+      view.render(model, recorder.actions)
+    }
+    recorder = createActionRecorder({
+      onChangeSearchQuery(searchQuery) {
+        rerender({
+          searchQuery,
+          hasActiveFilters: searchQuery.trim().length > 0,
+          focusTarget: { type: 'searchInput' },
+        })
+      },
+      onChangeCalendarDateFilter(calendarDateFilter) {
+        rerender({
+          calendarDateFilter,
+          hasActiveFilters: true,
+          focusTarget: { type: 'calendarDateFilter' },
+        })
+      },
+      onChangeTagFilter(selectedTag) {
+        rerender({
+          selectedTag,
+          hasActiveFilters: true,
+          focusTarget: { type: 'tagFilter' },
+        })
+      },
+      onResetFilters() {
+        rerender({
+          searchQuery: '',
+          calendarDateFilter: '',
+          selectedTag: '',
+          hasActiveFilters: false,
+          focusTarget: { type: 'searchInput' },
+        })
+      },
+    })
+    view.render(model, recorder.actions)
+
+    const originalSearch = findControl(root, 'lichtwaldLogSearch')
+    originalSearch.value = 'Orbit'
+    originalSearch.selectionStart = 99
+    originalSearch.selectionEnd = 101
+    originalSearch.dispatchEvent({ type: 'input' })
+    const renderedSearch = findControl(root, 'lichtwaldLogSearch')
+    assert.notStrictEqual(renderedSearch, originalSearch)
+    assert.strictEqual(document.activeElement, renderedSearch)
+    assert.equal(renderedSearch.selectionStart, 5)
+    assert.equal(renderedSearch.selectionEnd, 5)
+    assert.deepEqual(renderedSearch.focusOptions, { preventScroll: true })
+
+    const calendarDate = findControl(
+      root,
+      'lichtwaldLogCalendarDateFilter'
+    )
+    calendarDate.value = '2044-03-17'
+    calendarDate.dispatchEvent({ type: 'change' })
+    assert.strictEqual(
+      document.activeElement,
+      findControl(root, 'lichtwaldLogCalendarDateFilter')
+    )
+
+    const tag = findControl(root, 'lichtwaldLogTagFilter')
+    tag.value = 'Prisma'
+    tag.dispatchEvent({ type: 'change' })
+    assert.strictEqual(
+      document.activeElement,
+      findControl(root, 'lichtwaldLogTagFilter')
+    )
+
+    findButton(root, 'Suche und Filter zurücksetzen').click()
+    const resetSearch = findControl(root, 'lichtwaldLogSearch')
+    assert.strictEqual(document.activeElement, resetSearch)
+    assert.equal(resetSearch.value, '')
+    assert.equal(resetSearch.selectionStart, 0)
+    assert.equal(resetSearch.selectionEnd, 0)
+    assert.equal(
+      findByClass(root, 'lichtwald-log-entry-card').some(
+        (card) => document.activeElement === findHeading(card)
+      ),
+      false
+    )
+  })
+})
+
+test('deaktiviert Filtercontrols bei Mutation, Fokus-Submit und Delete-Bestätigung', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const entry = createEntry()
+    const blockingModels = [
+      createViewModel({
+        phase: 'mutating',
+        searchQuery: 'aktiv',
+        hasActiveFilters: true,
+      }),
+      createViewModel({
+        featuredState: {
+          isSubmitting: true,
+          targetEntryId: entry.id,
+          errorMessage: '',
+        },
+        searchQuery: 'aktiv',
+        hasActiveFilters: true,
+      }),
+      createViewModel({
+        deleteState: {
+          entryId: entry.id,
+          isSubmitting: false,
+          errorMessage: '',
+        },
+        searchQuery: 'aktiv',
+        hasActiveFilters: true,
+      }),
+    ]
+
+    for (const model of blockingModels) {
+      view.render(model)
+      for (const name of [
+        'lichtwaldLogSearch',
+        'lichtwaldLogCalendarDateFilter',
+        'lichtwaldLogTagFilter',
+      ]) {
+        assert.equal(findControl(root, name).disabled, true)
+      }
+      assert.equal(
+        findButton(root, 'Suche und Filter zurücksetzen').disabled,
+        true
+      )
+    }
+  })
+})
+
+test('macht alte Filterhandler nach Rerender und unmount vollständig unwirksam', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const staleRecorder = createActionRecorder()
+    const currentRecorder = createActionRecorder()
+    const model = createViewModel({
+      searchQuery: 'aktiv',
+      hasActiveFilters: true,
+    })
+    view.render(model, staleRecorder.actions)
+    const staleSearch = findControl(root, 'lichtwaldLogSearch')
+    const staleDate = findControl(root, 'lichtwaldLogCalendarDateFilter')
+    const staleTag = findControl(root, 'lichtwaldLogTagFilter')
+    const staleReset = findButton(root, 'Suche und Filter zurücksetzen')
+
+    view.render(model, currentRecorder.actions)
+    let staleValueReads = 0
+    for (const control of [staleSearch, staleDate, staleTag]) {
+      Object.defineProperty(control, 'value', {
+        configurable: true,
+        get() {
+          staleValueReads += 1
+          throw new Error('Synthetischer veralteter Filter-Getter')
+        },
+      })
+    }
+    assert.doesNotThrow(() => staleSearch.dispatchEvent({ type: 'input' }))
+    assert.doesNotThrow(() => staleDate.dispatchEvent({ type: 'change' }))
+    assert.doesNotThrow(() => staleTag.dispatchEvent({ type: 'change' }))
+    assert.doesNotThrow(() => staleReset.click())
+    assert.equal(staleValueReads, 0)
+    for (const actionName of [
+      'onChangeSearchQuery',
+      'onChangeCalendarDateFilter',
+      'onChangeTagFilter',
+      'onResetFilters',
+    ]) {
+      assert.deepEqual(staleRecorder.calls[actionName], [])
+      assert.deepEqual(currentRecorder.calls[actionName], [])
+    }
+
+    const currentSearch = findControl(root, 'lichtwaldLogSearch')
+    view.unmount()
+    currentSearch.value = 'nach unmount'
+    currentSearch.dispatchEvent({ type: 'input' })
+    assert.deepEqual(currentRecorder.calls.onChangeSearchQuery, [])
+    assert.equal(root.textContent, '')
+  })
+})
+
+test('hält Query, Datum und Tag aus dynamischen Metadaten und Markup-Auswertung heraus', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const queryMarker = '<script>QUERY-MARKER</script>'
+    const dateMarker = '9999-12-31'
+    const tagMarker = '<script>TAG-MARKER</script>'
+    view.render(createViewModel({
+      searchQuery: queryMarker,
+      calendarDateFilter: dateMarker,
+      selectedTag: tagMarker,
+      availableTags: [tagMarker],
+      hasActiveFilters: true,
+      visibleEntryIds: [],
+      filteredEmptyState: true,
+    }))
+
+    assert.equal(findControl(root, 'lichtwaldLogSearch').value, queryMarker)
+    assert.equal(
+      findControl(root, 'lichtwaldLogCalendarDateFilter').value,
+      dateMarker
+    )
+    assert.equal(findControl(root, 'lichtwaldLogTagFilter').value, tagMarker)
+    assert.equal(findByTag(root, 'script').length, 0)
+    assert.equal(root.textContent.includes(queryMarker), false)
+    assert.equal(root.textContent.includes(dateMarker), false)
+    assert.equal(root.textContent.includes(tagMarker), true)
+    assertElementDoesNotExpose(root, [queryMarker, dateMarker, tagMarker])
+    const resultStatus = findByClass(
+      root,
+      'lichtwald-log-results-status'
+    )[0]
+    assert.equal(resultStatus.textContent, '0 von 2 Einträgen')
+    assert.equal(resultStatus.textContent.includes('MARKER'), false)
   })
 })
 
@@ -2792,7 +3246,7 @@ test('integriert echte View und echten Controller ohne zusätzlichen Load oder D
   }
 })
 
-test('Produktionsquelle verwendet nur Safe-DOM, Contractgrenzen und die zwölf Actions', () => {
+test('Produktionsquelle verwendet nur Safe-DOM, Contractgrenzen und die sechzehn Actions', () => {
   const source = readFileSync(
     new URL(
       '../src/modules/lichtwald-log/lichtwaldLogView.js',
@@ -2814,6 +3268,8 @@ test('Produktionsquelle verwendet nur Safe-DOM, Contractgrenzen und die zwölf A
     assert.match(source, new RegExp(`\\b${constantName}\\b`))
   }
   assert.match(source, /from '.\/lichtwaldLogContract\.js'/)
+  assert.doesNotMatch(source, /from '.\/lichtwaldLogSearch\.js'/)
+  assert.match(source, /SEARCH_QUERY_MAX_LENGTH\s*=\s*200/u)
   assert.doesNotMatch(
     source,
     /innerHTML|outerHTML|insertAdjacentHTML|DOMParser|document\.write|createContextualFragment/
@@ -2844,6 +3300,10 @@ test('Modul-CSS kapselt sichere responsive, Fokus- und Reduced-Motion-Regeln', (
   assert.match(stylesheet, /\.lichtwald-log\s*\{/)
   assert.match(stylesheet, /min-width:\s*0;/)
   assert.match(stylesheet, /minmax\(0,\s*1fr\)/)
+  assert.match(
+    stylesheet,
+    /\.lichtwald-log-filters__grid\s*\{[^}]*minmax\(0,\s*2fr\)/s
+  )
   assert.match(stylesheet, /max-width:\s*100%;/)
   assert.match(stylesheet, /overflow-wrap:\s*anywhere;/)
   assert.match(stylesheet, /word-break:\s*break-word;/)
@@ -2853,6 +3313,19 @@ test('Modul-CSS kapselt sichere responsive, Fokus- und Reduced-Motion-Regeln', (
   )
   assert.match(stylesheet, /resize:\s*vertical;/)
   assert.match(stylesheet, /:focus-visible/)
+  assert.match(stylesheet, /:is\([^)]*select[^)]*\):focus-visible/s)
+  assert.match(
+    stylesheet,
+    /\.lichtwald-log-filters__control\s*\{[^}]*min-height:\s*44px;/s
+  )
+  assert.match(
+    stylesheet,
+    /\.lichtwald-log\s+\.button\s*\{[^}]*min-height:\s*44px;/s
+  )
+  assert.match(
+    stylesheet,
+    /select\.lichtwald-log-filters__control\s*\{[^}]*text-overflow:\s*ellipsis;/s
+  )
   assert.match(stylesheet, /@media\s*\(max-width:\s*760px\)/)
   assert.match(stylesheet, /@media\s*\(max-width:\s*620px\)/)
   assert.match(stylesheet, /@media\s*\(max-width:\s*390px\)/)
