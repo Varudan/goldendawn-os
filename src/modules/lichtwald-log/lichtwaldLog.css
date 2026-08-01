@@ -9,6 +9,15 @@
 .lichtwald-log-state,
 .lichtwald-log-state > *,
 .lichtwald-log-overview,
+.lichtwald-log-filters,
+.lichtwald-log-filters > *,
+.lichtwald-log-filters__header,
+.lichtwald-log-filters__header > *,
+.lichtwald-log-filters__grid,
+.lichtwald-log-filters__field,
+.lichtwald-log-filters__control,
+.lichtwald-log-filters__actions,
+.lichtwald-log-results-status,
 .lichtwald-log-section-heading,
 .lichtwald-log-section-heading > *,
 .lichtwald-log-entry-grid,
@@ -70,6 +79,7 @@
     .lichtwald-log-detail,
     .lichtwald-log-form-section,
     .lichtwald-log-form,
+    .lichtwald-log-filters,
     .lichtwald-log-tags-editor,
     .lichtwald-log-confirmation,
     .lichtwald-log-featured-state
@@ -79,7 +89,7 @@
 }
 
 .lichtwald-log
-  :is(button, input, textarea, fieldset):focus-visible {
+  :is(button, input, textarea, select, fieldset):focus-visible {
   outline: 3px solid var(--gold-soft);
   outline-offset: 3px;
 }
@@ -277,6 +287,110 @@
   margin-top: var(--s1);
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+.lichtwald-log-filters {
+  margin-top: 1.125rem;
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: rgb(6 15 11 / 28%);
+}
+
+.lichtwald-log-filters--active {
+  border-inline-start-width: 4px;
+  border-inline-start-color: var(--gold);
+}
+
+.lichtwald-log-filters__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.lichtwald-log-filters__heading {
+  color: var(--gold-soft);
+  font-size: 1rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-filters__active-state {
+  padding: .3rem .55rem;
+  border: 1px solid rgb(213 173 92 / 42%);
+  border-radius: 999px;
+  font-size: .72rem;
+  font-weight: 700;
+}
+
+.lichtwald-log-filters__grid {
+  margin-top: var(--s3);
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--s3);
+}
+
+.lichtwald-log-filters__field {
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+
+.lichtwald-log-filters__label {
+  color: var(--text);
+  font-size: .84rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-filters__control {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 44px;
+}
+
+select.lichtwald-log-filters__control {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lichtwald-log-filters__hint {
+  color: var(--muted);
+  font-size: .72rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-filters__actions {
+  margin-top: var(--s3);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.lichtwald-log .button {
+  min-height: 44px;
+}
+
+.lichtwald-log-results-status {
+  margin-top: var(--s3);
+  width: fit-content;
+  padding: .45rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--muted);
+  background: rgb(6 15 11 / 24%);
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.lichtwald-log-state--filtered-empty {
+  border-color: rgb(213 173 92 / 34%);
 }
 
 .lichtwald-log-entry-grid {
@@ -702,6 +816,7 @@ textarea.lichtwald-log-form__control {
 
 @media(max-width: 760px) {
   .lichtwald-log-entry-grid,
+  .lichtwald-log-filters__grid,
   .lichtwald-log-form__fields {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -731,6 +846,8 @@ textarea.lichtwald-log-form__control {
   }
 
   .lichtwald-log-section-heading > .button,
+  .lichtwald-log-filters__actions,
+  .lichtwald-log-filters__actions .button,
   .lichtwald-log-entry-card__actions,
   .lichtwald-log-entry-card__actions .button,
   .lichtwald-log-detail__actions,
@@ -751,6 +868,7 @@ textarea.lichtwald-log-form__control {
 
   .lichtwald-log-detail,
   .lichtwald-log-form,
+  .lichtwald-log-filters,
   .lichtwald-log-entry-card,
   .lichtwald-log-tags-editor,
   .lichtwald-log-confirmation {
@@ -787,6 +905,7 @@ textarea.lichtwald-log-form__control {
       .button,
       input,
       textarea,
+      select,
       .lichtwald-log-tags-editor,
       .lichtwald-log-confirmation
     ) {
@@ -795,6 +914,8 @@ textarea.lichtwald-log-form__control {
 
   .lichtwald-log-introduction,
   .lichtwald-log-state,
+  .lichtwald-log-filters,
+  .lichtwald-log-results-status,
   .lichtwald-log-detail,
   .lichtwald-log-form,
   .lichtwald-log-entry-card,
@@ -808,6 +929,9 @@ textarea.lichtwald-log-form__control {
   .lichtwald-log-entry-card__title,
   .lichtwald-log-detail__title,
   .lichtwald-log-detail__text,
+  .lichtwald-log-filters__heading,
+  .lichtwald-log-filters__label,
+  .lichtwald-log-filters__hint,
   .lichtwald-log-form__label,
   .lichtwald-log-form__hint,
   .lichtwald-log-tags__tag,

@@ -25,10 +25,21 @@ const ACTION_METHOD_NAMES = Object.freeze([
   'onCancelDeleteEntry',
   'onConfirmDeleteEntry',
   'onSetFeaturedEntry',
+  'onChangeSearchQuery',
+  'onChangeCalendarDateFilter',
+  'onChangeTagFilter',
+  'onResetFilters',
 ])
 const VIEW_MODEL_PROPERTY_NAMES = Object.freeze([
   'phase',
   'entries',
+  'visibleEntryIds',
+  'availableTags',
+  'searchQuery',
+  'calendarDateFilter',
+  'selectedTag',
+  'hasActiveFilters',
+  'filteredEmptyState',
   'featuredEntryId',
   'selectedEntryId',
   'form',
@@ -445,6 +456,19 @@ function assertViewModelContract(viewModel) {
   assert.equal(Object.hasOwn(viewModel, 'dataOrigin'), false)
   assert.equal(Object.hasOwn(viewModel, 'lichtwaldLog'), false)
   assert.equal(Object.hasOwn(viewModel, 'selectedEntry'), false)
+  assert.equal(Array.isArray(viewModel.visibleEntryIds), true)
+  assert.equal(Array.isArray(viewModel.availableTags), true)
+  assert.equal(typeof viewModel.searchQuery, 'string')
+  assert.equal(typeof viewModel.calendarDateFilter, 'string')
+  assert.equal(typeof viewModel.selectedTag, 'string')
+  assert.equal(typeof viewModel.hasActiveFilters, 'boolean')
+  assert.equal(typeof viewModel.filteredEmptyState, 'boolean')
+  assert.equal(
+    viewModel.visibleEntryIds.every((entryId) =>
+      viewModel.entries.some((entry) => entry.id === entryId)
+    ),
+    true
+  )
   assertExactOwnKeys(viewModel.deleteState, [
     'entryId',
     'isSubmitting',
@@ -568,6 +592,11 @@ function assertNonStringLoadStatusIsRejectedAndRetryable({
   system.view.actions.onRetryLoad()
 
   assert.equal(system.view.lastState.phase, 'loading')
+  assert.equal(system.view.lastState.searchQuery, '')
+  assert.equal(system.view.lastState.calendarDateFilter, '')
+  assert.equal(system.view.lastState.selectedTag, '')
+  assert.deepEqual(system.view.lastState.availableTags, [])
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [])
   assert.equal(system.scheduler.scheduleCalls, 2)
   assert.equal(system.serviceDouble.calls.loadLog.length, 1)
   assert.equal(getCoercionCalls(), 0)
@@ -702,6 +731,13 @@ test('stellt exakt die eingefrorene Controller- und Action-API bereit und lädt 
   assert.equal(system.scheduler.scheduleCalls, 1)
   assert.equal(system.view.renders.length, 1)
   assert.equal(system.view.lastState.phase, 'loading')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [])
+  assert.deepEqual(system.view.lastState.availableTags, [])
+  assert.equal(system.view.lastState.searchQuery, '')
+  assert.equal(system.view.lastState.calendarDateFilter, '')
+  assert.equal(system.view.lastState.selectedTag, '')
+  assert.equal(system.view.lastState.hasActiveFilters, false)
+  assert.equal(system.view.lastState.filteredEmptyState, false)
   assertViewModelContract(system.view.lastState)
   assertExactOwnKeys(system.view.actions, ACTION_METHOD_NAMES)
   assert.equal(Object.isFrozen(system.view.actions), true)
@@ -721,6 +757,18 @@ test('stellt exakt die eingefrorene Controller- und Action-API bereit und lädt 
   assert.deepEqual(getEntryIds(system.view.lastState), [
     firstEntry.id,
     secondEntry.id,
+  ])
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [
+    firstEntry.id,
+    secondEntry.id,
+  ])
+  assert.deepEqual(system.view.lastState.availableTags, [
+    'Zeta',
+    'Alpha',
+    'Omega',
+    'Drei',
+    'Eins',
+    'Zwei',
   ])
   assert.deepEqual(system.view.lastState.entries[0].tags, [
     'Zeta',
@@ -753,6 +801,13 @@ test('unterscheidet fehlenden und absichtlich gespeicherten leeren Privatbestand
     assert.equal(system.view.lastState.selectedEntryId, null)
     assert.equal(system.view.lastState.form, null)
     assert.equal(system.view.lastState.deleteState.entryId, null)
+    assert.deepEqual(system.view.lastState.visibleEntryIds, [])
+    assert.deepEqual(system.view.lastState.availableTags, [])
+    assert.equal(system.view.lastState.searchQuery, '')
+    assert.equal(system.view.lastState.calendarDateFilter, '')
+    assert.equal(system.view.lastState.selectedTag, '')
+    assert.equal(system.view.lastState.hasActiveFilters, false)
+    assert.equal(system.view.lastState.filteredEmptyState, false)
     assertViewModelContract(system.view.lastState)
   }
 })
@@ -831,6 +886,9 @@ test('retryt einen redigierten Loadfehler genau einmal und ignoriert alte sowie 
 
   assert.equal(system.serviceDouble.calls.loadLog.length, 2)
   assert.equal(system.view.lastState.phase, 'ready')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, successfulLog.entries.map(
+    ({ id }) => id
+  ))
   system.scheduler.run(1)
   assert.equal(system.serviceDouble.calls.loadLog.length, 2)
 })
@@ -899,11 +957,19 @@ test('invalidiert wirkungslos gecancelte Callbacks über Close und einen neuen O
 
   system.controller.open()
   assert.equal(scheduler.scheduleCalls, 2)
+  assert.equal(system.view.lastState.searchQuery, '')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [])
   scheduler.run(0)
   assert.equal(system.serviceDouble.calls.loadLog.length, 0)
+  assert.equal(system.view.lastState.searchQuery, '')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [])
   scheduler.run(1)
   assert.equal(system.serviceDouble.calls.loadLog.length, 1)
   assert.equal(system.view.lastState.phase, 'ready')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [
+    createEntry().id,
+    createSecondEntry().id,
+  ])
 
   assert.equal(system.controller.close(), true)
   assert.equal(system.view.unmountCalls, 2)
@@ -1163,6 +1229,229 @@ test('weist malformed, widersprüchliche, asynchrone und nicht-private Load-Erge
 
   assert.equal(okGetterCalls, 0)
   assert.equal(thenGetterCalls, 0)
+})
+
+test('leitet lokale Suche, Datum und Tag per AND aus dem vollständigen Snapshot ab', () => {
+  const firstEntry = createEntry({
+    id: 'lichtwald-entry-filter-aurora-1',
+    calendarDate: '2048-02-29',
+    title: 'Erfundene Aurora-Karte',
+    text: 'Ein vollständig synthetischer Kupferpfad.',
+    tags: ['WÄLDCHEN', 'Gemeinsam'],
+  })
+  const secondEntry = createSecondEntry({
+    id: 'lichtwald-entry-filter-aurora-2',
+    calendarDate: '2048-02-29',
+    title: 'Erfundene zweite Karte',
+    text: 'Eine synthetische aurora erscheint im Text.',
+    tags: ['Andere', 'gemeinsam'],
+  })
+  const thirdEntry = createEntry({
+    id: 'lichtwald-entry-filter-aurora-3',
+    calendarDate: '2048-03-01',
+    title: 'AURORA im dritten Titel',
+    text: 'Dritter frei erfundener Inhalt.',
+    tags: ['Wa\u0308ldchen'],
+  })
+  const entries = [firstEntry, secondEntry, thirdEntry]
+  const system = createControllerSystem({
+    serviceOptions: {
+      loadResult: createLoadSuccess(createPrivateLog(entries)),
+    },
+  })
+  const actions = openAndFlush(system)
+  const scheduleCalls = system.scheduler.scheduleCalls
+
+  assert.deepEqual(system.view.lastState.entries, entries)
+  assert.deepEqual(system.view.lastState.visibleEntryIds, entries.map(
+    ({ id }) => id
+  ))
+  assert.deepEqual(system.view.lastState.availableTags, [
+    'WÄLDCHEN',
+    'Gemeinsam',
+    'Andere',
+  ])
+
+  actions.onChangeSearchQuery('  aUrOrA  ')
+  assert.equal(system.view.lastState.searchQuery, '  aUrOrA  ')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, entries.map(
+    ({ id }) => id
+  ))
+  assert.equal(system.view.lastState.hasActiveFilters, true)
+  assert.deepEqual(system.view.lastState.focusTarget, {
+    type: 'searchInput',
+  })
+
+  actions.onChangeCalendarDateFilter('2048-02-29')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [
+    firstEntry.id,
+    secondEntry.id,
+  ])
+  assert.deepEqual(system.view.lastState.focusTarget, {
+    type: 'calendarDateFilter',
+  })
+
+  actions.onChangeTagFilter('WÄLDCHEN')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [firstEntry.id])
+  assert.equal(system.view.lastState.selectedTag, 'WÄLDCHEN')
+  assert.equal(system.view.lastState.filteredEmptyState, false)
+  assert.deepEqual(system.view.lastState.focusTarget, { type: 'tagFilter' })
+  assert.deepEqual(system.view.lastState.entries, entries)
+
+  actions.onResetFilters()
+  assert.equal(system.view.lastState.searchQuery, '')
+  assert.equal(system.view.lastState.calendarDateFilter, '')
+  assert.equal(system.view.lastState.selectedTag, '')
+  assert.equal(system.view.lastState.hasActiveFilters, false)
+  assert.equal(system.view.lastState.filteredEmptyState, false)
+  assert.deepEqual(system.view.lastState.visibleEntryIds, entries.map(
+    ({ id }) => id
+  ))
+  assert.deepEqual(system.view.lastState.focusTarget, {
+    type: 'searchInput',
+  })
+
+  actions.onChangeSearchQuery(' \t\n ')
+  assert.equal(system.view.lastState.searchQuery, ' \t\n ')
+  assert.equal(system.view.lastState.hasActiveFilters, false)
+  assert.deepEqual(system.view.lastState.visibleEntryIds, entries.map(
+    ({ id }) => id
+  ))
+  actions.onResetFilters()
+  assert.equal(system.view.lastState.searchQuery, '')
+
+  assert.equal(system.scheduler.scheduleCalls, scheduleCalls)
+  assert.equal(system.serviceDouble.calls.loadLog.length, 1)
+  assertNoMutationCalls(system.serviceDouble)
+})
+
+test('akzeptiert exakt 200 Query-Codeeinheiten und verwirft ungeeignete Filterwerte vollständig', () => {
+  const system = createControllerSystem()
+  const actions = openAndFlush(system)
+  const acceptedQuery = 'x'.repeat(200)
+  const scheduleCalls = system.scheduler.scheduleCalls
+
+  actions.onChangeSearchQuery(acceptedQuery)
+  assert.equal(system.view.lastState.searchQuery, acceptedQuery)
+  assert.equal(system.view.lastState.phase, 'ready')
+  assert.equal(system.view.lastState.filteredEmptyState, true)
+
+  let renderCount = system.view.renders.length
+  const acceptedState = system.view.lastState
+  actions.onChangeSearchQuery('x'.repeat(201))
+  assert.equal(system.view.renders.length, renderCount)
+  assert.strictEqual(system.view.lastState, acceptedState)
+
+  actions.onResetFilters()
+  const hostileValue = {
+    toString() {
+      throw new Error('fixture-filter-coercion-sentinel')
+    },
+  }
+
+  for (const invalidQuery of [null, undefined, false, 17, Symbol('query'), hostileValue]) {
+    renderCount = system.view.renders.length
+    assert.doesNotThrow(() => actions.onChangeSearchQuery(invalidQuery))
+    assert.equal(system.view.renders.length, renderCount)
+    assert.equal(system.view.lastState.searchQuery, '')
+  }
+
+  for (const invalidDate of [
+    '2047-02-29',
+    '0000-01-01',
+    '2048-2-29',
+    ' 2048-02-29 ',
+    null,
+    new Date('2048-02-29T00:00:00.000Z'),
+    hostileValue,
+  ]) {
+    renderCount = system.view.renders.length
+    assert.doesNotThrow(() =>
+      actions.onChangeCalendarDateFilter(invalidDate)
+    )
+    assert.equal(system.view.renders.length, renderCount)
+    assert.equal(system.view.lastState.calendarDateFilter, '')
+  }
+
+  for (const invalidTag of [
+    'prisma',
+    'Prisma ',
+    'Unbekannt',
+    null,
+    false,
+    hostileValue,
+  ]) {
+    renderCount = system.view.renders.length
+    assert.doesNotThrow(() => actions.onChangeTagFilter(invalidTag))
+    assert.equal(system.view.renders.length, renderCount)
+    assert.equal(system.view.lastState.selectedTag, '')
+  }
+
+  actions.onChangeCalendarDateFilter('2048-02-29')
+  assert.equal(system.view.lastState.calendarDateFilter, '2048-02-29')
+  actions.onChangeCalendarDateFilter('')
+  actions.onChangeTagFilter('Prisma')
+  assert.equal(system.view.lastState.selectedTag, 'Prisma')
+
+  renderCount = system.view.renders.length
+  actions.onChangeTagFilter('prisma')
+  assert.equal(system.view.renders.length, renderCount)
+  assert.equal(system.view.lastState.selectedTag, 'Prisma')
+
+  assert.equal(system.scheduler.scheduleCalls, scheduleCalls)
+  assert.equal(system.serviceDouble.calls.loadLog.length, 1)
+  assertNoMutationCalls(system.serviceDouble)
+})
+
+test('beschränkt Overview-Auswahl auf sichtbare IDs und bewahrt Filter durch Detail und Formulare', () => {
+  const firstEntry = createEntry({
+    title: 'Synthetischer sichtbarer Nebeltreffer',
+  })
+  const secondEntry = createSecondEntry({
+    title: 'Synthetische verborgene Sonnenkarte',
+  })
+  const system = createControllerSystem({
+    serviceOptions: {
+      loadResult: createLoadSuccess(
+        createPrivateLog([firstEntry, secondEntry])
+      ),
+    },
+  })
+  const actions = openAndFlush(system)
+
+  actions.onChangeSearchQuery('Nebeltreffer')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [firstEntry.id])
+
+  let renderCount = system.view.renders.length
+  actions.onSelectEntry(secondEntry.id)
+  assert.equal(system.view.renders.length, renderCount)
+  assert.equal(system.view.lastState.selectedEntryId, null)
+
+  actions.onSelectEntry(firstEntry.id)
+  assert.equal(system.view.lastState.selectedEntryId, firstEntry.id)
+  assert.equal(system.view.lastState.searchQuery, 'Nebeltreffer')
+
+  renderCount = system.view.renders.length
+  actions.onSelectEntry(secondEntry.id)
+  assert.equal(system.view.renders.length, renderCount)
+  assert.equal(system.view.lastState.selectedEntryId, firstEntry.id)
+
+  actions.onOpenUpdateEntryForm(firstEntry.id)
+  assert.equal(system.view.lastState.form.type, 'updateEntry')
+  assert.equal(system.view.lastState.searchQuery, 'Nebeltreffer')
+  actions.onCancelForm()
+  assert.equal(system.view.lastState.selectedEntryId, firstEntry.id)
+  assert.equal(system.view.lastState.searchQuery, 'Nebeltreffer')
+  actions.onBackToOverview()
+
+  actions.onOpenCreateEntryForm()
+  assert.equal(system.view.lastState.form.type, 'createEntry')
+  assert.equal(system.view.lastState.searchQuery, 'Nebeltreffer')
+  actions.onCancelForm()
+  assert.equal(system.view.lastState.searchQuery, 'Nebeltreffer')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [firstEntry.id])
+  assert.equal(system.serviceDouble.calls.loadLog.length, 1)
+  assertNoMutationCalls(system.serviceDouble)
 })
 
 test('verwaltet Auswahl exakt case-sensitive und blockiert konkurrierende Auswahlwechsel', () => {
@@ -1493,6 +1782,41 @@ test('verwirft eine reine Delete-Bestätigung beim Close und setzt transiente Zu
   assert.equal(system.serviceDouble.calls.loadLog.length, 2)
 })
 
+test('behandelt Filter nicht als dirty und setzt sie bei Close und neuem Open-Lifecycle zurück', () => {
+  const entries = [createEntry(), createSecondEntry()]
+  const system = createControllerSystem({
+    serviceOptions: {
+      loadResult: createLoadSuccess(createPrivateLog(entries)),
+    },
+  })
+  const actions = openAndFlush(system)
+
+  actions.onChangeSearchQuery('Prismenkammer')
+  actions.onChangeCalendarDateFilter(entries[0].calendarDate)
+  actions.onChangeTagFilter('Prisma')
+  assert.equal(system.view.lastState.hasActiveFilters, true)
+
+  assert.equal(system.controller.close(), true)
+  assert.equal(system.view.unmountCalls, 1)
+  assertNoMutationCalls(system.serviceDouble)
+
+  system.controller.open()
+  assert.equal(system.view.lastState.phase, 'loading')
+  assert.equal(system.view.lastState.searchQuery, '')
+  assert.equal(system.view.lastState.calendarDateFilter, '')
+  assert.equal(system.view.lastState.selectedTag, '')
+  assert.deepEqual(system.view.lastState.availableTags, [])
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [])
+  system.scheduler.run(1)
+
+  assert.equal(system.view.lastState.phase, 'ready')
+  assert.equal(system.view.lastState.hasActiveFilters, false)
+  assert.deepEqual(system.view.lastState.visibleEntryIds, entries.map(
+    ({ id }) => id
+  ))
+  assert.equal(system.serviceDouble.calls.loadLog.length, 2)
+})
+
 test('berechnet Dirty fachlich und erlaubt Close nach unveränderter oder zurückgesetzter Eingabe', () => {
   const createSystem = createControllerSystem()
   const createActions = openAndFlush(createSystem)
@@ -1544,6 +1868,58 @@ test('hält Formular, Delete-Bestätigung und Fokusaktion gegenseitig ausschlie�
   assert.equal(system.serviceDouble.calls.setFeaturedEntry.length, 0)
   actions.onCancelDeleteEntry()
   assertNoMutationCalls(system.serviceDouble)
+})
+
+test('blockiert Filteraktionen in Detail, Formular, Delete-Bestätigung und laufender Mutation', () => {
+  const firstEntry = createEntry()
+  const initialLog = createPrivateLog([firstEntry, createSecondEntry()])
+  const featuredLog = createPrivateLog(
+    structuredClone(initialLog.entries),
+    { featuredEntryId: firstEntry.id }
+  )
+  let system
+  const serviceDouble = createServiceDouble({
+    loadResult: createLoadSuccess(initialLog),
+    featuredResult() {
+      assert.equal(system.view.lastState.phase, 'mutating')
+      const renderCount = system.view.renders.length
+      system.view.actions.onChangeSearchQuery('Während Mutation')
+      system.view.actions.onChangeCalendarDateFilter('2040-01-01')
+      system.view.actions.onChangeTagFilter('Fiktiv')
+      system.view.actions.onResetFilters()
+      assert.equal(system.view.renders.length, renderCount)
+      assert.equal(system.view.lastState.searchQuery, 'erfunden')
+      return createFeaturedSuccess(featuredLog, firstEntry.id, true)
+    },
+  })
+  system = createControllerSystem({ serviceDouble })
+  const actions = openAndFlush(system)
+
+  actions.onChangeSearchQuery('erfunden')
+  actions.onSelectEntry(firstEntry.id)
+  let renderCount = system.view.renders.length
+  actions.onChangeSearchQuery('Detail')
+  assert.equal(system.view.renders.length, renderCount)
+
+  actions.onOpenUpdateEntryForm(firstEntry.id)
+  renderCount = system.view.renders.length
+  actions.onChangeCalendarDateFilter('2036-04-18')
+  assert.equal(system.view.renders.length, renderCount)
+  actions.onCancelForm()
+  actions.onBackToOverview()
+
+  actions.onRequestDeleteEntry(firstEntry.id)
+  renderCount = system.view.renders.length
+  actions.onChangeTagFilter('Prisma')
+  actions.onResetFilters()
+  assert.equal(system.view.renders.length, renderCount)
+  actions.onCancelDeleteEntry()
+
+  actions.onSetFeaturedEntry(firstEntry.id)
+  assert.equal(system.serviceDouble.calls.setFeaturedEntry.length, 1)
+  assert.equal(system.view.lastState.searchQuery, 'erfunden')
+  assert.equal(system.view.lastState.featuredEntryId, firstEntry.id)
+  assert.equal(system.view.lastState.phase, 'ready')
 })
 
 test('lässt malformed oder zielinkonsistente Submissions nie bis zum Service gelangen', () => {
@@ -1725,6 +2101,87 @@ test('erstellt mit exakt einem Allowlist-Payload, Busy vor Service und blockiert
   assert.equal(system.view.lastState.featuredEntryId, initialEntry.id)
   assert.notEqual(system.view.lastState.statusMessage, '')
   assert.equal(system.view.lastState.statusMessageTone, 'success')
+})
+
+test('bewahrt aktive Filter bei Create und zeigt einen nicht passenden neuen Eintrag nur im Detail', () => {
+  const initialEntry = createEntry({
+    title: 'Erfundener Trefferkern vor Create',
+  })
+  const createdEntry = createSecondEntry({
+    id: 'lichtwald-entry-filter-created',
+    title: 'Synthetische neue Sonnenkarte',
+    text: 'Ein vollständig erfundener, nicht passender Create-Text.',
+    tags: ['Neu', 'Sonne'],
+  })
+  const resultLog = createPrivateLog([initialEntry, createdEntry])
+  let system
+  const serviceDouble = createServiceDouble({
+    loadResult: createLoadSuccess(createPrivateLog([initialEntry])),
+    createResult() {
+      assert.equal(system.view.lastState.phase, 'mutating')
+      assert.deepEqual(system.view.lastState.entries, [initialEntry])
+      assert.deepEqual(system.view.lastState.visibleEntryIds, [initialEntry.id])
+      return createCreateSuccess(resultLog, createdEntry)
+    },
+  })
+  system = createControllerSystem({ serviceDouble })
+  const actions = openAndFlush(system)
+
+  actions.onChangeSearchQuery('Trefferkern')
+  actions.onOpenCreateEntryForm()
+  actions.onSubmitForm(
+    createSubmission('createEntry', createEntryValues(createdEntry))
+  )
+
+  assert.equal(system.view.lastState.selectedEntryId, createdEntry.id)
+  assert.equal(system.view.lastState.searchQuery, 'Trefferkern')
+  assert.deepEqual(system.view.lastState.entries, resultLog.entries)
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [initialEntry.id])
+  assert.equal(system.view.lastState.filteredEmptyState, false)
+  actions.onBackToOverview()
+  assert.equal(system.view.lastState.selectedEntryId, null)
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [initialEntry.id])
+  assert.equal(system.serviceDouble.calls.createEntry.length, 1)
+  assert.equal(system.serviceDouble.calls.loadLog.length, 1)
+})
+
+test('bewahrt Filter auch bei einem kontrollierten Mutationfehler mit autoritativem Snapshot', () => {
+  const targetEntry = createEntry({
+    title: 'Erfundener Fehlerfilter',
+    tags: ['Fehleroption'],
+  })
+  const initialLog = createPrivateLog([targetEntry, createSecondEntry()])
+  const system = createControllerSystem({
+    serviceOptions: {
+      loadResult: createLoadSuccess(initialLog),
+      createResult: createMutationFailure({
+        lichtwaldLog: structuredClone(initialLog),
+      }),
+    },
+  })
+  const actions = openAndFlush(system)
+
+  actions.onChangeSearchQuery('Fehlerfilter')
+  actions.onChangeCalendarDateFilter(targetEntry.calendarDate)
+  actions.onChangeTagFilter('Fehleroption')
+  actions.onOpenCreateEntryForm()
+  actions.onSubmitForm(
+    createSubmission('createEntry', createEntryValues(createSecondEntry()))
+  )
+
+  assert.equal(system.view.lastState.phase, 'ready')
+  assert.equal(system.view.lastState.form.type, 'createEntry')
+  assert.equal(system.view.lastState.form.isSubmitting, false)
+  assert.equal(system.view.lastState.searchQuery, 'Fehlerfilter')
+  assert.equal(
+    system.view.lastState.calendarDateFilter,
+    targetEntry.calendarDate
+  )
+  assert.equal(system.view.lastState.selectedTag, 'Fehleroption')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [targetEntry.id])
+  assert.equal(system.view.lastState.hasActiveFilters, true)
+  assert.equal(system.serviceDouble.calls.createEntry.length, 1)
+  assert.equal(system.serviceDouble.calls.loadLog.length, 1)
 })
 
 test('hält Create-Draft und Eingaben selbst gegen mutierende Service-Doubles getrennt', () => {
@@ -2178,6 +2635,64 @@ test('ersetzt nach Update den gesamten autoritativen Snapshot und erhält die g�
   assert.equal(system.view.lastState.featuredEntryId, concurrentlyAddedEntry.id)
   assert.equal(system.view.lastState.selectedEntryId, targetEntry.id)
   assert.equal(system.view.lastState.form, null)
+  assert.equal(system.serviceDouble.calls.loadLog.length, 1)
+})
+
+test('hält ein aktualisiertes Detail sichtbar und entfernt es erst in der gefilterten Overview', () => {
+  const targetEntry = createEntry({
+    id: 'lichtwald-entry-filter-update-target',
+    title: 'Erfundener Filterstern',
+  })
+  const otherEntry = createSecondEntry({
+    id: 'lichtwald-entry-filter-update-other',
+    title: 'Synthetische Sonnenkarte',
+  })
+  const updatedEntry = createEntry({
+    id: targetEntry.id,
+    calendarDate: targetEntry.calendarDate,
+    title: 'Erfundene Karte ohne Suchwort',
+    text: 'Der aktualisierte synthetische Text passt nicht mehr.',
+    tags: ['Aktualisiert'],
+  })
+  const resultLog = createPrivateLog([updatedEntry, otherEntry])
+  const system = createControllerSystem({
+    serviceOptions: {
+      loadResult: createLoadSuccess(
+        createPrivateLog([targetEntry, otherEntry])
+      ),
+      updateResult: createUpdateSuccess(
+        resultLog,
+        targetEntry.id,
+        true
+      ),
+    },
+  })
+  const actions = openAndFlush(system)
+
+  actions.onChangeSearchQuery('Filterstern')
+  actions.onSelectEntry(targetEntry.id)
+  actions.onOpenUpdateEntryForm(targetEntry.id)
+  actions.onSubmitForm(
+    createSubmission(
+      'updateEntry',
+      createEntryValues(updatedEntry),
+      targetEntry.id
+    )
+  )
+
+  assert.equal(system.view.lastState.phase, 'ready')
+  assert.equal(system.view.lastState.selectedEntryId, targetEntry.id)
+  assert.equal(system.view.lastState.searchQuery, 'Filterstern')
+  assert.deepEqual(system.view.lastState.entries, resultLog.entries)
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [])
+  assert.equal(system.view.lastState.hasActiveFilters, true)
+  assert.equal(system.view.lastState.filteredEmptyState, true)
+
+  actions.onBackToOverview()
+  assert.equal(system.view.lastState.selectedEntryId, null)
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [])
+  assert.equal(system.view.lastState.phase, 'ready')
+  assert.equal(system.serviceDouble.calls.updateEntry.length, 1)
   assert.equal(system.serviceDouble.calls.loadLog.length, 1)
 })
 
@@ -2910,6 +3425,93 @@ test('löscht fokussiert atomar mit Busy vor genau einem Serviceaufruf und ohne 
   assert.equal(system.view.lastState.statusMessageTone, 'success')
 })
 
+test('reconciled Tag-Schreibweise nach Fokusmutation und fällt nach Delete auf alle Tags zurück', () => {
+  const targetEntry = createEntry({
+    id: 'lichtwald-entry-filter-tag-target',
+    tags: ['WALD'],
+  })
+  const remainingEntry = createSecondEntry({
+    id: 'lichtwald-entry-filter-tag-remaining',
+    tags: ['Andere'],
+  })
+  const initialLog = createPrivateLog([targetEntry, remainingEntry])
+  const recasedTarget = createEntry({
+    ...targetEntry,
+    tags: ['wald'],
+  })
+  const featuredLog = createPrivateLog(
+    [recasedTarget, remainingEntry],
+    { featuredEntryId: targetEntry.id }
+  )
+  const deleteLog = createPrivateLog([remainingEntry])
+  const system = createControllerSystem({
+    serviceOptions: {
+      loadResult: createLoadSuccess(initialLog),
+      featuredResult: createFeaturedSuccess(
+        featuredLog,
+        targetEntry.id,
+        true
+      ),
+      deleteResult: createDeleteSuccess(
+        deleteLog,
+        targetEntry.id,
+        true
+      ),
+    },
+  })
+  const actions = openAndFlush(system)
+
+  actions.onChangeTagFilter('WALD')
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [targetEntry.id])
+  actions.onSetFeaturedEntry(targetEntry.id)
+
+  assert.equal(system.view.lastState.selectedTag, 'wald')
+  assert.deepEqual(system.view.lastState.availableTags, ['wald', 'Andere'])
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [targetEntry.id])
+  assert.equal(system.view.lastState.hasActiveFilters, true)
+
+  actions.onRequestDeleteEntry(targetEntry.id)
+  actions.onConfirmDeleteEntry(targetEntry.id)
+
+  assert.equal(system.view.lastState.phase, 'ready')
+  assert.equal(system.view.lastState.selectedTag, '')
+  assert.deepEqual(system.view.lastState.availableTags, ['Andere'])
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [remainingEntry.id])
+  assert.equal(system.view.lastState.hasActiveFilters, false)
+  assert.equal(system.view.lastState.filteredEmptyState, false)
+  assert.equal(system.serviceDouble.calls.setFeaturedEntry.length, 1)
+  assert.equal(system.serviceDouble.calls.deleteEntry.length, 1)
+  assert.equal(system.serviceDouble.calls.loadLog.length, 1)
+})
+
+test('setzt Filter beim autoritativen Übergang zu einem wirklich leeren Snapshot zurück', () => {
+  const targetEntry = createEntry({ tags: ['Leerziel'] })
+  const emptyLog = createEmptyPrivateLog()
+  const system = createControllerSystem({
+    serviceOptions: {
+      loadResult: createLoadSuccess(createPrivateLog([targetEntry])),
+      deleteResult: createDeleteSuccess(emptyLog, targetEntry.id, false),
+    },
+  })
+  const actions = openAndFlush(system)
+
+  actions.onChangeSearchQuery('Prismenkammer')
+  actions.onChangeCalendarDateFilter(targetEntry.calendarDate)
+  actions.onChangeTagFilter('Leerziel')
+  actions.onRequestDeleteEntry(targetEntry.id)
+  actions.onConfirmDeleteEntry(targetEntry.id)
+
+  assert.equal(system.view.lastState.phase, 'empty')
+  assert.deepEqual(system.view.lastState.entries, [])
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [])
+  assert.deepEqual(system.view.lastState.availableTags, [])
+  assert.equal(system.view.lastState.searchQuery, '')
+  assert.equal(system.view.lastState.calendarDateFilter, '')
+  assert.equal(system.view.lastState.selectedTag, '')
+  assert.equal(system.view.lastState.hasActiveFilters, false)
+  assert.equal(system.view.lastState.filteredEmptyState, false)
+})
+
 test('erhält bei Delete eines nicht ausgewählten Eintrags eine weiterhin vorhandene Auswahl', () => {
   const deletedEntry = createEntry()
   const selectedEntry = createSecondEntry()
@@ -2960,6 +3562,63 @@ test('behält eine Delete-Bestätigung bei retryfähigem Fehler und redigiert fr
   assert.notEqual(system.view.lastState.deleteState.errorMessage, '')
   assert.deepEqual(system.view.lastState.entries, initialLog.entries)
   assertFeedbackIsRedacted(system.view.lastState, [privateMarker])
+  assert.equal(system.serviceDouble.calls.deleteEntry.length, 1)
+  assert.equal(system.serviceDouble.calls.loadLog.length, 1)
+})
+
+test('schließt eine durch den Fehlersnapshot unsichtbar gewordene Delete-Bestätigung', () => {
+  const query = 'synthetisches-nebelzeichen'
+  const privateMarker = 'fixture-filtered-delete-error-sentinel'
+  const targetEntry = createEntry({
+    title: `Erfundenes ${query}`,
+  })
+  const changedTargetEntry = createEntry({
+    title: 'Erfundene aktualisierte Laterne',
+    text: 'Der autoritative Fehlersnapshot enthält nur neutrale Testwörter.',
+    tags: ['Prisma', 'Modell'],
+  })
+  const remainingEntry = createSecondEntry()
+  const initialLog = createPrivateLog([targetEntry, remainingEntry])
+  const failureLog = createPrivateLog([changedTargetEntry, remainingEntry])
+  const system = createControllerSystem({
+    serviceOptions: {
+      loadResult: createLoadSuccess(initialLog),
+      deleteResult: createMutationFailure({
+        status: 'writeFailed',
+        code: 'lichtwaldLogStorageWriteFailed',
+        lichtwaldLog: failureLog,
+        message: privateMarker,
+      }),
+    },
+  })
+  const actions = openAndFlush(system)
+  actions.onChangeSearchQuery(query)
+  actions.onRequestDeleteEntry(targetEntry.id)
+  actions.onConfirmDeleteEntry(targetEntry.id)
+
+  assert.deepEqual(system.view.lastState.entries, failureLog.entries)
+  assert.deepEqual(system.view.lastState.visibleEntryIds, [])
+  assert.equal(system.view.lastState.filteredEmptyState, true)
+  assert.equal(system.view.lastState.deleteState.entryId, null)
+  assert.equal(system.view.lastState.deleteState.isSubmitting, false)
+  assert.equal(system.view.lastState.deleteState.errorMessage, '')
+  assert.notEqual(system.view.lastState.errorMessage, '')
+  assert.deepEqual(system.view.lastState.focusTarget, { type: 'heading' })
+  assertFeedbackIsRedacted(system.view.lastState, [
+    privateMarker,
+    query,
+    targetEntry.id,
+    changedTargetEntry.title,
+    changedTargetEntry.text,
+  ])
+
+  actions.onResetFilters()
+  assert.deepEqual(
+    system.view.lastState.visibleEntryIds,
+    failureLog.entries.map(({ id }) => id)
+  )
+  actions.onRequestDeleteEntry(targetEntry.id)
+  assert.equal(system.view.lastState.deleteState.entryId, targetEntry.id)
   assert.equal(system.serviceDouble.calls.deleteEntry.length, 1)
   assert.equal(system.serviceDouble.calls.loadLog.length, 1)
 })
@@ -3576,6 +4235,14 @@ test('entkoppelt Serviceergebnisse dauerhaft von interner Projektion und später
   assert.deepEqual(selectedView.entries[0].tags, createEntry().tags)
   assert.notStrictEqual(selectedView, firstReadyView)
   assert.notStrictEqual(selectedView.entries, firstReadyView.entries)
+  assert.notStrictEqual(
+    selectedView.visibleEntryIds,
+    firstReadyView.visibleEntryIds
+  )
+  assert.notStrictEqual(
+    selectedView.availableTags,
+    firstReadyView.availableTags
+  )
   assert.notStrictEqual(selectedView.entries[0], firstReadyView.entries[0])
   assert.notStrictEqual(
     selectedView.entries[0].tags,
@@ -3638,6 +4305,15 @@ test('bleibt nach nachträglicher Mutation eines erfolgreichen Serviceergebnisse
   actions.onBackToOverview()
 
   assert.deepEqual(system.view.lastState.entries, expectedEntries)
+  assert.deepEqual(system.view.lastState.visibleEntryIds, expectedEntries.map(
+    ({ id }) => id
+  ))
+  assert.deepEqual(system.view.lastState.availableTags, [
+    'Prisma',
+    'Fiktiv',
+    'Komet',
+    'Modell',
+  ])
   assert.equal(system.view.lastState.selectedEntryId, null)
   assert.notStrictEqual(
     system.view.lastState.entries,
@@ -3655,6 +4331,14 @@ test('wehrt Mutationsversuche eines View-Ports auf Einträge, Tags, Formular und
     renderHook(viewModel) {
       const attempts = [
         () => viewModel.entries.push(createSecondEntry()),
+        () => viewModel.visibleEntryIds.push('view-visible-id-mutation'),
+        () => viewModel.availableTags.push('View-Filter-Tag-Mutation'),
+        () => {
+          viewModel.searchQuery = 'View-Query-Mutation'
+        },
+        () => {
+          viewModel.hasActiveFilters = false
+        },
         () => {
           if (viewModel.entries[0]) {
             viewModel.entries[0].title = 'View-Mutation'
@@ -3734,6 +4418,54 @@ test('wehrt Mutationsversuche eines View-Ports auf Einträge, Tags, Formular und
   )
   assert.deepEqual(system.view.lastState.entries, resultLog.entries)
   assert.equal(system.view.lastState.form, null)
+})
+
+test('entfernt Success- oder Notice-Feedback bei Filteränderungen ohne private Werte zu spiegeln', () => {
+  const privateQuery = 'SYNTHETIC-PRIVATE-FILTER-QUERY-MARKER'
+  const privateTag = 'SYNTH-PRIVATE-FILTER-TAG'
+  const privateId = 'lichtwald-entry-private-filter-feedback-marker'
+  const entry = createEntry({
+    id: privateId,
+    title: privateQuery,
+    tags: [privateTag],
+  })
+  const initialLog = createPrivateLog([entry])
+  const system = createControllerSystem({
+    serviceOptions: {
+      loadResult: createLoadSuccess(initialLog),
+      featuredResult: createFeaturedSuccess(initialLog, null, false),
+    },
+  })
+  const actions = openAndFlush(system)
+
+  actions.onSetFeaturedEntry(null)
+  assert.notEqual(system.view.lastState.statusMessage, '')
+  assert.equal(system.view.lastState.statusMessageTone, 'notice')
+
+  actions.onChangeSearchQuery(privateQuery)
+  assert.equal(system.view.lastState.statusMessage, '')
+  actions.onChangeCalendarDateFilter(entry.calendarDate)
+  actions.onChangeTagFilter(privateTag)
+
+  const protectedProjection = JSON.stringify({
+    statusMessage: system.view.lastState.statusMessage,
+    errorMessage: system.view.lastState.errorMessage,
+    focusTarget: system.view.lastState.focusTarget,
+    formError: system.view.lastState.form?.errorMessage ?? '',
+    deleteError: system.view.lastState.deleteState.errorMessage,
+    featuredError: system.view.lastState.featuredState.errorMessage,
+  })
+  for (const privateMarker of [
+    privateQuery,
+    privateTag,
+    entry.calendarDate,
+    privateId,
+  ]) {
+    assert.equal(protectedProjection.includes(privateMarker), false)
+  }
+  assert.deepEqual(system.view.lastState.focusTarget, { type: 'tagFilter' })
+  assert.equal(system.serviceDouble.calls.loadLog.length, 1)
+  assert.equal(system.serviceDouble.calls.setFeaturedEntry.length, 1)
 })
 
 test('behandelt markupähnlichen Inhalt ausschließlich als opaken Plain Text und protokolliert nichts', () => {
@@ -3838,6 +4570,12 @@ test('berührt weder globalThis.localStorage noch fremde Service-, Storage- oder
     assert.doesNotThrow(() => {
       controller.open()
       scheduler.run(0)
+      const scheduleCalls = scheduler.scheduleCalls
+      view.actions.onChangeSearchQuery('Prismenkammer')
+      view.actions.onChangeCalendarDateFilter(createEntry().calendarDate)
+      view.actions.onChangeTagFilter('Prisma')
+      view.actions.onResetFilters()
+      assert.equal(scheduler.scheduleCalls, scheduleCalls)
       view.actions.onSelectEntry(createEntry().id)
       view.actions.onBackToOverview()
       controller.close()
@@ -3952,6 +4690,9 @@ test('persistiert den realen In-Memory-Fluss ausschließlich über Service, Stor
     text: 'Ein dauerhaft aktualisierter, frei erfundener Testinhalt.',
     tags: ['Aktualisiert', 'Integration'],
   }
+  updateActions.onChangeSearchQuery(createValues.title)
+  updateActions.onChangeCalendarDateFilter(createValues.calendarDate)
+  updateActions.onChangeTagFilter(createValues.tags[0])
   updateActions.onSelectEntry(entryId)
   updateActions.onOpenUpdateEntryForm(entryId)
   updateActions.onSubmitForm(
@@ -3986,6 +4727,20 @@ test('persistiert den realen In-Memory-Fluss ausschließlich über Service, Stor
   assert.equal(Object.hasOwn(storedRootAfterUpdate, 'deleteState'), false)
   assert.equal(Object.hasOwn(storedRootAfterUpdate, 'statusMessage'), false)
   assert.equal(Object.hasOwn(storedRootAfterUpdate, 'focusTarget'), false)
+  for (const transientFilterProperty of [
+    'searchQuery',
+    'calendarDateFilter',
+    'selectedTag',
+    'availableTags',
+    'visibleEntryIds',
+    'hasActiveFilters',
+    'filteredEmptyState',
+  ]) {
+    assert.equal(
+      Object.hasOwn(storedRootAfterUpdate, transientFilterProperty),
+      false
+    )
+  }
 
   const confirmationSystem = createRealControllerSystem(fakeStorage)
   const confirmationActions = openAndFlush(confirmationSystem)

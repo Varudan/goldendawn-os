@@ -7,6 +7,7 @@ import {
 
 const ROOT_ERROR_MESSAGE =
   'Für LichtwaldLog wird ein gültiges Root-Element benötigt.'
+const SEARCH_QUERY_MAX_LENGTH = 200
 
 const ACTION_NAMES = Object.freeze([
   'onRetryLoad',
@@ -21,6 +22,10 @@ const ACTION_NAMES = Object.freeze([
   'onCancelDeleteEntry',
   'onConfirmDeleteEntry',
   'onSetFeaturedEntry',
+  'onChangeSearchQuery',
+  'onChangeCalendarDateFilter',
+  'onChangeTagFilter',
+  'onResetFilters',
 ])
 
 const FORM_TYPES = Object.freeze({
@@ -214,12 +219,47 @@ function createFocusReferences() {
     deleteAlerts: new Map(),
     featuredAlert: null,
     status: null,
+    searchInput: null,
+    calendarDateFilter: null,
+    tagFilter: null,
   }
 }
 
 function getEntries(viewModel) {
   return Array.isArray(viewModel?.entries)
     ? viewModel.entries
+    : []
+}
+
+function getVisibleEntries(viewModel, entries) {
+  const visibleEntryIdsProperty = readOwnDataProperty(
+    viewModel,
+    'visibleEntryIds'
+  )
+
+  if (!visibleEntryIdsProperty.found) return [...entries]
+  if (!Array.isArray(visibleEntryIdsProperty.value)) return []
+
+  const visibleEntryIds = new Set(
+    visibleEntryIdsProperty.value.filter(
+      (entryId) => typeof entryId === 'string'
+    )
+  )
+
+  return entries.filter((entry) => visibleEntryIds.has(entry.id))
+}
+
+function getAvailableTags(viewModel) {
+  const availableTagsProperty = readOwnDataProperty(
+    viewModel,
+    'availableTags'
+  )
+
+  return (
+    availableTagsProperty.found &&
+    Array.isArray(availableTagsProperty.value)
+  )
+    ? availableTagsProperty.value.filter((tag) => typeof tag === 'string')
     : []
 }
 
@@ -702,9 +742,252 @@ function createEmptyState() {
   return state
 }
 
+function configureFilterControl(control, { id, name, type = null }) {
+  setElementId(control, id)
+  control.name = name
+  control.setAttribute('name', name)
+
+  if (type !== null) {
+    control.type = type
+    control.setAttribute('type', type)
+  }
+}
+
+function createFilterPanel(
+  viewModel,
+  eventContext,
+  focusReferences,
+  interactionBlocked
+) {
+  const panel = createElement(
+    'section',
+    viewModel?.hasActiveFilters === true
+      ? 'lichtwald-log-filters lichtwald-log-filters--active'
+      : 'lichtwald-log-filters'
+  )
+  panel.setAttribute('aria-labelledby', 'lichtwald-log-filters-heading')
+  panel.setAttribute('aria-busy', String(interactionBlocked))
+
+  const panelHeader = createElement(
+    'div',
+    'lichtwald-log-filters__header'
+  )
+  const heading = createElement(
+    'h3',
+    'lichtwald-log-filters__heading',
+    'Einträge durchsuchen und filtern'
+  )
+  setElementId(heading, 'lichtwald-log-filters-heading')
+  panelHeader.append(heading)
+
+  if (viewModel?.hasActiveFilters === true) {
+    panelHeader.append(
+      createElement(
+        'p',
+        'lichtwald-log-filters__active-state',
+        'Suche oder Filter aktiv'
+      )
+    )
+  }
+
+  const fields = createElement('div', 'lichtwald-log-filters__grid')
+  const searchField = createElement(
+    'div',
+    'lichtwald-log-filters__field lichtwald-log-filters__field--search'
+  )
+  const searchLabel = createElement(
+    'label',
+    'lichtwald-log-filters__label',
+    'Einträge durchsuchen'
+  )
+  searchLabel.setAttribute('for', 'lichtwald-log-search')
+  const searchInput = createElement(
+    'input',
+    'form-control lichtwald-log-filters__control'
+  )
+  configureFilterControl(searchInput, {
+    id: 'lichtwald-log-search',
+    name: 'lichtwaldLogSearch',
+    type: 'search',
+  })
+  searchInput.maxLength = SEARCH_QUERY_MAX_LENGTH
+  searchInput.setAttribute('maxlength', String(SEARCH_QUERY_MAX_LENGTH))
+  searchInput.autocomplete = 'off'
+  searchInput.setAttribute('autocomplete', 'off')
+  searchInput.spellcheck = false
+  searchInput.setAttribute('spellcheck', 'false')
+  searchInput.value = readOwnString(viewModel, 'searchQuery')
+  searchInput.disabled = interactionBlocked
+  searchInput.setAttribute(
+    'aria-describedby',
+    'lichtwald-log-search-hint'
+  )
+  const searchHint = createElement(
+    'small',
+    'lichtwald-log-filters__hint',
+    'Durchsucht Kalenderdatum, Titel, Text und Tags. Groß- und Kleinschreibung werden nicht unterschieden.'
+  )
+  setElementId(searchHint, 'lichtwald-log-search-hint')
+  searchInput.addEventListener('input', () => {
+    if (searchInput.disabled || !eventContext.isCurrent()) return
+
+    eventContext.call(
+      'onChangeSearchQuery',
+      [searchInput.value],
+      readCaretMetadata(searchInput, 'searchQuery')
+    )
+  })
+  focusReferences.searchInput = searchInput
+  searchField.append(searchLabel, searchInput, searchHint)
+
+  const calendarDateField = createElement(
+    'div',
+    'lichtwald-log-filters__field'
+  )
+  const calendarDateLabel = createElement(
+    'label',
+    'lichtwald-log-filters__label',
+    'Nach Kalenderdatum filtern'
+  )
+  calendarDateLabel.setAttribute(
+    'for',
+    'lichtwald-log-calendar-date-filter'
+  )
+  const calendarDateInput = createElement(
+    'input',
+    'form-control lichtwald-log-filters__control'
+  )
+  configureFilterControl(calendarDateInput, {
+    id: 'lichtwald-log-calendar-date-filter',
+    name: 'lichtwaldLogCalendarDateFilter',
+    type: 'date',
+  })
+  calendarDateInput.value = readOwnString(
+    viewModel,
+    'calendarDateFilter'
+  )
+  calendarDateInput.disabled = interactionBlocked
+  calendarDateInput.addEventListener('change', () => {
+    if (calendarDateInput.disabled || !eventContext.isCurrent()) return
+
+    eventContext.call(
+      'onChangeCalendarDateFilter',
+      [calendarDateInput.value]
+    )
+  })
+  focusReferences.calendarDateFilter = calendarDateInput
+  calendarDateField.append(calendarDateLabel, calendarDateInput)
+
+  const tagField = createElement('div', 'lichtwald-log-filters__field')
+  const tagLabel = createElement(
+    'label',
+    'lichtwald-log-filters__label',
+    'Nach Tag filtern'
+  )
+  tagLabel.setAttribute('for', 'lichtwald-log-tag-filter')
+  const tagSelect = createElement(
+    'select',
+    'form-control lichtwald-log-filters__control'
+  )
+  configureFilterControl(tagSelect, {
+    id: 'lichtwald-log-tag-filter',
+    name: 'lichtwaldLogTagFilter',
+  })
+  const allTagsOption = createElement('option', '', 'Alle Tags')
+  allTagsOption.value = ''
+  tagSelect.append(allTagsOption)
+
+  for (const tag of getAvailableTags(viewModel)) {
+    if (tag.length === 0) continue
+    const option = createElement('option', '', tag)
+    option.value = tag
+    tagSelect.append(option)
+  }
+
+  tagSelect.value = readOwnString(viewModel, 'selectedTag')
+  tagSelect.disabled = interactionBlocked
+  tagSelect.addEventListener('change', () => {
+    if (tagSelect.disabled || !eventContext.isCurrent()) return
+
+    eventContext.call('onChangeTagFilter', [tagSelect.value])
+  })
+  focusReferences.tagFilter = tagSelect
+  tagField.append(tagLabel, tagSelect)
+  fields.append(searchField, calendarDateField, tagField)
+  panel.append(panelHeader, fields)
+
+  if (viewModel?.hasActiveFilters === true) {
+    const actions = createElement('div', 'lichtwald-log-filters__actions')
+    actions.append(
+      createButton(
+        'Suche und Filter zurücksetzen',
+        'button button--secondary lichtwald-log-filters__reset',
+        () => eventContext.call('onResetFilters'),
+        { disabled: interactionBlocked }
+      )
+    )
+    panel.append(actions)
+  }
+
+  return panel
+}
+
+function createResultStatus(visibleCount, totalCount, hasActiveFilters) {
+  let message
+
+  if (hasActiveFilters) {
+    message = totalCount === 1
+      ? `${visibleCount} von 1 Eintrag`
+      : `${visibleCount} von ${totalCount} Einträgen`
+  } else {
+    message = totalCount === 1
+      ? '1 Eintrag'
+      : `${totalCount} Einträge`
+  }
+
+  const status = createElement(
+    'p',
+    'lichtwald-log-results-status',
+    message
+  )
+  status.setAttribute('role', 'status')
+  status.setAttribute('aria-live', 'polite')
+  status.setAttribute('aria-atomic', 'true')
+  return status
+}
+
+function createFilteredEmptyState(
+  eventContext,
+  interactionBlocked
+) {
+  const state = createElement(
+    'section',
+    'lichtwald-log-state lichtwald-log-state--filtered-empty'
+  )
+  const icon = createElement('span', 'lichtwald-log-state__icon', '0')
+  icon.setAttribute('aria-hidden', 'true')
+  state.append(
+    icon,
+    createElement('h3', '', 'Keine passenden Einträge'),
+    createElement(
+      'p',
+      '',
+      'Passe die Suche oder Filter an, um wieder Einträge anzuzeigen.'
+    ),
+    createButton(
+      'Suche und Filter zurücksetzen',
+      'button button--secondary',
+      () => eventContext.call('onResetFilters'),
+      { disabled: interactionBlocked }
+    )
+  )
+  return state
+}
+
 function createOverview(
   viewModel,
   entries,
+  visibleEntries,
   eventContext,
   focusReferences,
   interactionBlocked,
@@ -744,16 +1027,44 @@ function createOverview(
   overview.append(header)
 
   if (entries.length === 0) {
-    overview.append(createEmptyState())
+    overview.append(
+      createResultStatus(0, 0, false),
+      createEmptyState()
+    )
+    return overview
+  }
+
+  const hasActiveFilters = viewModel?.hasActiveFilters === true
+  overview.append(
+    createFilterPanel(
+      viewModel,
+      eventContext,
+      focusReferences,
+      interactionBlocked
+    ),
+    createResultStatus(
+      visibleEntries.length,
+      entries.length,
+      hasActiveFilters
+    )
+  )
+
+  if (visibleEntries.length === 0) {
+    overview.append(
+      createFilteredEmptyState(eventContext, interactionBlocked)
+    )
     return overview
   }
 
   const grid = createElement('div', 'lichtwald-log-entry-grid')
-  entries.forEach((entry, entryIndex) => {
+  const entryIndexes = new Map(
+    entries.map((entry, entryIndex) => [entry.id, entryIndex])
+  )
+  visibleEntries.forEach((entry) => {
     grid.append(
       createEntryCard(
         entry,
-        entryIndex,
+        entryIndexes.get(entry.id),
         viewModel,
         eventContext,
         focusReferences,
@@ -1445,6 +1756,12 @@ function resolveFocusTarget(
       return focusReferences.featuredAlert
     case 'status':
       return focusReferences.status
+    case 'searchInput':
+      return focusReferences.searchInput
+    case 'calendarDateFilter':
+      return focusReferences.calendarDateFilter
+    case 'tagFilter':
+      return focusReferences.tagFilter
     default:
       return null
   }
@@ -1478,12 +1795,23 @@ function restoreCaretSafely(element, caretMetadata) {
   try {
     const setSelectionRange = element.setSelectionRange
     if (typeof setSelectionRange !== 'function') return
+    const valueLength = typeof element.value === 'string'
+      ? element.value.length
+      : 0
+    const selectionStart = Math.min(
+      caretMetadata.selectionStart,
+      valueLength
+    )
+    const selectionEnd = Math.min(
+      Math.max(caretMetadata.selectionEnd, selectionStart),
+      valueLength
+    )
     Reflect.apply(
       setSelectionRange,
       element,
       [
-        caretMetadata.selectionStart,
-        caretMetadata.selectionEnd,
+        selectionStart,
+        selectionEnd,
       ]
     )
   } catch {
@@ -1497,9 +1825,18 @@ function isCaretTarget(
   focusReferences,
   caretMetadata
 ) {
+  const focusType = readFocusTargetProperty(focusTarget, 'type')
+
+  if (
+    focusType === 'searchInput' &&
+    caretMetadata?.fieldName === 'searchQuery'
+  ) {
+    return focusReferences.searchInput === element
+  }
+
   if (
     !caretMetadata ||
-    readFocusTargetProperty(focusTarget, 'type') !== 'formField' ||
+    focusType !== 'formField' ||
     readFocusTargetProperty(focusTarget, 'fieldName') !==
       caretMetadata.fieldName
   ) {
@@ -1555,6 +1892,7 @@ export function createLichtwaldLogView(rootElement) {
       },
     }
     const entries = getEntries(viewModel)
+    const visibleEntries = getVisibleEntries(viewModel, entries)
     const isLoading = viewModel?.phase === 'loading'
     const isPhaseMutating = viewModel?.phase === 'mutating'
     const isFormSubmitting =
@@ -1644,6 +1982,7 @@ export function createLichtwaldLogView(rootElement) {
             createOverview(
               viewModel,
               entries,
+              visibleEntries,
               eventContext,
               focusReferences,
               interactionBlocked,
@@ -1688,6 +2027,18 @@ export function createLichtwaldLogView(rootElement) {
         )
       ) {
         restoreCaretSafely(focusTargetElement, caretMetadata)
+      } else if (
+        didFocus &&
+        readFocusTargetProperty(focusTarget, 'type') === 'searchInput' &&
+        focusTargetElement === focusReferences.searchInput &&
+        focusTargetElement?.value === ''
+      ) {
+        restoreCaretSafely(focusTargetElement, {
+          fieldName: 'searchQuery',
+          tagIndex: null,
+          selectionStart: 0,
+          selectionEnd: 0,
+        })
       } else if (
         !didFocus &&
         focusTargetElement !== focusReferences.heading

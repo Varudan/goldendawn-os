@@ -21,16 +21,17 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | LearningHub Local MVP veröffentlicht; LichtwaldLog Foundations sowie Anwendungskomposition, Navigation und lokaler CRUD-/Fokusfluss implementiert; Sync-Vertrag bleibt Zielzustand |
-| Letzte Aktualisierung | 2026-07-31 |
+| Status | `v0.2.1` aktuelle Paket- und Releaseversion; LichtwaldLog Foundations, Anwendungskomposition, Navigation sowie lokaler CRUD-, Fokus-, Such- und Filterfluss implementiert; Sync-Vertrag bleibt Zielzustand |
+| Letzte Aktualisierung | 2026-08-01 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
 die lokale LearningTestBank und abgeschlossene LearningTestAttempts. Es
 dokumentiert außerdem den implementierten LichtwaldLog-Schema-1-Vertrag, seine
 begrenzte private Full-Snapshot-Persistenz, die darauf aufbauenden lokalen
-Service-, Controller- sowie isolierte View- und CSS-Foundation und deren
-Anwendungskomposition in `src/main.js`. Es dokumentiert außerdem die
+Service-, Controller- sowie isolierte View- und CSS-Foundation, die reine
+lokale Such- und Filterableitung und deren Anwendungskomposition in
+`src/main.js`. Es dokumentiert außerdem die
 maschinenlesbare Sprache zwischen dem GoldenDawn-OS-Frontend, dem SyncAgent,
 dem DataAgent und dem TestAgent und konkretisiert die Grenzen aus `AGENTS.md`,
 `docs/architecture.md` und `docs/security.md`.
@@ -69,9 +70,11 @@ CSS-Foundation stellt diese Projektion sicher dar und ist über den gemeinsamen
 Navigation mit dem sichtbaren Status `In Arbeit` erreichbar; der lokale
 UI-CRUD- und Fokusfluss ist vollständig über die Anwendung bedienbar und real
 im Browser auf Desktop mit `1440 × 1000` sowie bei exakt `390 × 844` geprüft.
-Suche, Filter und die getrennte synthetische Demo-Integration folgen in
-weiteren Slices. Die lokalen Foundations und ihre Komposition führen keine
-externe Aktion ein.
+Die lokale Textsuche über Kalenderdatum, Titel, Text und Tags sowie exakte
+Kalenderdatum- und Tagfilter sind als reine flüchtige Controllerableitung
+implementiert. Nur die getrennte synthetische Demo-Integration folgt in einem
+weiteren fachlichen Slice. Die lokalen Foundations und ihre Komposition führen
+keine externe Aktion ein.
 
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
@@ -174,9 +177,10 @@ Controller-Foundations und die isolierte View- und CSS-Foundation
 implementiert. `src/main.js` komponiert sie über den gemeinsamen
 `StorageAdapter`; Navigation und der vollständig über die Anwendung bedienbare
 UI-CRUD- und Fokusfluss sind ebenfalls implementiert und real im Browser auf
-Desktop sowie bei exakt `390 × 844` geprüft. Suche, Filter und die getrennte
-synthetische Demo-Integration bleiben spätere Slices desselben rein lokalen
-Meilensteins.
+Desktop sowie bei exakt `390 × 844` geprüft. Lokale Textsuche sowie exakte
+Kalenderdatum- und Tagfilter sind ebenfalls implementiert und nicht
+persistiert. Die getrennte synthetische Demo-Integration bleibt der einzige
+spätere fachliche Slice desselben rein lokalen Meilensteins.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -1555,7 +1559,8 @@ Controller-Foundation sowie isolierte View- und CSS-Foundation des rein lokalen
 LichtwaldLogs sind implementiert und über den gemeinsamen `StorageAdapter` in
 `src/main.js` komponiert. Sie umfassen das Schema-1-Modul
 `lichtwaldLogContract.js`, den reinen Validator `validateLichtwaldLog`,
-synthetische Contract-Tests, `createLichtwaldLogStorage` hinter dem
+synthetische Contract-Tests, das reine Modul `lichtwaldLogSearch.js`,
+`createLichtwaldLogStorage` hinter dem
 gemeinsamen `StorageAdapter` sowie `createLichtwaldLogService` als
 Anwendungsgrenze und `createLichtwaldLogController` als flüchtige
 UI-Koordinationsgrenze und `createLichtwaldLogView` als isolierte DOM-Grenze.
@@ -1568,8 +1573,11 @@ temporären Chrome-Profil auf Desktop mit `1440 × 1000` sowie bei exakt
 Dirty-Guard-, Delete- und Reload-Fluss, Tastaturfokus, Live-Regionen, der
 sichtbare `3px`-Fokusrahmen sowie fehlender horizontaler Seitenoverflow wurden
 bestätigt. Es gab 0 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions und
-0 externe Requests. Suche, Filter und die getrennte synthetische
-Demo-Integration sind noch offen.
+0 externe Requests. Die lokale Suche sowie exakte Kalenderdatum- und Tagfilter
+wurden einschließlich AND-Verknüpfung, Leerzustand, Reset, Caretfokus,
+gefilterten Mutationsflüssen und ausbleibenden Storage-Schreiboperationen real
+im Browser geprüft und sind permanent automatisiert abgedeckt. Nur die getrennte synthetische
+Demo-Integration ist fachlich noch offen.
 Vertrag, View, Controller, Service, Storage und Anwendungskomposition führen
 weder eine externe Aktion noch einen Zugriff durch `SyncAgent`, `DataAgent`
 oder `TestAgent` ein.
@@ -1726,6 +1734,61 @@ gemeldet. Die Prüfung trimmt, sortiert, dedupliziert oder ergänzt keine Werte.
 | `duplicateTag` | Ein Tag kommt im selben Eintrag case-insensitive mehrfach vor. |
 | `featuredEntryNotFound` | Die gültig geformte Fokus-ID referenziert keine gültige vorhandene Entry-ID. |
 
+##### Reine lokale Such- und Filterableitung
+
+`lichtwaldLogSearch.js` ergänzt den Vertrag ausschließlich um eine reine,
+flüchtige Ableitung. Seine öffentliche API besteht exakt aus:
+
+```js
+export const ALL_LICHTWALD_LOG_TAGS = ''
+export const LICHTWALD_LOG_SEARCH_QUERY_MAX_LENGTH = 200
+
+export function getLichtwaldLogFilterTags(entries) {}
+
+export function filterLichtwaldLogEntries(
+  entries,
+  {
+    query = '',
+    calendarDate = '',
+    tag = ALL_LICHTWALD_LOG_TAGS,
+  } = {}
+) {}
+```
+
+Für den Suchvergleich wird ausschließlich die äußere Query-Whitespace entfernt,
+anschließend kanonisch mit NFC normalisiert und mit `toLowerCase()` in eine
+einheitliche Groß-/Kleinschreibung überführt. Interne Leerzeichen, Tabs und
+Zeilenumbrüche bleiben unverändert und bedeutungsvoll. Der normalisierte Wert
+wird als literaler zusammenhängender Teilstring ausschließlich mit
+`calendarDate`, `title`, `text` und jedem Wert aus `tags[]` verglichen. Entry-ID,
+`dataOrigin`, `schemaVersion`, Status und andere Metadaten sind keine
+Suchfelder. Es gibt weder RegExp- oder Markup-Auswertung noch Akzententfernung,
+Transliteration, Kompatibilitätsnormalisierung, Tokenisierung, Fuzzy Search,
+Ranking oder Highlighting. Der rohe Querywert bleibt für das Control
+unverändert; der Controller akzeptiert höchstens 200 UTF-16-Codeeinheiten.
+
+Der leere Kalenderdatum-Filter bedeutet alle Daten. Jeder andere Wert muss
+bereits ein gültiges gregorianisches Datum im exakten Format `YYYY-MM-DD` sein
+und wird mit dem vorhandenen `isValidCalendarDate` ohne `Date`-, UTC-,
+Zeitzonen- oder Locale-Konvertierung geprüft. Der Vergleich verwendet nur den
+exakten gespeicherten String. Der leere Tag-Sentinel bedeutet alle Tags. Ein
+anderer Tag trifft ausschließlich einen vollständigen Tag nach derselben NFC-
+und Case-Normalisierung; ein Teilstring reicht nicht.
+
+`getLichtwaldLogFilterTags` leitet Optionen immer aus allen autoritativen
+Einträgen ab. Normalisiert gleiche Tags werden dedupliziert, wobei die erste
+gespeicherte Schreibweise sowie Entry- und Tag-Reihenfolge erhalten bleiben.
+Suche, Datum und Tag werden mit logischem AND kombiniert. Die Ergebnisreihenfolge
+bleibt exakt die Snapshot-Reihenfolge; auch der fokussierte Eintrag wird nicht
+verschoben. Beide Funktionen verändern keine Eingabe, geben neue dichte Arrays
+zurück und bewahren die ursprünglichen Entry-Referenzen. Ein nicht arrayförmiger
+Entry-Container wird kontrolliert als leer behandelt; unbekannte Filterwerte
+werden nicht durch String-Coercion interpretiert.
+
+Suchkriterien, Tagoptionen und Ergebnis-IDs sind keine Felder von Schema 1 und
+werden weder vom Service noch vom Storage oder Adapter gelesen oder gespeichert.
+Die APIs dieser drei Grenzen bleiben unverändert.
+
 ##### Implementierte LichtwaldLog-Controller-Foundation
 
 Die Controller-Foundation ergänzt den lokalen Pfad, ohne den Schema-1- oder
@@ -1776,12 +1839,23 @@ onRequestDeleteEntry
 onCancelDeleteEntry
 onConfirmDeleteEntry
 onSetFeaturedEntry
+onChangeSearchQuery
+onChangeCalendarDateFilter
+onChangeTagFilter
+onResetFilters
 ```
 
 Das View-Modell projiziert ausschließlich die Phasen `loading`, `empty`,
 `ready`, `loadError` und `mutating`, die Eintrags- und Fokusprojektion sowie
 flüchtige Auswahl-, Formular-, Löschbestätigungs-, Fokusmutations-, Status-,
-Fehler- und Fokuszielzustände. Es wird für jeden Render frisch erzeugt, tief
+Fehler-, Fokusziel-, Such- und Filterzustände. `entries` bleibt die vollständige
+autoritative UI-Projektion. `visibleEntryIds`, `availableTags`, `searchQuery`,
+`calendarDateFilter`, `selectedTag`, `hasActiveFilters` und
+`filteredEmptyState` werden aus ihr neu abgeleitet. Die Übersicht rendert nur
+die bezeichneten sichtbaren Entries; Detail und Formulare greifen weiterhin auf
+den vollständigen Snapshot zu. Null Treffer bleiben `phase: ready`; nur ein
+tatsächlich leerer Snapshot verwendet `phase: empty`. Das View-Modell wird für
+jeden Render frisch erzeugt, tief
 eingefroren und von internen sowie früheren Referenzen entkoppelt. Der rohe
 Schema-1-Root, `schemaVersion`, `dataOrigin`, Service-, Storage- und
 Adapterresultate sowie Lifecycle- und Operationstokens werden nicht an die View
@@ -1797,8 +1871,8 @@ Projektion niemals einen Persistenzkandidaten. Storage bleibt die einzige
 veränderliche Wahrheit; der Service bleibt die autoritative fachliche
 Operationsgrenze.
 
-Pro akzeptierter Benutzerintention wird exakt eine passende Servicemethode
-aufgerufen:
+Pro akzeptierter Lade- oder Mutationsintention wird exakt eine passende
+Servicemethode aufgerufen:
 
 - Initiales Laden und ein ausdrücklich akzeptierter Retry rufen jeweils einmal
   `loadLog` auf.
@@ -1810,6 +1884,9 @@ aufgerufen:
 - Auswahl, Rückkehr zur Übersicht, Öffnen und Ändern eines Formulars,
   Formularabbruch sowie Anfordern und Abbrechen einer Löschbestätigung rufen
   keinen Service auf und bleiben schreibfrei.
+- Gültige Änderungen von Query, Kalenderdatum und Tag sowie gemeinsames
+  Zurücksetzen rufen weder Service, Storage, Adapter, ID-Generator noch
+  Scheduler auf und bleiben vollständig lese- und schreibfrei.
 
 Nach Mutationen erfolgt kein zusätzlicher `loadLog`-Aufruf, kein automatischer
 Retry und kein Storage-Fallback. Der Controller verändert Inhalte, Delete-Ziele
@@ -1821,10 +1898,25 @@ schreibfreien No-op.
 
 Auswahl-, Update-, Delete- und Fokusziele werden ausschließlich als bereits
 getrimmte, exakte und case-sensitive IDs aus dem aktuellen vertrauenswürdigen
-Snapshot akzeptiert. `onSetFeaturedEntry` erhält den ausdrücklichen Endzustand
-als Entry-ID oder `null`; es existiert weder eine Toggle- noch eine zusätzliche
-Clear-Aktion. Akzeptierte Service-Snapshots ersetzen die alte Projektion
+Snapshot akzeptiert. In der Übersicht muss ein Auswahlziel zusätzlich in
+`visibleEntryIds` enthalten sein. `onSetFeaturedEntry` erhält den ausdrücklichen
+Endzustand als Entry-ID oder `null`; es existiert weder eine Toggle- noch eine
+zusätzliche Clear-Aktion. Akzeptierte Service-Snapshots ersetzen die alte Projektion
 vollständig. Ihre Entry- und Tag-Reihenfolge bleibt unverändert.
+
+Die Query ist auf 200 UTF-16-Codeeinheiten begrenzt; exakt 200 werden
+akzeptiert. Datum ist nur als leerer Wert oder gültiges Contract-Datum, Tag nur
+als Sentinel oder aktuell verfügbare Option zulässig. Ungeeignete Typen,
+überlange Queries und unbekannte Werte sind vollständige No-ops. Filteraktionen
+sind nur in der Overview mit nutzbarem Snapshot und ohne Formular,
+Delete-Bestätigung oder Mutation erlaubt. Filter bleiben innerhalb eines
+geöffneten Lifecycles bei Detail und Rückkehr, Formular und Abbruch sowie allen
+kontrollierten Mutationsergebnissen erhalten. Nach jedem autoritativen Snapshot
+werden Ergebnisse und Optionen neu abgeleitet. Ein ausgewählter normalisierter
+Tag wird auf die aktuelle erste Schreibweise abgebildet oder bei vollständigem
+Verschwinden auf alle Tags zurückgesetzt. `open()`, Load-Retry, erfolgreiches
+`close()` und ein tatsächlich leerer Snapshot setzen die Kriterien zurück.
+Filter allein sind niemals dirty.
 
 Serviceergebnisse werden ausschließlich über erlaubte eigene Data-Properties
 und dokumentierte Status-Code-Kombinationen geprüft. Controllerfehler,
@@ -1849,7 +1941,7 @@ unverändert.
 
 `createLichtwaldLogView(rootElement)` liest ausschließlich das defensive,
 tief eingefrorene Controller-View-Modell und die oben dokumentierte
-zwölfteilige Action-API. Sie liest weder `schemaVersion`, `dataOrigin` noch den
+sechzehnteilige Action-API. Sie liest weder `schemaVersion`, `dataOrigin` noch den
 rohen Schema-1-Root und führt keine zweite Vertrags-, Service- oder
 Storagevalidierung ein. Jeder Render baut einen frischen DOM-Baum auf und
 bewahrt Entry- und Tag-Reihenfolge sowie die gespeicherte Schreibweise.
@@ -1859,6 +1951,16 @@ Entry-IDs dienen ausschließlich unverändert als Action-Ziele in Closures und
 renderlokalen Maps. Sie werden weder angezeigt noch in DOM-/ARIA-IDs,
 Selektoren, Klassen, `data-*`-Attribute, URLs oder View-eigene Meldungen
 übernommen. Die View verwendet keine dynamische HTML- oder Markup-Auswertung.
+
+Das Filterpanel erscheint ausschließlich in der nicht leeren Overview und
+verwendet feste öffentliche IDs. Query und Kalenderdatum werden nur über die
+jeweilige Control-Property `.value`, Tagoptionen nur über sichere Text- und
+Formcontrol-APIs ausgegeben. Der Ergebnisstatus enthält ausschließlich Zahlen
+und statische Texte. Query, Datum, Tag und Entry-IDs gelangen nicht in
+dynamische IDs, Klassen, Selektoren, Meldungen, URLs, `data-*`- oder
+ARIA-Attribute. Nicht sichtbare Entries werden vollständig aus dem neuen DOM
+entfernt. Der gefilterte Leerzustand bleibt vom autoritativen Leerzustand
+getrennt und bietet einen erreichbaren Reset.
 
 Die Create-Submitform ist exakt:
 
@@ -1895,7 +1997,11 @@ Lade-, Leer-, Busy-, Erfolgs-, Notice-, Validierungs- und Fehlerzustände werden
 zugänglich dargestellt. Nach dem vollständigen DOM-Austausch löst die View die
 Controller-Fokusziele `heading`, `entry`, `formField`, `formAlert`,
 `formTrigger`, `deleteConfirmation`, `deleteAlert`, `featuredAlert` und
-`status` kontrolliert auf. Fokusaktionen verwenden ausschließlich den
+`status` sowie `searchInput`, `calendarDateFilter` und `tagFilter` kontrolliert
+auf. Suchevents stellen Suchfokus und geklemmte Selection/Caret-Metadaten wieder
+her; Datum und Tag erhalten ihren jeweiligen Controlfokus zurück, Reset das
+leere Suchfeld bei Position 0. Ergebnisänderungen fokussieren keine Karte.
+Fokusaktionen verwenden ausschließlich den
 ausdrücklichen Endzustand als exakte Entry-ID oder `null`; die View projiziert
 Inhalt, Löschung und Fokus nicht optimistisch.
 
@@ -2253,7 +2359,8 @@ Stimmung, Energie, Gesundheitswerte, Trainingsmetriken, Airtable-IDs,
 Sync-Zustände, Agentenmetadaten und KI-Ausgaben sind ebenfalls keine
 Vertragsfelder. Jeder Eintrag bleibt flach und eigenständig.
 
-Contract, Controller, Service und Storage kommunizieren nicht extern und führen
+Contract, reine Suchableitung, Controller, Service und Storage kommunizieren
+nicht extern und führen
 weder Webhooks, Airtable, Synchronisierung noch `SyncAgent`, `DataAgent`,
 `TestAgent` oder andere KI-Logik ein. Ein späterer Agentenfluss benötigt einen
 eigenen minimierten Vertrag; der private lokale Gesamtsnapshot darf nicht

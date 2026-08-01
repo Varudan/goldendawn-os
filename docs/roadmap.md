@@ -7,8 +7,8 @@
 | Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | `v0.2.1` vollständig geprüft und veröffentlicht; `v0.2.2` in Arbeit |
-| Letzte Aktualisierung | 2026-07-31 |
+| Status | `v0.2.1` aktuelle Paket- und Releaseversion; `v0.2.2` in Arbeit |
+| Letzte Aktualisierung | 2026-08-01 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -49,7 +49,7 @@ nicht starre Kalendertermine.
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.2.2` | LichtwaldLog Local MVP | Foundations, App-Komposition, Navigation und lokaler CRUD-/Fokusfluss implementiert; reale Browserprüfung erfolgreich; ausstehend sind Suche, Filter und Demo-Integration | 🟡 |
+| `v0.2.2` | LichtwaldLog Local MVP | Foundations, App-Komposition, Navigation und lokaler CRUD-/Fokus-/Such-/Filterfluss implementiert; nur die getrennte Demo-Integration bleibt fachlich offen | 🟡 |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
@@ -462,7 +462,7 @@ agentengestützte Prozesse sind nicht Teil dieser Version.
   `LichtwaldLogService`, `LichtwaldLogStorage` und gemeinsamem
   `StorageAdapter` kapseln.
 - ✅ Controller-Foundation mit eingefrorener `{ open, close }`-API, exakt
-  zwölfteiliger Action-API, vollständig geprüften privaten Service-Snapshots
+  sechzehnteiliger Action-API, vollständig geprüften privaten Service-Snapshots
   und flüchtigen Lade-, Leer-, Auswahl-, Formular-, Bestätigungs-, Busy-,
   Erfolgs- und Fehlerzuständen bereitstellen.
 - ✅ Isolierte View- und CSS-Foundation mit eingefrorener
@@ -475,11 +475,14 @@ agentengestützte Prozesse sind nicht Teil dieser Version.
   bereitstellen.
 - ✅ Die eingebundene Oberfläche in einem frischen temporären Browserkontext
   auf Desktop und bei exakt `390 × 844` real prüfen.
-- ⬜ Lokale Textsuche und Filter bereitstellen.
+- ✅ Reine lokale Textsuche über Kalenderdatum, Titel, Text und Tags sowie
+  exakte Kalenderdatum- und Tagfilter mit logischer AND-Kombination,
+  unveränderter Snapshot-Reihenfolge und ausschließlich flüchtigem,
+  nicht persistiertem Controllerzustand bereitstellen.
 - ⬜ Eine klar getrennte synthetische öffentliche Demo-Integration
   bereitstellen, ohne Daten in den ausschließlich privaten Servicepfad zu
   übernehmen.
-- ⬜ Bilder nicht als Base64-Daten in `localStorage` speichern.
+- ✅ Bilder nicht als Base64-Daten in `localStorage` speichern.
 
 Der implementierte lokale Pfad lautet nun:
 
@@ -493,8 +496,10 @@ LichtwaldLogView
 ```
 
 Der Controller hält ausschließlich eine flüchtige, defensiv entkoppelte
-UI-Projektion und verwendet pro akzeptierter Intention exakt eine passende
-Serviceoperation. Nach Mutationen lädt er nicht zusätzlich und nimmt keine
+UI-Projektion und verwendet pro akzeptierter Lade- oder Mutationsintention exakt
+eine passende Serviceoperation. Such- und Filteraktionen bleiben dagegen ohne
+Service-, Storage-, Adapter-, ID-Generator- oder Schedulerzugriff. Nach
+Mutationen lädt er nicht zusätzlich und nimmt keine
 optimistischen Inhalts-, Delete- oder Fokusänderungen vor. Auswahl,
 Formularbearbeitung und -abbruch sowie Anfordern und Abbrechen einer
 Löschbestätigung bleiben service- und schreibfrei; Update- und Fokus-No-ops
@@ -508,14 +513,24 @@ Zuständen, vollständiger Fokuszielauflösung und einer privaten
 DOM-Unmount-Grenze. Sie bewahrt die Controller-Projektion und führt keine
 eigene fachliche oder persistente Wahrheit ein. `src/main.js` komponiert sie
 über den gemeinsamen `StorageAdapter`; Navigation und der vollständig über
-GoldenDawn OS bedienbare lokale CRUD- und Fokusfluss sind implementiert. Die
+GoldenDawn OS bedienbare lokale CRUD-, Fokus-, Such- und Filterfluss ist
+implementiert. Die
 reale Browserprüfung war in einem frischen isolierten temporären Chrome-Profil
 auf Desktop mit `1440 × 1000` sowie bei exakt `390 × 844` erfolgreich. Der
 vollständige lokale Navigations-, CRUD-, Fokus-, Dirty-Guard-, Delete- und
 Reload-Fluss, Tastaturfokus, Live-Regionen, der sichtbare `3px`-Fokusrahmen und
 fehlender horizontaler Seitenoverflow wurden bestätigt. Es gab 0
 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions und 0 externe Requests.
-Suche, Filter und die getrennte synthetische Demo-Integration bleiben offen.
+Die lokale Textsuche und die exakten Kalenderdatum- und Tagfilter wurden
+einschließlich literalem Matching, AND-Verknüpfung, Leerzustand, Reset,
+Caretfokus, gefilterten Mutationsflüssen und ausbleibenden
+Storage-Schreiboperationen real im Browser geprüft und sind permanent
+automatisiert abgedeckt. Der Controller leitet Query,
+Datum, Tagoptionen und sichtbare IDs ausschließlich flüchtig aus seiner
+vollständigen privaten UI-Projektion ab. Diese Werte gehören nicht zu Schema 1
+und werden nicht persistiert; Service-, Storage- und Adapter-APIs bleiben
+unverändert. Nur die getrennte synthetische Demo-Integration bleibt als
+fachlicher Slice offen.
 Storage und Service bleiben die autoritativen fachlichen Grenzen.
 Read-Preflight, 500.000-Codeeinheiten-Limit, Browser-Quota, TOCTOU- und
 Multi-Tab-Verhalten ändern sich durch Anwendungskomposition, Controller und
@@ -849,9 +864,12 @@ stellt diese Projektion sicher und zugänglich dar. `src/main.js` komponiert den
 Pfad über den gemeinsamen `StorageAdapter`; LichtwaldLog ist über die Navigation
 mit dem sichtbaren Status `In Arbeit` erreichbar. Anzeigen, Erstellen,
 vollständiges Bearbeiten, dauerhaftes Löschen sowie explizites Setzen und
-Entfernen des Fokus sind vollständig über GoldenDawn OS bedienbar. Die reale
-Browserprüfung auf Desktop und bei exakt `390 × 844` ist erfolgreich
-abgeschlossen. Als nächste Schritte bleiben lokale Suche und Filter sowie die
+Entfernen des Fokus sind vollständig über GoldenDawn OS bedienbar. Lokale
+Textsuche sowie exakte Kalenderdatum- und Tagfilter arbeiten ausschließlich auf
+der flüchtigen Controller-Projektion und sind weder Schema-1-Felder noch
+persistierte Zustände. Die reale Browserprüfung auf Desktop und bei exakt
+`390 × 844` ist für den Navigations-, CRUD-, Fokus-, Such- und Filterfluss
+erfolgreich abgeschlossen. Als einziger fachlicher nächster Schritt bleibt die
 getrennte synthetische Demo-Integration offen; der Meilenstein ist weder
 abgeschlossen noch veröffentlicht. `v0.2.2` bleibt vollständig lokal und
 besitzt keine externe Kommunikation, Webhooks, Agentenlogik oder

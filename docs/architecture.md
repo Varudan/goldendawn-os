@@ -6,8 +6,8 @@
 | --- | --- |
 | Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; v0.2.1 veröffentlicht; LichtwaldLog Foundations sowie Anwendungskomposition, Navigation und lokaler CRUD-/Fokusfluss implementiert |
-| Letzte Aktualisierung | 2026-07-31 |
+| Status | Verbindliche Zielarchitektur; `v0.2.1` aktuelle Paket- und Releaseversion; LichtwaldLog Foundations, Anwendungskomposition, Navigation sowie lokaler CRUD-, Fokus-, Such- und Filterfluss implementiert |
+| Letzte Aktualisierung | 2026-08-01 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -662,12 +662,14 @@ Die Contract Foundation, private Storage-Foundation, Service-Foundation und
 Controller-Foundation sowie die isolierte View- und CSS-Foundation sind
 implementiert und über den gemeinsamen `StorageAdapter` in `src/main.js`
 komponiert. LichtwaldLog ist über die Navigation mit dem sichtbaren Status
-`In Arbeit` erreichbar; der lokale CRUD- und Fokusfluss ist vollständig über
-GoldenDawn OS bedienbar und real im Browser auf Desktop mit `1440 × 1000` sowie
-bei exakt `390 × 844` geprüft. Suche, Filter und die getrennte synthetische
-Demo-Integration bleiben offen. Der vollständige MVP ist weder abgeschlossen
-noch veröffentlicht. ADR 0013 und ADR 0014 bleiben die autoritativen Contract-
-und Storage-Entscheidungen.
+`In Arbeit` erreichbar; der lokale CRUD-, Fokus-, Such- und Filterfluss ist
+vollständig über GoldenDawn OS bedienbar und real im Browser auf Desktop mit
+`1440 × 1000` sowie bei exakt `390 × 844` geprüft. Die lokale Textsuche sowie exakte Kalenderdatum-
+und Tagfilter sind als reine flüchtige Controllerableitung implementiert und
+verändern weder Schema 1 noch Service-, Storage- oder Adapter-APIs. Nur die
+getrennte synthetische Demo-Integration bleibt als fachlicher Slice offen. Der
+vollständige MVP ist weder abgeschlossen noch veröffentlicht. ADR 0013 und ADR
+0014 bleiben die autoritativen Contract- und Storage-Entscheidungen.
 
 Der spätere Zielpfad bleibt:
 
@@ -701,6 +703,18 @@ LichtwaldLogView
   → StorageAdapter
   → localStorage
 ```
+
+Innerhalb des Controllers ergänzt das reine Modul `lichtwaldLogSearch.js`
+diesen Persistenzpfad ausschließlich um eine flüchtige Ableitung:
+
+```text
+vollständig validierte private UI-Projektion
+  → LichtwaldLogSearch
+      → sichtbare Entry-IDs und verfügbare Tagoptionen
+```
+
+Das Suchmodul kennt weder Service, Storage, Adapter, DOM, Browserzustand noch
+Netzwerkports. Es ist keine zweite fachliche oder persistente Wahrheit.
 
 `createLichtwaldLogService` erhält `lichtwaldLogStorage` und optional
 `generateLichtwaldLogEntryId` per Dependency Injection. Die zurückgegebene
@@ -748,10 +762,14 @@ onRequestDeleteEntry
 onCancelDeleteEntry
 onConfirmDeleteEntry
 onSetFeaturedEntry
+onChangeSearchQuery
+onChangeCalendarDateFilter
+onChangeTagFilter
+onResetFilters
 ```
 
 Jeder Render baut ausschließlich aus der defensiven Controller-Projektion und
-dieser zwölfteiligen Action-API einen frischen DOM-Baum. Titel, Texte, Tags und
+dieser sechzehnteiligen Action-API einen frischen DOM-Baum. Titel, Texte, Tags und
 Formwerte werden über `textContent`, `createTextNode`, Formcontrol-Werte und
 feste Attribute als ungeparster Plain Text ausgegeben. Entry-IDs bleiben
 unveränderte Ziele in Closures und renderlokalen Maps. Sie werden weder
@@ -766,11 +784,13 @@ bleiben flach und auf die bekannten Formularfelder sowie beim Update die
 gebundene Entry-ID begrenzt. Die View führt keine zweite fachliche Validierung,
 Persistenz- oder Operationswahrheit ein.
 
-Die Zustandsprojektion deckt Lade-, Leer-, Busy-, Erfolgs-, Notice-,
-Validierungs- und Fehlerzustände ab. Nach jedem DOM-Austausch löst die View die
+Die Zustandsprojektion deckt Lade-, echte und gefilterte Leer-, Busy-, Erfolgs-,
+Notice-, Validierungs-, Ergebnisstatus- und Fehlerzustände ab. Nach jedem
+DOM-Austausch löst die View die
 Controller-Fokusziele `heading`, `entry`, `formField`, `formAlert`,
 `formTrigger`, `deleteConfirmation`, `deleteAlert`, `featuredAlert` und
-`status` kontrolliert auf. Fokusaktionen übergeben einen expliziten Endzustand
+`status` sowie `searchInput`, `calendarDateFilter` und `tagFilter` kontrolliert
+auf. Fokusaktionen übergeben einen expliziten Endzustand
 als Entry-ID oder `null`; Inhalt, Delete und Fokus werden nicht optimistisch
 verändert. Ausschließlich flüchtige Fokus- und Caret-Metadaten verbleiben in
 der View.
@@ -785,17 +805,27 @@ bereit. Die bestehende `close()`-/`unmount()`-Grenze entfernt private
 DOM-Inhalte beim Verlassen des Moduls.
 
 Der Controller koordiniert ausschließlich flüchtige Lade-, Leer-, Auswahl-,
-Formular-, Bestätigungs-, Busy-, Erfolgs- und Fehlerzustände. Sein intern
-gehaltener Snapshot ist eine vollständig validierte, tief entkoppelte und
-eingefrorene UI-Projektion, keine persistente oder fachlich autoritative
-Datenquelle. Jeder Service-Snapshot wird erneut vollständig mit
+Formular-, Bestätigungs-, Busy-, Erfolgs-, Fehler-, Such- und Filterzustände.
+`entries` bleibt die vollständige autoritative UI-Projektion. `searchQuery`,
+`calendarDateFilter`, `selectedTag`, `availableTags`, `visibleEntryIds`,
+`hasActiveFilters` und `filteredEmptyState` werden daraus für jeden Render neu,
+defensiv entkoppelt und tief eingefroren abgeleitet. Die Übersicht verwendet nur
+`visibleEntryIds`; Details und Formulare lösen Einträge weiterhin aus dem
+vollständigen Snapshot auf. Null Treffer bleiben `phase: ready`, während nur ein
+tatsächlich leerer Snapshot `phase: empty` erzeugt. Keines dieser Filterfelder
+gehört zu Schema 1 oder zur Persistenz. Der intern gehaltene Snapshot ist eine
+vollständig validierte, tief entkoppelte und eingefrorene UI-Projektion, keine
+persistente oder fachlich autoritative Datenquelle. Jeder Service-Snapshot wird
+erneut vollständig mit
 `validateLichtwaldLog` geprüft und nur mit `dataOrigin: private` akzeptiert.
 Der rohe Schema-1-Root, Service- und Storage-Resultate sowie interne Tokens
 gelangen nicht in das View-Modell. Storage bleibt die einzige veränderliche
 Wahrheit; der Service bleibt die autoritative fachliche Operationsgrenze.
 
-Jede akzeptierte Benutzerintention führt zu exakt einer passenden
-Serviceoperation. Nach einer Mutation ruft der Controller `loadLog` nicht
+Jede akzeptierte Lade- oder Mutationsintention führt zu exakt einer passenden
+Serviceoperation. Such- und Filteraktionen führen dagegen zu keinem Service-,
+Storage-, Adapter-, ID-Generator- oder Schedulerzugriff. Nach einer Mutation
+ruft der Controller `loadLog` nicht
 zusätzlich auf und konstruiert keine optimistische Inhalts-, Delete- oder
 Fokusänderung. Auswahl, Übersicht, Öffnen und Ändern eines Formulars,
 Formularabbruch sowie Anfordern und Abbrechen einer Löschbestätigung bleiben
@@ -804,8 +834,10 @@ werden an den Service gereicht; nur er entscheidet anhand des autoritativen
 Storagezustands über einen schreibfreien No-op.
 
 Ziele werden exakt und case-sensitive im vertrauenswürdigen Snapshot
-aufgelöst. `onSetFeaturedEntry` übergibt den gewünschten Endzustand immer als
-Entry-ID oder `null`; eine Toggle- oder zusätzliche Clear-Aktion gibt es nicht.
+aufgelöst. Eine Auswahl aus der Übersicht muss zusätzlich in der aktuell
+sichtbaren ID-Menge liegen. `onSetFeaturedEntry` übergibt den gewünschten
+Endzustand immer als Entry-ID oder `null`; eine Toggle- oder zusätzliche
+Clear-Aktion gibt es nicht.
 Erfolgreiche Service-Snapshots ersetzen die bisherige Projektion vollständig,
 ohne deren Entry- oder Tag-Reihenfolge zu verändern. Jede View-Projektion ist
 defensiv entkoppelt und enthält keinen zweiten ausgewählten Entry als
@@ -814,6 +846,15 @@ Allowlists und übernehmen weder private Werte noch fremde Fehlertexte. Gültige
 Eintragstexte bleiben ungeparster, nicht vertrauenswürdiger Plain Text. Die
 isolierte View gibt sie ausschließlich über sichere DOM- und Formcontrol-APIs
 aus.
+
+Filter bleiben innerhalb eines geöffneten Lifecycles bei Detail und Rückkehr,
+Formular und Abbruch sowie autoritativen Create-, Update-, Delete- und
+Fokusresultaten erhalten. Nach jedem akzeptierten Snapshot werden Ergebnisse
+und Tagoptionen neu abgeleitet; ein weiterhin vorhandener normalisierter Tag
+wird auf seine aktuelle erste Schreibweise abgebildet, ein verschwundener Tag
+auf „Alle Tags“ zurückgesetzt. Ein neuer `open()`-Lifecycle, ein Load-Retry, ein
+erfolgreiches `close()` und ein tatsächlich leerer Snapshot setzen alle
+Kriterien zurück. Filter allein sind nie dirty und blockieren `close()` nicht.
 
 `createLichtwaldLogStorage` stellt als eingefrorene API ausschließlich
 `loadLichtwaldLog` und `saveLichtwaldLog` bereit. Beide Operationen verwenden
@@ -886,15 +927,20 @@ erneut.
 
 `src/main.js`-Anbindung über den gemeinsamen `StorageAdapter`, Navigation und
 Anwendungskomposition sowie der vollständig über GoldenDawn OS bedienbare
-CRUD- und Fokusfluss sind implementiert. Die reale Browser- und
+CRUD-, Fokus-, Such- und Filterfluss sind implementiert. Die bereits
+abgeschlossene reale Browser- und
 Integrationsprüfung war in einem frischen isolierten temporären Chrome-Profil
 auf Desktop mit `1440 × 1000` sowie bei exakt `390 × 844` erfolgreich. Sie
 deckte den vollständigen lokalen Navigations-, CRUD-, Fokus-, Dirty-Guard-,
 Delete- und Reload-Fluss ab. Tastaturfokus, Live-Regionen, der sichtbare
 `3px`-Fokusrahmen und fehlender horizontaler Seitenoverflow wurden bestätigt;
 es gab 0 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions und 0 externe
-Requests. Lokale Suche, Filterung und die getrennte synthetische
-Demo-Integration bleiben offen. Für den vollständigen Local MVP bleiben
+Requests. Die Such- und Filterableitung wurde dabei einschließlich literalem
+Matching, exakten und kombinierten Filtern, Leerzustand, Reset, Caretfokus,
+gefilterten Mutationsflüssen und ausbleibenden Storage-Schreiboperationen real
+im Browser geprüft und ist zusätzlich permanent automatisiert abgedeckt.
+Nur die getrennte synthetische Demo-Integration bleibt fachlich offen. Für den
+vollständigen Local MVP bleiben
 private lokale Einträge und synthetische Demo-Daten getrennt; Bilder werden
 nicht als Base64 in `localStorage` abgelegt. Der Storage ist unverschlüsselt
 und bietet weder Authentifizierung, Zugriffskontrolle, Integritätsgarantie,
@@ -1037,7 +1083,10 @@ src/
 │   │   └── learningTestEngine.js
 │   └── lichtwald-log/
 │       ├── lichtwaldLogContract.js
-│       └── lichtwaldLogController.js
+│       ├── lichtwaldLogSearch.js
+│       ├── lichtwaldLogController.js
+│       ├── lichtwaldLogView.js
+│       └── lichtwaldLog.css
 ├── services/
 │   ├── learningArtifactService.js
 │   ├── learningHubService.js
@@ -1084,7 +1133,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
-| `v0.2.2` | In Arbeit; Foundations, App-Komposition, Navigation und lokaler CRUD-/Fokusfluss implementiert; reale Browserprüfung erfolgreich; ausstehend sind Suche, Filter und Demo-Integration; keine externe Kommunikation |
+| `v0.2.2` | In Arbeit; Foundations, App-Komposition, Navigation und lokaler CRUD-/Fokus-/Such-/Filterfluss implementiert; nur die getrennte Demo-Integration bleibt fachlich offen; keine externe Kommunikation |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |

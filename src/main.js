@@ -82,7 +82,7 @@ const modules = [
     id: VIEW_LICHTWALD_LOG,
     name: 'LichtwaldLog',
     description:
-      'Private Einträge lokal erstellen, anzeigen, bearbeiten, dauerhaft löschen und als Lichtwald-Fokus setzen oder entfernen',
+      'Private Einträge lokal erstellen, anzeigen, bearbeiten, dauerhaft löschen und fokussieren; lokale Suche und Filter nach Kalenderdatum sowie Tag',
     status: 'In Arbeit',
     statusClass: 'next',
     navigationState: 'In Arbeit',
@@ -270,12 +270,12 @@ function renderCommandCenter() {
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
         <h2 id="focus-title">v0.2.2 – LichtwaldLog Local MVP in Arbeit</h2>
-        <p>Contract-, Storage-, Service-, Controller- und View-Foundation sind jetzt in GoldenDawn OS komponiert. Einträge lassen sich lokal erstellen, anzeigen, bearbeiten und dauerhaft löschen; der Lichtwald-Fokus lässt sich explizit setzen und entfernen.</p>
+        <p>Contract-, Storage-, Service-, Controller- und View-Foundation sind jetzt in GoldenDawn OS komponiert. Einträge lassen sich lokal erstellen, anzeigen, bearbeiten und dauerhaft löschen; der Lichtwald-Fokus lässt sich explizit setzen und entfernen. Lokale Suche sowie exakte Kalenderdatum- und Tagfilter arbeiten ausschließlich auf der flüchtigen Controller-Projektion.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
           <span>In Arbeit</span>
-          <strong>Lokaler Eintrags- und Fokusfluss bedienbar</strong>
+          <strong>Lokaler CRUD-, Fokus-, Such- und Filterfluss bedienbar</strong>
         </div>
         <small>Private Einträge bleiben unverschlüsselt im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung, Synchronisierung oder externe Kommunikation.</small>
       </div>
@@ -285,8 +285,8 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Projektschritt</span>
-        <h2 id="milestone-title">v0.2.2 – Suche, Filter und Demo-Integration</h2>
-        <p>Als nächste Schritte folgen lokale Suche und Filter sowie ein klar getrennter synthetischer Demo-Pfad. Das lokale MVP bleibt in Arbeit; Synchronisierung und Agentenlogik gehören nicht zu v0.2.2.</p>
+        <h2 id="milestone-title">v0.2.2 – Getrennte Demo-Integration</h2>
+        <p>Als einziger fachlicher Schritt dieses Meilensteins bleibt ein klar getrennter synthetischer Demo-Pfad offen. Das lokale MVP bleibt in Arbeit; Synchronisierung und Agentenlogik gehören nicht zu v0.2.2.</p>
       </div>
       <span class="status status--next">In Arbeit</span>
     </aside>
