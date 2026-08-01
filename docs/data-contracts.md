@@ -21,7 +21,7 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | `v0.2.1` aktuelle Paket- und Releaseversion; LichtwaldLog Foundations, Anwendungskomposition, Navigation sowie lokaler CRUD-, Fokus-, Such- und Filterfluss implementiert; Sync-Vertrag bleibt Zielzustand |
+| Status | `v0.2.1` aktuelle Paket- und Releaseversion; funktionaler privater und strikt getrennter synthetischer LichtwaldLog-Demo-Umfang implementiert; Release-Prüfung offen; Sync-Vertrag bleibt Zielzustand |
 | Letzte Aktualisierung | 2026-08-01 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
@@ -72,9 +72,11 @@ UI-CRUD- und Fokusfluss ist vollständig über die Anwendung bedienbar und real
 im Browser auf Desktop mit `1440 × 1000` sowie bei exakt `390 × 844` geprüft.
 Die lokale Textsuche über Kalenderdatum, Titel, Text und Tags sowie exakte
 Kalenderdatum- und Tagfilter sind als reine flüchtige Controllerableitung
-implementiert. Nur die getrennte synthetische Demo-Integration folgt in einem
-weiteren fachlichen Slice. Die lokalen Foundations und ihre Komposition führen
-keine externe Aktion ein.
+implementiert. Die strikt getrennte synthetische In-Memory-Demo ist als eigener
+vollständig bedienbarer Storage-, Service-, Controller- und View-Stack
+umgesetzt. Die lokalen Foundations und ihre Komposition führen keine externe
+Aktion ein. Der funktionale Umfang ist implementiert; die Release-Prüfung
+bleibt offen.
 
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
@@ -179,8 +181,9 @@ implementiert. `src/main.js` komponiert sie über den gemeinsamen
 UI-CRUD- und Fokusfluss sind ebenfalls implementiert und real im Browser auf
 Desktop sowie bei exakt `390 × 844` geprüft. Lokale Textsuche sowie exakte
 Kalenderdatum- und Tagfilter sind ebenfalls implementiert und nicht
-persistiert. Die getrennte synthetische Demo-Integration bleibt der einzige
-spätere fachliche Slice desselben rein lokalen Meilensteins.
+persistiert. Die getrennte synthetische Demo-Runtime ist als unabhängiger
+In-Memory-Stack implementiert; als nächster Schritt bleibt die
+Release-Prüfung desselben rein lokalen Meilensteins.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -1576,11 +1579,105 @@ bestätigt. Es gab 0 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions und
 0 externe Requests. Die lokale Suche sowie exakte Kalenderdatum- und Tagfilter
 wurden einschließlich AND-Verknüpfung, Leerzustand, Reset, Caretfokus,
 gefilterten Mutationsflüssen und ausbleibenden Storage-Schreiboperationen real
-im Browser geprüft und sind permanent automatisiert abgedeckt. Nur die getrennte synthetische
-Demo-Integration ist fachlich noch offen.
+im Browser geprüft und sind permanent automatisiert abgedeckt. Die getrennte
+synthetische Demo-Runtime ist funktional implementiert; offen bleibt die
+Release-Prüfung.
 Vertrag, View, Controller, Service, Storage und Anwendungskomposition führen
 weder eine externe Aktion noch einen Zugriff durch `SyncAgent`, `DataAgent`
 oder `TestAgent` ein.
+
+#### Getrennte synthetische LichtwaldLog-Demo-Runtime
+
+ADR 0015 definiert neben dem unveränderten privaten Pfad diesen eigenständigen
+Datenfluss:
+
+```text
+LichtwaldLogView
+  → LichtwaldLogController(expectedDataOrigin: synthetic)
+  → LichtwaldLogDemoService
+  → LichtwaldLogDemoStorage
+  → In-Memory-Full-Snapshot
+  → createLichtwaldLogDemoSnapshot
+```
+
+`lichtwaldLogDemo.js` exportiert ausschließlich
+`createLichtwaldLogDemoSnapshot()`. Die Factory ist argumentlos,
+deterministisch und liest weder Datum, Zufall, Storage, Netzwerk noch
+Umgebungswerte. Eine statische tief eingefrorene kanonische Quelle enthält
+exakt fünf unabhängig erfundene Einträge mit zukünftigen Kalenderdaten, jeweils
+einem `[Demo]`-Titel und einer gültigen `featuredEntryId`. Jeder Aufruf
+liefert einen frischen vollständig entkoppelten Schema-1-Snapshot mit
+`dataOrigin: synthetic`. Der Datensatz demonstriert ein gemeinsames Datum,
+einen gemeinsamen Tag, die getrennten exakten Tags `Wald` und
+`Waldweg`, den NFC-relevanten Tag `Äther` sowie Suchtreffer in Datum,
+Titel, Text und Tags.
+
+`createLichtwaldLogDemoStorage` exportiert eine eingefrorene API mit exakt:
+
+```text
+loadLichtwaldLog()
+saveLichtwaldLog(lichtwaldLog)
+```
+
+Eine Storage-Instanz ruft ihre Seed-Factory genau einmal auf, validiert und
+klont den synthetischen Snapshot vollständig und hält danach ausschließlich
+ihren eigenen In-Memory-Full-Snapshot. Ein Load liefert `status: found` und
+einen frischen defensiven Clone. Ein erfolgreicher Save ersetzt den
+vollständigen Snapshot und liefert `status: saved`. Es gibt keinen Missing-,
+Reset-, Clear-, Import-, Export-, Seed-, Debug-, Migrations- oder
+Browser-Storage-Pfad.
+
+Seed, Load- und Save-Werte müssen den vollständigen Schema-1-Vertrag erfüllen
+und exakt `dataOrigin: synthetic` tragen. Jeder Clone wird erneut validiert.
+Die tatsächliche JSON-Zeichenfolge ist auch im Demo-Storage anhand von
+`String.length` auf 500.000 UTF-16-Codeeinheiten begrenzt; exakt 500.000
+sind erlaubt, 500.001 werden abgelehnt. Serialisierungs-, Größen-, Herkunfts-
+und Vertragsfehler verwenden ausschließlich statische redigierte Status- und
+Code-Paare. Ein ungültiger Seed erzeugt keinen Fallback; ein fehlgeschlagener
+Save verändert den letzten vertrauenswürdigen Snapshot nicht.
+
+`createLichtwaldLogDemoService({ lichtwaldLogDemoStorage,
+generateLichtwaldLogDemoEntryId })` erhält ausschließlich Demo-Dependencies
+und exportiert eine eingefrorene API mit exakt denselben fünf Operationen wie
+der private Service:
+
+```text
+loadLog()
+createEntry({ calendarDate, title, text, tags })
+updateEntry(entryId, { calendarDate, title, text, tags })
+deleteEntry(entryId)
+setFeaturedEntry(entryIdOrNull)
+```
+
+Die Implementierung importiert weder privaten Service noch privaten Storage,
+hält keinen langlebigen Cache und lädt für jede gültige Operation den aktuellen
+synthetischen Snapshot. Trim-, Kalenderdatum-, Tag-, Reihenfolge-, Fokus-,
+No-op-, 1.000-Entry-, fünf-Versuche-, genau-ein-Save- und
+Fehlerschutzsemantik entsprechen dem privaten Service. Der Produktionsdefault
+erzeugt `lichtwald-demo-entry-${crypto.randomUUID()}`. Jeder Kandidat und
+jede Rückgabe bleibt synthetisch und defensiv entkoppelt; nach einem
+fehlgeschlagenen Save bleibt nur der vorherige vertrauenswürdige Snapshot
+autoritativ.
+
+Der wiederverwendete Controller erhält optional `expectedDataOrigin`.
+Fehlend oder `undefined` bedeutet exakt `private`; andere gültige
+Konstruktionen verwenden ausschließlich `private` oder `synthetic`.
+Der Wert bleibt für den Lifecycle unveränderlich und jeder Service-Snapshot
+muss exakt dazu passen. Die View erhält daraus nur
+`runtimeMode: private` beziehungsweise
+`runtimeMode: syntheticDemo`; der Wert wird nicht aus dem Snapshot
+abgeleitet und nicht persistiert.
+
+`src/main.js` komponiert beide vollständigen Stacks mit eigenen Storage-,
+Service-, View-, Controller- und ID-Generator-Lebenszyklen. Das
+Demo-Navigationselement folgt unmittelbar auf das private Modul. Wechsel
+erfolgen nur nach erfolgreichem `close()` der aktiven Instanz und es ist
+niemals mehr als eine View montiert. Demo-Mutationen bleiben innerhalb der
+aktuellen Anwendungskomposition bei Navigation erhalten; Reload oder neue
+Komposition erzeugt wieder den kanonischen Seed. Auswahl, Formulare, Filter,
+Feedback, Fokus und Caretmetadaten werden beim Schließen zurückgesetzt. Es gibt
+keine Konvertierung, kein gemeinsames Seeding, keinen Browser-Key, keinen
+privaten Portzugriff und keinen Fallback zwischen beiden Stacks.
 
 #### LichtwaldLog – Schema 1
 
@@ -1803,15 +1900,21 @@ LichtwaldLogView
   → localStorage
 ```
 
-Die Factory erhält ausschließlich Service, View-Port und optionalen Scheduler:
+Die Factory erhält Service, View-Port, optionalen Scheduler und die optionale
+erwartete Herkunft:
 
 ```js
 createLichtwaldLogController({
   lichtwaldLogService,
   lichtwaldLogView,
   scheduleTask,
+  expectedDataOrigin,
 })
 ```
+
+Fehlendes oder `undefined` `expectedDataOrigin` bedeutet exakt
+`private`; ansonsten sind nur `private` und `synthetic` zulässig.
+Der Wert ist konstruktionsgebunden und kann im Lifecycle nicht wechseln.
 
 Ihre Rückgabe ist eingefroren und enthält exakt:
 
@@ -1865,8 +1968,11 @@ View-Modell gehalten.
 Der intern gehaltene LichtwaldLog-Snapshot ist ausschließlich eine flüchtige
 UI- und Reconciliation-Projektion. Jeder vom Service gelieferte Snapshot wird
 erneut vollständig mit `validateLichtwaldLog` geprüft, tief entkoppelt und nur
-mit `dataOrigin: private` akzeptiert. Synthetische oder unvollständige
-Snapshots werden kontrolliert abgelehnt. Der Controller konstruiert aus seiner
+mit der konstruktionsgebundenen exakten `dataOrigin` akzeptiert.
+Abweichende oder unvollständige Snapshots werden kontrolliert abgelehnt. Das
+View-Modell projiziert zusätzlich ausschließlich `runtimeMode: private` oder
+`runtimeMode: syntheticDemo` aus dieser Konfiguration, nie aus dem
+geladenen Snapshot. Der Controller konstruiert aus seiner
 Projektion niemals einen Persistenzkandidaten. Storage bleibt die einzige
 veränderliche Wahrheit; der Service bleibt die autoritative fachliche
 Operationsgrenze.
@@ -1946,7 +2052,7 @@ rohen Schema-1-Root und führt keine zweite Vertrags-, Service- oder
 Storagevalidierung ein. Jeder Render baut einen frischen DOM-Baum auf und
 bewahrt Entry- und Tag-Reihenfolge sowie die gespeicherte Schreibweise.
 
-Private Titel, Texte, Tags und Formwerte bleiben ungeparster Plain Text.
+Titel, Texte, Tags und Formwerte bleiben ungeparster Plain Text.
 Entry-IDs dienen ausschließlich unverändert als Action-Ziele in Closures und
 renderlokalen Maps. Sie werden weder angezeigt noch in DOM-/ARIA-IDs,
 Selektoren, Klassen, `data-*`-Attribute, URLs oder View-eigene Meldungen
@@ -2005,7 +2111,7 @@ Fokusaktionen verwenden ausschließlich den
 ausdrücklichen Endzustand als exakte Entry-ID oder `null`; die View projiziert
 Inhalt, Löschung und Fokus nicht optimistisch.
 
-`unmount()` entfernt sämtliche privaten Inhalte und `aria-busy` aus dem
+`unmount()` entfernt sämtliche Inhalte und `aria-busy` aus dem
 dedizierten Root und verwirft nur flüchtige Fokus- und Caret-Metadaten. Die
 View bildet keine persistente oder fachlich autoritative Zustandsquelle;
 Storage und Service bleiben die autoritativen Grenzen. Das responsive
@@ -2013,6 +2119,14 @@ Modul-CSS besitzt Reduced-Motion-Regeln und ist ebenso wie die View über
 `src/main.js` in die Anwendungskomposition eingebunden. Der bestehende
 Storage-Key, das 500.000-Codeeinheiten-Limit, Browser-Quota, Read-Preflight,
 TOCTOU- und Multi-Tab-Grenzen bleiben unverändert.
+
+Bei exakt `runtimeMode: syntheticDemo` verwendet die View dauerhaft die
+textlichen Kennzeichnungen `Synthetische Demo`, `LichtwaldLog Demo`
+und `Demo · nur für diese Sitzung` sowie den Hinweis
+`Synthetische Demo mit vollständig erfundenen Beispieldaten. Änderungen bleiben nur bis zum Neuladen dieser Seite erhalten.`
+Sie verwendet in diesem Modus weder Texte über private Journale, aktuelles
+Browserprofil, `localStorage`, Cloud-Sicherung noch dauerhaftes Löschen.
+Fehlendes oder unbekanntes `runtimeMode` behält die private Darstellung.
 
 ##### Implementierte LichtwaldLog-Service-Foundation
 

@@ -58,8 +58,11 @@ Open-Source-Lizenz verfügbar. `v0.2.2 – LichtwaldLog Local MVP` ist seit dem
 mit Schema-1-Vertrag, reinem Validator, synthetischen Contract-Tests und ADR
 0013, die private Storage-Foundation mit begrenzter
 Full-Snapshot-Persistenz und ADR 0014, die Service- und Controller-Foundation,
-die isolierte View- und CSS-Foundation sowie deren Anwendungskomposition in
-`src/main.js` über den gemeinsamen `StorageAdapter`. LichtwaldLog ist über die
+die isolierte View- und CSS-Foundation sowie die beiden getrennten
+Anwendungskompositionen in `src/main.js`. Ausschließlich der private Stack
+verwendet den gemeinsamen `StorageAdapter`; die in ADR 0015 festgelegte
+synthetische Demo arbeitet über einen eigenen In-Memory-Stack ohne Adapter.
+LichtwaldLog ist über die
 Navigation mit dem sichtbaren Status `In Arbeit` erreichbar. Anzeigen,
 Erstellen, vollständiges Bearbeiten, dauerhaftes Löschen sowie explizites
 Setzen und Entfernen des Fokus sind vollständig über GoldenDawn OS bedienbar.
@@ -76,9 +79,14 @@ Live-Regionen, mindestens `44px` hohe Controls, der sichtbare
 `3px`-Fokusrahmen und fehlender horizontaler Seitenoverflow wurden bestätigt;
 es gab 0 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions, 0 externe
 Requests und keine Storage-Schreiboperation durch Suche oder Filter.
-Die getrennte synthetische Demo-Integration bleibt als einziger fachlicher
-Slice offen; `v0.2.2` ist weder abgeschlossen noch veröffentlicht. Paketversion
-und letztes veröffentlichtes Release bleiben `v0.2.1`. Der
+Die getrennte synthetische In-Memory-Demo ist als eigener vollständig
+bedienbarer Runtime-Stack umgesetzt. Demo-Änderungen bleiben bei Navigation im
+selben Dokument erhalten und werden bei Reload oder neuer Komposition auf den
+kanonischen Seed zurückgesetzt; der private Browserbestand bleibt davon
+unberührt. Damit ist der funktionale Umfang implementiert, als nächster Schritt
+bleibt die abschließende Release-Prüfung. `v0.2.2` ist weiterhin weder
+abgeschlossen noch veröffentlicht. Paketversion und letztes veröffentlichtes
+Release bleiben `v0.2.1`. Der
 Meilenstein bleibt vollständig lokal und besitzt keine externe Kommunikation,
 Webhooks, Agentenlogik oder Airtable-Anbindung.
 
@@ -198,13 +206,28 @@ Freitextbewertung und die Anbindung des TestAgent gehören erst zu `v0.5.0`.
   `goldendawn.lichtwaldLog.content.v1`, speichert den direkten Schema-1-Root als
   gemeinsamen Full-Snapshot und akzeptiert ausschließlich
   `dataOrigin: private`.
+- Die getrennte synthetische Demo-Runtime ist gemäß ADR 0015 umgesetzt. Ihr
+  Datenfluss lautet
+  `LichtwaldLogView → LichtwaldLogController → LichtwaldLogDemoService → LichtwaldLogDemoStorage → In-Memory-Full-Snapshot → kanonische Demo-Factory`.
+  Die Factory liefert jeweils einen frischen defensiv entkoppelten
+  `dataOrigin: synthetic`-Snapshot mit genau fünf vollständig erfundenen
+  Einträgen. Demo-Storage und Demo-Service importieren weder privaten Storage
+  noch privaten Service und verwenden weder `StorageAdapter`,
+  `localStorage`, `sessionStorage`, Browser-Key, Netzwerk noch
+  Fallback. Eine Storage-Instanz lebt genau für die aktuelle
+  Anwendungskomposition.
 - `createLichtwaldLogService({ lichtwaldLogStorage, generateLichtwaldLogEntryId })`
   erhält den ID-Generator optional und liefert eine eingefrorene API mit exakt
   `loadLog`, `createEntry`, `updateEntry`, `deleteEntry` und
   `setFeaturedEntry`. `setFeaturedEntry(null)` entfernt den Fokus; eine
   zusätzliche Clear- oder Toggle-Operation existiert nicht.
 - `createLichtwaldLogController({ lichtwaldLogService, lichtwaldLogView,
-  scheduleTask })` liefert eine eingefrorene API mit exakt `open` und `close`.
+  scheduleTask, expectedDataOrigin })` liefert eine eingefrorene API mit exakt
+  `open` und `close`. Fehlendes oder `undefined`
+  `expectedDataOrigin` bedeutet exakt `private`; als explizite Werte sind
+  ausschließlich `private` und `synthetic` zulässig. Die Herkunft bleibt
+  für den Lifecycle fest und projiziert ausschließlich `runtimeMode: private`
+  beziehungsweise `runtimeMode: syntheticDemo`.
   Der View-Port wird ausschließlich über `render(viewModel, actions)` und
   `unmount()` injiziert. Die isolierte Factory
   `createLichtwaldLogView(rootElement)` implementiert ihn und liefert eine
@@ -246,7 +269,7 @@ onResetFilters
   Suche, Datum und Tag werden mit AND kombiniert; Ergebnisse werden nie
   sortiert oder gewichtet.
 - Jeder View-Render baut einen frischen DOM-Baum ausschließlich mit sicheren
-  DOM- und Formcontrol-APIs. Private Titel, Texte, Tags und Formwerte bleiben
+  DOM- und Formcontrol-APIs. Titel, Texte, Tags und Formwerte bleiben
   ungeparster Plain Text. Entry-IDs werden ausschließlich als unveränderte
   Ziele in Closures und renderlokalen Maps gehalten und gelangen weder in
   DOM-/ARIA-IDs, Selektoren noch View-eigene Meldungen. Die verlustfreie
@@ -269,7 +292,8 @@ onResetFilters
   tief eingefroren; sie sind keine Schema-1-Felder und werden nicht gespeichert.
 - Der Controller hält ausschließlich eine flüchtige, validierte und defensiv
   entkoppelte UI-Projektion. Er prüft jeden Service-Snapshot vollständig mit
-  `validateLichtwaldLog` und akzeptiert nur `dataOrigin: private`. Der rohe
+  `validateLichtwaldLog` und akzeptiert nur die bei der Komposition
+  festgelegte exakte Herkunft. Der rohe
   Schema-1-Root wird nicht an die View weitergegeben. Storage bleibt die
   einzige veränderliche Wahrheit; der Service bleibt die autoritative
   fachliche Mutationsgrenze.
@@ -332,15 +356,20 @@ onResetFilters
   implementiert und real im Browser auf Desktop sowie bei exakt `390 × 844`
   geprüft. Lokale Suche sowie exakte Kalenderdatum- und Tagfilter sind
   implementiert und greifen nur auf die flüchtige Controller-Projektion zu.
-  Die APIs von Service, Storage und gemeinsamem Adapter bleiben unverändert.
-  Nur die getrennte synthetische Demo-Integration ist fachlich noch offen.
+  Die APIs von privatem Service, privatem Storage und gemeinsamem Adapter
+  bleiben unverändert. Direkt nach dem privaten Modul ist die dauerhaft als
+  `Synthetische Demo` gekennzeichnete getrennte In-Memory-Demo navigierbar.
+  Beide Stacks besitzen eigene Instanzen, sind niemals gleichzeitig montiert
+  und wechseln nur nach erfolgreichem Dirty-Guard-`close()`. Der funktionale
+  Umfang ist implementiert; offen bleibt die abschließende Release-Prüfung.
 - Das Ziel des LichtwaldLog Local MVP bleibt ein lokales Journal-Modul mit CRUD
   für Einträge aus Titel, reinem Kalenderdatum, Text und Tags sowie lokaler
   Suche und Filtern.
 - Kalenderdaten werden als `YYYY-MM-DD` gespeichert.
 - Bilder werden nicht als Base64 in localStorage gespeichert.
-- Private Einträge und synthetische Demo-Einträge müssen getrennt und sichtbar
-  unterscheidbar bleiben.
+- Private Einträge und synthetische Demo-Einträge bleiben technisch getrennt
+  und sichtbar unterscheidbar. Es gibt keine Konvertierung, kein gemeinsames
+  Seeding und keinen Fallback zwischen beiden Stacks.
 - Externe Kommunikation, Webhooks, Synchronisierung, Agentenanbindung,
   Airtable und Weekly Review gehören nicht zu `v0.2.2` und dürfen für diesen
   Meilenstein nicht als umgesetzt dargestellt werden.

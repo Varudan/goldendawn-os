@@ -31,6 +31,7 @@ const ACTION_METHOD_NAMES = Object.freeze([
   'onResetFilters',
 ])
 const VIEW_MODEL_PROPERTY_NAMES = Object.freeze([
+  'runtimeMode',
   'phase',
   'entries',
   'visibleEntryIds',
@@ -383,6 +384,7 @@ function createControllerSystem({
   serviceOptions,
   scheduler = createManualScheduler(),
   view = createViewRecorder(),
+  expectedDataOrigin,
 } = {}) {
   const resolvedServiceDouble = serviceDouble ?? createServiceDouble(
     serviceOptions
@@ -391,6 +393,7 @@ function createControllerSystem({
     lichtwaldLogService: resolvedServiceDouble.service,
     lichtwaldLogView: view,
     scheduleTask: scheduler.scheduleTask,
+    expectedDataOrigin,
   })
 
   return {
@@ -452,6 +455,7 @@ function assertViewModelContract(viewModel) {
     'mutating',
   ].includes(viewModel.phase))
   assert.ok(['success', 'notice'].includes(viewModel.statusMessageTone))
+  assert.ok(['private', 'syntheticDemo'].includes(viewModel.runtimeMode))
   assert.equal(Object.hasOwn(viewModel, 'schemaVersion'), false)
   assert.equal(Object.hasOwn(viewModel, 'dataOrigin'), false)
   assert.equal(Object.hasOwn(viewModel, 'lichtwaldLog'), false)
@@ -5127,5 +5131,523 @@ test('fängt einen werfenden zweiten requestAnimationFrame-Aufruf im Default-Sch
     } else {
       delete globalThis.cancelAnimationFrame
     }
+  }
+})
+
+test('verdrahtet Default, private und synthetic construction-time-only mit exaktem runtimeMode', () => {
+  const privateLog = createPrivateLog()
+  const syntheticLog = createSyntheticLog([
+    createEntry({ title: '[Demo] Synthetische Ursprungskarte' }),
+  ])
+  const missingOriginScheduler = createManualScheduler()
+  const missingOriginView = createViewRecorder()
+  const missingOriginService = createServiceDouble({
+    loadResult: createLoadSuccess(privateLog),
+  })
+  const missingOriginController = createLichtwaldLogController({
+    lichtwaldLogService: missingOriginService.service,
+    lichtwaldLogView: missingOriginView,
+    scheduleTask: missingOriginScheduler.scheduleTask,
+  })
+
+  missingOriginController.open()
+  missingOriginScheduler.run()
+  assert.equal(missingOriginView.lastState.phase, 'ready')
+  assert.equal(missingOriginView.lastState.runtimeMode, 'private')
+
+  const explicitPrivate = createControllerSystem({
+    expectedDataOrigin: 'private',
+    serviceOptions: { loadResult: createLoadSuccess(privateLog) },
+  })
+  openAndFlush(explicitPrivate)
+  assert.equal(explicitPrivate.view.lastState.runtimeMode, 'private')
+  assert.deepEqual(explicitPrivate.view.lastState.entries, privateLog.entries)
+
+  const synthetic = createControllerSystem({
+    expectedDataOrigin: 'synthetic',
+    serviceOptions: { loadResult: createLoadSuccess(syntheticLog) },
+  })
+  synthetic.controller.open()
+  const firstSyntheticModel = synthetic.view.lastState
+  const actionsReference = synthetic.view.actions
+  synthetic.scheduler.run()
+  assert.equal(synthetic.view.lastState.phase, 'ready')
+  assert.equal(synthetic.view.lastState.runtimeMode, 'syntheticDemo')
+  assert.notStrictEqual(synthetic.view.lastState, firstSyntheticModel)
+  assert.strictEqual(synthetic.view.actions, actionsReference)
+  assertExactOwnKeys(synthetic.controller, CONTROLLER_METHOD_NAMES)
+  assertExactOwnKeys(synthetic.view.actions, ACTION_METHOD_NAMES)
+  assertViewModelContract(synthetic.view.lastState)
+  assert.equal(Object.hasOwn(syntheticLog, 'runtimeMode'), false)
+
+  const privateRejectsSynthetic = createControllerSystem({
+    expectedDataOrigin: 'private',
+    serviceOptions: { loadResult: createLoadSuccess(syntheticLog) },
+  })
+  openAndFlush(privateRejectsSynthetic)
+  assert.equal(privateRejectsSynthetic.view.lastState.phase, 'loadError')
+  assert.equal(privateRejectsSynthetic.view.lastState.runtimeMode, 'private')
+  assert.deepEqual(privateRejectsSynthetic.view.lastState.entries, [])
+
+  const syntheticRejectsPrivate = createControllerSystem({
+    expectedDataOrigin: 'synthetic',
+    serviceOptions: { loadResult: createLoadSuccess(privateLog) },
+  })
+  openAndFlush(syntheticRejectsPrivate)
+  assert.equal(syntheticRejectsPrivate.view.lastState.phase, 'loadError')
+  assert.equal(
+    syntheticRejectsPrivate.view.lastState.runtimeMode,
+    'syntheticDemo'
+  )
+  assert.equal(
+    syntheticRejectsPrivate.view.lastState.errorMessage,
+    'Die LichtwaldLog-Demo konnte nicht sicher geladen werden. Bitte versuche es erneut.'
+  )
+  assert.deepEqual(syntheticRejectsPrivate.view.lastState.entries, [])
+})
+
+test('weist ungültige, accessorbasierte und feindliche Origin-Konfiguration ohne Coercion fail-closed zurück', () => {
+  let coercionCalls = 0
+  const hostileValue = Object.freeze({
+    [Symbol.toPrimitive]() {
+      coercionCalls += 1
+      throw new Error('fixture-origin-coercion-sentinel')
+    },
+  })
+
+  for (const expectedDataOrigin of [
+    null,
+    true,
+    1,
+    Symbol('synthetic'),
+    'Synthetic',
+    'syntheticDemo',
+    hostileValue,
+  ]) {
+    const system = createControllerSystem({
+      expectedDataOrigin,
+      serviceOptions: {
+        loadResult: createLoadSuccess(createPrivateLog()),
+      },
+    })
+
+    assert.doesNotThrow(() => openAndFlush(system))
+    assert.equal(system.serviceDouble.calls.loadLog.length, 0)
+    assert.equal(system.view.lastState.phase, 'loadError')
+    assert.equal(system.view.lastState.runtimeMode, 'private')
+    assert.deepEqual(system.view.lastState.entries, [])
+  }
+
+  const expectedOriginGetterMarker = 'fixture-origin-getter-sentinel'
+  let expectedOriginGetterCalls = 0
+  const serviceDouble = createServiceDouble({
+    loadResult: createLoadSuccess(createPrivateLog()),
+  })
+  const scheduler = createManualScheduler()
+  const view = createViewRecorder()
+  const accessorOptions = {
+    lichtwaldLogService: serviceDouble.service,
+    lichtwaldLogView: view,
+    scheduleTask: scheduler.scheduleTask,
+  }
+  Object.defineProperty(accessorOptions, 'expectedDataOrigin', {
+    enumerable: true,
+    get() {
+      expectedOriginGetterCalls += 1
+      throw new Error(expectedOriginGetterMarker)
+    },
+  })
+  const accessorController = createLichtwaldLogController(accessorOptions)
+  accessorController.open()
+  scheduler.run()
+  assert.equal(expectedOriginGetterCalls, 0)
+  assert.equal(serviceDouble.calls.loadLog.length, 0)
+  assert.equal(view.lastState.phase, 'loadError')
+  assertFeedbackIsRedacted(view.lastState, [expectedOriginGetterMarker])
+
+  let originDescriptorCalls = 0
+  const proxyScheduler = createManualScheduler()
+  const proxyView = createViewRecorder()
+  const proxyService = createServiceDouble()
+  const proxyOptions = new Proxy({
+    lichtwaldLogService: proxyService.service,
+    lichtwaldLogView: proxyView,
+    scheduleTask: proxyScheduler.scheduleTask,
+  }, {
+    getOwnPropertyDescriptor(target, propertyName) {
+      if (propertyName === 'expectedDataOrigin') {
+        originDescriptorCalls += 1
+        throw new Error('fixture-origin-proxy-sentinel')
+      }
+
+      return Reflect.getOwnPropertyDescriptor(target, propertyName)
+    },
+  })
+  const proxyController = createLichtwaldLogController(proxyOptions)
+  proxyController.open()
+  proxyScheduler.run()
+  assert.equal(originDescriptorCalls, 1)
+  assert.equal(proxyService.calls.loadLog.length, 0)
+  assert.equal(proxyView.lastState.phase, 'loadError')
+  assert.equal(coercionCalls, 0)
+})
+
+test('liest expectedDataOrigin nur bei der Konstruktion und errät ihn nie aus späteren Ergebnissen', () => {
+  const syntheticLog = createSyntheticLog()
+  const scheduler = createManualScheduler()
+  const view = createViewRecorder()
+  const serviceDouble = createServiceDouble({
+    loadResult: createLoadSuccess(syntheticLog),
+  })
+  const options = {
+    lichtwaldLogService: serviceDouble.service,
+    lichtwaldLogView: view,
+    scheduleTask: scheduler.scheduleTask,
+    expectedDataOrigin: 'synthetic',
+  }
+  const controller = createLichtwaldLogController(options)
+
+  options.expectedDataOrigin = 'private'
+  controller.open()
+  scheduler.run()
+
+  assert.equal(view.lastState.phase, 'ready')
+  assert.equal(view.lastState.runtimeMode, 'syntheticDemo')
+  assert.deepEqual(view.lastState.entries, syntheticLog.entries)
+  assert.equal(controller.close(), true)
+
+  options.expectedDataOrigin = 'invalid-after-construction'
+  controller.open()
+  scheduler.run(1)
+  assert.equal(view.lastState.phase, 'ready')
+  assert.equal(view.lastState.runtimeMode, 'syntheticDemo')
+  assert.equal(serviceDouble.calls.loadLog.length, 2)
+})
+
+test('verwendet für Demo-CRUD und Fokus ausschließlich statische Sitzungstexte', () => {
+  const initialEntry = createEntry({
+    id: 'lichtwald-demo-shared-id',
+    title: '[Demo] Ausgangskarte',
+  })
+  let currentLog = createSyntheticLog([initialEntry])
+  const createdEntryId = 'lichtwald-demo-created-id'
+  const privateMarkers = [
+    'fixture-demo-private-title-sentinel',
+    'fixture-demo-private-text-sentinel',
+    createdEntryId,
+  ]
+  const serviceDouble = createServiceDouble({
+    loadResult: () => createLoadSuccess(structuredClone(currentLog)),
+    createResult(input) {
+      const createdEntry = { id: createdEntryId, ...structuredClone(input) }
+      currentLog = {
+        ...structuredClone(currentLog),
+        entries: [...structuredClone(currentLog.entries), createdEntry],
+      }
+      return createCreateSuccess(structuredClone(currentLog))
+    },
+    updateResult(entryId, input) {
+      currentLog = {
+        ...structuredClone(currentLog),
+        entries: currentLog.entries.map((entry) => (
+          entry.id === entryId
+            ? { id: entryId, ...structuredClone(input) }
+            : structuredClone(entry)
+        )),
+      }
+      return createUpdateSuccess(structuredClone(currentLog), entryId)
+    },
+    featuredResult(entryIdOrNull) {
+      currentLog = {
+        ...structuredClone(currentLog),
+        featuredEntryId: entryIdOrNull,
+      }
+      return createFeaturedSuccess(
+        structuredClone(currentLog),
+        entryIdOrNull
+      )
+    },
+    deleteResult(entryId) {
+      currentLog = {
+        ...structuredClone(currentLog),
+        featuredEntryId:
+          currentLog.featuredEntryId === entryId
+            ? null
+            : currentLog.featuredEntryId,
+        entries: currentLog.entries
+          .filter((entry) => entry.id !== entryId)
+          .map((entry) => structuredClone(entry)),
+      }
+      return createDeleteSuccess(
+        structuredClone(currentLog),
+        entryId,
+        true
+      )
+    },
+  })
+  const system = createControllerSystem({
+    expectedDataOrigin: 'synthetic',
+    serviceDouble,
+  })
+  const actions = openAndFlush(system)
+  actions.onOpenCreateEntryForm()
+  actions.onSubmitForm(createSubmission('createEntry', {
+    calendarDate: '2048-08-12',
+    title: privateMarkers[0],
+    text: privateMarkers[1],
+    tags: ['Demo', 'Sitzung'],
+  }))
+
+  assert.equal(
+    system.view.lastState.statusMessage,
+    'Der Demo-Eintrag wurde für diese Sitzung hinzugefügt.'
+  )
+  assert.equal(system.view.lastState.runtimeMode, 'syntheticDemo')
+  assert.equal(
+    Object.hasOwn(serviceDouble.calls.createEntry[0][0], 'runtimeMode'),
+    false
+  )
+  assertFeedbackIsRedacted(system.view.lastState, privateMarkers)
+
+  actions.onOpenUpdateEntryForm(createdEntryId)
+  actions.onSubmitForm(createSubmission(
+    'updateEntry',
+    {
+      calendarDate: '2048-08-13',
+      title: privateMarkers[0],
+      text: privateMarkers[1],
+      tags: ['Demo', 'Aktualisiert'],
+    },
+    createdEntryId
+  ))
+  assert.equal(
+    system.view.lastState.statusMessage,
+    'Der Demo-Eintrag wurde für diese Sitzung aktualisiert.'
+  )
+  assertFeedbackIsRedacted(system.view.lastState, privateMarkers)
+
+  actions.onSetFeaturedEntry(createdEntryId)
+  assert.equal(
+    system.view.lastState.statusMessage,
+    'Der Demo-Fokus wurde für diese Sitzung gespeichert.'
+  )
+  actions.onSetFeaturedEntry(null)
+  assert.equal(
+    system.view.lastState.statusMessage,
+    'Der Demo-Fokus wurde für diese Sitzung entfernt.'
+  )
+
+  actions.onRequestDeleteEntry(createdEntryId)
+  actions.onConfirmDeleteEntry(createdEntryId)
+  assert.equal(
+    system.view.lastState.statusMessage,
+    'Der Demo-Eintrag wurde aus dieser Sitzung entfernt.'
+  )
+  assertFeedbackIsRedacted(system.view.lastState, privateMarkers)
+  assert.equal(currentLog.dataOrigin, 'synthetic')
+  assert.equal(Object.hasOwn(currentLog, 'runtimeMode'), false)
+})
+
+test('hält Demo-Controller mit gleicher Entry-ID isoliert und setzt nur flüchtige UI-Zustände zurück', () => {
+  const sharedEntryId = 'lichtwald-demo-shared-isolation-id'
+  const firstEntry = createEntry({
+    id: sharedEntryId,
+    title: '[Demo] Erste isolierte Karte',
+    tags: ['Geteilt', 'Erste'],
+  })
+  const secondEntry = createEntry({
+    id: sharedEntryId,
+    title: '[Demo] Zweite isolierte Karte',
+    tags: ['Geteilt', 'Zweite'],
+  })
+  let firstLog = createSyntheticLog([firstEntry])
+  const secondLog = createSyntheticLog([secondEntry])
+  const firstService = createServiceDouble({
+    loadResult: () => createLoadSuccess(structuredClone(firstLog)),
+    createResult(input) {
+      const createdEntry = {
+        id: 'lichtwald-demo-isolated-created-id',
+        ...structuredClone(input),
+      }
+      firstLog = {
+        ...structuredClone(firstLog),
+        entries: [...structuredClone(firstLog.entries), createdEntry],
+      }
+      return createCreateSuccess(structuredClone(firstLog))
+    },
+  })
+  const secondService = createServiceDouble({
+    loadResult: createLoadSuccess(secondLog),
+  })
+  const firstSystem = createControllerSystem({
+    expectedDataOrigin: 'synthetic',
+    serviceDouble: firstService,
+  })
+  const secondSystem = createControllerSystem({
+    expectedDataOrigin: 'synthetic',
+    serviceDouble: secondService,
+  })
+  const firstActions = openAndFlush(firstSystem)
+  const secondActions = openAndFlush(secondSystem)
+  const staleFirstActions = firstActions
+
+  firstActions.onChangeSearchQuery('erste')
+  assert.equal(firstSystem.view.lastState.searchQuery, 'erste')
+  assert.equal(secondSystem.view.lastState.searchQuery, '')
+  firstActions.onOpenCreateEntryForm()
+  firstActions.onSubmitForm(createSubmission('createEntry', {
+    calendarDate: '2049-02-03',
+    title: '[Demo] Nur im ersten Controller',
+    text: 'Vollständig erfundener Isolationstest.',
+    tags: ['Isolation'],
+  }))
+  assert.equal(firstSystem.view.lastState.searchQuery, 'erste')
+  assert.equal(firstSystem.view.lastState.entries.length, 2)
+  assert.equal(secondSystem.view.lastState.entries.length, 1)
+  assert.equal(secondSystem.view.lastState.entries[0].title, secondEntry.title)
+
+  assert.equal(firstSystem.controller.close(), true)
+  staleFirstActions.onResetFilters()
+  staleFirstActions.onSelectEntry(sharedEntryId)
+  assert.equal(secondSystem.view.lastState.selectedEntryId, null)
+  assert.equal(secondService.calls.loadLog.length, 1)
+
+  firstSystem.controller.open()
+  firstSystem.scheduler.run(1)
+  assert.equal(firstSystem.view.lastState.searchQuery, '')
+  assert.equal(firstSystem.view.lastState.selectedEntryId, null)
+  assert.equal(firstSystem.view.lastState.entries.length, 2)
+  assert.equal(firstService.calls.loadLog.length, 2)
+
+  secondActions.onSelectEntry(sharedEntryId)
+  assert.equal(secondSystem.view.lastState.selectedEntryId, sharedEntryId)
+  assert.equal(firstSystem.view.lastState.selectedEntryId, null)
+
+  firstSystem.view.actions.onOpenCreateEntryForm()
+  firstSystem.view.actions.onUpdateFormField(
+    'title',
+    'Noch nicht übernommener Demo-Draft'
+  )
+  assert.equal(firstSystem.controller.close(), false)
+  assert.equal(
+    firstSystem.view.lastState.form.errorMessage,
+    'Übernimm den Demo-Eintrag für diese Sitzung oder brich das Formular ab, bevor du den Arbeitsbereich schließt.'
+  )
+  assert.equal(
+    firstSystem.view.lastState.form.errorMessage.includes('Speichere'),
+    false
+  )
+  firstSystem.view.actions.onCancelForm()
+  assert.equal(firstSystem.controller.close(), true)
+  assert.equal(firstLog.entries.length, 2)
+})
+
+test('verwirft bei jeder Demo-Mutation private Erfolgs- und Fehlersnapshots ohne Umklassifizierung', () => {
+  const target = createEntry({
+    id: 'lichtwald-demo-origin-target',
+    title: '[Demo] Herkunftsziel',
+  })
+  const syntheticLog = createSyntheticLog([target])
+  const privateCreated = createEntry({
+    id: 'lichtwald-private-origin-created',
+    title: 'Nicht freizugebender privater Kandidat',
+  })
+  const privateCreateLog = createPrivateLog([target, privateCreated])
+  const createSystem = createControllerSystem({
+    expectedDataOrigin: 'synthetic',
+    serviceOptions: {
+      loadResult: createLoadSuccess(syntheticLog),
+      createResult: createCreateSuccess(privateCreateLog, privateCreated),
+    },
+  })
+  let actions = openAndFlush(createSystem)
+  actions.onOpenCreateEntryForm()
+  actions.onSubmitForm(createSubmission('createEntry', {
+    calendarDate: '2050-01-01',
+    title: 'Nicht freizugebender Demo-Draft',
+    text: 'Ein vollständig erfundener Origin-Mismatch-Draft.',
+    tags: ['Mismatch'],
+  }))
+  assert.deepEqual(createSystem.view.lastState.entries, syntheticLog.entries)
+  assert.equal(
+    createSystem.view.lastState.form.errorMessage,
+    'Die Demo-Änderung konnte nicht übernommen werden. Deine Eingaben bleiben erhalten.'
+  )
+
+  const privateUpdated = createEntry({
+    ...target,
+    title: 'Nicht freizugebender privater Update-Kandidat',
+  })
+  const updateSystem = createControllerSystem({
+    expectedDataOrigin: 'synthetic',
+    serviceOptions: {
+      loadResult: createLoadSuccess(syntheticLog),
+      updateResult: createUpdateSuccess(
+        createPrivateLog([privateUpdated]),
+        target.id
+      ),
+    },
+  })
+  actions = openAndFlush(updateSystem)
+  actions.onOpenUpdateEntryForm(target.id)
+  actions.onSubmitForm(createSubmission(
+    'updateEntry',
+    createEntryValues(privateUpdated),
+    target.id
+  ))
+  assert.deepEqual(updateSystem.view.lastState.entries, syntheticLog.entries)
+  assert.equal(
+    updateSystem.view.lastState.form.errorMessage,
+    'Die Demo-Änderung konnte nicht übernommen werden. Deine Eingaben bleiben erhalten.'
+  )
+
+  const deleteSystem = createControllerSystem({
+    expectedDataOrigin: 'synthetic',
+    serviceOptions: {
+      loadResult: createLoadSuccess(syntheticLog),
+      deleteResult: createDeleteSuccess(
+        createEmptyPrivateLog(),
+        target.id
+      ),
+    },
+  })
+  actions = openAndFlush(deleteSystem)
+  actions.onRequestDeleteEntry(target.id)
+  actions.onConfirmDeleteEntry(target.id)
+  assert.deepEqual(deleteSystem.view.lastState.entries, syntheticLog.entries)
+  assert.equal(
+    deleteSystem.view.lastState.deleteState.errorMessage,
+    'Die Demo-Änderung konnte nicht übernommen werden.'
+  )
+
+  const featuredSystem = createControllerSystem({
+    expectedDataOrigin: 'synthetic',
+    serviceOptions: {
+      loadResult: createLoadSuccess(syntheticLog),
+      featuredResult: createMutationFailure({
+        lichtwaldLog: createPrivateLog([target]),
+      }),
+    },
+  })
+  actions = openAndFlush(featuredSystem)
+  actions.onSetFeaturedEntry(target.id)
+  assert.deepEqual(featuredSystem.view.lastState.entries, syntheticLog.entries)
+  assert.equal(
+    featuredSystem.view.lastState.featuredState.errorMessage,
+    'Die Demo-Änderung konnte nicht übernommen werden.'
+  )
+
+  for (const system of [
+    createSystem,
+    updateSystem,
+    deleteSystem,
+    featuredSystem,
+  ]) {
+    assert.equal(system.view.lastState.runtimeMode, 'syntheticDemo')
+    assert.equal(system.view.lastState.entries[0].dataOrigin, undefined)
+    const feedback = getFeedbackText(system.view.lastState).toLowerCase()
+    assert.equal(feedback.includes('localstorage'), false)
+    assert.equal(feedback.includes('dauerhaft'), false)
+    assert.equal(feedback.includes(privateCreated.id.toLowerCase()), false)
   }
 })

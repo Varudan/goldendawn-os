@@ -3246,6 +3246,299 @@ test('integriert echte View und echten Controller ohne zusätzlichen Load oder D
   }
 })
 
+test('behält bei fehlendem, privatem oder unbekanntem runtimeMode die bisherigen privaten Texte', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    for (const overrides of [
+      {},
+      { runtimeMode: 'private' },
+      { runtimeMode: 'synthetic' },
+      { runtimeMode: 'unknown-mode' },
+    ]) {
+      view.render(createViewModel(overrides))
+
+      const region = findByClass(root, 'lichtwald-log')[0]
+      assert.ok(region)
+      assert.equal(
+        findByClass(root, 'lichtwald-log--synthetic-demo').length,
+        0
+      )
+      assert.equal(findByTag(root, 'h1')[0].textContent, 'LichtwaldLog')
+      assert.ok(root.textContent.includes('Lokales Journal'))
+      assert.ok(root.textContent.includes('Lokaler Modus'))
+      assert.ok(root.textContent.includes(
+        'Gedanken und Beobachtungen im aktuellen Browserprofil'
+      ))
+      assert.ok(root.textContent.includes(
+        'Erstelle, bearbeite und fokussiere private Journaleinträge mit Kalenderdatum, Titel, Text und einzelnen Tags.'
+      ))
+      assert.ok(root.textContent.includes(
+        'Lokale und unverschlüsselte Speicherung'
+      ))
+      assert.ok(root.textContent.includes(
+        'Deine LichtwaldLog-Inhalte werden ausschließlich im aktuellen Browserprofil gespeichert.'
+      ))
+      assert.ok(root.textContent.includes('localStorage'))
+      assert.equal(root.textContent.includes('Synthetische Demo'), false)
+    }
+  })
+})
+
+test('kennzeichnet die Demo in allen Phasen dauerhaft textlich und erklärt ihren Reload-Reset', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const target = createEntry({
+      id: 'lichtwald-demo-phase-target',
+      title: '[Demo] Phasenkarte',
+      text: 'Vollständig erfundener Demo-Text.',
+      tags: ['Demo'],
+    })
+    const phaseModels = [
+      createViewModel({
+        runtimeMode: 'syntheticDemo',
+        phase: 'loading',
+        entries: [],
+      }),
+      createViewModel({
+        runtimeMode: 'syntheticDemo',
+        phase: 'loadError',
+        entries: [],
+        errorMessage:
+          'Die LichtwaldLog-Demo konnte nicht sicher geladen werden. Bitte versuche es erneut.',
+      }),
+      createViewModel({
+        runtimeMode: 'syntheticDemo',
+        phase: 'empty',
+        entries: [],
+      }),
+      createViewModel({
+        runtimeMode: 'syntheticDemo',
+        entries: [target],
+      }),
+      createViewModel({
+        runtimeMode: 'syntheticDemo',
+        phase: 'mutating',
+        entries: [target],
+        form: createForm('createEntry', {
+          isSubmitting: true,
+          isDirty: true,
+        }),
+      }),
+      createViewModel({
+        runtimeMode: 'syntheticDemo',
+        phase: 'mutating',
+        entries: [target],
+        selectedEntryId: target.id,
+        deleteState: {
+          entryId: target.id,
+          isSubmitting: true,
+          errorMessage: '',
+        },
+      }),
+      createViewModel({
+        runtimeMode: 'syntheticDemo',
+        phase: 'mutating',
+        entries: [target],
+        featuredState: {
+          isSubmitting: true,
+          targetEntryId: target.id,
+          errorMessage: '',
+        },
+      }),
+    ]
+
+    for (const viewModel of phaseModels) {
+      view.render(viewModel)
+
+      const region = findByClass(
+        root,
+        'lichtwald-log--synthetic-demo'
+      )[0]
+      assert.ok(region)
+      assert.equal(region.getAttribute('aria-labelledby'), 'lichtwald-log-heading')
+      assert.equal(findByTag(root, 'h1')[0].textContent, 'LichtwaldLog Demo')
+      const demoEyebrow = findByClass(root, 'eyebrow').find(
+        (element) => element.textContent === 'Synthetische Demo'
+      )
+      assert.ok(demoEyebrow)
+      assert.notEqual(demoEyebrow.getAttribute('aria-hidden'), 'true')
+      assert.ok(root.textContent.includes('Demo · nur für diese Sitzung') ||
+        root.textContent.includes('Demo wird für diese Sitzung verarbeitet'))
+      assert.ok(root.textContent.includes(
+        'Vollständig erfundene Beispielmomente'
+      ))
+      assert.ok(root.textContent.includes(
+        'Synthetische Demo mit vollständig erfundenen Beispieldaten. Änderungen bleiben nur bis zum Neuladen dieser Seite erhalten.'
+      ))
+
+      for (const forbiddenText of [
+        'private Journaleinträge',
+        'im aktuellen Browserprofil gespeichert',
+        'dauerhaft gelöscht',
+        'localStorage',
+        'unverschlüsselte Speicherung',
+        'Browserdaten',
+      ]) {
+        assert.equal(
+          root.textContent.includes(forbiddenText),
+          false,
+          `${viewModel.phase}: Demo enthält privaten Text ${forbiddenText}.`
+        )
+      }
+    }
+
+    view.render(phaseModels[0])
+    assert.ok(root.textContent.includes('LichtwaldLog Demo wird vorbereitet'))
+    assert.ok(root.textContent.includes('für diese Sitzung im Arbeitsspeicher'))
+
+    view.render(phaseModels[1])
+    assert.ok(root.textContent.includes('LichtwaldLog Demo konnte nicht geladen werden'))
+    assert.ok(findButton(root, 'Demo erneut laden'))
+
+    view.render(phaseModels[2])
+    assert.ok(root.textContent.includes('Keine Demo-Einträge mehr'))
+    assert.ok(root.textContent.includes('ursprüngliche Demo-Bestand'))
+    assert.ok(findButton(root, 'Neuen Demo-Eintrag erstellen'))
+
+    view.render(phaseModels[4])
+    assert.ok(root.textContent.includes('Neuen Demo-Eintrag erstellen'))
+    assert.ok(root.textContent.includes('nur bis zum Neuladen'))
+    assert.ok(root.textContent.includes('Noch nicht übernommene Demo-Änderungen'))
+    assert.ok(root.textContent.includes('Demo-Änderung wird übernommen'))
+    assert.equal(root.textContent.includes('Wird gespeichert'), false)
+
+    view.render(phaseModels[5])
+    assert.ok(root.textContent.includes(
+      'Demo-Eintrag aus dieser Sitzung entfernen?'
+    ))
+    assert.ok(root.textContent.includes('beim Neuladen zurückgesetzt'))
+    assert.ok(root.textContent.includes('Wird aus dieser Sitzung entfernt'))
+    assert.equal(root.textContent.includes('Dauerhaft löschen'), false)
+
+    view.render(phaseModels[6])
+    assert.ok(root.textContent.includes(
+      'Der Demo-Fokus wird für diese Sitzung gespeichert.'
+    ))
+  })
+})
+
+test('verdrahtet Demo-Suche, CRUD, Delete und Fokus über dieselben sechzehn Actions', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const entry = createEntry({
+      id: 'lichtwald-demo-action-target',
+      title: '[Demo] Aktionskarte',
+      tags: ['Demo', 'Aktion'],
+    })
+    const recorder = createActionRecorder()
+    const overviewModel = createViewModel({
+      runtimeMode: 'syntheticDemo',
+      entries: [entry],
+      availableTags: ['Demo', 'Aktion'],
+      hasActiveFilters: true,
+      searchQuery: 'Aktionskarte',
+    })
+    view.render(overviewModel, recorder.actions)
+
+    const search = findControl(root, 'lichtwaldLogSearch')
+    const calendarDate = findControl(
+      root,
+      'lichtwaldLogCalendarDateFilter'
+    )
+    const tagFilter = findControl(root, 'lichtwaldLogTagFilter')
+    search.value = 'neu'
+    search.dispatchEvent({ type: 'input' })
+    calendarDate.value = entry.calendarDate
+    calendarDate.dispatchEvent({ type: 'change' })
+    tagFilter.value = 'Demo'
+    tagFilter.dispatchEvent({ type: 'change' })
+    findButton(root, 'Suche und Filter zurücksetzen').click()
+    findButton(root, 'Neuen Demo-Eintrag erstellen').click()
+    findButton(root, 'Demo-Eintrag öffnen').click()
+    findButton(root, 'Als Demo-Fokus setzen').click()
+
+    assert.deepEqual(recorder.calls.onChangeSearchQuery, [['neu']])
+    assert.deepEqual(
+      recorder.calls.onChangeCalendarDateFilter,
+      [[entry.calendarDate]]
+    )
+    assert.deepEqual(recorder.calls.onChangeTagFilter, [['Demo']])
+    assert.deepEqual(recorder.calls.onResetFilters, [[]])
+    assert.deepEqual(recorder.calls.onOpenCreateEntryForm, [[]])
+    assert.deepEqual(recorder.calls.onSelectEntry, [[entry.id]])
+    assert.deepEqual(recorder.calls.onSetFeaturedEntry, [[entry.id]])
+
+    view.render(createViewModel({
+      runtimeMode: 'syntheticDemo',
+      entries: [entry],
+      selectedEntryId: entry.id,
+    }), recorder.actions)
+    findButton(root, '← Zur Übersicht').click()
+    findButton(root, 'Demo-Eintrag bearbeiten').click()
+    findButton(root, 'Demo-Eintrag entfernen').click()
+    assert.deepEqual(recorder.calls.onBackToOverview, [[]])
+    assert.deepEqual(recorder.calls.onOpenUpdateEntryForm, [[entry.id]])
+    assert.deepEqual(recorder.calls.onRequestDeleteEntry, [[entry.id]])
+
+    view.render(createViewModel({
+      runtimeMode: 'syntheticDemo',
+      entries: [entry],
+      selectedEntryId: entry.id,
+      deleteState: {
+        entryId: entry.id,
+        isSubmitting: false,
+        errorMessage: '',
+      },
+    }), recorder.actions)
+    findButton(root, 'Nicht entfernen').click()
+    findButton(root, 'Aus Sitzung entfernen').click()
+    assert.deepEqual(recorder.calls.onCancelDeleteEntry, [[]])
+    assert.deepEqual(recorder.calls.onConfirmDeleteEntry, [[entry.id]])
+    assertOwnKeys(recorder.actions, ACTION_NAMES)
+  })
+})
+
+test('hält Demo-Plain-Text, IDs, Handler und Unmount an denselben sicheren DOM-Grenzen', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const entryId = 'lichtwald-demo-id-<SCRIPT>-sentinel'
+    const markupMarker = '<SCRIPT data-demo="true">Demo</SCRIPT>'
+    const entry = createEntry({
+      id: entryId,
+      title: '[Demo] ' + markupMarker,
+      text: markupMarker,
+      tags: [markupMarker],
+    })
+    const firstRecorder = createActionRecorder()
+    const secondRecorder = createActionRecorder()
+    view.render(createViewModel({
+      runtimeMode: 'syntheticDemo',
+      entries: [entry],
+      availableTags: [markupMarker],
+    }), firstRecorder.actions)
+
+    const staleOpenButton = findButton(root, 'Demo-Eintrag öffnen')
+    assert.ok(staleOpenButton)
+    assert.equal(findByTag(root, 'script').length, 0)
+    assert.ok(root.textContent.includes(markupMarker))
+    assertElementDoesNotExpose(root, [entryId, markupMarker])
+    const ids = findAll(root, (node) => (
+      node.nodeType === 1 && typeof node.id === 'string' && node.id.length > 0
+    )).map((element) => element.id)
+    assert.equal(new Set(ids).size, ids.length)
+
+    view.render(createViewModel({
+      runtimeMode: 'syntheticDemo',
+      entries: [createSecondEntry()],
+    }), secondRecorder.actions)
+    staleOpenButton.click()
+    assert.deepEqual(firstRecorder.calls.onSelectEntry, [])
+    assert.deepEqual(secondRecorder.calls.onSelectEntry, [])
+
+    view.unmount()
+    assert.equal(root.textContent, '')
+    staleOpenButton.click()
+    assert.deepEqual(firstRecorder.calls.onSelectEntry, [])
+    assert.equal(root.getAttribute('aria-busy'), null)
+  })
+})
+
 test('Produktionsquelle verwendet nur Safe-DOM, Contractgrenzen und die sechzehn Actions', () => {
   const source = readFileSync(
     new URL(
@@ -3298,6 +3591,10 @@ test('Modul-CSS kapselt sichere responsive, Fokus- und Reduced-Motion-Regeln', (
   )
 
   assert.match(stylesheet, /\.lichtwald-log\s*\{/)
+  assert.match(
+    stylesheet,
+    /\.lichtwald-log--synthetic-demo[\s\S]*border-style:\s*dashed;/
+  )
   assert.match(stylesheet, /min-width:\s*0;/)
   assert.match(stylesheet, /minmax\(0,\s*1fr\)/)
   assert.match(

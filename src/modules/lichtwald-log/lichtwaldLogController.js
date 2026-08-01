@@ -10,6 +10,9 @@ import {
 } from './lichtwaldLogSearch.js'
 
 const PRIVATE_DATA_ORIGIN = 'private'
+const SYNTHETIC_DATA_ORIGIN = 'synthetic'
+const PRIVATE_RUNTIME_MODE = 'private'
+const SYNTHETIC_DEMO_RUNTIME_MODE = 'syntheticDemo'
 
 const FORM_TYPES = Object.freeze({
   CREATE: 'createEntry',
@@ -105,9 +108,13 @@ const STATIC_FIELD_ERRORS = Object.freeze({
 
 const LOAD_ERROR_MESSAGE =
   'Das LichtwaldLog konnte nicht sicher geladen werden. Bitte versuche es erneut.'
+const DEMO_LOAD_ERROR_MESSAGE =
+  'Die LichtwaldLog-Demo konnte nicht sicher geladen werden. Bitte versuche es erneut.'
 const MALFORMED_FORM_MESSAGE = STATIC_FIELD_ERRORS.form
 const UNSAVED_FORM_MESSAGE =
   'Speichere den Eintrag oder brich das Formular ab, bevor du den Arbeitsbereich schließt.'
+const DEMO_UNSAVED_FORM_MESSAGE =
+  'Übernimm den Demo-Eintrag für diese Sitzung oder brich das Formular ab, bevor du den Arbeitsbereich schließt.'
 const GENERIC_MUTATION_MESSAGES = Object.freeze({
   create:
     'Der LichtwaldLog-Eintrag konnte nicht lokal gespeichert werden. Deine Eingaben bleiben erhalten.',
@@ -124,6 +131,21 @@ const SUCCESS_MESSAGES = Object.freeze({
   delete: 'Der LichtwaldLog-Eintrag wurde dauerhaft gelöscht.',
   featuredSet: 'Der LichtwaldLog-Fokus wurde lokal gespeichert.',
   featuredCleared: 'Der LichtwaldLog-Fokus wurde entfernt.',
+})
+const DEMO_GENERIC_MUTATION_MESSAGES = Object.freeze({
+  create:
+    'Die Demo-Änderung konnte nicht übernommen werden. Deine Eingaben bleiben erhalten.',
+  update:
+    'Die Demo-Änderung konnte nicht übernommen werden. Deine Eingaben bleiben erhalten.',
+  delete: 'Die Demo-Änderung konnte nicht übernommen werden.',
+  featured: 'Die Demo-Änderung konnte nicht übernommen werden.',
+})
+const DEMO_SUCCESS_MESSAGES = Object.freeze({
+  create: 'Der Demo-Eintrag wurde für diese Sitzung hinzugefügt.',
+  update: 'Der Demo-Eintrag wurde für diese Sitzung aktualisiert.',
+  delete: 'Der Demo-Eintrag wurde aus dieser Sitzung entfernt.',
+  featuredSet: 'Der Demo-Fokus wurde für diese Sitzung gespeichert.',
+  featuredCleared: 'Der Demo-Fokus wurde für diese Sitzung entfernt.',
 })
 const NO_CHANGES_MESSAGE = 'Keine Änderungen erforderlich'
 
@@ -159,6 +181,17 @@ const WRITE_STORAGE_FAILURE_PAIRS = Object.freeze([
   'validationFailed\0invalidLichtwaldLogData',
   'validationFailed\0privateLichtwaldLogRequired',
 ])
+const DEMO_READ_STORAGE_FAILURE_PAIRS = Object.freeze([
+  'invalidStoredData\0invalidLichtwaldLogDemoData',
+  'invalidStoredData\0syntheticLichtwaldLogRequired',
+  'serializationFailed\0lichtwaldLogDemoSerializationFailed',
+  'sizeLimitExceeded\0lichtwaldLogDemoSizeLimitExceeded',
+])
+const DEMO_WRITE_STORAGE_FAILURE_PAIRS = Object.freeze([
+  ...DEMO_READ_STORAGE_FAILURE_PAIRS,
+  'validationFailed\0invalidLichtwaldLogDemoData',
+  'validationFailed\0syntheticLichtwaldLogRequired',
+])
 
 const LOAD_FAILURE_PAIR_SET = new Set([
   SERVICE_FAILURE_PAIRS.unavailable,
@@ -191,6 +224,40 @@ const MUTATION_FAILURE_PAIR_SETS = Object.freeze({
   ]),
   featured: new Set([
     ...COMMON_MUTATION_FAILURE_PAIRS,
+    SERVICE_FAILURE_PAIRS.notFound,
+  ]),
+})
+const DEMO_LOAD_FAILURE_PAIR_SET = new Set([
+  SERVICE_FAILURE_PAIRS.unavailable,
+  SERVICE_FAILURE_PAIRS.readFailed,
+  SERVICE_FAILURE_PAIRS.storageFailed,
+  ...DEMO_READ_STORAGE_FAILURE_PAIRS,
+])
+const DEMO_COMMON_MUTATION_FAILURE_PAIRS = Object.freeze([
+  SERVICE_FAILURE_PAIRS.invalidInput,
+  SERVICE_FAILURE_PAIRS.invalidState,
+  SERVICE_FAILURE_PAIRS.unavailable,
+  SERVICE_FAILURE_PAIRS.readFailed,
+  SERVICE_FAILURE_PAIRS.writeFailed,
+  SERVICE_FAILURE_PAIRS.storageFailed,
+  ...DEMO_WRITE_STORAGE_FAILURE_PAIRS,
+])
+const DEMO_MUTATION_FAILURE_PAIR_SETS = Object.freeze({
+  create: new Set([
+    ...DEMO_COMMON_MUTATION_FAILURE_PAIRS,
+    SERVICE_FAILURE_PAIRS.limitReached,
+    SERVICE_FAILURE_PAIRS.generationFailed,
+  ]),
+  update: new Set([
+    ...DEMO_COMMON_MUTATION_FAILURE_PAIRS,
+    SERVICE_FAILURE_PAIRS.notFound,
+  ]),
+  delete: new Set([
+    ...DEMO_COMMON_MUTATION_FAILURE_PAIRS,
+    SERVICE_FAILURE_PAIRS.notFound,
+  ]),
+  featured: new Set([
+    ...DEMO_COMMON_MUTATION_FAILURE_PAIRS,
     SERVICE_FAILURE_PAIRS.notFound,
   ]),
 })
@@ -398,7 +465,7 @@ function readEntrySnapshot(value) {
   }
 }
 
-function readPrivateLogSnapshot(value) {
+function readExpectedLogSnapshot(value, expectedDataOrigin) {
   const shape = readExactDataObject(value, LOG_PROPERTY_NAMES)
 
   if (!shape.ok) return { ok: false }
@@ -429,7 +496,7 @@ function readPrivateLogSnapshot(value) {
   try {
     if (
       validateLichtwaldLog(snapshot).ok !== true ||
-      snapshot.dataOrigin !== PRIVATE_DATA_ORIGIN
+      snapshot.dataOrigin !== expectedDataOrigin
     ) {
       return { ok: false }
     }
@@ -711,7 +778,7 @@ function readFailureError(value, allowFieldErrors) {
   }
 }
 
-function parseLoadResult(result) {
+function parseLoadResult(result, expectedDataOrigin) {
   const successShape = readExactDataObject(
     result,
     LOAD_SUCCESS_PROPERTY_NAMES
@@ -719,7 +786,10 @@ function parseLoadResult(result) {
 
   if (successShape.ok) {
     const { ok, status, initialized, lichtwaldLog } = successShape.properties
-    const logShape = readPrivateLogSnapshot(lichtwaldLog)
+    const logShape = readExpectedLogSnapshot(
+      lichtwaldLog,
+      expectedDataOrigin
+    )
 
     if (
       ok !== true ||
@@ -763,12 +833,25 @@ function parseLoadResult(result) {
 
   const pair = `${status}\0${errorShape.code}`
 
-  if (!LOAD_FAILURE_PAIR_SET.has(pair)) return { ok: false }
+  const allowedPairs = expectedDataOrigin === SYNTHETIC_DATA_ORIGIN
+    ? DEMO_LOAD_FAILURE_PAIR_SET
+    : (
+        expectedDataOrigin === PRIVATE_DATA_ORIGIN
+          ? LOAD_FAILURE_PAIR_SET
+          : null
+      )
+
+  if (!allowedPairs?.has(pair)) return { ok: false }
 
   return { ok: false, recognizedFailure: true }
 }
 
-function parseMutationFailure(result, operation, targetEntryId) {
+function parseMutationFailure(
+  result,
+  operation,
+  targetEntryId,
+  expectedDataOrigin
+) {
   const shape = readExactDataObject(result, MUTATION_FAILURE_PROPERTY_NAMES)
 
   if (!shape.ok) return null
@@ -786,7 +869,13 @@ function parseMutationFailure(result, operation, targetEntryId) {
   }
 
   const pair = `${status}\0${basicErrorShape.code}`
-  const allowedPairs = MUTATION_FAILURE_PAIR_SETS[operation]
+  const allowedPairs = expectedDataOrigin === SYNTHETIC_DATA_ORIGIN
+    ? DEMO_MUTATION_FAILURE_PAIR_SETS[operation]
+    : (
+        expectedDataOrigin === PRIVATE_DATA_ORIGIN
+          ? MUTATION_FAILURE_PAIR_SETS[operation]
+          : null
+      )
 
   if (!allowedPairs?.has(pair)) return null
 
@@ -800,7 +889,10 @@ function parseMutationFailure(result, operation, targetEntryId) {
   let snapshot = null
 
   if (lichtwaldLog !== null) {
-    const logShape = readPrivateLogSnapshot(lichtwaldLog)
+    const logShape = readExpectedLogSnapshot(
+      lichtwaldLog,
+      expectedDataOrigin
+    )
 
     if (!logShape.ok) return null
     snapshot = logShape.value
@@ -838,14 +930,17 @@ function parseMutationFailure(result, operation, targetEntryId) {
   }
 }
 
-function parseCreateSuccess(result) {
+function parseCreateSuccess(result, expectedDataOrigin) {
   const shape = readExactDataObject(result, CREATE_SUCCESS_PROPERTY_NAMES)
 
   if (!shape.ok) return null
 
   const { ok, status, changed, createdEntry, lichtwaldLog } = shape.properties
   const entryShape = readEntrySnapshot(createdEntry)
-  const logShape = readPrivateLogSnapshot(lichtwaldLog)
+  const logShape = readExpectedLogSnapshot(
+    lichtwaldLog,
+    expectedDataOrigin
+  )
 
   if (
     ok !== true ||
@@ -875,14 +970,21 @@ function parseCreateSuccess(result) {
   }
 }
 
-function parseUpdateSuccess(result, targetEntryId) {
+function parseUpdateSuccess(
+  result,
+  targetEntryId,
+  expectedDataOrigin
+) {
   const shape = readExactDataObject(result, UPDATE_SUCCESS_PROPERTY_NAMES)
 
   if (!shape.ok) return null
 
   const { ok, status, changed, updatedEntry, lichtwaldLog } = shape.properties
   const entryShape = readEntrySnapshot(updatedEntry)
-  const logShape = readPrivateLogSnapshot(lichtwaldLog)
+  const logShape = readExpectedLogSnapshot(
+    lichtwaldLog,
+    expectedDataOrigin
+  )
 
   if (
     ok !== true ||
@@ -912,7 +1014,11 @@ function parseUpdateSuccess(result, targetEntryId) {
   return { snapshot: logShape.value, changed }
 }
 
-function parseDeleteSuccess(result, targetEntryId) {
+function parseDeleteSuccess(
+  result,
+  targetEntryId,
+  expectedDataOrigin
+) {
   const shape = readExactDataObject(result, DELETE_SUCCESS_PROPERTY_NAMES)
 
   if (!shape.ok) return null
@@ -925,7 +1031,10 @@ function parseDeleteSuccess(result, targetEntryId) {
     focusCleared,
     lichtwaldLog,
   } = shape.properties
-  const logShape = readPrivateLogSnapshot(lichtwaldLog)
+  const logShape = readExpectedLogSnapshot(
+    lichtwaldLog,
+    expectedDataOrigin
+  )
 
   if (
     ok !== true ||
@@ -943,7 +1052,11 @@ function parseDeleteSuccess(result, targetEntryId) {
   return { snapshot: logShape.value }
 }
 
-function parseFeaturedSuccess(result, requestedEntryId) {
+function parseFeaturedSuccess(
+  result,
+  requestedEntryId,
+  expectedDataOrigin
+) {
   const shape = readExactDataObject(result, FEATURED_SUCCESS_PROPERTY_NAMES)
 
   if (!shape.ok) return null
@@ -955,7 +1068,10 @@ function parseFeaturedSuccess(result, requestedEntryId) {
     featuredEntryId,
     lichtwaldLog,
   } = shape.properties
-  const logShape = readPrivateLogSnapshot(lichtwaldLog)
+  const logShape = readExpectedLogSnapshot(
+    lichtwaldLog,
+    expectedDataOrigin
+  )
 
   if (
     ok !== true ||
@@ -975,7 +1091,27 @@ function parseFeaturedSuccess(result, requestedEntryId) {
   return { snapshot: logShape.value, changed }
 }
 
-function getMutationErrorMessage(operation, failure) {
+function getMutationErrorMessage(operation, failure, runtimeMode) {
+  if (runtimeMode === SYNTHETIC_DEMO_RUNTIME_MODE) {
+    if (failure?.pair === SERVICE_FAILURE_PAIRS.limitReached) {
+      return 'Die LichtwaldLog-Demo kann keine weiteren Einträge aufnehmen.'
+    }
+
+    if (failure?.pair === SERVICE_FAILURE_PAIRS.generationFailed) {
+      return 'Für den Demo-Eintrag konnte keine sichere ID erzeugt werden.'
+    }
+
+    if (failure?.pair === SERVICE_FAILURE_PAIRS.notFound) {
+      return 'Der angeforderte Demo-Eintrag ist nicht mehr vorhanden.'
+    }
+
+    if (failure?.pair === SERVICE_FAILURE_PAIRS.invalidState) {
+      return 'Die Demo-Änderung ergab keinen gültigen Gesamtzustand.'
+    }
+
+    return DEMO_GENERIC_MUTATION_MESSAGES[operation]
+  }
+
   if (!failure) return GENERIC_MUTATION_MESSAGES[operation]
 
   if (failure.pair === SERVICE_FAILURE_PAIRS.limitReached) {
@@ -1221,6 +1357,47 @@ function readControllerOption(options, propertyName) {
   }
 }
 
+function resolveOriginConfiguration(expectedOriginOption) {
+  if (
+    !expectedOriginOption.present ||
+    (
+      expectedOriginOption.valid &&
+      expectedOriginOption.value === undefined
+    )
+  ) {
+    return {
+      expectedDataOrigin: PRIVATE_DATA_ORIGIN,
+      runtimeMode: PRIVATE_RUNTIME_MODE,
+    }
+  }
+
+  if (!expectedOriginOption.valid) {
+    return {
+      expectedDataOrigin: null,
+      runtimeMode: PRIVATE_RUNTIME_MODE,
+    }
+  }
+
+  if (expectedOriginOption.value === PRIVATE_DATA_ORIGIN) {
+    return {
+      expectedDataOrigin: PRIVATE_DATA_ORIGIN,
+      runtimeMode: PRIVATE_RUNTIME_MODE,
+    }
+  }
+
+  if (expectedOriginOption.value === SYNTHETIC_DATA_ORIGIN) {
+    return {
+      expectedDataOrigin: SYNTHETIC_DATA_ORIGIN,
+      runtimeMode: SYNTHETIC_DEMO_RUNTIME_MODE,
+    }
+  }
+
+  return {
+    expectedDataOrigin: null,
+    runtimeMode: PRIVATE_RUNTIME_MODE,
+  }
+}
+
 export function createLichtwaldLogController(options = {}) {
   const serviceOption = readControllerOption(
     options,
@@ -1228,6 +1405,21 @@ export function createLichtwaldLogController(options = {}) {
   )
   const viewOption = readControllerOption(options, 'lichtwaldLogView')
   const scheduleOption = readControllerOption(options, 'scheduleTask')
+  const expectedOriginOption = readControllerOption(
+    options,
+    'expectedDataOrigin'
+  )
+  const originConfiguration = resolveOriginConfiguration(
+    expectedOriginOption
+  )
+  const expectedDataOrigin = originConfiguration.expectedDataOrigin
+  const runtimeMode = originConfiguration.runtimeMode
+  const loadErrorMessage = runtimeMode === SYNTHETIC_DEMO_RUNTIME_MODE
+    ? DEMO_LOAD_ERROR_MESSAGE
+    : LOAD_ERROR_MESSAGE
+  const successMessages = runtimeMode === SYNTHETIC_DEMO_RUNTIME_MODE
+    ? DEMO_SUCCESS_MESSAGES
+    : SUCCESS_MESSAGES
   const lichtwaldLogService = serviceOption.valid
     ? serviceOption.value
     : undefined
@@ -1310,6 +1502,7 @@ export function createLichtwaldLogController(options = {}) {
       : []
 
     return deepFreeze({
+      runtimeMode,
       phase: state.phase,
       entries,
       visibleEntryIds: [...state.visibleEntryIds],
@@ -1428,7 +1621,9 @@ export function createLichtwaldLogController(options = {}) {
 
     cancelScheduledLoad = null
     activeLoadToken = 0
-    const result = callService('loadLog', [])
+    const result = expectedDataOrigin === null
+      ? null
+      : callService('loadLog', [])
 
     if (
       !isActive ||
@@ -1438,7 +1633,7 @@ export function createLichtwaldLogController(options = {}) {
       return
     }
 
-    const parsedResult = parseLoadResult(result)
+    const parsedResult = parseLoadResult(result, expectedDataOrigin)
 
     if (
       !isActive ||
@@ -1464,7 +1659,7 @@ export function createLichtwaldLogController(options = {}) {
     state = {
       ...createInitialState(),
       phase: 'loadError',
-      errorMessage: LOAD_ERROR_MESSAGE,
+      errorMessage: loadErrorMessage,
     }
     formBaseline = null
     render({ type: 'heading' })
@@ -1521,7 +1716,7 @@ export function createLichtwaldLogController(options = {}) {
         state = {
           ...createInitialState(),
           phase: 'loadError',
-          errorMessage: LOAD_ERROR_MESSAGE,
+          errorMessage: loadErrorMessage,
         }
         render({ type: 'heading' })
       }
@@ -1966,7 +2161,7 @@ export function createLichtwaldLogController(options = {}) {
     if (!finishOperation(operationToken)) return
 
     if (operationForm.type === FORM_TYPES.CREATE) {
-      const success = parseCreateSuccess(result)
+      const success = parseCreateSuccess(result, expectedDataOrigin)
 
       if (success) {
         state = {
@@ -1982,7 +2177,7 @@ export function createLichtwaldLogController(options = {}) {
             targetEntryId: null,
             errorMessage: '',
           },
-          statusMessage: SUCCESS_MESSAGES.create,
+          statusMessage: successMessages.create,
           statusMessageTone: 'success',
           errorMessage: '',
         }
@@ -2006,7 +2201,11 @@ export function createLichtwaldLogController(options = {}) {
       return
     }
 
-    const success = parseUpdateSuccess(result, operationForm.entryId)
+    const success = parseUpdateSuccess(
+      result,
+      operationForm.entryId,
+      expectedDataOrigin
+    )
 
     if (success) {
       state = {
@@ -2023,7 +2222,7 @@ export function createLichtwaldLogController(options = {}) {
           errorMessage: '',
         },
         statusMessage: success.changed
-          ? SUCCESS_MESSAGES.update
+          ? successMessages.update
           : NO_CHANGES_MESSAGE,
         statusMessageTone: success.changed ? 'success' : 'notice',
         errorMessage: '',
@@ -2057,7 +2256,8 @@ export function createLichtwaldLogController(options = {}) {
     const failure = parseMutationFailure(
       result,
       operation,
-      operationForm.entryId
+      operationForm.entryId,
+      expectedDataOrigin
     )
     adoptFailureSnapshot(failure)
     const fieldErrors = failure?.pair === SERVICE_FAILURE_PAIRS.invalidInput
@@ -2072,7 +2272,7 @@ export function createLichtwaldLogController(options = {}) {
         fieldErrors,
         errorMessage: hasFieldErrors
           ? 'Bitte korrigiere die markierten LichtwaldLog-Felder.'
-          : getMutationErrorMessage(operation, failure),
+          : getMutationErrorMessage(operation, failure, runtimeMode),
         isSubmitting: false,
       },
       statusMessage: '',
@@ -2166,7 +2366,11 @@ export function createLichtwaldLogController(options = {}) {
 
     if (!finishOperation(operationToken)) return
 
-    const success = parseDeleteSuccess(result, entryId)
+    const success = parseDeleteSuccess(
+      result,
+      entryId,
+      expectedDataOrigin
+    )
 
     if (success) {
       state = {
@@ -2181,7 +2385,7 @@ export function createLichtwaldLogController(options = {}) {
           targetEntryId: null,
           errorMessage: '',
         },
-        statusMessage: SUCCESS_MESSAGES.delete,
+        statusMessage: successMessages.delete,
         statusMessageTone: 'success',
         errorMessage: '',
       }
@@ -2194,7 +2398,12 @@ export function createLichtwaldLogController(options = {}) {
       return
     }
 
-    const failure = parseMutationFailure(result, 'delete', entryId)
+    const failure = parseMutationFailure(
+      result,
+      'delete',
+      entryId,
+      expectedDataOrigin
+    )
     adoptFailureSnapshot(failure)
     const targetStillExists = hasEntry(state.snapshot, entryId)
     const targetRemainsActionable = (
@@ -2204,7 +2413,11 @@ export function createLichtwaldLogController(options = {}) {
         state.visibleEntryIds.includes(entryId)
       )
     )
-    const errorMessage = getMutationErrorMessage('delete', failure)
+    const errorMessage = getMutationErrorMessage(
+      'delete',
+      failure,
+      runtimeMode
+    )
     state = {
       ...state,
       deleteState: targetRemainsActionable
@@ -2263,7 +2476,11 @@ export function createLichtwaldLogController(options = {}) {
 
     if (!finishOperation(operationToken)) return
 
-    const success = parseFeaturedSuccess(result, entryIdOrNull)
+    const success = parseFeaturedSuccess(
+      result,
+      entryIdOrNull,
+      expectedDataOrigin
+    )
 
     if (success) {
       state = {
@@ -2276,8 +2493,8 @@ export function createLichtwaldLogController(options = {}) {
         statusMessage: success.changed
           ? (
               entryIdOrNull === null
-                ? SUCCESS_MESSAGES.featuredCleared
-                : SUCCESS_MESSAGES.featuredSet
+                ? successMessages.featuredCleared
+                : successMessages.featuredSet
             )
           : NO_CHANGES_MESSAGE,
         statusMessageTone: success.changed ? 'success' : 'notice',
@@ -2295,7 +2512,8 @@ export function createLichtwaldLogController(options = {}) {
     const failure = parseMutationFailure(
       result,
       'featured',
-      entryIdOrNull
+      entryIdOrNull,
+      expectedDataOrigin
     )
     adoptFailureSnapshot(failure)
     const retainedTarget = (
@@ -2309,7 +2527,11 @@ export function createLichtwaldLogController(options = {}) {
       featuredState: {
         isSubmitting: false,
         targetEntryId: retainedTarget,
-        errorMessage: getMutationErrorMessage('featured', failure),
+        errorMessage: getMutationErrorMessage(
+          'featured',
+          failure,
+          runtimeMode
+        ),
       },
       statusMessage: '',
       errorMessage: '',
@@ -2341,7 +2563,9 @@ export function createLichtwaldLogController(options = {}) {
         ...state,
         form: {
           ...state.form,
-          errorMessage: UNSAVED_FORM_MESSAGE,
+          errorMessage: runtimeMode === SYNTHETIC_DEMO_RUNTIME_MODE
+            ? DEMO_UNSAVED_FORM_MESSAGE
+            : UNSAVED_FORM_MESSAGE,
         },
       }
       render({ type: 'formAlert' })
