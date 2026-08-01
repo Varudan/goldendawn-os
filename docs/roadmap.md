@@ -49,7 +49,7 @@ nicht starre Kalendertermine.
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.2.2` | LichtwaldLog Local MVP | Foundations, App-Komposition, Navigation und lokaler CRUD-/Fokus-/Such-/Filterfluss implementiert; nur die getrennte Demo-Integration bleibt fachlich offen | 🟡 |
+| `v0.2.2` | LichtwaldLog Local MVP | Funktionaler privater und strikt getrennter synthetischer In-Memory-Demo-Umfang implementiert; Release-Prüfung offen | 🟡 |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
@@ -479,12 +479,12 @@ agentengestützte Prozesse sind nicht Teil dieser Version.
   exakte Kalenderdatum- und Tagfilter mit logischer AND-Kombination,
   unveränderter Snapshot-Reihenfolge und ausschließlich flüchtigem,
   nicht persistiertem Controllerzustand bereitstellen.
-- ⬜ Eine klar getrennte synthetische öffentliche Demo-Integration
-  bereitstellen, ohne Daten in den ausschließlich privaten Servicepfad zu
-  übernehmen.
+- ✅ Eine klar getrennte synthetische öffentliche Demo-Runtime als eigenen
+  In-Memory-Storage-, Service-, Controller- und View-Stack bereitstellen, ohne
+  private Daten, private Ports oder Browser-Storage zu übernehmen.
 - ✅ Bilder nicht als Base64-Daten in `localStorage` speichern.
 
-Der implementierte lokale Pfad lautet nun:
+Der implementierte private lokale Pfad lautet:
 
 ```text
 LichtwaldLogView
@@ -494,6 +494,24 @@ LichtwaldLogView
   → StorageAdapter
   → localStorage
 ```
+
+Der getrennte synthetische Demo-Pfad lautet:
+
+```text
+LichtwaldLogView
+  → LichtwaldLogController(expectedDataOrigin: synthetic)
+  → LichtwaldLogDemoService
+  → LichtwaldLogDemoStorage
+  → In-Memory-Full-Snapshot
+  → kanonische Demo-Factory
+```
+
+Die Demo enthält genau fünf vollständig erfundene, als `[Demo]` markierte
+Einträge. Mutationen bleiben bei Navigation innerhalb des aktuellen Dokuments
+erhalten, ein Reload beziehungsweise eine neue Komposition stellt den
+kanonischen Seed wieder her. Sie verwendet keinen `StorageAdapter`, keinen
+Browser-Key und keinen privaten Service oder Storage. Private und synthetische
+Stacks besitzen getrennte Instanzen und keinen Fallback oder Datentransfer.
 
 Der Controller hält ausschließlich eine flüchtige, defensiv entkoppelte
 UI-Projektion und verwendet pro akzeptierter Lade- oder Mutationsintention exakt
@@ -529,8 +547,10 @@ automatisiert abgedeckt. Der Controller leitet Query,
 Datum, Tagoptionen und sichtbare IDs ausschließlich flüchtig aus seiner
 vollständigen privaten UI-Projektion ab. Diese Werte gehören nicht zu Schema 1
 und werden nicht persistiert; Service-, Storage- und Adapter-APIs bleiben
-unverändert. Nur die getrennte synthetische Demo-Integration bleibt als
-fachlicher Slice offen.
+unverändert. Die getrennte synthetische Demo ist unmittelbar nach dem privaten
+Modul navigierbar, in jedem Zustand sichtbar als Sitzung gekennzeichnet und
+vollständig bedienbar. Der funktionale Umfang ist implementiert; offen bleibt
+die abschließende Release-Prüfung.
 Storage und Service bleiben die autoritativen fachlichen Grenzen.
 Read-Preflight, 500.000-Codeeinheiten-Limit, Browser-Quota, TOCTOU- und
 Multi-Tab-Verhalten ändern sich durch Anwendungskomposition, Controller und
@@ -548,6 +568,9 @@ eine spätere Phase geplant.
 - Suche und Filter funktionieren ohne externe Kommunikation.
 - UI-Komponenten greifen nicht direkt auf `localStorage` zu.
 - Private lokale Daten und synthetische Demo-Daten bleiben getrennt.
+- Demo-CRUD, Fokus, Suche und Filter verändern weder den privaten
+  LichtwaldLog-Key noch andere Browser-Storage-Keys; Navigation erhält den
+  In-Memory-Demostand, Reload setzt nur die Demo auf den Seed zurück.
 - In `localStorage` werden keine Bilder als Base64-Daten abgelegt.
 - Das Modul enthält weder Sync- oder Agentenlogik noch einen Weekly Review.
 
@@ -853,7 +876,8 @@ Der annotierte Tag `v0.2.1` und das zugehörige GitHub Release wurden am
 sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `v0.2.2 – LichtwaldLog Local MVP` ist seit dem `2026-07-26` in Arbeit.
 Implementiert sind die Contract Foundation und private Storage-Foundation mit
-ADR 0013 und ADR 0014 sowie die darauf aufbauenden Service- und
+ADR 0013 und ADR 0014 sowie die in ADR 0015 getrennte synthetische
+In-Memory-Demo-Runtime und die darauf aufbauenden Service- und
 Controller-Foundations und die isolierte View- und CSS-Foundation. Der Service
 lädt den autoritativen privaten Zustand ohne Cache, normalisiert Formeingaben,
 löst Ziel-IDs exakt auf und kapselt Laden, Erstellen, vollständiges Bearbeiten,
@@ -869,8 +893,10 @@ Textsuche sowie exakte Kalenderdatum- und Tagfilter arbeiten ausschließlich auf
 der flüchtigen Controller-Projektion und sind weder Schema-1-Felder noch
 persistierte Zustände. Die reale Browserprüfung auf Desktop und bei exakt
 `390 × 844` ist für den Navigations-, CRUD-, Fokus-, Such- und Filterfluss
-erfolgreich abgeschlossen. Als einziger fachlicher nächster Schritt bleibt die
-getrennte synthetische Demo-Integration offen; der Meilenstein ist weder
+erfolgreich abgeschlossen. Die strikt getrennte synthetische In-Memory-Demo ist
+als eigener Storage-, Service-, Controller- und View-Stack vollständig
+bedienbar integriert. Der funktionale Umfang ist implementiert; als nächster
+Schritt bleibt die abschließende Release-Prüfung. Der Meilenstein ist weder
 abgeschlossen noch veröffentlicht. `v0.2.2` bleibt vollständig lokal und
 besitzt keine externe Kommunikation, Webhooks, Agentenlogik oder
 Airtable-Anbindung.

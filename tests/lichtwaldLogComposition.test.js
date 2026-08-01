@@ -162,11 +162,17 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
     new URL('../src/main.js', import.meta.url),
     'utf8'
   )
+  const packageMetadata = JSON.parse(readFileSync(
+    new URL('../package.json', import.meta.url),
+    'utf8'
+  ))
   const expectedImports = [
     "import './modules/lichtwald-log/lichtwaldLog.css'",
     "import { createLichtwaldLogController } from './modules/lichtwald-log/lichtwaldLogController.js'",
     "import { createLichtwaldLogView } from './modules/lichtwald-log/lichtwaldLogView.js'",
+    "import { createLichtwaldLogDemoService } from './services/lichtwaldLogDemoService.js'",
     "import { createLichtwaldLogService } from './services/lichtwaldLogService.js'",
+    "import { createLichtwaldLogDemoStorage } from './storage/lichtwaldLogDemoStorage.js'",
     "import { createLichtwaldLogStorage } from './storage/lichtwaldLogStorage.js'",
   ]
 
@@ -181,6 +187,14 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   assert.equal(
     (mainSource.match(/\bcreateStorageAdapter\s*\(/gu) ?? []).length,
     1
+  )
+  assert.equal(
+    (mainSource.match(/\bwindow\.localStorage\b/gu) ?? []).length,
+    1
+  )
+  assert.doesNotMatch(
+    mainSource,
+    /\b(?:sessionStorage|indexedDB|caches)\b/u
   )
 
   const compositionNeedles = [
@@ -207,6 +221,10 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
     'createLichtwaldLogService',
     'createLichtwaldLogView',
     'createLichtwaldLogController',
+    'createLichtwaldLogDemoStorage',
+    'createLichtwaldLogDemoService',
+    'createLichtwaldLogView',
+    'createLichtwaldLogController',
   ])
   assert.match(
     mainSource,
@@ -214,25 +232,66 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   )
   assert.match(
     mainSource,
-    /createLichtwaldLogController\(\{\s*lichtwaldLogService,\s*lichtwaldLogView,\s*\}\)/u
+    /createLichtwaldLogController\(\{\s*lichtwaldLogService,\s*lichtwaldLogView,\s*expectedDataOrigin: 'private',\s*\}\)/u
   )
   assert.doesNotMatch(mainSource, /generateLichtwaldLogEntryId/u)
-  assert.doesNotMatch(
+  assert.match(
     mainSource,
-    /createLichtwaldLog(?:Demo|Search|Filter|Sync|Agent|Network)[A-Za-z]*\s*\(/iu
+    /createLichtwaldLogDemoStorage\(\)/u
+  )
+  assert.match(
+    mainSource,
+    /createLichtwaldLogDemoService\(\{\s*lichtwaldLogDemoStorage,\s*\}\)/u
+  )
+  assert.match(
+    mainSource,
+    /createLichtwaldLogController\(\{\s*lichtwaldLogService: lichtwaldLogDemoService,\s*lichtwaldLogView: lichtwaldLogDemoView,\s*expectedDataOrigin: 'synthetic',\s*\}\)/u
+  )
+  const demoCompositionStart = mainSource.indexOf(
+    'const lichtwaldLogDemoStorage = createLichtwaldLogDemoStorage()'
+  )
+  const demoCompositionEnd = mainSource.indexOf(
+    'const promptStorage = createPromptStorage(storageAdapter)',
+    demoCompositionStart
+  )
+  assert.ok(
+    demoCompositionStart >= 0 &&
+    demoCompositionEnd > demoCompositionStart
+  )
+  const demoCompositionSource = mainSource.slice(
+    demoCompositionStart,
+    demoCompositionEnd
+  )
+  assert.doesNotMatch(demoCompositionSource, /\bstorageAdapter\b/u)
+  assert.doesNotMatch(demoCompositionSource, /\blichtwaldLogStorage\b/u)
+  assert.doesNotMatch(
+    demoCompositionSource,
+    /\b(?:localStorage|sessionStorage|indexedDB|caches)\b/u
   )
   assert.doesNotMatch(
     mainSource,
-    /\blichtwaldLog(?:Demo|Search|Filter|Sync|Agent|Webhook|Network)[A-Za-z]*/u
+    /\blichtwaldLogDemo(?:StorageKey|Key|Marker|Initializer|Initialization|Seeded)\b/iu
   )
   assert.doesNotMatch(
     mainSource,
-    /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource)\b/u
+    /\bgoldendawn\.lichtwaldLog\.[A-Za-z0-9._-]+\b/u
+  )
+  assert.doesNotMatch(
+    mainSource,
+    /\bcreateLichtwaldLog(?:Search|Filter|Sync|Agent|Webhook|Network)[A-Za-z]*/u
+  )
+  assert.doesNotMatch(
+    mainSource,
+    /\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|sendBeacon)\b/u
   )
 
   assert.match(
     mainSource,
     /const VIEW_LICHTWALD_LOG = 'lichtwald-log'/u
+  )
+  assert.match(
+    mainSource,
+    /const VIEW_LICHTWALD_LOG_DEMO = 'lichtwald-log-demo'/u
   )
   const moduleStart = mainSource.indexOf('id: VIEW_LICHTWALD_LOG')
   const moduleEnd = mainSource.indexOf('\n  },', moduleStart)
@@ -246,6 +305,21 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   assert.match(moduleSource, /Filter/u)
   assert.doesNotMatch(moduleSource, /Demo/u)
 
+  const demoModuleStart = mainSource.indexOf(
+    'id: VIEW_LICHTWALD_LOG_DEMO'
+  )
+  const demoModuleEnd = mainSource.indexOf('\n  },', demoModuleStart)
+  assert.ok(demoModuleStart > moduleEnd && demoModuleEnd > demoModuleStart)
+  const demoModuleSource = mainSource.slice(
+    demoModuleStart,
+    demoModuleEnd
+  )
+  assert.match(demoModuleSource, /name: 'LichtwaldLog Demo'/u)
+  assert.match(demoModuleSource, /status: 'Synthetische Demo'/u)
+  assert.match(demoModuleSource, /navigationState: 'Synthetische Demo'/u)
+  assert.match(demoModuleSource, /vollständig erfundene/iu)
+  assert.match(demoModuleSource, /isNavigable: true/u)
+
   const showViewStart = mainSource.indexOf('function showView(')
   const showViewEnd = mainSource.indexOf(
     "\ndocument.querySelectorAll('.nav-button[data-view]')",
@@ -258,6 +332,9 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   )
   const closeGuardIndex = showViewSource.indexOf(
     'activeView === VIEW_LICHTWALD_LOG'
+  )
+  const demoCloseGuardIndex = showViewSource.indexOf(
+    'activeView === VIEW_LICHTWALD_LOG_DEMO'
   )
   const activeViewAssignmentIndex = showViewSource.indexOf(
     'activeView = viewName'
@@ -274,13 +351,63 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   assert.ok(sameViewGuardIndex < closeGuardIndex)
   assert.ok(closeGuardIndex < activeViewAssignmentIndex)
   assert.ok(closeGuardIndex < navigationIndex)
+  assert.ok(closeGuardIndex < demoCloseGuardIndex)
+  assert.ok(demoCloseGuardIndex < activeViewAssignmentIndex)
+  assert.ok(demoCloseGuardIndex < navigationIndex)
   assert.match(
     showViewSource,
     /activeView === VIEW_LICHTWALD_LOG\s*&&\s*lichtwaldLogController\.close\(\) === false\s*\)\s*\{\s*return/u
   )
   assert.match(
     showViewSource,
+    /activeView === VIEW_LICHTWALD_LOG_DEMO\s*&&\s*lichtwaldLogDemoController\.close\(\) === false\s*\)\s*\{\s*return/u
+  )
+  assert.match(
+    showViewSource,
     /activeView === VIEW_LICHTWALD_LOG\)\s*\{\s*document\.title = 'GoldenDawn OS – LichtwaldLog'\s*lichtwaldLogController\.open\(\)/u
+  )
+  assert.match(
+    showViewSource,
+    /activeView === VIEW_LICHTWALD_LOG_DEMO\)\s*\{\s*document\.title = 'GoldenDawn OS – LichtwaldLog Demo'\s*lichtwaldLogDemoController\.open\(\)/u
+  )
+  const privateOpenBranch = showViewSource.slice(
+    showViewSource.indexOf(
+      'activeView === VIEW_LICHTWALD_LOG)'
+    ),
+    showViewSource.indexOf(
+      'activeView === VIEW_LICHTWALD_LOG_DEMO)'
+    )
+  )
+  const demoBranchStart = showViewSource.indexOf(
+    'activeView === VIEW_LICHTWALD_LOG_DEMO)'
+  )
+  const demoOpenBranch = showViewSource.slice(
+    demoBranchStart,
+    showViewSource.indexOf('\n  } else {', demoBranchStart)
+  )
+  assert.doesNotMatch(privateOpenBranch, /lichtwaldLogDemo/u)
+  assert.doesNotMatch(demoOpenBranch, /lichtwaldLogController\.open/u)
+  assert.doesNotMatch(
+    mainSource,
+    /lichtwaldLog(?:Demo)?Controller\.open\(\)[\s\S]{0,80}\b(?:fallback|catch)\b/iu
+  )
+  assert.match(mainSource, /v0\.2\.2 – Release-Prüfung/u)
+  assert.match(mainSource, /Funktionaler lokaler Umfang implementiert/u)
+  assert.match(mainSource, /v0\.2\.2 – LichtwaldLog Local MVP in Arbeit/u)
+  assert.match(mainSource, /weiterhin in Arbeit und unveröffentlicht/u)
+  assert.match(mainSource, /LearningHub Local MVP/u)
+  assert.match(mainSource, /<strong>– v0\.2\.1<\/strong>/u)
+  assert.deepEqual(
+    {
+      version: packageMetadata.version,
+      private: packageMetadata.private,
+      license: packageMetadata.license,
+    },
+    {
+      version: '0.2.1',
+      private: true,
+      license: 'UNLICENSED',
+    }
   )
 })
 

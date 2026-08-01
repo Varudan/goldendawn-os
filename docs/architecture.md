@@ -6,7 +6,7 @@
 | --- | --- |
 | Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; `v0.2.1` aktuelle Paket- und Releaseversion; LichtwaldLog Foundations, Anwendungskomposition, Navigation sowie lokaler CRUD-, Fokus-, Such- und Filterfluss implementiert |
+| Status | Verbindliche Zielarchitektur; `v0.2.1` aktuelle Paket- und Releaseversion; funktionaler privater und strikt getrennter synthetischer LichtwaldLog-Demo-Umfang implementiert; Release-Prüfung offen |
 | Letzte Aktualisierung | 2026-08-01 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -666,10 +666,12 @@ komponiert. LichtwaldLog ist über die Navigation mit dem sichtbaren Status
 vollständig über GoldenDawn OS bedienbar und real im Browser auf Desktop mit
 `1440 × 1000` sowie bei exakt `390 × 844` geprüft. Die lokale Textsuche sowie exakte Kalenderdatum-
 und Tagfilter sind als reine flüchtige Controllerableitung implementiert und
-verändern weder Schema 1 noch Service-, Storage- oder Adapter-APIs. Nur die
-getrennte synthetische Demo-Integration bleibt als fachlicher Slice offen. Der
-vollständige MVP ist weder abgeschlossen noch veröffentlicht. ADR 0013 und ADR
-0014 bleiben die autoritativen Contract- und Storage-Entscheidungen.
+verändern weder Schema 1 noch Service-, Storage- oder Adapter-APIs. Zusätzlich
+ist die strikt getrennte synthetische In-Memory-Demo als eigener vollständig
+bedienbarer Runtime-Stack umgesetzt. Der funktionale Umfang ist damit
+implementiert; die abschließende Release-Prüfung bleibt offen. Der vollständige
+MVP ist weder abgeschlossen noch veröffentlicht. ADR 0013, ADR 0014 und ADR
+0015 dokumentieren Contract, private Persistenz und Demo-Trennung.
 
 Der spätere Zielpfad bleibt:
 
@@ -703,6 +705,34 @@ LichtwaldLogView
   → StorageAdapter
   → localStorage
 ```
+
+ADR 0015 ergänzt daneben ohne Crossover diesen getrennten Demo-Datenfluss:
+
+```text
+LichtwaldLogView
+  → LichtwaldLogController(expectedDataOrigin: synthetic)
+  → LichtwaldLogDemoService
+  → LichtwaldLogDemoStorage
+  → In-Memory-Full-Snapshot
+  → createLichtwaldLogDemoSnapshot
+```
+
+Die Demo-Factory liefert bei jedem Aufruf einen frischen, vollständig
+entkoppelten, deterministischen Schema-1-Snapshot mit exakt fünf erfundenen
+`[Demo]`-Einträgen, `dataOrigin: synthetic` und einer gültigen
+Fokusreferenz. Jede Demo-Storage-Instanz hält genau einen defensiv validierten
+synthetischen Snapshot für die Lebensdauer der Anwendungskomposition. Sie
+verwendet weder `StorageAdapter`, Browser-Storage-Key, `localStorage`,
+`sessionStorage` noch Netzwerk. Navigation erhält Demo-Mutationen im selben
+Dokument; Reload oder neue Komposition erzeugt wieder den kanonischen Seed.
+
+Der eigenständige `LichtwaldLogDemoService` importiert weder privaten
+Service noch privaten Storage. Er besitzt dieselbe exakt fünfteilige fachliche
+API und dieselben CRUD-, Fokus-, No-op-, Reihenfolge-, Kapazitäts- und
+begrenzten ID-Regeln, akzeptiert aber ausschließlich synthetische Snapshots und
+verwendet ein eigenes Demo-ID-Präfix. Private und synthetische Stacks besitzen
+eigene Storage-, Service-, View-, Controller- und Generator-Lebenszyklen.
+Es gibt keine Konvertierung, kein gemeinsames Seeding und keinen Fallback.
 
 Innerhalb des Controllers ergänzt das reine Modul `lichtwaldLogSearch.js`
 diesen Persistenzpfad ausschließlich um eine flüchtige Ableitung:
@@ -739,11 +769,18 @@ createLichtwaldLogController({
   lichtwaldLogService,
   lichtwaldLogView,
   scheduleTask,
+  expectedDataOrigin,
 })
 ```
 
 Die zurückgegebene eingefrorene API enthält exakt `open` und `close`. Der
-View-Port ist auf `render(viewModel, actions)` und `unmount()` begrenzt.
+optionale Herkunftswert ist bei fehlendem oder `undefined` Wert exakt
+`private` und akzeptiert ansonsten ausschließlich `private` oder
+`synthetic`. Er bleibt für den vollständigen Lifecycle fest. Aus ihm wird
+nur `runtimeMode: private` beziehungsweise
+`runtimeMode: syntheticDemo` für die View projiziert; der Modus wird nie
+aus einem Service-Snapshot abgeleitet und ist kein Schema-1-Feld.
+Der View-Port ist auf `render(viewModel, actions)` und `unmount()` begrenzt.
 `createLichtwaldLogView(rootElement)` implementiert ihn als isolierte
 DOM-Foundation und liefert eine eingefrorene API mit exakt den eigenen
 Data-Properties `render` und `unmount`. Jeder Render erhält dieselbe
@@ -799,10 +836,18 @@ der View.
 bildet damit eine DOM-Datenschutzgrenze. Das gekapselte Modul-CSS enthält
 Long-Word-, responsive, `focus-visible`- und Reduced-Motion-Regeln und ist über
 `src/main.js` in den Buildgraph eingebunden. `src/main.js` komponiert den
-gemeinsamen `StorageAdapter`, LichtwaldLog-Storage, Service, View und Controller
-und stellt das Modul über die Navigation mit dem sichtbaren Status `In Arbeit`
-bereit. Die bestehende `close()`-/`unmount()`-Grenze entfernt private
-DOM-Inhalte beim Verlassen des Moduls.
+privaten Stack über den gemeinsamen `StorageAdapter` und daneben den
+synthetischen Stack mit eigenen Demo-Storage-, Service-, View- und
+Controller-Instanzen. Das Demo-Navigationselement folgt unmittelbar auf das
+private Modul; nur eine View ist montiert und jeder Wechsel respektiert den
+Dirty Guard der aktiven Instanz. Die bestehende
+`close()`-/`unmount()`-Grenze entfernt Inhalte beim Verlassen des
+jeweiligen Moduls.
+
+Im Modus `syntheticDemo` kennzeichnet die View jeden Zustand dauerhaft
+textlich als vollständig erfundene Demo nur für diese Seitensitzung. Sie
+verwendet dort keine Aussage über private Journale, aktuelles Browserprofil,
+`localStorage`, Cloud-Sicherung oder dauerhaftes Löschen.
 
 Der Controller koordiniert ausschließlich flüchtige Lade-, Leer-, Auswahl-,
 Formular-, Bestätigungs-, Busy-, Erfolgs-, Fehler-, Such- und Filterzustände.
@@ -816,8 +861,8 @@ tatsächlich leerer Snapshot `phase: empty` erzeugt. Keines dieser Filterfelder
 gehört zu Schema 1 oder zur Persistenz. Der intern gehaltene Snapshot ist eine
 vollständig validierte, tief entkoppelte und eingefrorene UI-Projektion, keine
 persistente oder fachlich autoritative Datenquelle. Jeder Service-Snapshot wird
-erneut vollständig mit
-`validateLichtwaldLog` geprüft und nur mit `dataOrigin: private` akzeptiert.
+erneut vollständig mit `validateLichtwaldLog` geprüft und nur mit der bei
+der Controller-Komposition festgelegten exakten `dataOrigin` akzeptiert.
 Der rohe Schema-1-Root, Service- und Storage-Resultate sowie interne Tokens
 gelangen nicht in das View-Modell. Storage bleibt die einzige veränderliche
 Wahrheit; der Service bleibt die autoritative fachliche Operationsgrenze.
@@ -939,9 +984,13 @@ Requests. Die Such- und Filterableitung wurde dabei einschließlich literalem
 Matching, exakten und kombinierten Filtern, Leerzustand, Reset, Caretfokus,
 gefilterten Mutationsflüssen und ausbleibenden Storage-Schreiboperationen real
 im Browser geprüft und ist zusätzlich permanent automatisiert abgedeckt.
-Nur die getrennte synthetische Demo-Integration bleibt fachlich offen. Für den
-vollständigen Local MVP bleiben
-private lokale Einträge und synthetische Demo-Daten getrennt; Bilder werden
+Die getrennte synthetische Demo ist über eine unmittelbar auf das private Modul
+folgende Navigation vollständig bedienbar. Dirty Guards gelten in beide
+Richtungen, nur eine View ist jeweils montiert, private Browserbytes bleiben bei
+Demo-Operationen unverändert und Reload stellt ausschließlich den kanonischen
+Demo-Seed wieder her. Der funktionale Umfang ist implementiert; offen bleibt
+die Release-Prüfung. Private lokale Einträge und synthetische Demo-Daten
+bleiben technisch getrennt; Bilder werden
 nicht als Base64 in `localStorage` abgelegt. Der Storage ist unverschlüsselt
 und bietet weder Authentifizierung, Zugriffskontrolle, Integritätsgarantie,
 Cloud-Sicherung noch Synchronisierung. Read-Preflight,
@@ -1133,7 +1182,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
-| `v0.2.2` | In Arbeit; Foundations, App-Komposition, Navigation und lokaler CRUD-/Fokus-/Such-/Filterfluss implementiert; nur die getrennte Demo-Integration bleibt fachlich offen; keine externe Kommunikation |
+| `v0.2.2` | In Arbeit; funktionaler privater und strikt getrennter synthetischer In-Memory-Demo-Umfang implementiert; Release-Prüfung offen; keine externe Kommunikation |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
@@ -1166,6 +1215,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0012](decisions/0012-one-time-learning-hub-demo-seed.md) | Einmaliger koordinierter LearningHub-Demo-Erststart | Angenommen |
 | [0013](decisions/0013-lichtwald-log-local-contract.md) | Lokaler LichtwaldLog-Vertrag mit einzelner Fokusreferenz | Angenommen |
 | [0014](decisions/0014-lichtwald-log-private-storage-foundation.md) | Begrenzte private LichtwaldLog-Full-Snapshot-Persistenz | Angenommen |
+| [0015](decisions/0015-separated-lichtwald-log-demo-runtime.md) | Getrennte synthetische LichtwaldLog-Demo-Runtime | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).

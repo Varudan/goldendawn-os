@@ -14,6 +14,7 @@ import { createLearningHubDemoInitializer } from './services/learningHubDemoInit
 import { createLearningHubService } from './services/learningHubService.js'
 import { createLearningProgressService } from './services/learningProgressService.js'
 import { createLearningTestService } from './services/learningTestService.js'
+import { createLichtwaldLogDemoService } from './services/lichtwaldLogDemoService.js'
 import { createLichtwaldLogService } from './services/lichtwaldLogService.js'
 import { createPromptService } from './services/promptService.js'
 import { createLearningArtifactStorage } from './storage/learningArtifactStorage.js'
@@ -22,6 +23,7 @@ import { createLearningHubDemoInitializationStorage } from './storage/learningHu
 import { createLearningProgressStorage } from './storage/learningProgressStorage.js'
 import { createLearningTestAttemptStorage } from './storage/learningTestAttemptStorage.js'
 import { createLearningTestBankStorage } from './storage/learningTestBankStorage.js'
+import { createLichtwaldLogDemoStorage } from './storage/lichtwaldLogDemoStorage.js'
 import { createLichtwaldLogStorage } from './storage/lichtwaldLogStorage.js'
 import { createPromptStorage } from './storage/promptStorage.js'
 import { createStorageAdapter } from './storage/storageAdapter.js'
@@ -34,6 +36,7 @@ const VIEW_COMMAND_CENTER = 'command-center'
 const VIEW_PROMPT_VAULT = 'prompt-vault'
 const VIEW_LEARNING_HUB = 'learning-hub'
 const VIEW_LICHTWALD_LOG = 'lichtwald-log'
+const VIEW_LICHTWALD_LOG_DEMO = 'lichtwald-log-demo'
 
 const modules = [
   {
@@ -86,6 +89,16 @@ const modules = [
     status: 'In Arbeit',
     statusClass: 'next',
     navigationState: 'In Arbeit',
+    isNavigable: true,
+  },
+  {
+    id: VIEW_LICHTWALD_LOG_DEMO,
+    name: 'LichtwaldLog Demo',
+    description:
+      'Vollständig erfundene Einträge in einer getrennten synthetischen Demo nur für diese Seitensitzung ausprobieren',
+    status: 'Synthetische Demo',
+    statusClass: 'local',
+    navigationState: 'Synthetische Demo',
     isNavigable: true,
   },
   {
@@ -204,6 +217,17 @@ const lichtwaldLogView = createLichtwaldLogView(viewOutlet)
 const lichtwaldLogController = createLichtwaldLogController({
   lichtwaldLogService,
   lichtwaldLogView,
+  expectedDataOrigin: 'private',
+})
+const lichtwaldLogDemoStorage = createLichtwaldLogDemoStorage()
+const lichtwaldLogDemoService = createLichtwaldLogDemoService({
+  lichtwaldLogDemoStorage,
+})
+const lichtwaldLogDemoView = createLichtwaldLogView(viewOutlet)
+const lichtwaldLogDemoController = createLichtwaldLogController({
+  lichtwaldLogService: lichtwaldLogDemoService,
+  lichtwaldLogView: lichtwaldLogDemoView,
+  expectedDataOrigin: 'synthetic',
 })
 const promptStorage = createPromptStorage(storageAdapter)
 const promptService = createPromptService({ promptStorage })
@@ -270,12 +294,12 @@ function renderCommandCenter() {
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
         <h2 id="focus-title">v0.2.2 – LichtwaldLog Local MVP in Arbeit</h2>
-        <p>Contract-, Storage-, Service-, Controller- und View-Foundation sind jetzt in GoldenDawn OS komponiert. Einträge lassen sich lokal erstellen, anzeigen, bearbeiten und dauerhaft löschen; der Lichtwald-Fokus lässt sich explizit setzen und entfernen. Lokale Suche sowie exakte Kalenderdatum- und Tagfilter arbeiten ausschließlich auf der flüchtigen Controller-Projektion.</p>
+        <p>Der funktionale Umfang des LichtwaldLog Local MVP ist implementiert: Der private lokale Pfad und die strikt getrennte synthetische In-Memory-Demo unterstützen CRUD, Fokus, Suche und Filter ohne externe Kommunikation.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
           <span>In Arbeit</span>
-          <strong>Lokaler CRUD-, Fokus-, Such- und Filterfluss bedienbar</strong>
+          <strong>Funktionaler lokaler Umfang implementiert</strong>
         </div>
         <small>Private Einträge bleiben unverschlüsselt im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung, Synchronisierung oder externe Kommunikation.</small>
       </div>
@@ -285,8 +309,8 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Projektschritt</span>
-        <h2 id="milestone-title">v0.2.2 – Getrennte Demo-Integration</h2>
-        <p>Als einziger fachlicher Schritt dieses Meilensteins bleibt ein klar getrennter synthetischer Demo-Pfad offen. Das lokale MVP bleibt in Arbeit; Synchronisierung und Agentenlogik gehören nicht zu v0.2.2.</p>
+        <h2 id="milestone-title">v0.2.2 – Release-Prüfung</h2>
+        <p>Als nächster Schritt bleibt die abschließende Release-Prüfung. Der Meilenstein ist weiterhin in Arbeit und unveröffentlicht; Synchronisierung und Agentenlogik gehören nicht zu v0.2.2.</p>
       </div>
       <span class="status status--next">In Arbeit</span>
     </aside>
@@ -375,6 +399,13 @@ function showView(viewName, { moveFocus = false } = {}) {
   }
 
   if (
+    activeView === VIEW_LICHTWALD_LOG_DEMO &&
+    lichtwaldLogDemoController.close() === false
+  ) {
+    return
+  }
+
+  if (
     activeView === VIEW_LEARNING_HUB &&
     learningHubController.close() === false
   ) {
@@ -397,6 +428,9 @@ function showView(viewName, { moveFocus = false } = {}) {
   } else if (activeView === VIEW_LICHTWALD_LOG) {
     document.title = 'GoldenDawn OS – LichtwaldLog'
     lichtwaldLogController.open()
+  } else if (activeView === VIEW_LICHTWALD_LOG_DEMO) {
+    document.title = 'GoldenDawn OS – LichtwaldLog Demo'
+    lichtwaldLogDemoController.open()
   } else {
     document.title = 'GoldenDawn OS – Command Center'
     renderCommandCenter()

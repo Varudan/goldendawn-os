@@ -37,8 +37,10 @@ were published on 2026-07-25, and the repository is publicly visible for
 portfolio and evaluation purposes without an open-source license. LichtwaldLog
 `v0.2.2` has been in progress since 2026-07-26. Its Contract Foundation,
 private Storage Foundation, Service Foundation, Controller Foundation, and
-isolated View and CSS Foundation, together with ADRs 0013 and 0014, are
-implemented and composed in `src/main.js` through the shared `StorageAdapter`.
+isolated View and CSS Foundation, together with ADRs 0013, 0014, and 0015, are
+implemented as two explicitly separated stacks in `src/main.js`. Only the
+private stack uses the shared `StorageAdapter`; the synthetic demo uses its
+own in-memory stack without that adapter.
 LichtwaldLog is reachable from the application navigation with the visible
 status `In Arbeit`. Viewing, creating, fully editing, permanently deleting, and
 explicitly setting or clearing the featured entry are operable through
@@ -48,9 +50,13 @@ criteria are combined with logical AND exclusively over the transient
 controller projection and are never persisted. Real-browser verification of
 the complete navigation, CRUD, focus, dirty-guard, delete, reload, search, and
 filter flow passed in fresh isolated temporary Chrome profiles at desktop
-`1440 × 1000` and exactly `390 × 844`. Only the separate synthetic demo
-integration remains as an open functional slice. The milestone is neither
-complete nor published. It remains fully local and includes no external
+`1440 × 1000` and exactly `390 × 844`. A second, strictly separated
+runtime now exposes five fully invented entries as a functional synthetic
+in-memory demo. Demo mutations survive navigation within the current document
+and reset to the canonical seed on reload or a new composition without reading
+or changing private browser data. The functional scope is implemented; final
+release verification remains. The milestone is neither complete nor published.
+It remains fully local and includes no external
 communication, webhooks, agent logic, or Airtable integration.
 
 ## Vision
@@ -101,7 +107,7 @@ Accepted architecture decisions and their rationale are indexed in
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
 | LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP complete, verified, and published |
-| LichtwaldLog | Local text journal with search and exact calendar-date and tag filters | `v0.2.2` | In progress; Foundations, application composition, navigation, local CRUD/focus/search/filter flow, and permanent regression coverage implemented; remaining functional slice: separate synthetic demo integration |
+| LichtwaldLog | Local text journal with search and exact calendar-date and tag filters plus a strictly separated synthetic in-memory demo | `v0.2.2` | In progress; functional private and synthetic-demo scope implemented; final release verification remains |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
 | Weekly Review | Structured summaries, progress, and next actions | Later, after the LichtwaldLog Local MVP | Planned; not part of `v0.2.2` |
@@ -284,7 +290,8 @@ LearningTestService
 
 The Contract Foundation, private Storage Foundation, Service Foundation,
 Controller Foundation, and isolated View and CSS Foundation are implemented.
-ADRs 0013 and 0014 document the unchanged contract and storage decisions. The
+ADRs 0013, 0014, and 0015 document the contract, private storage, and strictly
+separated demo-runtime decisions. The
 contract consists of the Schema 1 model, the pure `validateLichtwaldLog`
 validator, and synthetic contract tests. The implemented application path is
 composed in `src/main.js` through the shared `StorageAdapter`:
@@ -297,6 +304,35 @@ LichtwaldLogView
   → StorageAdapter
   → localStorage
 ```
+
+The demo is composed as a separate stack with no private service, private
+storage, shared adapter, or browser-storage port:
+
+```text
+Synthetic LichtwaldLogView
+  → LichtwaldLogController(expectedDataOrigin: synthetic)
+  → LichtwaldLogDemoService
+  → LichtwaldLogDemoStorage
+  → in-memory full snapshot
+  → canonical demo factory
+```
+
+The private controller is explicitly composed with
+`expectedDataOrigin: private`. Missing or `undefined` keeps that private
+default for backwards compatibility; only exact `private` and `synthetic`
+configuration is accepted. The controller validates every snapshot against the
+fixed expected origin and projects only the transient view value
+`runtimeMode: private` or `runtimeMode: syntheticDemo`.
+
+The canonical factory returns a fresh detached Schema 1
+`dataOrigin: synthetic` snapshot containing exactly five deterministic,
+fully invented `[Demo]` entries and a valid featured-entry reference. The
+demo storage keeps one defensively validated full snapshot per application
+composition, enforces the same 500,000-UTF-16-code-unit boundary, and exposes
+only load and save. The independent demo service exposes the same five domain
+operations and business semantics as the private service, but never imports or
+calls the private service or storage. It uses a separate demo-prefixed ID
+generator lifecycle.
 
 `createLichtwaldLogStorage` exposes only `loadLichtwaldLog` and
 `saveLichtwaldLog`. It stores the complete validated private Schema 1 root
@@ -316,7 +352,8 @@ and `setFeaturedEntry`. Passing `null` to `setFeaturedEntry` clears the
 focus; there is no additional clear or toggle method.
 
 `createLichtwaldLogController({ lichtwaldLogService, lichtwaldLogView,
-scheduleTask })` returns a frozen API containing exactly `open` and `close`.
+scheduleTask, expectedDataOrigin })` returns a frozen API containing exactly
+`open` and `close`.
 The injected port remains limited to `render(viewModel, actions)` and
 `unmount()`. `createLichtwaldLogView(rootElement)` implements it and returns a
 frozen API with exactly the own data properties `render` and `unmount`. Every
@@ -377,14 +414,23 @@ transient filter, focus, and caret metadata. The namespaced CSS includes
 responsive and reduced-motion rules and is imported into the application build
 graph through `src/main.js`.
 
+For `runtimeMode: syntheticDemo`, the view is permanently identified in
+text as `Synthetische Demo`, `LichtwaldLog Demo`, and
+`Demo · nur für diese Sitzung`. It states that every example is fully
+invented and that mutations last only until the page reloads. Demo loading,
+empty, form, busy, delete, focus, and privacy copy does not claim
+`localStorage`, a current browser profile, cloud backup, private journals,
+or permanent deletion.
+
 The controller coordinates transient loading, empty, selection, form,
 confirmation, busy, success, error, search, and filter states. `entries` remains
 the complete validated snapshot projection; `visibleEntryIds`, available tags,
 the three criteria, active-state flag, and filtered-empty flag are freshly
 derived and deeply frozen for the view. Details and forms still resolve from all
 entries. These fields are not part of Schema 1 and are never persisted. Every
-service snapshot is fully revalidated as private Schema 1 data; the raw schema
-root and service results are not passed to the view. Storage remains the sole
+service snapshot is fully revalidated as Schema 1 data with the exact origin
+fixed when the controller is constructed; the raw schema root and service
+results are not passed to the view. Storage remains the sole
 mutable source of truth, and the service remains the authoritative domain
 boundary.
 
@@ -445,9 +491,15 @@ flow succeeded. Keyboard and caret focus, live regions, `44px` minimum control
 heights, the visible `3px` focus ring, and the absence of horizontal page
 overflow were verified. The run produced 0 console warnings or errors, 0
 runtime exceptions, and 0 external requests. Search and filter actions left the
-private snapshot byte-identical and caused no storage write; service, storage,
-and shared adapter APIs remain unchanged. Only the separate synthetic demo integration is
-not yet complete. The target Local MVP remains limited to entries with a title,
+private snapshot byte-identical and caused no storage write; private service,
+private storage, and shared adapter APIs remain unchanged. `src/main.js`
+now composes an additional independent demo storage, service, view, and
+synthetic-origin controller immediately after the private navigation item.
+Dirty guards are enforced in both directions, only one view is mounted, demo
+mutations persist only for the current document, and reload restores the
+canonical seed while private data remains authoritative and untouched. The
+functional scope is implemented; final release verification remains. The
+target Local MVP remains limited to entries with a title,
 calendar date, plain text, and tags, plus local search and filters. Private
 entries and synthetic demo entries remain separate.
 Images are not stored as Base64 in `localStorage`. The local store is neither
@@ -455,8 +507,8 @@ a cloud backup nor cross-device synchronization. Its existing 500,000
 UTF-16-code-unit limit, browser quota, read preflight, TOCTOU, and multi-tab
 limitations remain unchanged. `v0.2.2` includes no external communication, webhooks,
 synchronization, agent logic, or Airtable integration. Weekly Review is later
-work and is not part of this milestone. `v0.2.2` is neither complete nor
-published.
+work and is not part of this milestone. `v0.2.2` is still neither complete
+nor published, and package and release version remain `v0.2.1`.
 
 ## Development principles
 
@@ -504,7 +556,7 @@ non-binding; see the roadmap for details.
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
-| v0.2.2 | LichtwaldLog Local MVP | In progress; Foundations, application composition, navigation, local CRUD/focus/search/filter flow, and permanent regression coverage implemented; remaining functional slice: separate synthetic demo integration |
+| v0.2.2 | LichtwaldLog Local MVP | In progress; functional private and strictly separated synthetic in-memory demo scope implemented; final release verification remains |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |

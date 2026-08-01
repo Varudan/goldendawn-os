@@ -77,6 +77,20 @@ const FORM_CONFIGS = Object.freeze({
     submitLabel: 'Änderungen speichern',
   }),
 })
+const DEMO_FORM_CONFIGS = Object.freeze({
+  [FORM_TYPES.CREATE]: Object.freeze({
+    heading: 'Neuen Demo-Eintrag erstellen',
+    description:
+      'Der vollständig erfundene Eintrag bleibt nur bis zum Neuladen dieser Seite erhalten.',
+    submitLabel: 'Demo-Eintrag hinzufügen',
+  }),
+  [FORM_TYPES.UPDATE]: Object.freeze({
+    heading: 'Demo-Eintrag bearbeiten',
+    description:
+      'Alle vier Inhaltsfelder werden für diese Sitzung gemeinsam übernommen.',
+    submitLabel: 'Demo-Änderungen übernehmen',
+  }),
+})
 
 function isObjectLike(value) {
   return (
@@ -144,6 +158,10 @@ function readOwnString(value, propertyName) {
   return property.found && typeof property.value === 'string'
     ? property.value
     : ''
+}
+
+function isSyntheticDemoViewModel(viewModel) {
+  return readOwnString(viewModel, 'runtimeMode') === 'syntheticDemo'
 }
 
 function createActionPort(actions) {
@@ -277,15 +295,24 @@ function getFieldError(fieldErrors, fieldName) {
   return readOwnString(fieldErrors, fieldName)
 }
 
-function createHeader(entryCount, isBusy, focusReferences) {
+function createHeader(
+  entryCount,
+  isBusy,
+  focusReferences,
+  isSyntheticDemo
+) {
   const header = createElement('header', 'topbar lichtwald-log-header')
   const titleGroup = createElement('div', 'lichtwald-log-header__title')
   const eyebrow = createElement(
     'span',
     'eyebrow',
-    'Lokales Journal'
+    isSyntheticDemo ? 'Synthetische Demo' : 'Lokales Journal'
   )
-  const heading = createElement('h1', '', 'LichtwaldLog')
+  const heading = createElement(
+    'h1',
+    '',
+    isSyntheticDemo ? 'LichtwaldLog Demo' : 'LichtwaldLog'
+  )
   setElementId(heading, 'lichtwald-log-heading')
   makeProgrammaticallyFocusable(heading)
   focusReferences.heading = heading
@@ -294,7 +321,13 @@ function createHeader(entryCount, isBusy, focusReferences) {
   const state = createElement(
     'span',
     'system-state',
-    isBusy ? 'Wird lokal verarbeitet' : 'Lokaler Modus'
+    isSyntheticDemo
+      ? (
+          isBusy
+            ? 'Demo wird für diese Sitzung verarbeitet'
+            : 'Demo · nur für diese Sitzung'
+        )
+      : (isBusy ? 'Wird lokal verarbeitet' : 'Lokaler Modus')
   )
   const marker = createElement('span')
   marker.setAttribute('aria-hidden', 'true')
@@ -316,7 +349,9 @@ function createHeader(entryCount, isBusy, focusReferences) {
   const introductionHeading = createElement(
     'h2',
     'lichtwald-log-introduction__title',
-    'Gedanken und Beobachtungen im aktuellen Browserprofil'
+    isSyntheticDemo
+      ? 'Vollständig erfundene Beispielmomente'
+      : 'Gedanken und Beobachtungen im aktuellen Browserprofil'
   )
   setElementId(
     introductionHeading,
@@ -327,7 +362,9 @@ function createHeader(entryCount, isBusy, focusReferences) {
     createElement(
       'p',
       '',
-      'Erstelle, bearbeite und fokussiere private Journaleinträge mit Kalenderdatum, Titel, Text und einzelnen Tags.'
+      isSyntheticDemo
+        ? 'Erkunde, bearbeite und fokussiere vollständig erfundene Demo-Einträge mit Kalenderdatum, Titel, Text und einzelnen Tags.'
+        : 'Erstelle, bearbeite und fokussiere private Journaleinträge mit Kalenderdatum, Titel, Text und einzelnen Tags.'
     )
   )
   const count = createElement('p', 'lichtwald-log-count')
@@ -342,7 +379,7 @@ function createHeader(entryCount, isBusy, focusReferences) {
   return { header, introduction }
 }
 
-function createPrivacyNotice() {
+function createPrivacyNotice(isSyntheticDemo) {
   const notice = createElement('aside', 'lichtwald-log-privacy')
   notice.setAttribute(
     'aria-labelledby',
@@ -351,7 +388,9 @@ function createPrivacyNotice() {
   const heading = createElement(
     'h2',
     'lichtwald-log-privacy__title',
-    'Lokale und unverschlüsselte Speicherung'
+    isSyntheticDemo
+      ? 'Flüchtige und getrennte Demo-Laufzeit'
+      : 'Lokale und unverschlüsselte Speicherung'
   )
   setElementId(heading, 'lichtwald-log-privacy-title')
   notice.append(
@@ -359,7 +398,9 @@ function createPrivacyNotice() {
     createElement(
       'p',
       '',
-      'Deine LichtwaldLog-Inhalte werden ausschließlich im aktuellen Browserprofil gespeichert. Es gibt keine Synchronisierung zwischen Geräten und keine automatische Cloud-Sicherung. localStorage ist unverschlüsselt und für andere Skripte derselben Origin grundsätzlich lesbar. Beim Löschen von Browserdaten können die Inhalte verloren gehen.'
+      isSyntheticDemo
+        ? 'Synthetische Demo mit vollständig erfundenen Beispieldaten. Änderungen bleiben nur bis zum Neuladen dieser Seite erhalten. Die Demo ist vollständig vom privaten LichtwaldLog getrennt und wird nicht synchronisiert.'
+        : 'Deine LichtwaldLog-Inhalte werden ausschließlich im aktuellen Browserprofil gespeichert. Es gibt keine Synchronisierung zwischen Geräten und keine automatische Cloud-Sicherung. localStorage ist unverschlüsselt und für andere Skripte derselben Origin grundsätzlich lesbar. Beim Löschen von Browserdaten können die Inhalte verloren gehen.'
     )
   )
   return notice
@@ -405,7 +446,11 @@ function createGlobalErrorFeedback(viewModel) {
   return alert
 }
 
-function createFeaturedFeedback(viewModel, focusReferences) {
+function createFeaturedFeedback(
+  viewModel,
+  focusReferences,
+  isSyntheticDemo
+) {
   const featuredState = viewModel?.featuredState
   const isSubmitting = featuredState?.isSubmitting === true
   const errorMessage = typeof featuredState?.errorMessage === 'string'
@@ -425,9 +470,17 @@ function createFeaturedFeedback(viewModel, focusReferences) {
     const status = createElement(
       'p',
       'lichtwald-log-featured-state__busy',
-      isClearing
-        ? 'Der Lichtwald-Fokus wird lokal entfernt.'
-        : 'Der Lichtwald-Fokus wird lokal gespeichert.'
+      isSyntheticDemo
+        ? (
+            isClearing
+              ? 'Der Demo-Fokus wird für diese Sitzung entfernt.'
+              : 'Der Demo-Fokus wird für diese Sitzung gespeichert.'
+          )
+        : (
+            isClearing
+              ? 'Der Lichtwald-Fokus wird lokal entfernt.'
+              : 'Der Lichtwald-Fokus wird lokal gespeichert.'
+          )
     )
     status.setAttribute('role', 'status')
     status.setAttribute('aria-live', 'polite')
@@ -450,7 +503,7 @@ function createFeaturedFeedback(viewModel, focusReferences) {
   return region
 }
 
-function createLoadingState() {
+function createLoadingState(isSyntheticDemo) {
   const state = createElement(
     'section',
     'lichtwald-log-state lichtwald-log-state--loading'
@@ -465,18 +518,30 @@ function createLoadingState() {
   indicator.setAttribute('aria-hidden', 'true')
   const text = createElement('div')
   text.append(
-    createElement('h2', '', 'LichtwaldLog wird geladen'),
+    createElement(
+      'h2',
+      '',
+      isSyntheticDemo
+        ? 'LichtwaldLog Demo wird vorbereitet'
+        : 'LichtwaldLog wird geladen'
+    ),
     createElement(
       'p',
       '',
-      'Die privaten Einträge werden aus dem aktuellen Browserprofil gelesen.'
+      isSyntheticDemo
+        ? 'Die vollständig erfundenen Beispiele werden für diese Sitzung im Arbeitsspeicher bereitgestellt.'
+        : 'Die privaten Einträge werden aus dem aktuellen Browserprofil gelesen.'
     )
   )
   state.append(indicator, text)
   return state
 }
 
-function createLoadErrorState(viewModel, eventContext) {
+function createLoadErrorState(
+  viewModel,
+  eventContext,
+  isSyntheticDemo
+) {
   const state = createElement(
     'section',
     'lichtwald-log-state lichtwald-log-state--error'
@@ -488,7 +553,13 @@ function createLoadErrorState(viewModel, eventContext) {
   icon.setAttribute('aria-hidden', 'true')
   state.append(
     icon,
-    createElement('h2', '', 'LichtwaldLog konnte nicht geladen werden'),
+    createElement(
+      'h2',
+      '',
+      isSyntheticDemo
+        ? 'LichtwaldLog Demo konnte nicht geladen werden'
+        : 'LichtwaldLog konnte nicht geladen werden'
+    ),
     createElement(
       'p',
       '',
@@ -497,7 +568,7 @@ function createLoadErrorState(viewModel, eventContext) {
         : ''
     ),
     createButton(
-      'Erneut laden',
+      isSyntheticDemo ? 'Demo erneut laden' : 'Erneut laden',
       'button button--secondary',
       () => eventContext.call('onRetryLoad')
     )
@@ -531,11 +602,11 @@ function createTagList(tags, className) {
   return region
 }
 
-function createFeaturedBadge() {
+function createFeaturedBadge(isSyntheticDemo) {
   const badge = createElement(
     'p',
     'lichtwald-log-featured-badge',
-    'Lichtwald-Fokus'
+    isSyntheticDemo ? 'Demo-Fokus' : 'Lichtwald-Fokus'
   )
   badge.append(
     createElement(
@@ -551,14 +622,23 @@ function createFeaturedButton(
   entry,
   featuredEntryId,
   eventContext,
-  disabled
+  disabled,
+  isSyntheticDemo
 ) {
   const isFeatured = entry.id === featuredEntryId
 
   return createButton(
-    isFeatured
-      ? 'Lichtwald-Fokus entfernen'
-      : 'Als Lichtwald-Fokus setzen',
+    isSyntheticDemo
+      ? (
+          isFeatured
+            ? 'Demo-Fokus entfernen'
+            : 'Als Demo-Fokus setzen'
+        )
+      : (
+          isFeatured
+            ? 'Lichtwald-Fokus entfernen'
+            : 'Als Lichtwald-Fokus setzen'
+        ),
     'button button--secondary',
     () =>
       eventContext.call(
@@ -575,7 +655,8 @@ function createDeleteConfirmation(
   deleteState,
   eventContext,
   focusReferences,
-  isBusy
+  isBusy,
+  isSyntheticDemo
 ) {
   const confirmation = createElement(
     'fieldset',
@@ -586,11 +667,19 @@ function createDeleteConfirmation(
     'lichtwald-log-delete-confirmation-' + String(entryIndex)
   setElementId(confirmation, confirmationId)
   confirmation.append(
-    createElement('legend', '', 'Eintrag dauerhaft löschen?'),
+    createElement(
+      'legend',
+      '',
+      isSyntheticDemo
+        ? 'Demo-Eintrag aus dieser Sitzung entfernen?'
+        : 'Eintrag dauerhaft löschen?'
+    ),
     createElement(
       'p',
       '',
-      'Diese lokale Löschung kann in LichtwaldLog nicht rückgängig gemacht werden.'
+      isSyntheticDemo
+        ? 'Diese Änderung betrifft nur die flüchtige Demo und wird beim Neuladen zurückgesetzt.'
+        : 'Diese lokale Löschung kann in LichtwaldLog nicht rückgängig gemacht werden.'
     )
   )
 
@@ -616,13 +705,15 @@ function createDeleteConfirmation(
     'lichtwald-log-confirmation__actions'
   )
   const cancelButton = createButton(
-    'Nicht löschen',
+    isSyntheticDemo ? 'Nicht entfernen' : 'Nicht löschen',
     'button button--secondary',
     () => eventContext.call('onCancelDeleteEntry'),
     { disabled: isBusy }
   )
   const confirmButton = createButton(
-    isBusy ? 'Wird dauerhaft gelöscht …' : 'Dauerhaft löschen',
+    isSyntheticDemo
+      ? (isBusy ? 'Wird aus dieser Sitzung entfernt …' : 'Aus Sitzung entfernen')
+      : (isBusy ? 'Wird dauerhaft gelöscht …' : 'Dauerhaft löschen'),
     'button lichtwald-log-confirmation__confirm',
     () =>
       eventContext.call('onConfirmDeleteEntry', [entryId]),
@@ -641,7 +732,8 @@ function createEntryCard(
   eventContext,
   focusReferences,
   interactionBlocked,
-  deleteBusy
+  deleteBusy,
+  isSyntheticDemo
 ) {
   const isFeatured = entry.id === viewModel.featuredEntryId
   const card = createElement(
@@ -668,7 +760,7 @@ function createEntryCard(
   header.append(heading)
 
   if (isFeatured) {
-    header.append(createFeaturedBadge())
+    header.append(createFeaturedBadge(isSyntheticDemo))
   }
 
   const date = createElement(
@@ -685,7 +777,7 @@ function createEntryCard(
   )
   actions.append(
     createButton(
-      'Eintrag öffnen',
+      isSyntheticDemo ? 'Demo-Eintrag öffnen' : 'Eintrag öffnen',
       'button button--primary',
       () => eventContext.call('onSelectEntry', [entry.id]),
       { disabled: interactionBlocked }
@@ -694,7 +786,8 @@ function createEntryCard(
       entry,
       viewModel.featuredEntryId,
       eventContext,
-      interactionBlocked
+      interactionBlocked,
+      isSyntheticDemo
     )
   )
   card.append(
@@ -715,7 +808,8 @@ function createEntryCard(
         viewModel.deleteState,
         eventContext,
         focusReferences,
-        deleteBusy
+        deleteBusy,
+        isSyntheticDemo
       )
     )
   }
@@ -723,7 +817,7 @@ function createEntryCard(
   return card
 }
 
-function createEmptyState() {
+function createEmptyState(isSyntheticDemo) {
   const state = createElement(
     'section',
     'lichtwald-log-state lichtwald-log-state--empty'
@@ -732,11 +826,19 @@ function createEmptyState() {
   icon.setAttribute('aria-hidden', 'true')
   state.append(
     icon,
-    createElement('h3', '', 'Noch keine LichtwaldLog-Einträge'),
+    createElement(
+      'h3',
+      '',
+      isSyntheticDemo
+        ? 'Keine Demo-Einträge mehr'
+        : 'Noch keine LichtwaldLog-Einträge'
+    ),
     createElement(
       'p',
       '',
-      'Erstelle deinen ersten privaten Journaleintrag im aktuellen Browserprofil.'
+      isSyntheticDemo
+        ? 'Für diese Sitzung sind keine vollständig erfundenen Beispiele mehr vorhanden. Nach dem Neuladen erscheint wieder der ursprüngliche Demo-Bestand.'
+        : 'Erstelle deinen ersten privaten Journaleintrag im aktuellen Browserprofil.'
     )
   )
   return state
@@ -991,7 +1093,8 @@ function createOverview(
   eventContext,
   focusReferences,
   interactionBlocked,
-  deleteBusy
+  deleteBusy,
+  isSyntheticDemo
 ) {
   const overview = createElement(
     'section',
@@ -1013,11 +1116,17 @@ function createOverview(
   titleGroup.append(
     createElement('span', 'eyebrow', 'Übersicht')
   )
-  const heading = createElement('h2', '', 'Journaleinträge')
+  const heading = createElement(
+    'h2',
+    '',
+    isSyntheticDemo ? 'Demo-Einträge' : 'Journaleinträge'
+  )
   setElementId(heading, 'lichtwald-log-overview-heading')
   titleGroup.append(heading)
   const createTrigger = createButton(
-    'Neuen Eintrag erstellen',
+    isSyntheticDemo
+      ? 'Neuen Demo-Eintrag erstellen'
+      : 'Neuen Eintrag erstellen',
     'button button--primary',
     () => eventContext.call('onOpenCreateEntryForm'),
     { disabled: interactionBlocked }
@@ -1029,7 +1138,7 @@ function createOverview(
   if (entries.length === 0) {
     overview.append(
       createResultStatus(0, 0, false),
-      createEmptyState()
+      createEmptyState(isSyntheticDemo)
     )
     return overview
   }
@@ -1069,7 +1178,8 @@ function createOverview(
         eventContext,
         focusReferences,
         interactionBlocked,
-        deleteBusy
+        deleteBusy,
+        isSyntheticDemo
       )
     )
   })
@@ -1084,7 +1194,8 @@ function createDetail(
   eventContext,
   focusReferences,
   interactionBlocked,
-  deleteBusy
+  deleteBusy,
+  isSyntheticDemo
 ) {
   const detail = createElement('section', 'lichtwald-log-detail')
   detail.setAttribute(
@@ -1104,7 +1215,11 @@ function createDetail(
   const header = createElement('div', 'lichtwald-log-detail__header')
   const titleGroup = createElement('div')
   titleGroup.append(
-    createElement('span', 'eyebrow', 'Journaleintrag')
+    createElement(
+      'span',
+      'eyebrow',
+      isSyntheticDemo ? 'Synthetischer Demo-Eintrag' : 'Journaleintrag'
+    )
   )
   const heading = createElement(
     'h2',
@@ -1134,16 +1249,24 @@ function createDetail(
   const featuredStatus = createElement(
     'p',
     'lichtwald-log-detail__featured-status',
-    entry.id === viewModel.featuredEntryId
-      ? 'Lichtwald-Fokus: ausgewählt'
-      : 'Lichtwald-Fokus: nicht ausgewählt'
+    isSyntheticDemo
+      ? (
+          entry.id === viewModel.featuredEntryId
+            ? 'Demo-Fokus: ausgewählt'
+            : 'Demo-Fokus: nicht ausgewählt'
+        )
+      : (
+          entry.id === viewModel.featuredEntryId
+            ? 'Lichtwald-Fokus: ausgewählt'
+            : 'Lichtwald-Fokus: nicht ausgewählt'
+        )
   )
   const actions = createElement(
     'div',
     'lichtwald-log-detail__actions'
   )
   const updateTrigger = createButton(
-    'Eintrag bearbeiten',
+    isSyntheticDemo ? 'Demo-Eintrag bearbeiten' : 'Eintrag bearbeiten',
     'button button--primary',
     () =>
       eventContext.call('onOpenUpdateEntryForm', [entry.id]),
@@ -1151,7 +1274,9 @@ function createDetail(
   )
   focusReferences.updateFormTriggers.set(entry.id, updateTrigger)
   const deleteTrigger = createButton(
-    'Eintrag dauerhaft löschen',
+    isSyntheticDemo
+      ? 'Demo-Eintrag entfernen'
+      : 'Eintrag dauerhaft löschen',
     'button button--secondary lichtwald-log-detail__delete',
     () =>
       eventContext.call('onRequestDeleteEntry', [entry.id]),
@@ -1164,7 +1289,8 @@ function createDetail(
       entry,
       viewModel.featuredEntryId,
       eventContext,
-      interactionBlocked
+      interactionBlocked,
+      isSyntheticDemo
     )
   )
   detail.append(
@@ -1187,7 +1313,8 @@ function createDetail(
         viewModel.deleteState,
         eventContext,
         focusReferences,
-        deleteBusy
+        deleteBusy,
+        isSyntheticDemo
       )
     )
   }
@@ -1267,7 +1394,8 @@ function createScalarField(
   fieldConfig,
   eventContext,
   focusReferences,
-  isBusy
+  isBusy,
+  isSyntheticDemo
 ) {
   const field = createElement('div', 'lichtwald-log-form__field')
   const controlId = 'lichtwald-log-form-' + fieldConfig.name
@@ -1299,7 +1427,9 @@ function createScalarField(
   const hint = createElement(
     'small',
     'lichtwald-log-form__hint',
-    fieldConfig.hint
+    isSyntheticDemo && fieldConfig.name === 'calendarDate'
+      ? 'Format YYYY-MM-DD. Der Wert wird ohne Zeitzonenumwandlung für diese Sitzung übernommen.'
+      : fieldConfig.hint
   )
   setElementId(hint, hintId)
   const fieldError = getFieldError(
@@ -1544,10 +1674,13 @@ function createFormAlert(form, focusReferences) {
 function createEntryForm(
   viewModel,
   eventContext,
-  focusReferences
+  focusReferences,
+  isSyntheticDemo
 ) {
   const formState = viewModel.form
-  const config = FORM_CONFIGS[formState.type]
+  const config = isSyntheticDemo
+    ? DEMO_FORM_CONFIGS[formState.type]
+    : FORM_CONFIGS[formState.type]
   const isBusy =
     viewModel.phase === 'mutating' ||
     formState.isSubmitting === true
@@ -1590,7 +1723,8 @@ function createEntryForm(
       fieldConfig,
       eventContext,
       focusReferences,
-      isBusy
+      isBusy,
+      isSyntheticDemo
     )
     scalarControls.set(fieldConfig.name, field.control)
     fields.append(field.element)
@@ -1608,9 +1742,17 @@ function createEntryForm(
     createElement(
       'p',
       'lichtwald-log-form__dirty-state',
-      formState.isDirty === true
-        ? 'Ungespeicherte Änderungen.'
-        : 'Keine ungespeicherten Änderungen.'
+      isSyntheticDemo
+        ? (
+            formState.isDirty === true
+              ? 'Noch nicht übernommene Demo-Änderungen.'
+              : 'Keine offenen Demo-Änderungen.'
+          )
+        : (
+            formState.isDirty === true
+              ? 'Ungespeicherte Änderungen.'
+              : 'Keine ungespeicherten Änderungen.'
+          )
     )
   )
   const actions = createElement(
@@ -1626,7 +1768,13 @@ function createEntryForm(
   const submitButton = createElement(
     'button',
     'button button--primary',
-    isBusy ? 'Wird gespeichert …' : config.submitLabel
+    isBusy
+      ? (
+          isSyntheticDemo
+            ? 'Demo-Änderung wird übernommen …'
+            : 'Wird gespeichert …'
+        )
+      : config.submitLabel
   )
   submitButton.type = 'submit'
   submitButton.setAttribute('type', 'submit')
@@ -1892,6 +2040,7 @@ export function createLichtwaldLogView(rootElement) {
       },
     }
     const entries = getEntries(viewModel)
+    const isSyntheticDemo = isSyntheticDemoViewModel(viewModel)
     const visibleEntries = getVisibleEntries(viewModel, entries)
     const isLoading = viewModel?.phase === 'loading'
     const isPhaseMutating = viewModel?.phase === 'mutating'
@@ -1917,13 +2066,19 @@ export function createLichtwaldLogView(rootElement) {
       isPhaseMutating || isDeleteSubmitting
     const fragment = document.createDocumentFragment()
     const focusReferences = createFocusReferences()
-    const region = createElement('section', 'lichtwald-log')
+    const region = createElement(
+      'section',
+      isSyntheticDemo
+        ? 'lichtwald-log lichtwald-log--synthetic-demo'
+        : 'lichtwald-log'
+    )
     region.setAttribute('aria-labelledby', 'lichtwald-log-heading')
     region.setAttribute('aria-busy', String(isRootBusy))
     const header = createHeader(
       entries.length,
       isRootBusy,
-      focusReferences
+      focusReferences,
+      isSyntheticDemo
     )
     region.append(header.header, header.introduction)
 
@@ -1937,13 +2092,20 @@ export function createLichtwaldLogView(rootElement) {
     if (globalError) region.append(globalError)
 
     if (viewModel?.phase === 'loading') {
-      region.append(createLoadingState())
+      region.append(createLoadingState(isSyntheticDemo))
     } else if (viewModel?.phase === 'loadError') {
-      region.append(createLoadErrorState(viewModel, eventContext))
+      region.append(
+        createLoadErrorState(
+          viewModel,
+          eventContext,
+          isSyntheticDemo
+        )
+      )
     } else {
       const featuredFeedback = createFeaturedFeedback(
         viewModel,
-        focusReferences
+        focusReferences,
+        isSyntheticDemo
       )
       if (featuredFeedback) region.append(featuredFeedback)
 
@@ -1957,7 +2119,8 @@ export function createLichtwaldLogView(rootElement) {
           createEntryForm(
             viewModel,
             eventContext,
-            focusReferences
+            focusReferences,
+            isSyntheticDemo
           )
         )
       } else {
@@ -1974,7 +2137,8 @@ export function createLichtwaldLogView(rootElement) {
               eventContext,
               focusReferences,
               interactionBlocked,
-              deleteBusy
+              deleteBusy,
+              isSyntheticDemo
             )
           )
         } else {
@@ -1986,14 +2150,15 @@ export function createLichtwaldLogView(rootElement) {
               eventContext,
               focusReferences,
               interactionBlocked,
-              deleteBusy
+              deleteBusy,
+              isSyntheticDemo
             )
           )
         }
       }
     }
 
-    region.append(createPrivacyNotice())
+    region.append(createPrivacyNotice(isSyntheticDemo))
     fragment.append(region)
     callRootMethod(
       rootElement,

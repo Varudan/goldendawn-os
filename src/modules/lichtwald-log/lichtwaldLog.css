@@ -56,6 +56,11 @@
   width: 100%;
 }
 
+.lichtwald-log--synthetic-demo
+  :is(.system-state, .lichtwald-log-introduction) {
+  border-style: dashed;
+}
+
 .lichtwald-log-header,
 .lichtwald-log-section-heading,
 .lichtwald-log-entry-card__header,
