@@ -1320,6 +1320,157 @@ test('bewahrt Entry- und Tag-Reihenfolge und verdrahtet Übersichtskarten mit ex
   })
 })
 
+test('präsentiert genau die autoritativ fokussierte private Übersichtskarte als besonderen Lichtwaldmoment', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const first = createEntry({ title: 'Erster privater Prüflichtpunkt' })
+    const featured = createSecondEntry({
+      title: 'Besonders langer privater Lichtwaldmoment für eine schmale Karte',
+    })
+    const third = createEntry({
+      id: 'lichtwald-entry-synthetic-lantern-3',
+      title: 'Dritter privater Prüflichtpunkt',
+    })
+
+    view.render(createViewModel({
+      entries: [first, featured, third],
+      featuredEntryId: featured.id,
+    }))
+
+    const cards = findByClass(root, 'lichtwald-log-entry-card')
+    assert.deepEqual(
+      cards.map((card) => findHeading(card).textContent),
+      [first.title, featured.title, third.title]
+    )
+    assert.equal(
+      findByClass(root, 'lichtwald-log-entry-card--featured').length,
+      1
+    )
+    assert.equal(
+      cards[1].classList.contains('lichtwald-log-entry-card--featured'),
+      true
+    )
+    assert.equal(
+      cards[0].classList.contains('lichtwald-log-entry-card--featured'),
+      false
+    )
+    assert.equal(
+      cards[2].classList.contains('lichtwald-log-entry-card--featured'),
+      false
+    )
+
+    const badges = findByClass(root, 'lichtwald-log-featured-badge')
+    assert.equal(badges.length, 1)
+    assert.equal(badges[0].parentNode, cards[1])
+    assert.equal(
+      findByClass(
+        badges[0],
+        'lichtwald-log-featured-badge__title'
+      )[0].textContent,
+      'Besonderer Lichtwaldmoment'
+    )
+    assert.equal(
+      findByClass(
+        badges[0],
+        'lichtwald-log-featured-badge__context'
+      )[0].textContent,
+      'Lichtwald-Fokus · ausgewählt'
+    )
+    const header = findByClass(
+      cards[1],
+      'lichtwald-log-entry-card__header'
+    )[0]
+    assert.equal(findByClass(header, 'lichtwald-log-featured-badge').length, 0)
+    assert.ok(cards[1].children.indexOf(badges[0]) >
+      cards[1].children.indexOf(header))
+    assert.equal(findByClass(cards[0], 'lichtwald-log-featured-badge').length, 0)
+    assert.equal(findByClass(cards[2], 'lichtwald-log-featured-badge').length, 0)
+  })
+})
+
+test('kennzeichnet den besonderen Demo-Eintrag direkt mit Herkunft und Reload-Wahrheit', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const featured = createEntry({
+      id: 'lichtwald-demo-featured-origin',
+      title: 'Neu angelegter Beispielmoment ohne Titelpräfix',
+      text: 'Vollständig erfundener Inhalt für die flüchtige Demo.',
+      tags: ['Demo', 'Erfunden'],
+    })
+
+    view.render(createViewModel({
+      runtimeMode: 'syntheticDemo',
+      entries: [featured, createSecondEntry()],
+      featuredEntryId: featured.id,
+    }))
+
+    const badge = findByClass(
+      root,
+      'lichtwald-log-featured-badge'
+    )[0]
+    assert.ok(badge)
+    assert.equal(
+      findByClass(
+        badge,
+        'lichtwald-log-featured-badge__title'
+      )[0].textContent,
+      'Besonderer Lichtwaldmoment'
+    )
+    assert.equal(
+      findByClass(
+        badge,
+        'lichtwald-log-featured-badge__context'
+      )[0].textContent,
+      'Synthetische Demo · Fokus ausgewählt'
+    )
+    assert.ok(root.textContent.includes('Vollständig erfundene Beispielmomente'))
+    assert.ok(root.textContent.includes(
+      'Änderungen bleiben nur bis zum Neuladen dieser Seite erhalten.'
+    ))
+
+    for (const forbiddenText of [
+      'im aktuellen Browserprofil gespeichert',
+      'localStorage',
+      'unverschlüsselte Speicherung',
+      'Browserdaten',
+    ]) {
+      assert.equal(root.textContent.includes(forbiddenText), false)
+    }
+  })
+})
+
+test('zeigt für einen ausgefilterten Fokus keine Geisterkarte und bewahrt die Snapshot-Reihenfolge', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const first = createEntry({ title: 'Sichtbar zuerst' })
+    const hiddenFeatured = createSecondEntry({
+      title: 'Ausgefilterter besonderer Moment',
+    })
+    const third = createEntry({
+      id: 'lichtwald-entry-visible-third',
+      title: 'Sichtbar danach',
+    })
+
+    view.render(createViewModel({
+      entries: [first, hiddenFeatured, third],
+      visibleEntryIds: [third.id, first.id],
+      featuredEntryId: hiddenFeatured.id,
+      searchQuery: 'sichtbar',
+      hasActiveFilters: true,
+    }))
+
+    const cards = findByClass(root, 'lichtwald-log-entry-card')
+    assert.deepEqual(
+      cards.map((card) => findHeading(card).textContent),
+      [first.title, third.title]
+    )
+    assert.equal(root.textContent.includes(hiddenFeatured.title), false)
+    assert.equal(
+      findByClass(root, 'lichtwald-log-entry-card--featured').length,
+      0
+    )
+    assert.equal(findByClass(root, 'lichtwald-log-featured-badge').length, 0)
+    assert.equal(findByClass(root, 'lichtwald-log-detail__moment').length, 0)
+  })
+})
+
 test('rendert 1.000 synthetische Entries vollständig in unveränderter Reihenfolge', () => {
   withLichtwaldLogView(({ root, view }) => {
     const entries = Array.from({ length: 1_000 }, (_, index) => createEntry({
@@ -1480,6 +1631,213 @@ test('trennt den autoritativen Detail-Fokusstatus von Auswahl, Aktion und Pendin
       'Lichtwald-Fokus entfernen'
     )
     assert.equal(focusState.focusAction.disabled, true)
+  })
+})
+
+for (const detailCase of [
+  {
+    label: 'privaten',
+    runtimeMode: undefined,
+    selectedStatus: 'Lichtwald-Fokus: ausgewählt',
+    unselectedStatus: 'Lichtwald-Fokus: nicht ausgewählt',
+    selectedAction: 'Lichtwald-Fokus entfernen',
+    description:
+      'Dieser Eintrag leuchtet als besonderer Moment im LichtwaldLog.',
+  },
+  {
+    label: 'synthetischen',
+    runtimeMode: 'syntheticDemo',
+    selectedStatus: 'Demo-Fokus: ausgewählt',
+    unselectedStatus: 'Demo-Fokus: nicht ausgewählt',
+    selectedAction: 'Demo-Fokus entfernen',
+    description:
+      'Vollständig erfundener Beispielmoment der flüchtigen Demo.',
+  },
+]) {
+  test(
+    `zeigt den ${detailCase.label} Detailmoment nur für featuredEntryId ohne neue Überschrift`,
+    () => {
+      withLichtwaldLogView(({ root, view }) => {
+        const featured = createEntry({
+          title: 'Autoritativ ausgewählter Detailmoment',
+        })
+        const other = createSecondEntry({
+          title: 'Nur geöffneter Detailmoment',
+        })
+
+        view.render(createViewModel({
+          runtimeMode: detailCase.runtimeMode,
+          entries: [featured, other],
+          selectedEntryId: featured.id,
+          featuredEntryId: featured.id,
+        }))
+
+        let detail = findByClass(root, 'lichtwald-log-detail')[0]
+        assert.equal(
+          detail.classList.contains('lichtwald-log-detail--featured'),
+          true
+        )
+        const moment = findByClass(
+          detail,
+          'lichtwald-log-detail__moment'
+        )[0]
+        assert.ok(moment)
+        assert.equal(
+          findByClass(
+            moment,
+            'lichtwald-log-detail__moment-title'
+          )[0].textContent,
+          'Besonderer Lichtwaldmoment'
+        )
+        assert.equal(
+          findByClass(
+            moment,
+            'lichtwald-log-detail__moment-description'
+          )[0].textContent,
+          detailCase.description
+        )
+        assert.equal(
+          findByClass(
+            detail,
+            'lichtwald-log-detail__featured-status'
+          )[0].textContent,
+          detailCase.selectedStatus
+        )
+        assert.ok(findButton(detail, detailCase.selectedAction))
+
+        const detailHeadings = [
+          'h1',
+          'h2',
+          'h3',
+          'h4',
+          'h5',
+          'h6',
+        ].flatMap((tagName) => findByTag(detail, tagName))
+        assert.deepEqual(
+          detailHeadings.map((heading) => [
+            heading.localName,
+            heading.textContent,
+          ]),
+          [['h2', featured.title]]
+        )
+
+        view.render(createViewModel({
+          runtimeMode: detailCase.runtimeMode,
+          entries: [featured, other],
+          selectedEntryId: other.id,
+          featuredEntryId: featured.id,
+        }))
+        detail = findByClass(root, 'lichtwald-log-detail')[0]
+        assert.equal(
+          detail.classList.contains('lichtwald-log-detail--featured'),
+          false
+        )
+        assert.equal(
+          findByClass(detail, 'lichtwald-log-detail__moment').length,
+          0
+        )
+        assert.equal(
+          findByClass(
+            detail,
+            'lichtwald-log-detail__featured-status'
+          )[0].textContent,
+          detailCase.unselectedStatus
+        )
+        assert.equal(findHeading(detail).textContent, other.title)
+      })
+    }
+  )
+}
+
+test('verschiebt oder entfernt den besonderen Zustand erst mit einem neuen featuredEntryId', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const first = createEntry({ title: 'Bisheriger Lichtwaldmoment' })
+    const next = createSecondEntry({ title: 'Nächster Lichtwaldmoment' })
+
+    view.render(createViewModel({
+      entries: [first, next],
+      selectedEntryId: next.id,
+      featuredEntryId: null,
+      featuredState: {
+        isSubmitting: true,
+        targetEntryId: next.id,
+        errorMessage: '',
+      },
+    }))
+    let detail = findByClass(root, 'lichtwald-log-detail')[0]
+    assert.equal(
+      detail.classList.contains('lichtwald-log-detail--featured'),
+      false
+    )
+    assert.equal(findByClass(detail, 'lichtwald-log-detail__moment').length, 0)
+
+    view.render(createViewModel({
+      phase: 'mutating',
+      entries: [first, next],
+      featuredEntryId: null,
+      featuredState: {
+        isSubmitting: true,
+        targetEntryId: next.id,
+        errorMessage: '',
+      },
+    }))
+    assert.equal(
+      findByClass(root, 'lichtwald-log-entry-card--featured').length,
+      0
+    )
+    assert.equal(findByClass(root, 'lichtwald-log-featured-badge').length, 0)
+
+    view.render(createViewModel({
+      phase: 'mutating',
+      entries: [first, next],
+      featuredEntryId: first.id,
+      featuredState: {
+        isSubmitting: true,
+        targetEntryId: next.id,
+        errorMessage: '',
+      },
+    }))
+    let featuredCard = findByClass(
+      root,
+      'lichtwald-log-entry-card--featured'
+    )[0]
+    assert.equal(findHeading(featuredCard).textContent, first.title)
+
+    view.render(createViewModel({
+      entries: [first, next],
+      featuredEntryId: next.id,
+    }))
+    featuredCard = findByClass(
+      root,
+      'lichtwald-log-entry-card--featured'
+    )[0]
+    assert.equal(findHeading(featuredCard).textContent, next.title)
+
+    view.render(createViewModel({
+      phase: 'mutating',
+      entries: [first, next],
+      featuredEntryId: next.id,
+      featuredState: {
+        isSubmitting: true,
+        targetEntryId: null,
+        errorMessage: '',
+      },
+    }))
+    featuredCard = findByClass(
+      root,
+      'lichtwald-log-entry-card--featured'
+    )[0]
+    assert.equal(findHeading(featuredCard).textContent, next.title)
+
+    view.render(createViewModel({
+      entries: [first, next],
+      featuredEntryId: null,
+    }))
+    assert.equal(
+      findByClass(root, 'lichtwald-log-entry-card--featured').length,
+      0
+    )
+    assert.equal(findByClass(root, 'lichtwald-log-featured-badge').length, 0)
   })
 })
 
@@ -2653,6 +3011,78 @@ test('bildet Lichtwald-Fokus explizit auf ID oder null ab und hält den Badge au
   })
 })
 
+test('bewahrt Fokus-Payloads, Action-Port und Lifecycle ohne Tabstopps am Moment', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const featured = createEntry()
+    const other = createSecondEntry()
+    const firstRecorder = createActionRecorder()
+    const secondRecorder = createActionRecorder()
+
+    view.render(createViewModel({
+      entries: [featured, other],
+      featuredEntryId: featured.id,
+    }), firstRecorder.actions)
+
+    const cards = findByClass(root, 'lichtwald-log-entry-card')
+    const staleClear = findButton(cards[0], 'Lichtwald-Fokus entfernen')
+    const staleSet = findButton(cards[1], 'Als Lichtwald-Fokus setzen')
+    const badge = findByClass(
+      cards[0],
+      'lichtwald-log-featured-badge'
+    )[0]
+    assert.ok(staleClear)
+    assert.ok(staleSet)
+    assert.ok(badge)
+
+    for (const node of findAll(badge, (candidate) => candidate.nodeType === 1)) {
+      assert.equal(node.getAttribute('tabindex'), null)
+    }
+
+    staleClear.click()
+    staleSet.click()
+    assert.deepEqual(
+      firstRecorder.calls.onSetFeaturedEntry,
+      [[null], [other.id]]
+    )
+
+    view.render(createViewModel({
+      entries: [featured, other],
+      selectedEntryId: featured.id,
+      featuredEntryId: featured.id,
+    }), secondRecorder.actions)
+    const detail = findByClass(root, 'lichtwald-log-detail')[0]
+    const moment = findByClass(
+      detail,
+      'lichtwald-log-detail__moment'
+    )[0]
+    const currentClear = findButton(detail, 'Lichtwald-Fokus entfernen')
+    assert.ok(moment)
+    assert.ok(currentClear)
+    assert.equal(findByTag(moment, 'button').length, 0)
+
+    for (const node of findAll(moment, (candidate) => candidate.nodeType === 1)) {
+      assert.equal(node.getAttribute('tabindex'), null)
+      assert.equal(node.getAttribute('aria-current'), null)
+      assert.equal(node.getAttribute('aria-selected'), null)
+      assert.equal(node.getAttribute('aria-checked'), null)
+    }
+
+    staleClear.click()
+    staleSet.click()
+    assert.deepEqual(
+      firstRecorder.calls.onSetFeaturedEntry,
+      [[null], [other.id]]
+    )
+    assertOwnKeys(firstRecorder.actions, ACTION_NAMES)
+    assertOwnKeys(secondRecorder.actions, ACTION_NAMES)
+
+    view.unmount()
+    currentClear.click()
+    assert.deepEqual(secondRecorder.calls.onSetFeaturedEntry, [])
+    assert.equal(root.textContent, '')
+  })
+})
+
 test('rendert Success und Notice als feste Statusregion und interpoliert keinen fremden Tone', () => {
   withLichtwaldLogView(({ root, view }) => {
     for (const [tone, expectedClass] of [
@@ -3539,6 +3969,93 @@ test('hält Demo-Plain-Text, IDs, Handler und Unmount an denselben sicheren DOM-
   })
 })
 
+test('hält besonderen Moment als Plain Text ohne ID-Offenlegung oder neue Live-Region', () => {
+  withLichtwaldLogView(({ root, view }) => {
+    const entryId = 'lichtwald-entry-featured-<ID>-sentinel'
+    const markupMarker = '<img src=x onerror=featured-marker>'
+    const entry = createEntry({
+      id: entryId,
+      title: markupMarker,
+      text: `Mehrzeiliger Plain Text\n${markupMarker}`,
+      tags: [markupMarker],
+    })
+
+    const assertSafePresentation = (presentation, symbolClassName) => {
+      assert.ok(presentation)
+      assert.equal(findByTag(presentation, 'script').length, 0)
+      assert.equal(findByTag(presentation, 'img').length, 0)
+
+      const elements = findAll(
+        presentation,
+        (candidate) => candidate.nodeType === 1
+      )
+      assert.ok(elements.every(
+        (element) => element.getAttribute('aria-live') === null
+      ))
+      assert.ok(elements.every(
+        (element) => element.getAttribute('role') === null
+      ))
+      assert.ok(elements.every(
+        (element) => element.getAttribute('tabindex') === null
+      ))
+
+      const hiddenElements = elements.filter(
+        (element) => element.getAttribute('aria-hidden') === 'true'
+      )
+      assert.equal(hiddenElements.length, 1)
+      assert.equal(hiddenElements[0].classList.contains(symbolClassName), true)
+      assert.equal(hiddenElements[0].textContent, '✦')
+    }
+
+    const assertUniqueIds = () => {
+      const ids = findAll(root, (node) => (
+        node.nodeType === 1 &&
+        typeof node.id === 'string' &&
+        node.id.length > 0
+      )).map((element) => element.id)
+      assert.equal(new Set(ids).size, ids.length)
+    }
+
+    view.render(createViewModel({
+      entries: [entry, createSecondEntry()],
+      featuredEntryId: entry.id,
+    }))
+    const badge = findByClass(
+      root,
+      'lichtwald-log-featured-badge'
+    )[0]
+    assertSafePresentation(
+      badge,
+      'lichtwald-log-featured-badge__symbol'
+    )
+    assert.ok(root.textContent.includes(markupMarker))
+    assert.equal(root.textContent.includes(entryId), false)
+    assertElementDoesNotExpose(root, [entryId, markupMarker])
+    assertUniqueIds()
+
+    view.render(createViewModel({
+      entries: [entry, createSecondEntry()],
+      selectedEntryId: entry.id,
+      featuredEntryId: entry.id,
+    }))
+    const moment = findByClass(
+      root,
+      'lichtwald-log-detail__moment'
+    )[0]
+    assertSafePresentation(
+      moment,
+      'lichtwald-log-detail__moment-symbol'
+    )
+    assert.equal(findByTag(moment, 'h1').length, 0)
+    assert.equal(findByTag(moment, 'h2').length, 0)
+    assert.equal(findByTag(moment, 'h3').length, 0)
+    assert.ok(root.textContent.includes(markupMarker))
+    assert.equal(root.textContent.includes(entryId), false)
+    assertElementDoesNotExpose(root, [entryId, markupMarker])
+    assertUniqueIds()
+  })
+})
+
 test('Produktionsquelle verwendet nur Safe-DOM, Contractgrenzen und die sechzehn Actions', () => {
   const source = readFileSync(
     new URL(
@@ -3579,6 +4096,14 @@ test('Produktionsquelle verwendet nur Safe-DOM, Contractgrenzen und die sechzehn
   )
   assert.doesNotMatch(source, /console\.(?:log|warn|error|info|debug|trace)/)
   assert.doesNotMatch(source, /import\s+[']\.\/lichtwaldLog\.css[']/)
+  assert.match(source, /entry\.id === viewModel\.featuredEntryId/)
+  assert.match(source, /'Besonderer Lichtwaldmoment'/u)
+  assert.match(source, /'Lichtwald-Fokus · ausgewählt'/u)
+  assert.match(source, /'Synthetische Demo · Fokus ausgewählt'/u)
+  assert.match(
+    source,
+    /symbol\.setAttribute\('aria-hidden', 'true'\)/
+  )
 })
 
 test('Modul-CSS kapselt sichere responsive, Fokus- und Reduced-Motion-Regeln', () => {
@@ -3597,6 +4122,18 @@ test('Modul-CSS kapselt sichere responsive, Fokus- und Reduced-Motion-Regeln', (
   )
   assert.match(stylesheet, /min-width:\s*0;/)
   assert.match(stylesheet, /minmax\(0,\s*1fr\)/)
+  const sharedSizingRule = stylesheet.match(
+    /^([\s\S]*?)\{\s*min-width:\s*0;\s*max-width:\s*100%;\s*\}/
+  )?.[0]
+  assert.ok(sharedSizingRule)
+  for (const className of [
+    '.lichtwald-log-featured-badge',
+    '.lichtwald-log-featured-badge__copy',
+    '.lichtwald-log-detail__moment',
+    '.lichtwald-log-detail__moment-copy',
+  ]) {
+    assert.ok(sharedSizingRule.includes(className))
+  }
   assert.match(
     stylesheet,
     /\.lichtwald-log-filters__grid\s*\{[^}]*minmax\(0,\s*2fr\)/s
@@ -3626,10 +4163,53 @@ test('Modul-CSS kapselt sichere responsive, Fokus- und Reduced-Motion-Regeln', (
   assert.match(stylesheet, /@media\s*\(max-width:\s*760px\)/)
   assert.match(stylesheet, /@media\s*\(max-width:\s*620px\)/)
   assert.match(stylesheet, /@media\s*\(max-width:\s*390px\)/)
+  assert.match(
+    stylesheet,
+    /@media\s*\(max-width:\s*390px\)[\s\S]*\.lichtwald-log-featured-badge/
+  )
+  assert.match(
+    stylesheet,
+    /@media\s*\(max-width:\s*390px\)[\s\S]*\.lichtwald-log-detail__moment/
+  )
   assert.match(stylesheet, /min-height:\s*44px;/)
   assert.match(
     stylesheet,
+    /:focus-visible\s*\{[^}]*outline:\s*3px\s+solid[^}]*outline-offset:\s*3px;/s
+  )
+  assert.match(
+    stylesheet,
     /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*animation:\s*none;/
+  )
+  const getRuleBody = (selector) => {
+    const match = stylesheet.match(
+      new RegExp(`${selector}\\s*\\{([^}]*)\\}`, 's')
+    )
+    assert.ok(match, `CSS-Regel fehlt: ${selector}`)
+    return match[1]
+  }
+  const featuredRuleBodies = [
+    getRuleBody('\\.lichtwald-log-entry-card--featured'),
+    getRuleBody('\\.lichtwald-log-featured-badge'),
+    getRuleBody('\\.lichtwald-log-detail--featured'),
+    getRuleBody('\\.lichtwald-log-detail__moment'),
+  ]
+  assert.match(featuredRuleBodies[0], /radial-gradient/)
+  assert.match(featuredRuleBodies[0], /box-shadow/)
+  assert.match(featuredRuleBodies[2], /radial-gradient/)
+  assert.match(featuredRuleBodies[2], /box-shadow/)
+  assert.match(featuredRuleBodies[1], /min-width:\s*0;/)
+  assert.match(featuredRuleBodies[1], /max-width:\s*100%;/)
+  assert.match(featuredRuleBodies[1], /overflow-wrap:\s*anywhere;/)
+  assert.match(featuredRuleBodies[3], /minmax\(0,\s*1fr\)/)
+  for (const ruleBody of featuredRuleBodies) {
+    assert.doesNotMatch(
+      ruleBody,
+      /\b(?:animation|transition|transform)\s*:|overflow:\s*hidden/
+    )
+  }
+  assert.doesNotMatch(
+    stylesheet,
+    /(?:entry-card--featured|featured-badge|detail--featured|detail__moment)[^{]*:hover/
   )
   assert.doesNotMatch(stylesheet, /url\s*\(|@import/i)
 })

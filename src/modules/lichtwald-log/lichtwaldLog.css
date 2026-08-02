@@ -25,6 +25,8 @@
 .lichtwald-log-entry-card > *,
 .lichtwald-log-entry-card__header,
 .lichtwald-log-entry-card__header > *,
+.lichtwald-log-featured-badge,
+.lichtwald-log-featured-badge__copy,
 .lichtwald-log-entry-card__actions,
 .lichtwald-log-tags,
 .lichtwald-log-tags__list,
@@ -33,6 +35,8 @@
 .lichtwald-log-detail > *,
 .lichtwald-log-detail__header,
 .lichtwald-log-detail__header > *,
+.lichtwald-log-detail__moment,
+.lichtwald-log-detail__moment-copy,
 .lichtwald-log-detail__actions,
 .lichtwald-log-form-section,
 .lichtwald-log-form,
@@ -417,8 +421,22 @@ select.lichtwald-log-filters__control {
 }
 
 .lichtwald-log-entry-card--featured {
-  border-color: var(--gold);
-  box-shadow: inset 3px 0 0 var(--gold);
+  border-color: #dfbf72;
+  background:
+    radial-gradient(
+      circle at 88% 8%,
+      rgb(232 202 126 / 18%),
+      transparent 48%
+    ),
+    linear-gradient(
+      145deg,
+      rgb(29 51 37 / 96%),
+      rgb(14 31 23 / 96%)
+    );
+  box-shadow:
+    inset 3px 0 0 var(--gold),
+    0 0 0 1px rgb(213 173 92 / 12%),
+    0 14px 30px rgb(3 12 8 / 24%);
 }
 
 .lichtwald-log-entry-card__header {
@@ -449,26 +467,68 @@ select.lichtwald-log-filters__control {
 
 .lichtwald-log-featured-badge {
   width: fit-content;
+  min-width: 0;
   max-width: 100%;
-  padding: .35rem .55rem;
-  display: inline-flex;
-  flex-wrap: wrap;
+  padding: .55rem .7rem;
+  display: flex;
   align-items: center;
-  gap: .4rem;
-  border: 1px solid rgb(213 173 92 / 42%);
-  border-radius: 999px;
-  color: var(--gold-soft);
-  background: rgb(213 173 92 / 13%);
-  font-size: .68rem;
-  font-weight: 700;
+  gap: .6rem;
+  border: 1px solid rgb(231 201 126 / 64%);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  background: linear-gradient(
+    135deg,
+    rgb(213 173 92 / 18%),
+    rgb(33 73 48 / 24%)
+  );
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-.lichtwald-log-featured-badge__mark {
-  color: var(--text);
-  font-size: .62rem;
+.lichtwald-log-featured-badge__symbol,
+.lichtwald-log-detail__moment-symbol {
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 2rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgb(236 207 137 / 58%);
+  border-radius: 50%;
+  color: #f3d98d;
+  background: rgb(10 30 19 / 48%);
+  box-shadow: 0 0 14px rgb(213 173 92 / 18%);
+  line-height: 1;
+}
+
+.lichtwald-log-featured-badge__copy,
+.lichtwald-log-detail__moment-copy {
+  display: grid;
+  gap: .15rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.lichtwald-log-featured-badge__title,
+.lichtwald-log-detail__moment-title {
+  color: #f0d181;
+  font-size: .78rem;
+  font-weight: 800;
   letter-spacing: .04em;
-  text-transform: uppercase;
+}
+
+.lichtwald-log-featured-badge__context,
+.lichtwald-log-detail__moment-description {
+  color: var(--muted);
+  font-size: .68rem;
+  line-height: 1.45;
+}
+
+.lichtwald-log--synthetic-demo
+  :is(
+    .lichtwald-log-featured-badge,
+    .lichtwald-log-detail__moment
+  ) {
+  border-style: dashed;
 }
 
 .lichtwald-log-tags__list {
@@ -529,6 +589,25 @@ select.lichtwald-log-filters__control {
   );
 }
 
+.lichtwald-log-detail--featured {
+  border-color: #dfbf72;
+  background:
+    radial-gradient(
+      circle at 82% 6%,
+      rgb(232 202 126 / 17%),
+      transparent 52%
+    ),
+    linear-gradient(
+      145deg,
+      rgb(31 52 38 / 96%),
+      rgb(14 30 23 / 96%)
+    );
+  box-shadow:
+    inset 3px 0 0 var(--gold),
+    0 0 0 1px rgb(213 173 92 / 12%),
+    0 16px 34px rgb(3 12 8 / 24%);
+}
+
 .lichtwald-log-detail__header {
   display: flex;
   align-items: flex-end;
@@ -543,6 +622,30 @@ select.lichtwald-log-filters__control {
 
 .lichtwald-log-detail__date {
   flex: none;
+}
+
+.lichtwald-log-detail__moment {
+  margin-top: var(--s4);
+  padding: var(--s3);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s3);
+  border: 1px solid rgb(231 201 126 / 54%);
+  border-radius: var(--r-sm);
+  background: linear-gradient(
+    135deg,
+    rgb(213 173 92 / 14%),
+    rgb(33 73 48 / 20%)
+  );
+}
+
+.lichtwald-log-detail__moment-title {
+  font-size: .9rem;
+}
+
+.lichtwald-log-detail__moment-description {
+  font-size: .76rem;
 }
 
 .lichtwald-log-detail__text {
@@ -926,7 +1029,9 @@ textarea.lichtwald-log-form__control {
   .lichtwald-log-entry-card,
   .lichtwald-log-tags-editor,
   .lichtwald-log-confirmation,
-  .lichtwald-log-featured-state {
+  .lichtwald-log-featured-state,
+  .lichtwald-log-featured-badge,
+  .lichtwald-log-detail__moment {
     width: 100%;
     max-width: 100%;
   }
@@ -934,6 +1039,10 @@ textarea.lichtwald-log-form__control {
   .lichtwald-log-entry-card__title,
   .lichtwald-log-detail__title,
   .lichtwald-log-detail__text,
+  .lichtwald-log-featured-badge__title,
+  .lichtwald-log-featured-badge__context,
+  .lichtwald-log-detail__moment-title,
+  .lichtwald-log-detail__moment-description,
   .lichtwald-log-filters__heading,
   .lichtwald-log-filters__label,
   .lichtwald-log-filters__hint,

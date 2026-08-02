@@ -604,18 +604,68 @@ function createTagList(tags, className) {
 
 function createFeaturedBadge(isSyntheticDemo) {
   const badge = createElement(
-    'p',
-    'lichtwald-log-featured-badge',
-    isSyntheticDemo ? 'Demo-Fokus' : 'Lichtwald-Fokus'
+    'div',
+    'lichtwald-log-featured-badge'
   )
-  badge.append(
+  const symbol = createElement(
+    'span',
+    'lichtwald-log-featured-badge__symbol',
+    '✦'
+  )
+  symbol.setAttribute('aria-hidden', 'true')
+  const copy = createElement(
+    'span',
+    'lichtwald-log-featured-badge__copy'
+  )
+  copy.append(
     createElement(
       'span',
-      'lichtwald-log-featured-badge__mark',
-      'Ausgewählt'
+      'lichtwald-log-featured-badge__title',
+      'Besonderer Lichtwaldmoment'
+    ),
+    createElement(
+      'span',
+      'lichtwald-log-featured-badge__context',
+      isSyntheticDemo
+        ? 'Synthetische Demo · Fokus ausgewählt'
+        : 'Lichtwald-Fokus · ausgewählt'
     )
   )
+  badge.append(symbol, copy)
   return badge
+}
+
+function createFeaturedMoment(isSyntheticDemo) {
+  const moment = createElement(
+    'div',
+    'lichtwald-log-detail__moment'
+  )
+  const symbol = createElement(
+    'span',
+    'lichtwald-log-detail__moment-symbol',
+    '✦'
+  )
+  symbol.setAttribute('aria-hidden', 'true')
+  const copy = createElement(
+    'div',
+    'lichtwald-log-detail__moment-copy'
+  )
+  copy.append(
+    createElement(
+      'p',
+      'lichtwald-log-detail__moment-title',
+      'Besonderer Lichtwaldmoment'
+    ),
+    createElement(
+      'p',
+      'lichtwald-log-detail__moment-description',
+      isSyntheticDemo
+        ? 'Vollständig erfundener Beispielmoment der flüchtigen Demo.'
+        : 'Dieser Eintrag leuchtet als besonderer Moment im LichtwaldLog.'
+    )
+  )
+  moment.append(symbol, copy)
+  return moment
 }
 
 function createFeaturedButton(
@@ -759,10 +809,6 @@ function createEntryCard(
   focusReferences.entryHeadings.set(entry.id, heading)
   header.append(heading)
 
-  if (isFeatured) {
-    header.append(createFeaturedBadge(isSyntheticDemo))
-  }
-
   const date = createElement(
     'p',
     'lichtwald-log-entry-card__date'
@@ -790,8 +836,11 @@ function createEntryCard(
       isSyntheticDemo
     )
   )
+  card.append(header)
+  if (isFeatured) {
+    card.append(createFeaturedBadge(isSyntheticDemo))
+  }
   card.append(
-    header,
     date,
     createTagList(
       getTags(entry),
@@ -1197,7 +1246,13 @@ function createDetail(
   deleteBusy,
   isSyntheticDemo
 ) {
-  const detail = createElement('section', 'lichtwald-log-detail')
+  const isFeatured = entry.id === viewModel.featuredEntryId
+  const detail = createElement(
+    'section',
+    isFeatured
+      ? 'lichtwald-log-detail lichtwald-log-detail--featured'
+      : 'lichtwald-log-detail'
+  )
   detail.setAttribute(
     'aria-labelledby',
     'lichtwald-log-detail-heading-' + String(entryIndex)
@@ -1251,12 +1306,12 @@ function createDetail(
     'lichtwald-log-detail__featured-status',
     isSyntheticDemo
       ? (
-          entry.id === viewModel.featuredEntryId
+          isFeatured
             ? 'Demo-Fokus: ausgewählt'
             : 'Demo-Fokus: nicht ausgewählt'
         )
       : (
-          entry.id === viewModel.featuredEntryId
+          isFeatured
             ? 'Lichtwald-Fokus: ausgewählt'
             : 'Lichtwald-Fokus: nicht ausgewählt'
         )
@@ -1293,9 +1348,11 @@ function createDetail(
       isSyntheticDemo
     )
   )
+  detail.append(backButton, header)
+  if (isFeatured) {
+    detail.append(createFeaturedMoment(isSyntheticDemo))
+  }
   detail.append(
-    backButton,
-    header,
     text,
     createTagList(
       getTags(entry),

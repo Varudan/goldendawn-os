@@ -44,7 +44,11 @@ own in-memory stack without that adapter.
 LichtwaldLog is reachable from the application navigation with the visible
 status `In Arbeit`. Viewing, creating, fully editing, permanently deleting, and
 explicitly setting or clearing the featured entry are operable through
-GoldenDawn OS. Local text search across calendar date, title, text, and tags,
+GoldenDawn OS. The entry authoritatively referenced by `featuredEntryId` is
+presented in both overview and detail as `Besonderer Lichtwaldmoment`. This is
+a View/CSS-only projection of the existing focus reference and adds no second
+state, API, persistence path, or dashboard-wide redesign. Local text search
+across calendar date, title, text, and tags,
 together with exact calendar-date and tag filters, is also implemented. These
 criteria are combined with logical AND exclusively over the transient
 controller projection and are never persisted. Real-browser verification of
@@ -54,8 +58,10 @@ filter flow passed in fresh isolated temporary Chrome profiles at desktop
 runtime now exposes five fully invented entries as a functional synthetic
 in-memory demo. Demo mutations survive navigation within the current document
 and reset to the canonical seed on reload or a new composition without reading
-or changing private browser data. The functional scope is implemented; final
-release verification remains. The milestone is neither complete nor published.
+or changing private browser data. The permanent synthetic origin and reload
+behavior remain visible, including in the featured-moment presentation. The
+planned implementation scope is complete; final release verification remains.
+The milestone is neither complete nor published.
 It remains fully local and includes no external
 communication, webhooks, agent logic, or Airtable integration.
 
@@ -107,7 +113,7 @@ Accepted architecture decisions and their rationale are indexed in
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
 | LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP complete, verified, and published |
-| LichtwaldLog | Local text journal with search and exact calendar-date and tag filters plus a strictly separated synthetic in-memory demo | `v0.2.2` | In progress; functional private and synthetic-demo scope implemented; final release verification remains |
+| LichtwaldLog | Local text journal with search and exact calendar-date and tag filters plus a strictly separated synthetic in-memory demo | `v0.2.2` | In progress; planned implementation scope complete; final release verification remains |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
 | Weekly Review | Structured summaries, progress, and next actions | Later, after the LichtwaldLog Local MVP | Planned; not part of `v0.2.2` |
@@ -398,6 +404,12 @@ in closures and render-local maps and never become visible text, DOM or ARIA
 IDs, selectors, classes, `data-*` attributes, or view-owned messages. Entry and
 tag order and spelling remain unchanged.
 
+The entry matching the authoritative `featuredEntryId` is presented in
+overview and detail as `Besonderer Lichtwaldmoment`. The treatment is derived
+only in the view from the existing projection and namespaced CSS; it introduces
+no second state, controller or service API, persistence path, or dashboard-wide
+redesign.
+
 Create and update forms use separate tag controls rather than comma parsing.
 Tag edits produce fresh dense arrays without trimming, sorting,
 deduplication, or case normalization. Submit payloads remain flat and limited
@@ -420,7 +432,8 @@ text as `Synthetische Demo`, `LichtwaldLog Demo`, and
 invented and that mutations last only until the page reloads. Demo loading,
 empty, form, busy, delete, focus, and privacy copy does not claim
 `localStorage`, a current browser profile, cloud backup, private journals,
-or permanent deletion.
+or permanent deletion. The featured presentation does not replace or obscure
+these permanent demo-origin and reload/session cues.
 
 The controller coordinates transient loading, empty, selection, form,
 confirmation, busy, success, error, search, and filter states. `entries` remains
@@ -498,8 +511,8 @@ synthetic-origin controller immediately after the private navigation item.
 Dirty guards are enforced in both directions, only one view is mounted, demo
 mutations persist only for the current document, and reload restores the
 canonical seed while private data remains authoritative and untouched. The
-functional scope is implemented; final release verification remains. The
-target Local MVP remains limited to entries with a title,
+planned implementation scope is complete; final release verification remains.
+The target Local MVP remains limited to entries with a title,
 calendar date, plain text, and tags, plus local search and filters. Private
 entries and synthetic demo entries remain separate.
 Images are not stored as Base64 in `localStorage`. The local store is neither
@@ -556,7 +569,7 @@ non-binding; see the roadmap for details.
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
-| v0.2.2 | LichtwaldLog Local MVP | In progress; functional private and strictly separated synthetic in-memory demo scope implemented; final release verification remains |
+| v0.2.2 | LichtwaldLog Local MVP | In progress; planned implementation scope complete; final release verification remains |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |

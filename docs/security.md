@@ -6,8 +6,8 @@
 | --- | --- |
 | Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; `v0.2.1` aktuelle Paket- und Releaseversion; funktionaler privater und strikt getrennter synthetischer LichtwaldLog-Demo-Umfang implementiert; Release-Prüfung offen |
-| Letzte Aktualisierung | 2026-08-01 |
+| Status | Verbindliche Sicherheitsbasis; `v0.2.1` aktuelle Paket- und Releaseversion; `v0.2.2` in Arbeit, geplanter Implementierungsumfang vollständig; Release-Prüfung offen |
+| Letzte Aktualisierung | 2026-08-02 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -392,9 +392,15 @@ komponiert. LichtwaldLog ist über die Navigation mit dem sichtbaren Status
 GoldenDawn OS bedienbar und real im Browser auf Desktop mit `1440 × 1000` sowie
 bei exakt `390 × 844` geprüft. Die lokale Textsuche sowie exakte Kalenderdatum-
 und Tagfilter sind als reine flüchtige Controllerableitung implementiert und
-werden nicht persistiert. Die strikt getrennte synthetische In-Memory-Demo ist
-als eigener vollständig bedienbarer Runtime-Stack umgesetzt. Der funktionale
-Umfang ist implementiert; die Release-Prüfung bleibt offen. ADR 0013, ADR 0014
+werden nicht persistiert. Der autoritativ über `featuredEntryId` fokussierte
+Eintrag wird in Übersicht und Detail rein durch View und CSS als
+`Besonderer Lichtwaldmoment` präsentiert. Diese visuelle Projektion führt
+weder einen zweiten Zustand noch eine neue API oder Persistenz ein und begründet
+weder Zugriffskontrolle noch Schutzklassifikation oder Compliance. Die
+strikt getrennte synthetische In-Memory-Demo ist als eigener vollständig
+bedienbarer Runtime-Stack umgesetzt; Herkunft und Reload-Verhalten bleiben auch
+beim besonderen Moment sichtbar. Der geplante Implementierungsumfang ist
+vollständig; die Release-Prüfung bleibt offen. ADR 0013, ADR 0014
 und ADR 0015 dokumentieren die unveränderten Contract-, private Storage- und
 Demo-Trennungsgrenzen. Der vollständige MVP ist weder abgeschlossen noch
 veröffentlicht.
@@ -422,7 +428,9 @@ veröffentlicht.
   Browser-Storage-Key, kein `localStorage`, `sessionStorage`, Netzwerk
   oder Telemetrie. Jede neue Komposition erhält einen frischen, vollständig
   erfundenen Seed; Navigation im selben Dokument erhält ausschließlich den
-  aktuellen Demo-Snapshot.
+  aktuellen Demo-Snapshot. Die sichtbare synthetische Herkunft und das
+  Reload-Verhalten bleiben auch bei der Präsentation des besonderen Moments
+  erhalten.
 - `createLichtwaldLogService` besitzt eine eingefrorene API mit exakt
   `loadLog`, `createEntry`, `updateEntry`, `deleteEntry` und
   `setFeaturedEntry`. Der letzte Aufruf akzeptiert ausschließlich eine
@@ -489,6 +497,11 @@ veröffentlicht.
   Sortieren, Deduplizieren oder Case-Normalisierung. Die View projiziert Inhalt,
   Löschung und Fokus nicht optimistisch und bildet keine persistente oder
   fachlich autoritative Zustandsquelle.
+- Der autoritativ fokussierte Eintrag wird in Übersicht und Detail anhand von
+  `featuredEntryId` als `Besonderer Lichtwaldmoment` dargestellt. Diese rein
+  visuelle View-/CSS-Projektion führt keinen zweiten Zustand, keine neue API
+  oder Persistenz ein, ändert keine Herkunfts- oder Stackgrenze und ist weder
+  Zugriffskontrolle noch Schutzklassifikation oder Compliance-Nachweis.
 - Zugängliche Lade-, Leer-, Busy-, Erfolgs-, Notice-, Validierungs- und
   Fehlerzustände sowie die vollständige Fokuszielauflösung verwenden nur feste
   Semantik und redigierte Meldungen. `unmount()` entfernt sämtliche privaten
@@ -584,8 +597,9 @@ veröffentlicht.
   Adapter-APIs. Der zusätzliche Demo-Stack besitzt eigene Instanzen, kann
   private Browserbytes weder lesen noch schreiben und fällt bei Fehlern nie
   auf den privaten Stack zurück. Die Demo ist in jedem Zustand textlich als
-  vollständig erfundene Sitzung gekennzeichnet; der funktionale Umfang ist
-  implementiert und nur die Release-Prüfung bleibt offen.
+  vollständig erfundene Sitzung gekennzeichnet; der geplante
+  Implementierungsumfang ist vollständig und nur die Release-Prüfung bleibt
+  offen.
 - Für LichtwaldLog existieren in `v0.2.2` keine externe Kommunikation,
   Webhooks, Synchronisierung, Agentenlogik oder Airtable-Anbindung.
 - Ein späterer Agentenfluss benötigt einen eigenen minimierten Vertrag. Der

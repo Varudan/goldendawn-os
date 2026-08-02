@@ -8,7 +8,7 @@
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
 | Status | `v0.2.1` aktuelle Paket- und Releaseversion; `v0.2.2` in Arbeit |
-| Letzte Aktualisierung | 2026-08-01 |
+| Letzte Aktualisierung | 2026-08-02 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -49,7 +49,7 @@ nicht starre Kalendertermine.
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.2.2` | LichtwaldLog Local MVP | Funktionaler privater und strikt getrennter synthetischer In-Memory-Demo-Umfang implementiert; Release-Prüfung offen | 🟡 |
+| `v0.2.2` | LichtwaldLog Local MVP | Implementierungsumfang vollständig; Release-Prüfung offen | 🟡 |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Beginn der externen Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
@@ -473,6 +473,11 @@ agentengestützte Prozesse sind nicht Teil dieser Version.
 - ✅ View und CSS in `src/main.js` einbinden, die Navigation ergänzen und den
   vollständigen über GoldenDawn OS bedienbaren CRUD- und Fokusfluss
   bereitstellen.
+- ✅ Den autoritativ über `featuredEntryId` fokussierten Eintrag in Übersicht
+  und Detail als `Besonderer Lichtwaldmoment` präsentieren; diese Hervorhebung
+  bleibt eine reine View-/CSS-Projektion ohne zweiten Zustand, neue API,
+  Persistenz oder Dashboard-Redesign und erhält im synthetischen Modus die
+  sichtbaren Herkunfts- und Reload-Hinweise.
 - ✅ Die eingebundene Oberfläche in einem frischen temporären Browserkontext
   auf Desktop und bei exakt `390 × 844` real prüfen.
 - ✅ Reine lokale Textsuche über Kalenderdatum, Titel, Text und Tags sowie
@@ -532,7 +537,11 @@ DOM-Unmount-Grenze. Sie bewahrt die Controller-Projektion und führt keine
 eigene fachliche oder persistente Wahrheit ein. `src/main.js` komponiert sie
 über den gemeinsamen `StorageAdapter`; Navigation und der vollständig über
 GoldenDawn OS bedienbare lokale CRUD-, Fokus-, Such- und Filterfluss ist
-implementiert. Die
+implementiert. Der autoritativ über `featuredEntryId` fokussierte Eintrag wird
+in Übersicht und Detail rein durch View und CSS als
+`Besonderer Lichtwaldmoment` präsentiert. Dies ergänzt weder einen zweiten
+Zustand noch eine API oder Persistenz und verändert die Dashboard-Shell nicht.
+Im synthetischen Modus bleiben Herkunft und Reload-Verhalten sichtbar. Die
 reale Browserprüfung war in einem frischen isolierten temporären Chrome-Profil
 auf Desktop mit `1440 × 1000` sowie bei exakt `390 × 844` erfolgreich. Der
 vollständige lokale Navigations-, CRUD-, Fokus-, Dirty-Guard-, Delete- und
@@ -549,8 +558,8 @@ vollständigen privaten UI-Projektion ab. Diese Werte gehören nicht zu Schema 1
 und werden nicht persistiert; Service-, Storage- und Adapter-APIs bleiben
 unverändert. Die getrennte synthetische Demo ist unmittelbar nach dem privaten
 Modul navigierbar, in jedem Zustand sichtbar als Sitzung gekennzeichnet und
-vollständig bedienbar. Der funktionale Umfang ist implementiert; offen bleibt
-die abschließende Release-Prüfung.
+vollständig bedienbar. Der geplante Implementierungsumfang ist vollständig;
+offen bleibt die abschließende Release-Prüfung.
 Storage und Service bleiben die autoritativen fachlichen Grenzen.
 Read-Preflight, 500.000-Codeeinheiten-Limit, Browser-Quota, TOCTOU- und
 Multi-Tab-Verhalten ändern sich durch Anwendungskomposition, Controller und
@@ -888,16 +897,21 @@ stellt diese Projektion sicher und zugänglich dar. `src/main.js` komponiert den
 Pfad über den gemeinsamen `StorageAdapter`; LichtwaldLog ist über die Navigation
 mit dem sichtbaren Status `In Arbeit` erreichbar. Anzeigen, Erstellen,
 vollständiges Bearbeiten, dauerhaftes Löschen sowie explizites Setzen und
-Entfernen des Fokus sind vollständig über GoldenDawn OS bedienbar. Lokale
+Entfernen des Fokus sind vollständig über GoldenDawn OS bedienbar. Der
+autoritativ über `featuredEntryId` fokussierte Eintrag wird in Übersicht und
+Detail rein durch View und CSS als `Besonderer Lichtwaldmoment` präsentiert,
+ohne einen zweiten Zustand, eine neue API, Persistenz oder ein
+Dashboard-Redesign einzuführen. Die sichtbare synthetische Herkunft und das
+Reload-Verhalten bleiben erhalten. Lokale
 Textsuche sowie exakte Kalenderdatum- und Tagfilter arbeiten ausschließlich auf
 der flüchtigen Controller-Projektion und sind weder Schema-1-Felder noch
 persistierte Zustände. Die reale Browserprüfung auf Desktop und bei exakt
 `390 × 844` ist für den Navigations-, CRUD-, Fokus-, Such- und Filterfluss
 erfolgreich abgeschlossen. Die strikt getrennte synthetische In-Memory-Demo ist
 als eigener Storage-, Service-, Controller- und View-Stack vollständig
-bedienbar integriert. Der funktionale Umfang ist implementiert; als nächster
-Schritt bleibt die abschließende Release-Prüfung. Der Meilenstein ist weder
-abgeschlossen noch veröffentlicht. `v0.2.2` bleibt vollständig lokal und
+bedienbar integriert. Der geplante Implementierungsumfang ist vollständig; als
+nächster Schritt bleibt die abschließende Release-Prüfung. Der Meilenstein ist
+weder abgeschlossen noch veröffentlicht. `v0.2.2` bleibt vollständig lokal und
 besitzt keine externe Kommunikation, Webhooks, Agentenlogik oder
 Airtable-Anbindung.
 
