@@ -4,9 +4,9 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
+| Projektphase | `v0.2.2 – LichtwaldLog Local MVP als lokaler Release Candidate geprüft` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; `v0.2.1` aktuelle Paket- und Releaseversion; `v0.2.2` in Arbeit, geplanter Implementierungsumfang vollständig; Release-Prüfung offen |
+| Status | Verbindliche Zielarchitektur; Paketversion und geprüfter lokaler Release Candidate `v0.2.2`; letztes veröffentlichtes Release `v0.2.1`; `v0.2.2` ungetaggt und unveröffentlicht; `v0.3.0` geplant und unbegonnen |
 | Letzte Aktualisierung | 2026-08-02 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -657,12 +657,13 @@ lokal bedienbar. `v0.2.1` ist vollständig geprüft und veröffentlicht. Der
 annotierte Tag `v0.2.1` und das zugehörige GitHub Release wurden am
 `2026-07-25` veröffentlicht; GoldenDawn OS ist seitdem als öffentlich
 sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
-`v0.2.2 – LichtwaldLog Local MVP` ist als rein lokaler Meilenstein in Arbeit.
+`v0.2.2 – LichtwaldLog Local MVP` ist funktional abgeschlossen und als rein
+lokaler Release Candidate geprüft.
 Die Contract Foundation, private Storage-Foundation, Service-Foundation und
 Controller-Foundation sowie die isolierte View- und CSS-Foundation sind
 implementiert und über den gemeinsamen `StorageAdapter` in `src/main.js`
 komponiert. LichtwaldLog ist über die Navigation mit dem sichtbaren Status
-`In Arbeit` erreichbar; der lokale CRUD-, Fokus-, Such- und Filterfluss ist
+`Lokales MVP` erreichbar; der lokale CRUD-, Fokus-, Such- und Filterfluss ist
 vollständig über GoldenDawn OS bedienbar und real im Browser auf Desktop mit
 `1440 × 1000` sowie bei exakt `390 × 844` geprüft. Die lokale Textsuche sowie exakte Kalenderdatum-
 und Tagfilter sind als reine flüchtige Controllerableitung implementiert und
@@ -674,9 +675,11 @@ Dashboard-Redesign einzuführen. Zusätzlich ist die strikt getrennte
 synthetische In-Memory-Demo als eigener vollständig bedienbarer Runtime-Stack
 umgesetzt; Herkunft und Reload-Verhalten bleiben auch bei der Präsentation des
 besonderen Moments sichtbar. Der geplante Implementierungsumfang ist damit
-vollständig; die abschließende Release-Prüfung bleibt offen. Der vollständige
-MVP ist weder abgeschlossen noch veröffentlicht. ADR 0013, ADR 0014 und ADR
-0015 dokumentieren Contract, private Persistenz und Demo-Trennung.
+funktional abgeschlossen und als lokaler Release Candidate geprüft. `v0.2.2`
+ist weiterhin ungetaggt und unveröffentlicht; Tag und GitHub Release bleiben
+manuelle Schritte bei Jan. `v0.2.1` bleibt das zuletzt veröffentlichte Release.
+`v0.3.0` ist geplant und noch nicht begonnen. ADR 0013, ADR 0014 und ADR 0015
+dokumentieren Contract, private Persistenz und Demo-Trennung.
 
 Der spätere Zielpfad bleibt:
 
@@ -1001,8 +1004,8 @@ Die getrennte synthetische Demo ist über eine unmittelbar auf das private Modul
 folgende Navigation vollständig bedienbar. Dirty Guards gelten in beide
 Richtungen, nur eine View ist jeweils montiert, private Browserbytes bleiben bei
 Demo-Operationen unverändert und Reload stellt ausschließlich den kanonischen
-Demo-Seed wieder her. Der geplante Implementierungsumfang ist vollständig;
-offen bleibt die Release-Prüfung. Private lokale Einträge und synthetische
+Demo-Seed wieder her. Der geplante Implementierungsumfang ist funktional
+abgeschlossen und als lokaler Release Candidate geprüft. Private lokale Einträge und synthetische
 Demo-Daten bleiben technisch getrennt; Bilder werden
 nicht als Base64 in `localStorage` abgelegt. Der Storage ist unverschlüsselt
 und bietet weder Authentifizierung, Zugriffskontrolle, Integritätsgarantie,
@@ -1195,8 +1198,8 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
-| `v0.2.2` | In Arbeit; geplanter Implementierungsumfang vollständig; Release-Prüfung offen; keine externe Kommunikation |
-| `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
+| `v0.2.2` | Funktional abgeschlossen und als lokaler Release Candidate geprüft; ungetaggt und unveröffentlicht; keine externe Kommunikation |
+| `v0.3.0` | Geplanter und noch nicht begonnener SyncService-, Webhook- und SyncAgent-Pfad als erste externe Kommunikationsschicht |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
 | `v0.6.0` | Integrierter Drei-Agenten-Fluss |

@@ -86,9 +86,9 @@ const modules = [
     name: 'LichtwaldLog',
     description:
       'Private Einträge lokal erstellen, anzeigen, bearbeiten, dauerhaft löschen und fokussieren; lokale Suche und Filter nach Kalenderdatum sowie Tag',
-    status: 'In Arbeit',
-    statusClass: 'next',
-    navigationState: 'In Arbeit',
+    status: 'Lokales MVP',
+    statusClass: 'local',
+    navigationState: 'Lokales MVP',
     isNavigable: true,
   },
   {
@@ -189,8 +189,8 @@ appRoot.innerHTML = `
       </nav>
 
       <footer class="sidebar-footer">
-        <span>LearningHub Local MVP</span>
-        <strong>– v0.2.1</strong>
+        <span>LichtwaldLog Local MVP</span>
+        <strong>– v0.2.2</strong>
       </footer>
     </aside>
 
@@ -293,15 +293,15 @@ function renderCommandCenter() {
     <section class="focus-panel" aria-labelledby="focus-title">
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
-        <h2 id="focus-title">v0.2.2 – LichtwaldLog Local MVP in Arbeit</h2>
-        <p>Der funktionale Umfang des LichtwaldLog Local MVP ist implementiert: Der private lokale Pfad und die strikt getrennte synthetische In-Memory-Demo unterstützen CRUD, Fokus, Suche und Filter ohne externe Kommunikation.</p>
+        <h2 id="focus-title">v0.2.2 – LichtwaldLog Local MVP abgeschlossen</h2>
+        <p>Der vollständig geprüfte private lokale Pfad und die strikt getrennte synthetische In-Memory-Demo unterstützen CRUD, explizite Fokusverwaltung, Suche und Filter ohne externe Kommunikation.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
-          <span>In Arbeit</span>
-          <strong>Funktionaler lokaler Umfang implementiert</strong>
+          <span>Release Candidate</span>
+          <strong>LichtwaldLog Local MVP lokal geprüft</strong>
         </div>
-        <small>Private Einträge bleiben unverschlüsselt im aktuellen Browserprofil. Es gibt keine Cloud-Sicherung, Synchronisierung oder externe Kommunikation.</small>
+        <small>Private Einträge liegen unverschlüsselt und browserlokal im localStorage des aktuellen Browserprofils. Es gibt keine Cloud-Sicherung, geräteübergreifende Synchronisierung oder externe Kommunikation.</small>
       </div>
     </section>
 
@@ -309,10 +309,10 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Projektschritt</span>
-        <h2 id="milestone-title">v0.2.2 – Release-Prüfung</h2>
-        <p>Als nächster Schritt bleibt die abschließende Release-Prüfung. Der Meilenstein ist weiterhin in Arbeit und unveröffentlicht; Synchronisierung und Agentenlogik gehören nicht zu v0.2.2.</p>
+        <h2 id="milestone-title">v0.3.0 – SyncAgent and Webhook Foundation</h2>
+        <p>v0.3.0 ist geplant und noch nicht begonnen. Die erste kontrollierte externe Kommunikationsschicht mit SyncAgent und Webhook bleibt zukünftige Arbeit.</p>
       </div>
-      <span class="status status--next">In Arbeit</span>
+      <span class="status status--planned">Geplant</span>
     </aside>
 
     <section class="modules-section" aria-labelledby="modules-title">

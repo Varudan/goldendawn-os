@@ -6,6 +6,48 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
+## v0.2.2 – 2026-08-02
+
+### LichtwaldLog Local MVP
+
+- Lokalen Schema-1-Pfad für Anzeigen, Erstellen, vollständiges Bearbeiten,
+  dauerhaftes Löschen und explizite Fokusverwaltung umgesetzt.
+- `featuredEntryId` als einzige autoritative Fokusquelle beibehalten und den
+  `Besonderen Lichtwaldmoment` ausschließlich als View-/CSS-Projektion ergänzt;
+  es gibt keinen zweiten Zustand, keine neue API und keine zusätzliche
+  Persistenz.
+- Privaten Full-Snapshot unter `goldendawn.lichtwaldLog.content.v1` mit einem
+  Limit von 500.000 UTF-16-Codeeinheiten, Read-Preflight, vollständiger
+  Validierung, defensiven Kopien und statischer Fehlerredaktion abgesichert.
+
+### Suche und getrennte synthetische Demo
+
+- Flüchtige Textsuche sowie exakte Kalenderdatum- und Tagfilter mit
+  AND-Semantik umgesetzt; die Eintragsreihenfolge bleibt unverändert und die
+  Filterung vollständig schreibfrei.
+- Fünf vollständig erfundene Demo-Einträge über einen vollständig getrennten
+  In-Memory-Stack ohne `StorageAdapter`, Browser-Key, privaten Service oder
+  Fallback bereitgestellt.
+- Demo-Zustand innerhalb des Dokuments erhalten und nach Reload auf den
+  kanonischen Seed zurückgesetzt; Demoaktionen lassen den privaten Storage und
+  die vollständige Storage-Key-Liste bytegleich.
+
+### Bedienung, Qualität und lokale Grenzen
+
+- Safe DOM, Entry-ID-Isolation, Dirty Guards, Tastaturbedienung, sichtbaren
+  `3px`-Fokusrahmen, Reduced Motion und responsive Darstellung geprüft.
+- Reale Browserprüfung bei `1440 × 1000` und `390 × 844` erfolgreich
+  abgeschlossen.
+- LichtwaldLog mit 374/374 Tests und die Gesamtsuite mit 933/933 Tests geprüft;
+  0 Skips und 0 Todos. Der Produktions-Build transformiert exakt 46 Module.
+- Keine externe Kommunikation, Webhooks, Agentenlogik oder Airtable-Anbindung
+  eingeführt. `localStorage` bleibt unverschlüsselt und ist keine
+  Cloud-Sicherung.
+- Umfang und lokaler Release Candidate von `v0.2.2` sind funktional
+  abgeschlossen und geprüft. Ein annotierter Tag `v0.2.2` und ein GitHub
+  Release `v0.2.2` existieren noch nicht; Tag und Release bleiben manuelle
+  Schritte bei Jan. `v0.2.1` bleibt das zuletzt veröffentlichte Release.
+
 ## v0.2.1 – 2026-07-25
 
 ### LearningHub Local MVP
