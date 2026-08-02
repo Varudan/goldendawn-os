@@ -43,10 +43,9 @@ Release.
 - Keine externe Kommunikation, Webhooks, Agentenlogik oder Airtable-Anbindung
   eingeführt. `localStorage` bleibt unverschlüsselt und ist keine
   Cloud-Sicherung.
-- Umfang und lokaler Release Candidate von `v0.2.2` sind funktional
-  abgeschlossen und geprüft. Ein annotierter Tag `v0.2.2` und ein GitHub
-  Release `v0.2.2` existieren noch nicht; Tag und Release bleiben manuelle
-  Schritte bei Jan. `v0.2.1` bleibt das zuletzt veröffentlichte Release.
+- Der Umfang von `v0.2.2` ist vollständig abgeschlossen und geprüft. Der
+  annotierte Tag `v0.2.2` und das zugehörige GitHub Release wurden am
+  `2026-08-02` veröffentlicht; `v0.2.2` ist das neueste veröffentlichte Release.
 
 ## v0.2.1 – 2026-07-25
 

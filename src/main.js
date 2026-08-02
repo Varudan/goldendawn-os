@@ -293,13 +293,13 @@ function renderCommandCenter() {
     <section class="focus-panel" aria-labelledby="focus-title">
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
-        <h2 id="focus-title">v0.2.2 – LichtwaldLog Local MVP abgeschlossen</h2>
-        <p>Der vollständig geprüfte private lokale Pfad und die strikt getrennte synthetische In-Memory-Demo unterstützen CRUD, explizite Fokusverwaltung, Suche und Filter ohne externe Kommunikation.</p>
+        <h2 id="focus-title">v0.2.2 – LichtwaldLog Local MVP veröffentlicht</h2>
+        <p>Das vollständig umgesetzte, geprüfte und als v0.2.2 veröffentlichte LichtwaldLog umfasst den privaten lokalen Pfad und die strikt getrennte synthetische In-Memory-Demo mit CRUD, expliziter Fokusverwaltung, Suche und Filtern – weiterhin ohne externe Kommunikation.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
-          <span>Release Candidate</span>
-          <strong>LichtwaldLog Local MVP lokal geprüft</strong>
+          <span>Veröffentlicht</span>
+          <strong>LichtwaldLog Local MVP vollständig geprüft</strong>
         </div>
         <small>Private Einträge liegen unverschlüsselt und browserlokal im localStorage des aktuellen Browserprofils. Es gibt keine Cloud-Sicherung, geräteübergreifende Synchronisierung oder externe Kommunikation.</small>
       </div>

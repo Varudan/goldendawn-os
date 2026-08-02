@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.2.2 – LichtwaldLog Local MVP funktional abgeschlossen und als lokaler Release Candidate geprüft`
+Aktueller Stand: `v0.2.2 – LichtwaldLog Local MVP vollständig abgeschlossen, geprüft und veröffentlicht`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -54,8 +54,8 @@ Fragenverwaltung, Testdurchführung, Ergebnis und Versuchshistorie bedienbar.
 Der Mock-Test verwendet weder KI noch externe Kommunikation. GoldenDawn OS ist
 seit dem `2026-07-25` als öffentlich sichtbares Portfolio-Repository ohne
 Open-Source-Lizenz verfügbar. `v0.2.2 – LichtwaldLog Local MVP` wurde am
-`2026-07-26` begonnen und ist funktional abgeschlossen sowie als lokaler
-Release Candidate geprüft. Implementiert sind die LichtwaldLog-Contract-Foundation
+`2026-07-26` begonnen und ist vollständig abgeschlossen sowie geprüft.
+Implementiert sind die LichtwaldLog-Contract-Foundation
 mit Schema-1-Vertrag, reinem Validator, synthetischen Contract-Tests und ADR
 0013, die private Storage-Foundation mit begrenzter
 Full-Snapshot-Persistenz und ADR 0014, die Service- und Controller-Foundation,
@@ -91,14 +91,13 @@ selben Dokument erhalten und werden bei Reload oder neuer Komposition auf den
 kanonischen Seed zurückgesetzt; der private Browserbestand bleibt davon
 unberührt. Die synthetische Herkunft und der Reset bei Reload bleiben auch bei
 der Präsentation des besonderen Moments sichtbar. Damit ist `v0.2.2`
-funktional abgeschlossen und als lokaler Release Candidate geprüft: 374/374
-LichtwaldLog-Tests und 933/933 Tests der Gesamtsuite bestehen bei 0 Skips und 0
-Todos; der Produktions-Build transformiert exakt 46 Module. Die Paketversion
-ist `v0.2.2`; `private: true` bleibt ausschließlich eine
-Paketmetadatenentscheidung und macht das öffentlich sichtbare Repository nicht
-privat. Ein annotierter Tag `v0.2.2` und das zugehörige GitHub Release
-existieren noch nicht und bleiben manuelle Schritte bei Jan. `v0.2.1` bleibt
-das zuletzt veröffentlichte Release. `v0.3.0 – SyncAgent and Webhook Foundation`
+vollständig abgeschlossen und geprüft: 374/374 LichtwaldLog-Tests und 933/933
+Tests der Gesamtsuite bestehen bei 0 Skips und 0 Todos; der Produktions-Build
+transformiert exakt 46 Module. Die Paketversion ist `v0.2.2`; `private: true`
+bleibt ausschließlich eine Paketmetadatenentscheidung und macht das öffentlich
+sichtbare Repository nicht privat. Der annotierte Tag `v0.2.2` und das
+zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
+das neueste veröffentlichte Release. `v0.3.0 – SyncAgent and Webhook Foundation`
 ist der nächste geplante und noch nicht begonnene Meilenstein. `v0.2.2` bleibt
 vollständig lokal und besitzt keine externe Kommunikation, Webhooks,
 Agentenlogik oder Airtable-Anbindung.
@@ -380,8 +379,9 @@ onResetFilters
   `Synthetische Demo` gekennzeichnete getrennte In-Memory-Demo navigierbar.
   Beide Stacks besitzen eigene Instanzen, sind niemals gleichzeitig montiert
   und wechseln nur nach erfolgreichem Dirty-Guard-`close()`. Der geplante
-  Implementierungsumfang ist funktional abgeschlossen und als lokaler Release
-  Candidate geprüft; Tag und GitHub Release `v0.2.2` bleiben manuelle Schritte.
+  Implementierungsumfang ist vollständig abgeschlossen und geprüft; der
+  annotierte Tag `v0.2.2` und das zugehörige GitHub Release wurden am
+  `2026-08-02` veröffentlicht.
 - Das Ziel des LichtwaldLog Local MVP bleibt ein lokales Journal-Modul mit CRUD
   für Einträge aus Titel, reinem Kalenderdatum, Text und Tags sowie lokaler
   Suche und Filtern.

@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.2 – LichtwaldLog Local MVP als lokaler Release Candidate geprüft` |
+| Projektphase | `v0.2.2 – LichtwaldLog Local MVP vollständig geprüft und veröffentlicht` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion und geprüfter lokaler Release Candidate `v0.2.2`; letztes veröffentlichtes Release `v0.2.1`; `v0.2.2` ungetaggt und unveröffentlicht; `v0.3.0` geplant und unbegonnen |
+| Status | Paketversion `v0.2.2`; `v0.2.2` vollständig geprüft und am `2026-08-02` veröffentlicht; neuestes veröffentlichtes Release `v0.2.2`; `v0.3.0` geplant und unbegonnen |
 | Letzte Aktualisierung | 2026-08-02 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
@@ -49,7 +49,7 @@ nicht starre Kalendertermine.
 | `v0.1.0` | Fundament | Dokumentation, Regeln und stabile Projektbasis | ✅ |
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.2.2` | LichtwaldLog Local MVP | Funktional abgeschlossen und als lokaler Release Candidate geprüft | ✅ |
+| `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.3.0` | SyncAgent and Webhook Foundation | Geplante, noch nicht begonnene erste externe Kommunikationsschicht | ⬜ |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
@@ -558,8 +558,8 @@ vollständigen privaten UI-Projektion ab. Diese Werte gehören nicht zu Schema 1
 und werden nicht persistiert; Service-, Storage- und Adapter-APIs bleiben
 unverändert. Die getrennte synthetische Demo ist unmittelbar nach dem privaten
 Modul navigierbar, in jedem Zustand sichtbar als Sitzung gekennzeichnet und
-vollständig bedienbar. Der geplante Implementierungsumfang ist funktional
-abgeschlossen und als lokaler Release Candidate geprüft.
+vollständig bedienbar. Der geplante Implementierungsumfang ist vollständig
+abgeschlossen, geprüft und veröffentlicht.
 Storage und Service bleiben die autoritativen fachlichen Grenzen.
 Read-Preflight, 500.000-Codeeinheiten-Limit, Browser-Quota, TOCTOU- und
 Multi-Tab-Verhalten ändern sich durch Anwendungskomposition, Controller und
@@ -885,8 +885,8 @@ und Historieneinträge bleiben leer.
 Der annotierte Tag `v0.2.1` und das zugehörige GitHub Release wurden am
 `2026-07-25` veröffentlicht. GoldenDawn OS ist seitdem als öffentlich
 sichtbares Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
-`v0.2.2 – LichtwaldLog Local MVP` wurde am `2026-07-26` begonnen und ist
-funktional abgeschlossen sowie als lokaler Release Candidate geprüft.
+`v0.2.2 – LichtwaldLog Local MVP` wurde am `2026-07-26` begonnen, ist
+vollständig abgeschlossen und geprüft und wurde am `2026-08-02` veröffentlicht.
 Implementiert sind die Contract Foundation und private Storage-Foundation mit
 ADR 0013 und ADR 0014 sowie die in ADR 0015 getrennte synthetische
 In-Memory-Demo-Runtime und die darauf aufbauenden Service- und
@@ -912,15 +912,14 @@ persistierte Zustände. Die reale Browserprüfung auf Desktop und bei exakt
 `390 × 844` ist für den Navigations-, CRUD-, Fokus-, Such- und Filterfluss
 erfolgreich abgeschlossen. Die strikt getrennte synthetische In-Memory-Demo ist
 als eigener Storage-, Service-, Controller- und View-Stack vollständig
-bedienbar integriert. Der geplante Implementierungsumfang ist funktional
+bedienbar integriert. Der geplante Implementierungsumfang ist vollständig
 abgeschlossen und mit 374/374 LichtwaldLog-Tests, 933/933 Tests der Gesamtsuite,
 0 Skips, 0 Todos sowie einem Produktions-Build mit exakt 46 transformierten
-Modulen als lokaler Release Candidate geprüft. Die Paketversion ist `v0.2.2`;
-ein annotierter Tag und ein GitHub Release `v0.2.2` existieren noch nicht.
-`v0.2.1` bleibt das zuletzt veröffentlichte Release. Der nächste konkrete
-operative Schritt ist ausschließlich, dass Jan den Tag und das GitHub Release
-für `v0.2.2` manuell erstellt. `v0.3.0` bleibt geplant und unbegonnen; seine
-Implementierung ist noch nicht der nächste operative Schritt. `v0.2.2` bleibt
+Modulen geprüft. Die Paketversion ist `v0.2.2`; der annotierte Tag `v0.2.2` und
+das zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht. `v0.2.2`
+ist das neueste veröffentlichte Release. `v0.3.0` ist der nächste geplante
+Entwicklungsmeilenstein, bleibt jedoch unbegonnen; seine Implementierung hat
+noch nicht begonnen. `v0.2.2` bleibt
 vollständig lokal und besitzt keine externe Kommunikation, Webhooks,
 Agentenlogik oder Airtable-Anbindung.
 

@@ -4,9 +4,9 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.2 – LichtwaldLog Local MVP als lokaler Release Candidate geprüft` |
+| Projektphase | `v0.2.2 – LichtwaldLog Local MVP vollständig geprüft und veröffentlicht` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; Paketversion und geprüfter lokaler Release Candidate `v0.2.2`; letztes veröffentlichtes Release `v0.2.1`; `v0.2.2` ungetaggt und unveröffentlicht; `v0.3.0` geplant und unbegonnen |
+| Status | Verbindliche Sicherheitsbasis; Paketversion `v0.2.2`; `v0.2.2` vollständig geprüft und am `2026-08-02` veröffentlicht; neuestes veröffentlichtes Release `v0.2.2`; `v0.3.0` geplant und unbegonnen |
 | Letzte Aktualisierung | 2026-08-02 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
@@ -385,8 +385,8 @@ veröffentlicht. GoldenDawn OS ist seitdem als öffentlich sichtbares
 Portfolio-Repository ohne Open-Source-Lizenz verfügbar.
 `private: true` ist ausschließlich eine Paketmetadatenentscheidung und macht
 das öffentlich sichtbare Repository nicht privat.
-`v0.2.2 – LichtwaldLog Local MVP` ist funktional abgeschlossen und als rein
-lokaler Release Candidate geprüft.
+`v0.2.2 – LichtwaldLog Local MVP` ist vollständig abgeschlossen, geprüft und
+veröffentlicht.
 Die Contract Foundation, private Storage-Foundation, Service-Foundation und
 Controller-Foundation sowie die isolierte View- und CSS-Foundation sind
 implementiert und über den gemeinsamen `StorageAdapter` in `src/main.js`
@@ -403,10 +403,10 @@ weder Zugriffskontrolle noch Schutzklassifikation oder Compliance. Die
 strikt getrennte synthetische In-Memory-Demo ist als eigener vollständig
 bedienbarer Runtime-Stack umgesetzt; Herkunft und Reload-Verhalten bleiben auch
 beim besonderen Moment sichtbar. Der geplante Implementierungsumfang ist
-funktional abgeschlossen und als lokaler Release Candidate geprüft. `v0.2.2`
-ist weiterhin ungetaggt und unveröffentlicht; Tag und GitHub Release bleiben
-manuelle Schritte bei Jan. `v0.2.1` bleibt das zuletzt veröffentlichte Release,
-und `v0.3.0` ist geplant und noch nicht begonnen. ADR 0013, ADR 0014 und ADR
+vollständig abgeschlossen und geprüft. Der annotierte Tag `v0.2.2` und das
+zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
+das neueste veröffentlichte Release. `v0.3.0` ist geplant und noch nicht
+begonnen. ADR 0013, ADR 0014 und ADR
 0015 dokumentieren die unveränderten Contract-, private Storage- und
 Demo-Trennungsgrenzen.
 
@@ -603,8 +603,8 @@ Demo-Trennungsgrenzen.
   private Browserbytes weder lesen noch schreiben und fällt bei Fehlern nie
   auf den privaten Stack zurück. Die Demo ist in jedem Zustand textlich als
   vollständig erfundene Sitzung gekennzeichnet; der geplante
-  Implementierungsumfang ist funktional abgeschlossen und als lokaler Release
-  Candidate geprüft.
+  Implementierungsumfang ist vollständig abgeschlossen, geprüft und
+  veröffentlicht.
 - Für LichtwaldLog existieren in `v0.2.2` keine externe Kommunikation,
   Webhooks, Synchronisierung, Agentenlogik oder Airtable-Anbindung.
 - Ein späterer Agentenfluss benötigt einen eigenen minimierten Vertrag. Der
@@ -894,7 +894,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | `v0.1.0` | Regeln dokumentiert, Repository secret-frei, Gitignore geprüft |
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
 | `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; vollständig geprüft und veröffentlicht |
-| `v0.2.2` | privater allowlist-basierter View-, Controller-, Service- und Storage-Pfad sowie strikt getrennter synthetischer In-Memory-Demo-Stack mit fester Herkunft, Safe DOM, Closure-/Map-isolierten Entry-IDs, defensiver UI-Projektion, flüchtiger Suche/Filterung, DOM-Unmount-Grenze, statisch redigierten Fehlern, ohne Browser-Key oder Fallback; keine Base64-Bilder in `localStorage`, keine externe Übertragung; funktional abgeschlossen und als lokaler Release Candidate geprüft |
+| `v0.2.2` | privater allowlist-basierter View-, Controller-, Service- und Storage-Pfad sowie strikt getrennter synthetischer In-Memory-Demo-Stack mit fester Herkunft, Safe DOM, Closure-/Map-isolierten Entry-IDs, defensiver UI-Projektion, flüchtiger Suche/Filterung, DOM-Unmount-Grenze, statisch redigierten Fehlern, ohne Browser-Key oder Fallback; keine Base64-Bilder in `localStorage`, keine externe Übertragung; vollständig geprüft und veröffentlicht |
 | `v0.3.0` | Geplant und unbegonnen; künftiger Beginn externer Kommunikation mit Webhook-Allowlist, Schema- und Größenprüfung sowie kontrollierten CORS-Regeln |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
 | `v0.5.0` | Prompt-Injection-Schutz, strukturierter TestAgent-Output, keine Direktzugriffe |

@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.2 – LichtwaldLog Local MVP als lokaler Release Candidate geprüft` |
+| Projektphase | `v0.2.2 – LichtwaldLog Local MVP vollständig geprüft und veröffentlicht` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,7 +21,7 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion und geprüfter lokaler Release Candidate `v0.2.2`; letztes veröffentlichtes Release `v0.2.1`; `v0.2.2` ungetaggt und unveröffentlicht; `v0.3.0` geplant und unbegonnen; Sync-Vertrag bleibt Zielzustand |
+| Status | Paketversion `v0.2.2`; `v0.2.2` vollständig geprüft und am `2026-08-02` veröffentlicht; neuestes veröffentlichtes Release `v0.2.2`; `v0.3.0` geplant und unbegonnen; Sync-Vertrag bleibt Zielzustand |
 | Letzte Aktualisierung | 2026-08-02 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
@@ -75,10 +75,10 @@ Kalenderdatum- und Tagfilter sind als reine flüchtige Controllerableitung
 implementiert. Die strikt getrennte synthetische In-Memory-Demo ist als eigener
 vollständig bedienbarer Storage-, Service-, Controller- und View-Stack
 umgesetzt. Die lokalen Foundations und ihre Komposition führen keine externe
-Aktion ein. Der funktionale Umfang ist abgeschlossen und als lokaler Release
-Candidate geprüft. Ein Tag oder GitHub Release `v0.2.2` existiert noch nicht;
-beides bleibt ein manueller Schritt bei Jan. `v0.2.1` bleibt das zuletzt
-veröffentlichte Release, und `v0.3.0` ist geplant und noch nicht begonnen.
+Aktion ein. Der funktionale Umfang ist vollständig abgeschlossen und geprüft.
+Der annotierte Tag `v0.2.2` und das zugehörige GitHub Release wurden am
+`2026-08-02` veröffentlicht; `v0.2.2` ist das neueste veröffentlichte Release,
+und `v0.3.0` ist geplant und noch nicht begonnen.
 
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
@@ -177,16 +177,16 @@ bleiben flüchtig. Dieser lokale Ablauf verwendet weder `SyncAgent` noch
 „Lokaler Mock-Test“. `v0.2.1` ist vollständig geprüft und veröffentlicht. Von
 `v0.2.2 – LichtwaldLog Local MVP` sind die nachfolgend dokumentierte Contract-
 und private Storage-Foundation sowie die darauf aufbauenden Service- und
-Controller-Foundations und die isolierte View- und CSS-Foundation funktional
-abgeschlossen und als lokaler Release Candidate geprüft. `src/main.js`
+Controller-Foundations und die isolierte View- und CSS-Foundation vollständig
+abgeschlossen und geprüft. `src/main.js`
 komponiert sie über den gemeinsamen
 `StorageAdapter`; Navigation und der vollständig über die Anwendung bedienbare
 UI-CRUD- und Fokusfluss sind ebenfalls implementiert und real im Browser auf
 Desktop sowie bei exakt `390 × 844` geprüft. Lokale Textsuche sowie exakte
 Kalenderdatum- und Tagfilter sind ebenfalls implementiert und nicht
 persistiert. Die getrennte synthetische Demo-Runtime ist als unabhängiger
-In-Memory-Stack implementiert und als Teil desselben rein lokalen Release
-Candidates geprüft.
+In-Memory-Stack implementiert und als Teil desselben rein lokalen
+`v0.2.2`-Umfangs geprüft.
 
 #### Interner LearningHub-Vertrag – Schema 2
 
@@ -1583,8 +1583,8 @@ bestätigt. Es gab 0 Console-Warnungen oder -Fehler, 0 Runtime-Exceptions und
 wurden einschließlich AND-Verknüpfung, Leerzustand, Reset, Caretfokus,
 gefilterten Mutationsflüssen und ausbleibenden Storage-Schreiboperationen real
 im Browser geprüft und sind permanent automatisiert abgedeckt. Die getrennte
-synthetische Demo-Runtime und der gesamte lokale Umfang sind funktional
-abgeschlossen und als Release Candidate geprüft.
+synthetische Demo-Runtime und der gesamte lokale Umfang sind vollständig
+abgeschlossen, geprüft und veröffentlicht.
 Vertrag, View, Controller, Service, Storage und Anwendungskomposition führen
 weder eine externe Aktion noch einen Zugriff durch `SyncAgent`, `DataAgent`
 oder `TestAgent` ein.

@@ -8,9 +8,7 @@
 
 ## Project status
 
-**Current package and release candidate:** `v0.2.2 — LichtwaldLog Local MVP functionally complete and verified`
-
-**Latest published release:** `v0.2.1 — LearningHub Local MVP complete, verified, and published`
+**Current release:** `v0.2.2 — LichtwaldLog Local MVP complete, verified, and published`
 
 **Next planned milestone:** `v0.3.0 — SyncAgent and Webhook Foundation; not started`
 
@@ -37,8 +35,8 @@ by the initializer. Final release verification passed 552/552 automated tests
 and the production build. Tag `v0.2.1` and its corresponding GitHub Release
 were published on 2026-07-25, and the repository is publicly visible for
 portfolio and evaluation purposes without an open-source license. LichtwaldLog
-`v0.2.2` was started on 2026-07-26 and is now a functionally complete and
-verified local release candidate. Its Contract Foundation,
+`v0.2.2` was started on 2026-07-26 and is now complete, verified, and
+published. Its Contract Foundation,
 private Storage Foundation, Service Foundation, Controller Foundation, and
 isolated View and CSS Foundation, together with ADRs 0013, 0014, and 0015, are
 implemented as two explicitly separated stacks in `src/main.js`. Only the
@@ -62,13 +60,12 @@ runtime now exposes five fully invented entries as a functional synthetic
 in-memory demo. Demo mutations survive navigation within the current document
 and reset to the canonical seed on reload or a new composition without reading
 or changing private browser data. The permanent synthetic origin and reload
-behavior remain visible, including in the featured-moment presentation. Release
-candidate verification passed 374/374 LichtwaldLog tests and 933/933 tests in
-the complete suite with 0 skips and 0 todos; the production build transformed
-exactly 46 modules. The `v0.2.2` package and local release candidate are
-functionally complete and verified, but remain untagged and unpublished. The
-annotated tag and GitHub Release remain manual steps for Jan, and `v0.2.1`
-remains the latest published release. `private: true` is package metadata and
+behavior remain visible, including in the featured-moment presentation. Final
+verification passed 374/374 LichtwaldLog tests and 933/933 tests in the
+complete suite with 0 skips and 0 todos; the production build transformed
+exactly 46 modules. `v0.2.2` is complete, verified, and published. Its
+annotated tag and corresponding GitHub Release were published on 2026-08-02,
+making `v0.2.2` the latest published release. `private: true` is package metadata and
 does not make this publicly visible repository private. The next milestone,
 `v0.3.0 – SyncAgent and Webhook Foundation`, is planned and has not started.
 `v0.2.2` remains fully local and includes no external communication, webhooks,
@@ -122,7 +119,7 @@ Accepted architecture decisions and their rationale are indexed in
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
 | LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP complete, verified, and published |
-| LichtwaldLog | Local text journal with search and exact calendar-date and tag filters plus a strictly separated synthetic in-memory demo | `v0.2.2` | Functionally complete and verified local release candidate; not yet published |
+| LichtwaldLog | Local text journal with search and exact calendar-date and tag filters plus a strictly separated synthetic in-memory demo | `v0.2.2` | Local MVP complete, verified, and published |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
 | Weekly Review | Structured summaries, progress, and next actions | Later, after the LichtwaldLog Local MVP | Planned; not part of `v0.2.2` |
@@ -301,7 +298,7 @@ LearningTestService
   → TestAgent
 ```
 
-## LichtwaldLog Local MVP (verified release candidate for v0.2.2)
+## LichtwaldLog Local MVP (released in v0.2.2)
 
 The Contract Foundation, private Storage Foundation, Service Foundation,
 Controller Foundation, and isolated View and CSS Foundation are implemented.
@@ -520,8 +517,8 @@ synthetic-origin controller immediately after the private navigation item.
 Dirty guards are enforced in both directions, only one view is mounted, demo
 mutations persist only for the current document, and reload restores the
 canonical seed while private data remains authoritative and untouched. The
-planned implementation scope is functionally complete and verified as the
-local release candidate for `v0.2.2`.
+planned implementation scope is complete, verified, and published in
+`v0.2.2`.
 The target Local MVP remains limited to entries with a title,
 calendar date, plain text, and tags, plus local search and filters. Private
 entries and synthetic demo entries remain separate.
@@ -530,10 +527,10 @@ a cloud backup nor cross-device synchronization. Its existing 500,000
 UTF-16-code-unit limit, browser quota, read preflight, TOCTOU, and multi-tab
 limitations remain unchanged. `v0.2.2` includes no external communication, webhooks,
 synchronization, agent logic, or Airtable integration. Weekly Review is later
-work and is not part of this milestone. Package version `v0.2.2` remains
-untagged and unpublished; `v0.2.1` remains the latest published release. Tag
-and GitHub Release `v0.2.2` remain manual steps for Jan. `v0.3.0` is planned
-and has not started.
+work and is not part of this milestone. The package remains at version
+`v0.2.2`. The annotated `v0.2.2` tag and corresponding GitHub Release were
+published on 2026-08-02, and `v0.2.2` is the latest published release.
+`v0.3.0` is planned and has not started.
 
 ## Development principles
 
@@ -581,7 +578,7 @@ non-binding; see the roadmap for details.
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
-| v0.2.2 | LichtwaldLog Local MVP | Functionally complete and verified local release candidate; not yet published |
+| v0.2.2 | LichtwaldLog Local MVP | Complete, verified, and published |
 | v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests; not started |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
@@ -621,7 +618,7 @@ process are documented in [the Git workflow guide](docs/git-workflows.md).
 
 ## Verification
 
-The `v0.2.2` local release candidate was verified with:
+The published `v0.2.2` release was verified with:
 
 ```bash
 npm test -- --test-concurrency=1
@@ -630,9 +627,8 @@ npm run build
 
 Verification passed 374/374 LichtwaldLog tests and 933/933 tests in the complete
 suite with 0 skips and 0 todos. The production build transformed exactly 46
-modules. Package version `v0.2.2` is functionally complete and verified, but no
-annotated `v0.2.2` tag or GitHub Release exists yet; both remain manual steps
-for Jan. `v0.2.1` remains the latest published release.
+modules. The annotated `v0.2.2` tag and corresponding GitHub Release were
+published on 2026-08-02. `v0.2.2` is the latest published release.
 
 The published `v0.2.1` release was finally verified with:
 
@@ -672,6 +668,7 @@ Detailed security rules are maintained in
   with its automated tests and production build, and published as tag `v0.2.0`
   with the corresponding GitHub Release.
 - **2026-07-25:** The `v0.2.1` LearningHub Local MVP was published with its corresponding GitHub Release, and GoldenDawn OS became publicly visible as a portfolio repository.
+- **2026-08-02:** The `v0.2.2` LichtwaldLog Local MVP was published with its annotated tag and corresponding GitHub Release.
 
 ## Author and collaboration
 
