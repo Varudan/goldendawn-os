@@ -6,8 +6,8 @@
 | --- | --- |
 | Projektphase | `v0.2.2 – LichtwaldLog Local MVP in Arbeit` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; `v0.2.1` aktuelle Paket- und Releaseversion; funktionaler privater und strikt getrennter synthetischer LichtwaldLog-Demo-Umfang implementiert; Release-Prüfung offen |
-| Letzte Aktualisierung | 2026-08-01 |
+| Status | Verbindliche Zielarchitektur; `v0.2.1` aktuelle Paket- und Releaseversion; `v0.2.2` in Arbeit, geplanter Implementierungsumfang vollständig; Release-Prüfung offen |
+| Letzte Aktualisierung | 2026-08-02 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -666,10 +666,15 @@ komponiert. LichtwaldLog ist über die Navigation mit dem sichtbaren Status
 vollständig über GoldenDawn OS bedienbar und real im Browser auf Desktop mit
 `1440 × 1000` sowie bei exakt `390 × 844` geprüft. Die lokale Textsuche sowie exakte Kalenderdatum-
 und Tagfilter sind als reine flüchtige Controllerableitung implementiert und
-verändern weder Schema 1 noch Service-, Storage- oder Adapter-APIs. Zusätzlich
-ist die strikt getrennte synthetische In-Memory-Demo als eigener vollständig
-bedienbarer Runtime-Stack umgesetzt. Der funktionale Umfang ist damit
-implementiert; die abschließende Release-Prüfung bleibt offen. Der vollständige
+verändern weder Schema 1 noch Service-, Storage- oder Adapter-APIs. Der
+autoritativ über `featuredEntryId` fokussierte Eintrag wird in Übersicht und
+Detail rein durch View und CSS als `Besonderer Lichtwaldmoment` präsentiert,
+ohne einen zweiten Zustand, eine zusätzliche API, Persistenz oder ein
+Dashboard-Redesign einzuführen. Zusätzlich ist die strikt getrennte
+synthetische In-Memory-Demo als eigener vollständig bedienbarer Runtime-Stack
+umgesetzt; Herkunft und Reload-Verhalten bleiben auch bei der Präsentation des
+besonderen Moments sichtbar. Der geplante Implementierungsumfang ist damit
+vollständig; die abschließende Release-Prüfung bleibt offen. Der vollständige
 MVP ist weder abgeschlossen noch veröffentlicht. ADR 0013, ADR 0014 und ADR
 0015 dokumentieren Contract, private Persistenz und Demo-Trennung.
 
@@ -821,6 +826,12 @@ bleiben flach und auf die bekannten Formularfelder sowie beim Update die
 gebundene Entry-ID begrenzt. Die View führt keine zweite fachliche Validierung,
 Persistenz- oder Operationswahrheit ein.
 
+Der mit `featuredEntryId` autoritativ fokussierte Eintrag wird in Übersicht
+und Detail als `Besonderer Lichtwaldmoment` dargestellt. Diese Hervorhebung
+wird ausschließlich in View und CSS aus der vorhandenen Projektion abgeleitet;
+sie führt keinen zweiten Zustand, keine neue API, Persistenz oder
+dashboardweite Gestaltungsänderung ein.
+
 Die Zustandsprojektion deckt Lade-, echte und gefilterte Leer-, Busy-, Erfolgs-,
 Notice-, Validierungs-, Ergebnisstatus- und Fehlerzustände ab. Nach jedem
 DOM-Austausch löst die View die
@@ -847,7 +858,9 @@ jeweiligen Moduls.
 Im Modus `syntheticDemo` kennzeichnet die View jeden Zustand dauerhaft
 textlich als vollständig erfundene Demo nur für diese Seitensitzung. Sie
 verwendet dort keine Aussage über private Journale, aktuelles Browserprofil,
-`localStorage`, Cloud-Sicherung oder dauerhaftes Löschen.
+`localStorage`, Cloud-Sicherung oder dauerhaftes Löschen. Diese Herkunfts- und
+Reload-Hinweise bleiben auch bei der Präsentation als
+`Besonderer Lichtwaldmoment` sichtbar.
 
 Der Controller koordiniert ausschließlich flüchtige Lade-, Leer-, Auswahl-,
 Formular-, Bestätigungs-, Busy-, Erfolgs-, Fehler-, Such- und Filterzustände.
@@ -988,9 +1001,9 @@ Die getrennte synthetische Demo ist über eine unmittelbar auf das private Modul
 folgende Navigation vollständig bedienbar. Dirty Guards gelten in beide
 Richtungen, nur eine View ist jeweils montiert, private Browserbytes bleiben bei
 Demo-Operationen unverändert und Reload stellt ausschließlich den kanonischen
-Demo-Seed wieder her. Der funktionale Umfang ist implementiert; offen bleibt
-die Release-Prüfung. Private lokale Einträge und synthetische Demo-Daten
-bleiben technisch getrennt; Bilder werden
+Demo-Seed wieder her. Der geplante Implementierungsumfang ist vollständig;
+offen bleibt die Release-Prüfung. Private lokale Einträge und synthetische
+Demo-Daten bleiben technisch getrennt; Bilder werden
 nicht als Base64 in `localStorage` abgelegt. Der Storage ist unverschlüsselt
 und bietet weder Authentifizierung, Zugriffskontrolle, Integritätsgarantie,
 Cloud-Sicherung noch Synchronisierung. Read-Preflight,
@@ -1182,7 +1195,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.1.0` | Dokumentation, Vite-Grundlage und Architekturregeln |
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
-| `v0.2.2` | In Arbeit; funktionaler privater und strikt getrennter synthetischer In-Memory-Demo-Umfang implementiert; Release-Prüfung offen; keine externe Kommunikation |
+| `v0.2.2` | In Arbeit; geplanter Implementierungsumfang vollständig; Release-Prüfung offen; keine externe Kommunikation |
 | `v0.3.0` | SyncService, Webhook und SyncAgent als Beginn externer Kommunikation |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |

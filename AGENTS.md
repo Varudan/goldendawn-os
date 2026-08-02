@@ -66,6 +66,11 @@ LichtwaldLog ist über die
 Navigation mit dem sichtbaren Status `In Arbeit` erreichbar. Anzeigen,
 Erstellen, vollständiges Bearbeiten, dauerhaftes Löschen sowie explizites
 Setzen und Entfernen des Fokus sind vollständig über GoldenDawn OS bedienbar.
+Der durch `featuredEntryId` autoritativ fokussierte Eintrag wird in Übersicht
+und Detail rein durch View und CSS als `Besonderer Lichtwaldmoment`
+präsentiert. Dafür werden weder ein zweiter Zustand noch eine zusätzliche API
+oder Persistenz eingeführt; die Dashboard-Shell und andere Module bleiben
+unverändert.
 Die reine lokale Textsuche über Kalenderdatum, Titel, Text und Tags sowie der
 exakte Kalenderdatum- und Tagfilter sind ebenfalls implementiert. Alle drei
 Kriterien werden ausschließlich aus der flüchtigen Controller-Projektion
@@ -83,8 +88,10 @@ Die getrennte synthetische In-Memory-Demo ist als eigener vollständig
 bedienbarer Runtime-Stack umgesetzt. Demo-Änderungen bleiben bei Navigation im
 selben Dokument erhalten und werden bei Reload oder neuer Komposition auf den
 kanonischen Seed zurückgesetzt; der private Browserbestand bleibt davon
-unberührt. Damit ist der funktionale Umfang implementiert, als nächster Schritt
-bleibt die abschließende Release-Prüfung. `v0.2.2` ist weiterhin weder
+unberührt. Die synthetische Herkunft und der Reset bei Reload bleiben auch bei
+der Präsentation des besonderen Moments sichtbar. Damit ist der geplante
+Implementierungsumfang vollständig umgesetzt; als nächster Schritt bleibt die
+abschließende Release-Prüfung. `v0.2.2` ist weiterhin weder
 abgeschlossen noch veröffentlicht. Paketversion und letztes veröffentlichtes
 Release bleiben `v0.2.1`. Der
 Meilenstein bleibt vollständig lokal und besitzt keine externe Kommunikation,
@@ -275,6 +282,12 @@ onResetFilters
   DOM-/ARIA-IDs, Selektoren noch View-eigene Meldungen. Die verlustfreie
   Mehrfeld-Tag-UI verwendet kein Komma-Parsing und bewahrt Entry- und
   Tag-Reihenfolge sowie Schreibweise.
+- Der über `featuredEntryId` autoritativ fokussierte Eintrag wird in Übersicht
+  und Detail als `Besonderer Lichtwaldmoment` präsentiert. Die Hervorhebung ist
+  ausschließlich eine View- und CSS-Projektion der bestehenden Fokusreferenz.
+  Sie führt keinen zweiten Zustand, keine zusätzliche API oder Persistenz ein
+  und verändert weder die getrennten Runtime-Stacks noch die Dashboard-Shell.
+  Im synthetischen Modus bleiben Herkunft und Reload-Verhalten sichtbar.
 - Die isolierte View stellt Lade-, Leer-, Busy-, Erfolgs-, Notice-,
   Validierungs- und Fehlerzustände zugänglich dar, löst sämtliche
   Controller-Fokusziele nach dem DOM-Austausch kontrolliert auf und verwendet
@@ -360,8 +373,9 @@ onResetFilters
   bleiben unverändert. Direkt nach dem privaten Modul ist die dauerhaft als
   `Synthetische Demo` gekennzeichnete getrennte In-Memory-Demo navigierbar.
   Beide Stacks besitzen eigene Instanzen, sind niemals gleichzeitig montiert
-  und wechseln nur nach erfolgreichem Dirty-Guard-`close()`. Der funktionale
-  Umfang ist implementiert; offen bleibt die abschließende Release-Prüfung.
+  und wechseln nur nach erfolgreichem Dirty-Guard-`close()`. Der geplante
+  Implementierungsumfang ist vollständig; offen bleibt die abschließende
+  Release-Prüfung.
 - Das Ziel des LichtwaldLog Local MVP bleibt ein lokales Journal-Modul mit CRUD
   für Einträge aus Titel, reinem Kalenderdatum, Text und Tags sowie lokaler
   Suche und Filtern.
