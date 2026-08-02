@@ -297,9 +297,9 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   const moduleEnd = mainSource.indexOf('\n  },', moduleStart)
   assert.ok(moduleStart >= 0 && moduleEnd > moduleStart)
   const moduleSource = mainSource.slice(moduleStart, moduleEnd)
-  assert.match(moduleSource, /status: 'In Arbeit'/u)
-  assert.match(moduleSource, /statusClass: 'next'/u)
-  assert.match(moduleSource, /navigationState: 'In Arbeit'/u)
+  assert.match(moduleSource, /status: 'Lokales MVP'/u)
+  assert.match(moduleSource, /statusClass: 'local'/u)
+  assert.match(moduleSource, /navigationState: 'Lokales MVP'/u)
   assert.match(moduleSource, /isNavigable: true/u)
   assert.match(moduleSource, /Suche/u)
   assert.match(moduleSource, /Filter/u)
@@ -316,6 +316,7 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   )
   assert.match(demoModuleSource, /name: 'LichtwaldLog Demo'/u)
   assert.match(demoModuleSource, /status: 'Synthetische Demo'/u)
+  assert.match(demoModuleSource, /statusClass: 'local'/u)
   assert.match(demoModuleSource, /navigationState: 'Synthetische Demo'/u)
   assert.match(demoModuleSource, /vollständig erfundene/iu)
   assert.match(demoModuleSource, /isNavigable: true/u)
@@ -391,12 +392,20 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
     mainSource,
     /lichtwaldLog(?:Demo)?Controller\.open\(\)[\s\S]{0,80}\b(?:fallback|catch)\b/iu
   )
-  assert.match(mainSource, /v0\.2\.2 – Release-Prüfung/u)
-  assert.match(mainSource, /Funktionaler lokaler Umfang implementiert/u)
-  assert.match(mainSource, /v0\.2\.2 – LichtwaldLog Local MVP in Arbeit/u)
-  assert.match(mainSource, /weiterhin in Arbeit und unveröffentlicht/u)
-  assert.match(mainSource, /LearningHub Local MVP/u)
-  assert.match(mainSource, /<strong>– v0\.2\.1<\/strong>/u)
+  assert.match(
+    mainSource,
+    /v0\.2\.2 – LichtwaldLog Local MVP abgeschlossen/u
+  )
+  assert.match(mainSource, /Release Candidate/u)
+  assert.match(mainSource, /LichtwaldLog Local MVP lokal geprüft/u)
+  assert.match(
+    mainSource,
+    /v0\.3\.0 – SyncAgent and Webhook Foundation/u
+  )
+  assert.match(mainSource, /v0\.3\.0 ist geplant und noch nicht begonnen/u)
+  assert.match(mainSource, /status status--planned">Geplant/u)
+  assert.match(mainSource, /<span>LichtwaldLog Local MVP<\/span>/u)
+  assert.match(mainSource, /<strong>– v0\.2\.2<\/strong>/u)
   assert.deepEqual(
     {
       version: packageMetadata.version,
@@ -404,7 +413,7 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
       license: packageMetadata.license,
     },
     {
-      version: '0.2.1',
+      version: '0.2.2',
       private: true,
       license: 'UNLICENSED',
     }

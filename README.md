@@ -8,9 +8,11 @@
 
 ## Project status
 
-**Current release and package version:** `v0.2.1 — LearningHub Local MVP complete, verified, and published`
+**Current package and release candidate:** `v0.2.2 — LichtwaldLog Local MVP functionally complete and verified`
 
-**Current milestone:** `v0.2.2 — LichtwaldLog Local MVP in progress`
+**Latest published release:** `v0.2.1 — LearningHub Local MVP complete, verified, and published`
+
+**Next planned milestone:** `v0.3.0 — SyncAgent and Webhook Foundation; not started`
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -35,14 +37,15 @@ by the initializer. Final release verification passed 552/552 automated tests
 and the production build. Tag `v0.2.1` and its corresponding GitHub Release
 were published on 2026-07-25, and the repository is publicly visible for
 portfolio and evaluation purposes without an open-source license. LichtwaldLog
-`v0.2.2` has been in progress since 2026-07-26. Its Contract Foundation,
+`v0.2.2` was started on 2026-07-26 and is now a functionally complete and
+verified local release candidate. Its Contract Foundation,
 private Storage Foundation, Service Foundation, Controller Foundation, and
 isolated View and CSS Foundation, together with ADRs 0013, 0014, and 0015, are
 implemented as two explicitly separated stacks in `src/main.js`. Only the
 private stack uses the shared `StorageAdapter`; the synthetic demo uses its
 own in-memory stack without that adapter.
 LichtwaldLog is reachable from the application navigation with the visible
-status `In Arbeit`. Viewing, creating, fully editing, permanently deleting, and
+status `Lokales MVP`. Viewing, creating, fully editing, permanently deleting, and
 explicitly setting or clearing the featured entry are operable through
 GoldenDawn OS. The entry authoritatively referenced by `featuredEntryId` is
 presented in both overview and detail as `Besonderer Lichtwaldmoment`. This is
@@ -59,11 +62,17 @@ runtime now exposes five fully invented entries as a functional synthetic
 in-memory demo. Demo mutations survive navigation within the current document
 and reset to the canonical seed on reload or a new composition without reading
 or changing private browser data. The permanent synthetic origin and reload
-behavior remain visible, including in the featured-moment presentation. The
-planned implementation scope is complete; final release verification remains.
-The milestone is neither complete nor published.
-It remains fully local and includes no external
-communication, webhooks, agent logic, or Airtable integration.
+behavior remain visible, including in the featured-moment presentation. Release
+candidate verification passed 374/374 LichtwaldLog tests and 933/933 tests in
+the complete suite with 0 skips and 0 todos; the production build transformed
+exactly 46 modules. The `v0.2.2` package and local release candidate are
+functionally complete and verified, but remain untagged and unpublished. The
+annotated tag and GitHub Release remain manual steps for Jan, and `v0.2.1`
+remains the latest published release. `private: true` is package metadata and
+does not make this publicly visible repository private. The next milestone,
+`v0.3.0 – SyncAgent and Webhook Foundation`, is planned and has not started.
+`v0.2.2` remains fully local and includes no external communication, webhooks,
+agent logic, or Airtable integration.
 
 ## Vision
 
@@ -113,7 +122,7 @@ Accepted architecture decisions and their rationale are indexed in
 | Command Center | Central overview, navigation, and system status | `v0.2.0` | Shell implemented; milestone complete |
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
 | LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP complete, verified, and published |
-| LichtwaldLog | Local text journal with search and exact calendar-date and tag filters plus a strictly separated synthetic in-memory demo | `v0.2.2` | In progress; planned implementation scope complete; final release verification remains |
+| LichtwaldLog | Local text journal with search and exact calendar-date and tag filters plus a strictly separated synthetic in-memory demo | `v0.2.2` | Functionally complete and verified local release candidate; not yet published |
 | Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
 | Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
 | Weekly Review | Structured summaries, progress, and next actions | Later, after the LichtwaldLog Local MVP | Planned; not part of `v0.2.2` |
@@ -292,7 +301,7 @@ LearningTestService
   → TestAgent
 ```
 
-## LichtwaldLog Local MVP (in progress for v0.2.2)
+## LichtwaldLog Local MVP (verified release candidate for v0.2.2)
 
 The Contract Foundation, private Storage Foundation, Service Foundation,
 Controller Foundation, and isolated View and CSS Foundation are implemented.
@@ -494,7 +503,7 @@ remain unchanged limitations.
 
 `src/main.js` composes the module through the shared `StorageAdapter` and makes
 it reachable through application navigation with the visible status
-`In Arbeit`. The local UI supports viewing, creating, fully editing,
+`Lokales MVP`. The local UI supports viewing, creating, fully editing,
 permanently deleting, and explicitly setting or clearing the featured entry
 through GoldenDawn OS. Real-browser verification passed in a fresh isolated
 temporary Chrome profile at desktop `1440 × 1000` and exactly `390 × 844`.
@@ -511,7 +520,8 @@ synthetic-origin controller immediately after the private navigation item.
 Dirty guards are enforced in both directions, only one view is mounted, demo
 mutations persist only for the current document, and reload restores the
 canonical seed while private data remains authoritative and untouched. The
-planned implementation scope is complete; final release verification remains.
+planned implementation scope is functionally complete and verified as the
+local release candidate for `v0.2.2`.
 The target Local MVP remains limited to entries with a title,
 calendar date, plain text, and tags, plus local search and filters. Private
 entries and synthetic demo entries remain separate.
@@ -520,8 +530,10 @@ a cloud backup nor cross-device synchronization. Its existing 500,000
 UTF-16-code-unit limit, browser quota, read preflight, TOCTOU, and multi-tab
 limitations remain unchanged. `v0.2.2` includes no external communication, webhooks,
 synchronization, agent logic, or Airtable integration. Weekly Review is later
-work and is not part of this milestone. `v0.2.2` is still neither complete
-nor published, and package and release version remain `v0.2.1`.
+work and is not part of this milestone. Package version `v0.2.2` remains
+untagged and unpublished; `v0.2.1` remains the latest published release. Tag
+and GitHub Release `v0.2.2` remain manual steps for Jan. `v0.3.0` is planned
+and has not started.
 
 ## Development principles
 
@@ -569,8 +581,8 @@ non-binding; see the roadmap for details.
 | v0.1.0 | Project foundation | Documentation, architecture, and clean Vite structure |
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
-| v0.2.2 | LichtwaldLog Local MVP | In progress; planned implementation scope complete; final release verification remains |
-| v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests |
+| v0.2.2 | LichtwaldLog Local MVP | Functionally complete and verified local release candidate; not yet published |
+| v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests; not started |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
 | v0.6.0 | Integration | Planned integration and verification of the previously introduced local and external components |
@@ -608,6 +620,19 @@ Safe, local PowerShell helpers for the manual commit and merged-branch cleanup
 process are documented in [the Git workflow guide](docs/git-workflows.md).
 
 ## Verification
+
+The `v0.2.2` local release candidate was verified with:
+
+```bash
+npm test -- --test-concurrency=1
+npm run build
+```
+
+Verification passed 374/374 LichtwaldLog tests and 933/933 tests in the complete
+suite with 0 skips and 0 todos. The production build transformed exactly 46
+modules. Package version `v0.2.2` is functionally complete and verified, but no
+annotated `v0.2.2` tag or GitHub Release exists yet; both remain manual steps
+for Jan. `v0.2.1` remains the latest published release.
 
 The published `v0.2.1` release was finally verified with:
 
