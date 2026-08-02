@@ -394,10 +394,10 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   )
   assert.match(
     mainSource,
-    /v0\.2\.2 – LichtwaldLog Local MVP abgeschlossen/u
+    /v0\.2\.2 – LichtwaldLog Local MVP veröffentlicht/u
   )
-  assert.match(mainSource, /Release Candidate/u)
-  assert.match(mainSource, /LichtwaldLog Local MVP lokal geprüft/u)
+  assert.match(mainSource, /Veröffentlicht/u)
+  assert.match(mainSource, /LichtwaldLog Local MVP vollständig geprüft/u)
   assert.match(
     mainSource,
     /v0\.3\.0 – SyncAgent and Webhook Foundation/u
