@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – SyncContract Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – SyncService Foundation` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,7 +21,7 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; transportneutraler `syncTest`-Vertragskern implementiert; externe Sync- und Agentenflüsse weiterhin geplant |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `syncTest`-Vertragskern implementiert; transportneutrale SyncService Foundation in Arbeit; externer Transport sowie Agentenflüsse weiterhin geplant |
 | Letzte Aktualisierung | 2026-08-04 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
@@ -32,10 +32,10 @@ begrenzte private Full-Snapshot-Persistenz, die darauf aufbauenden lokalen
 Service-, Controller- sowie isolierte View- und CSS-Foundation, die reine
 lokale Such- und Filterableitung und deren Anwendungskomposition in
 `src/main.js`. Es dokumentiert außerdem den implementierten transportneutralen
-`syncTest`-Kern sowie die ausdrücklich geplante spätere maschinenlesbare
-Sprache zwischen GoldenDawn OS, `SyncAgent`, `DataAgent` und `TestAgent` und
-konkretisiert die Grenzen aus `AGENTS.md`, `docs/architecture.md` und
-`docs/security.md`.
+`syncTest`-Kern und die darauf aufbauende SyncService Foundation sowie die
+ausdrücklich geplante spätere maschinenlesbare Sprache zwischen GoldenDawn OS,
+`SyncAgent`, `DataAgent` und `TestAgent` und konkretisiert die Grenzen aus
+`AGENTS.md`, `docs/architecture.md` und `docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
 In `v0.2.1` sind die LearningHub-Schema-2-Foundation, die lokale
@@ -57,9 +57,11 @@ geprüft und veröffentlicht. Der annotierte Tag `v0.2.1` und das zugehörige
 GitHub Release wurden am `2026-07-25` veröffentlicht; GoldenDawn OS ist
 seitdem als öffentlich sichtbares Portfolio-Repository ohne Open-Source-Lizenz
 verfügbar. Der transportneutrale `syncTest`-Vertragskern ist der erste
-implementierte Slice von `v0.3.0`; alle Transport-, LearningTest-, DataAgent-
-und sonstigen externen Agentenverträge bleiben Zielzustand späterer Slices
-beziehungsweise Versionen.
+implementierte Slice von `v0.3.0`. Die aktuelle SyncService Foundation ergänzt
+den kontrollierten Request-Build, einen injizierten Transport-Port und defensive
+normale Response-Verarbeitung, aber keinen konkreten externen Transport. Alle
+LearningTest-, DataAgent- und sonstigen externen Agentenverträge bleiben
+Zielzustand späterer Slices beziehungsweise Versionen.
 
 Für `v0.2.2` sind der reine LichtwaldLog-Schema-1-Vertrag,
 `validateLichtwaldLog`, die zugehörigen synthetischen Contract-Tests und die
@@ -81,7 +83,8 @@ umgesetzt. Die lokalen Foundations und ihre Komposition führen keine externe
 Aktion ein. Der funktionale Umfang ist vollständig abgeschlossen und geprüft.
 Der annotierte Tag `v0.2.2` und das zugehörige GitHub Release wurden am
 `2026-08-02` veröffentlicht; `v0.2.2` ist das neueste veröffentlichte Release,
-und `v0.3.0` ist mit der transportneutralen SyncContract Foundation in Arbeit.
+und `v0.3.0` ist mit der transportneutralen SyncService Foundation auf Basis
+der implementierten SyncContract Foundation in Arbeit.
 
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
@@ -2506,13 +2509,15 @@ Der Vertrag soll:
 ### Externe Aktionen des Dashboards
 
 Nur `syncTest` ist im aktuellen Slice als transportneutraler Validatorvertrag
-implementiert. Es gibt dazu noch keinen externen Aufruf. Alle LearningTest- und
-DataAgent-Aktionen in diesem Dokument bleiben ausdrücklich geplante
-Zielverträge und werden vom aktuellen SyncContract-Modul nicht akzeptiert.
+und kontrollierter argumentloser SyncService-Aufruf implementiert. Da kein
+konkreter Transport ausgeliefert oder komponiert ist, gibt es weiterhin keinen
+externen Aufruf. Alle LearningTest- und DataAgent-Aktionen in diesem Dokument
+bleiben ausdrücklich geplante Zielverträge und werden vom aktuellen
+SyncContract-Modul nicht akzeptiert.
 
 | Aktion | Zweck | Primärer Handler | Status |
 | --- | --- | --- | --- |
-| `syncTest` | geschlossenes `syncTest`-Vertragsformat strukturell prüfen | SyncAgent | Vertragsvalidator implementiert; kein Transport und kein operativer Handler |
+| `syncTest` | geschlossenes `syncTest`-Vertragsformat kontrolliert bauen, über einen injizierten Port senden und normale Response korrelieren | SyncAgent | Vertragsvalidator und transportneutraler SyncService implementiert; kein konkreter Transport und kein operativer Handler |
 | `learningTest.create` | Lerntest erzeugen und Definition sicher speichern | TestAgent | geplant für eine spätere Version |
 | `learningTest.evaluate` | Antworten bewerten und Ergebnis speichern | TestAgent | geplant für eine spätere Version |
 | `learningTest.result.get` | Gespeichertes Testergebnis abrufen | DataAgent | geplant für eine spätere Version |
@@ -2820,6 +2825,191 @@ Abwesenheit von Seiteneffekten, eine unveränderliche Objektidentität oder eine
 später identischen Zustand. Der Validator selbst schreibt weiterhin keine
 Properties und serialisiert unvertrauenswürdige Objekte nicht.
 
+## Öffentliche API der SyncService Foundation
+
+`src/services/syncService.js` exportiert die Factory:
+
+```js
+createSyncService({
+  syncTransport,
+  generateRequestId = defaultCryptoRequestIdGenerator,
+  getCurrentTimestamp = defaultUtcClock,
+} = {})
+```
+
+Die Factory liefert eine eingefrorene API mit exakt einer eigenen
+Dateneigenschaft:
+
+```js
+{
+  runSyncTest
+}
+```
+
+`runSyncTest()` ist immer Promise-basiert und akzeptiert keine Argumente. Ein
+Aufruf mit zusätzlichen Argumenten wird als `invalidInvocation` abgelehnt,
+ohne diese Werte zu inspizieren, ihre Properties zu lesen oder eine
+Konvertierung auszuführen. Generator und Clock werden in diesem Fall nicht
+ausgewertet; auf `syncTransport` oder seine `sendSyncRequest`-Property wird
+nicht zugegriffen. Es gibt keinen generischen `execute(action, payload)`-Pfad,
+keinen frei konfigurierbaren Contractwert, Endpoint oder Client-Modus.
+
+### Kontrollierter Request-Build
+
+Vor dem Request-Build versucht der Service zuerst genau einmal sicher,
+`syncTransport.sendSyncRequest` aufzulösen. Bei fehlender, nicht funktionaler
+oder werfend aufgelöster Methode endet der Aufruf mit `unavailable`; Generator
+und Clock werden nicht ausgewertet. Erst nach erfolgreicher Methodenauflösung
+beginnt der Request-Build und erzeugt einen frischen Request mit exakt diesen
+sechs Feldern:
+
+```js
+{
+  version: "1.0",
+  action: "syncTest",
+  source: "goldendawn-os",
+  requestId: "<kontrolliert erzeugte req_-ID>",
+  timestamp: "<kontrolliert erzeugter kanonischer UTC-Zeitstempel>",
+  payload: {}
+}
+```
+
+Version, Aktion und Quelle stammen ausschließlich aus den bestehenden
+SyncContract-Konstanten. Während dieses Request-Builds werden
+`generateRequestId` und `getCurrentTimestamp` jeweils exakt einmal ausgewertet.
+Beide Ergebnisse müssen primitive Strings sein. Boxed Strings, Promises,
+Thenables, Arrays, Records, Functions, Symbole und andere Typen werden weder
+konvertiert noch akzeptiert; `String(...)`, `toString`, `valueOf` und
+`Symbol.toPrimitive` werden nicht als Fallback verwendet.
+
+Der einmal erfasste Clock-Wert dient gleichzeitig als Request-`timestamp` und
+als lokale Referenzzeit für `validateSyncRequest`. Der vollständige Request
+wird vor jedem Aufruf der Portmethode validiert. Bei einem ungültigen
+Generator-, Clock- oder Validatorergebnis wird die Portmethode nicht
+aufgerufen.
+
+Der Standard-ID-Generator verwendet ausschließlich:
+
+```text
+req_ + crypto.randomUUID()
+```
+
+Es existiert kein `Math.random`-, Timestamp- oder anderer schwächerer Fallback.
+Ist `crypto.randomUUID()` nicht verfügbar, wirft es oder entsteht kein gültiger
+String, endet der Request-Build mit einem statisch redigierten lokalen Fehler.
+Die syntaktische ID-Prüfung beweist weiterhin weder Kollisionsarmut noch
+semantische Freiheit von privaten Informationen. Injizierte Generatoren und
+Clocks sind vertrauenswürdige Composition-Dependencies und dürfen nicht aus
+PromptVault, LearningHub, LichtwaldLog oder anderen privaten Inhalten
+ableiten.
+
+### Unveränderliche Korrelation und Transport-Port
+
+Transportrequest und interne Korrelationsgrundlage enthalten dieselben
+kontrollierten Werte, teilen aber keine veränderlichen Records. Beide sowie
+ihre jeweiligen frischen `payload`-Objekte sind tief eingefroren. Der Transport
+kann die spätere Korrelation deshalb nicht durch den Austausch oder die
+Mutation eines gemeinsam verwendeten Payload-Records verändern. Sequenzielle
+und parallele Aufrufe besitzen vollständig getrennte Requests und
+Korrelationen; es gibt keinen globalen Request-, In-flight-, Kollisions- oder
+Idempotenzspeicher.
+
+Der einzige Port dieses Slices lautet:
+
+```js
+syncTransport.sendSyncRequest(syncRequest)
+```
+
+Die bereits vor dem Request-Build einmal sicher aufgelöste Methode wird mit dem
+vorgesehenen Receiver erst nach vollständiger Requestvalidierung und pro
+Serviceaufruf höchstens einmal aufgerufen. Sie darf synchron einen Wert oder
+asynchron ein Promise liefern; `runSyncTest()` bleibt in beiden Fällen
+Promise-basiert. Synchrones Werfen, Promise-Rejections und beobachtbare
+Thenable-Fehler werden kontrolliert in einen statischen lokalen Fehler
+übersetzt. Es gibt keinen Retry, Backoff, Timeout oder zweiten Aufruf der
+Portmethode.
+
+### Exakter lokaler Service-Result
+
+Jeder Service-Result besitzt immer exakt dieselben fünf Felder:
+
+```js
+{
+  ok,
+  status,
+  requestId,
+  syncResponse,
+  error
+}
+```
+
+Eine vollständig gültige und korrelierte normale SyncResponse ergibt:
+
+```js
+{
+  ok: true,
+  status: "syncResponseReceived",
+  requestId: "<ausgehende req_-ID>",
+  syncResponse: "<defensiver, tief eingefrorener Response-Snapshot>",
+  error: null
+}
+```
+
+`ok: true` bedeutet ausschließlich, dass eine gültige normale SyncResponse
+empfangen wurde. Eine vollständig gültige normale Contract-Fehlerresponse
+bleibt deshalb ebenfalls außen `ok: true`. Ob der fachliche Sync-Vorgang
+erfolgreich war, drückt weiterhin ausschließlich `syncResponse.success` aus.
+
+Lokale Fehler verwenden ausschließlich diese Allowlist:
+
+| Status | Code | Exakte Meldung |
+| --- | --- | --- |
+| `invalidInvocation` | `invalidSyncServiceInvocation` | `Der Sync-Test akzeptiert keine Eingabedaten.` |
+| `unavailable` | `syncTransportUnavailable` | `Der Sync-Dienst ist nicht verfügbar.` |
+| `requestBuildFailed` | `syncRequestBuildFailed` | `Die Sync-Anfrage konnte nicht sicher vorbereitet werden.` |
+| `transportFailed` | `syncTransportFailed` | `Die Sync-Anfrage konnte nicht übermittelt werden.` |
+| `invalidResponse` | `invalidSyncTransportResponse` | `Die Sync-Antwort konnte nicht sicher verarbeitet werden.` |
+
+Vor einem vollständig gültigen Request ist `requestId` immer `null`. Nach dem
+erfolgreichen Request-Build darf ein Transport- oder Responsefehler
+ausschließlich die bereits validierte ausgehende `req_`-ID enthalten.
+Ungültige Generatorwerte werden niemals gespiegelt. `syncResponse` ist bei
+jedem lokalen Fehler `null`; `error` enthält ausschließlich den statischen
+Code und die statische Meldung. Validatorfehlerlisten, Rohrequests,
+Rohresponses, Exceptionwerte, Stacks und Dependency-Meldungen werden nicht
+übernommen oder geloggt.
+
+Lokale Fehler sind keine SyncContract-Responses. Sie besitzen weder
+`handledBy: "SyncAgent"` noch `processedBy: ["SyncAgent"]` und behaupten keine
+Agentenverarbeitung. Result, Error und gültiger Response-Snapshot sind defensiv
+entkoppelt und tief eingefroren.
+
+### Defensive Response-Projektion
+
+Der Port-Rückgabewert bleibt unvertrauenswürdige Eingabe. Der Service erzeugt
+eine neue allowlist-basierte gewöhnliche Datenprojektion, validiert diese mit
+dem unveränderten internen Request über
+`validateSyncResponse(syncResponse, correlatedRequest)` und gibt nur den
+vollständig gültigen tief eingefrorenen Snapshot aus.
+
+Das originale Transportobjekt wird niemals direkt zurückgegeben, verändert
+oder eingefroren. Nachträgliche Mutationen daran verändern den Service-Snapshot
+nicht. Zusätzliche, symbolische oder accessor-basierte Felder, ungeeignete
+Records, falsche Version, Aktion, `requestId`, Handler, Verarbeitungskette oder
+Datenherkunft werden nicht repariert oder normalisiert. Das frühe
+Gateway-Fehlerprofil wird nicht versuchsweise über einen zweiten Validator
+akzeptiert, sondern ergibt in diesem Slice `invalidResponse`.
+
+Eigene Accessors gewöhnlicher Records werden kontrolliert abgelehnt, ohne ihre
+Werte zu übernehmen. Reflection auf Proxies sowie Promise-/Thenable-Auflösung
+kann dennoch beliebigen fremden Same-Realm-Code ausführen. Beobachtbare Throws
+und Rejections werden redigiert; bereits ausgelöste Seiteneffekte können weder
+verhindert noch rückgängig gemacht werden. Eine portable universelle Proxy-
+oder Thenable-Erkennung und eine Garantie, dass beliebiger Dependency-Code
+niemals wirft oder blockiert, werden nicht behauptet. Für stabile,
+seiteneffektfreie gewöhnliche Werte arbeitet der Service deterministisch und
+ohne Inputmutation.
+
 ## Implementierter Request-Umschlag der SyncContract Foundation
 
 Der aktuelle Validator akzeptiert ausschließlich einen `syncTest`-Request mit
@@ -2851,8 +3041,8 @@ abgelehnt.
 
 Der aktuelle Request besitzt kein vorgesehenes Inhalts- oder Freitextfeld;
 `payload` ist exakt `{}`. Der Contract-Kern liest, persistiert oder exportiert
-keine privaten lokalen Bestände. Mangels Transport ist in diesem Slice kein
-privater externer Datenfluss implementiert.
+keine privaten lokalen Bestände. Da kein konkreter Transport ausgeliefert oder
+komponiert ist, ist in diesem Slice kein externer Datenfluss implementiert.
 
 `context`, Client-Modus, Locale, Clientversion, Endpoint- oder Agentenauswahl
 sind keine Felder dieses Vertrags. Ein deklarativer Client-Modus dürfte auch
@@ -2909,7 +3099,9 @@ Agentenverträgen vorbehalten und werden vom aktuellen Validator abgelehnt.
   GoldenDawn-ID-Generator ist für eine kollisionsarme Erzeugung verantwortlich.
 - Eine ID wird im gesamten Agentenfluss beibehalten.
 - Fehlende, falsch präfixierte, nicht-ASCII- oder überlange IDs werden
-  abgelehnt. Der aktuelle Slice erzeugt keine IDs und besitzt keinen
+  abgelehnt. Nach erfolgreicher Auflösung der Portmethode wertet die
+  SyncService Foundation den kontrollierten Generator während des Request-
+  Builds genau einmal aus, besitzt aber keinen globalen Kollisions- oder
   Idempotenzspeicher.
 
 ### Regeln für Zeitstempel
@@ -2923,9 +3115,9 @@ Agentenverträgen vorbehalten und werden vom aktuellen Validator abgelehnt.
 - Diese Struktur- und Zeitprüfungen beweisen weder die semantische Herkunft von
   `requestId` und `timestamp` noch, dass sie keine privaten oder
   nutzergenerierten Informationen codieren.
-- Ein späterer vertrauenswürdiger Request-Builder muss `requestId` über einen
-  kontrollierten ID-Generator und `timestamp` über eine kontrollierte Clock
-  erzeugen. Beide Werte dürfen niemals aus privaten oder nutzergenerierten
+- Der implementierte vertrauenswürdige Request-Builder erzeugt `requestId` über
+  einen kontrollierten ID-Generator und `timestamp` über eine kontrollierte
+  Clock. Beide Werte dürfen niemals aus privaten oder nutzergenerierten
   Inhalten abgeleitet werden.
 - Reine Kalenderdaten verwenden `YYYY-MM-DD`.
 - Kalenderdaten werden nicht unnötig über `new Date("YYYY-MM-DD")` geparst.
@@ -3215,7 +3407,9 @@ Fehlermeldungen.
 `payload` ist exakt leer und kein vorgesehenes Inhalts- oder Freitextfeld.
 Freier Text, Echo-Verhalten, Kontext und Client-Modus sind nicht erlaubt. Der
 Contract-Kern führt keinen Sync aus und liest, persistiert oder exportiert
-keine privaten lokalen Anwendungsbestände.
+keine privaten lokalen Anwendungsbestände. Die SyncService Foundation kann den
+Request ausschließlich an ihren injizierten Port übergeben; ohne konkreten
+Transport und Anwendungskomposition entsteht daraus kein externer Aufruf.
 
 ### Response für syncTest
 
@@ -3852,19 +4046,23 @@ Breaking Changes benötigen:
 
 ## Implementierungsartefakt
 
-Der aktuelle Slice ist bewusst ein kleines, zusammenhängendes ES-Modul:
+Die beiden aktuellen `v0.3.0`-Foundations bleiben bewusst kleine,
+zusammenhängende ES-Module:
 
 ```text
 src/
-└── contracts/
-    └── syncContract.js
+├── contracts/
+│   └── syncContract.js
+└── services/
+    └── syncService.js
 ```
 
-Es verwendet ausschließlich JavaScript- und Plattformfunktionen. Eine
-Schema-Bibliothek, neue Abhängigkeit oder Transportabstraktion wurde nicht
-eingeführt.
+Sie verwenden ausschließlich JavaScript- und Plattformfunktionen. Eine
+Schema-Bibliothek, neue Abhängigkeit oder ein konkreter Transport wurde nicht
+eingeführt; der SyncService besitzt ausschließlich den injizierten
+`sendSyncRequest`-Port.
 
-## Vertrags-Testmatrix
+## SyncContract-Testmatrix
 
 | Fall | Erwartung |
 | --- | --- |
@@ -3884,9 +4082,26 @@ eingeführt.
 | Proxy mit werfender Trap | kontrollierter Validierungsfehler, soweit die Reflection-Exception beobachtbar ist; bereits ausgelöste Seiteneffekte werden nicht rückgängig gemacht |
 | transparenter oder zustandsabhängiger Proxy | Erfolg bestätigt nur die während dieses Aufrufs beobachtete Struktur; keine vollständige Proxy-Erkennung oder Seiteneffektgarantie |
 
+## SyncService-Testmatrix
+
+| Fall | Erwartung |
+| --- | --- |
+| API und argumentloser Aufruf | eingefroren, exakt `runSyncTest`, immer Promise-basiert |
+| zusätzlicher Aufrufwert | `invalidInvocation`; kein Zugriff auf Argument, Generator, Clock oder Port |
+| fehlende, nicht funktionale oder werfend aufgelöste Portmethode | `unavailable`; Generator und Clock werden nicht ausgewertet; kein Aufruf der Portmethode |
+| gültiger Request-Build nach erfolgreicher Methodenauflösung | exakt sechs Felder; Generator und Clock jeweils einmal; Request und Payload eingefroren |
+| ungültiger Generator oder Clock | `requestBuildFailed`, `requestId: null`, kein Aufruf der Portmethode und keine Konvertierung |
+| synchroner Throw, Rejection oder beobachtbarer Thenable-Fehler | `transportFailed`, validierte ausgehende ID, kein Retry |
+| gültige normale Erfolgsresponse | `syncResponseReceived`, defensiver tief eingefrorener Snapshot |
+| gültige normale Contract-Fehlerresponse | außen `ok: true`, fachlich `syncResponse.success: false` |
+| Gateway-Profil oder falsch korrelierte Response | `invalidResponse` |
+| nachträgliche Mutation des Transportobjekts | keine Änderung des Service-Snapshots |
+| sequenzielle und parallele Aufrufe | getrennte Records, eigene Korrelation, kein gegenseitiger Einfluss |
+| gewöhnlicher Accessor oder beobachtbar werfende Proxy-Trap | statisch redigierter lokaler Fehler; keine Übernahme fremder Werte |
+
 ## Contract Definition of Done
 
-Der aktuelle transportneutrale Vertrags-Slice gilt als implementiert, wenn:
+Der transportneutrale Vertrags-Slice gilt als implementiert, wenn:
 
 - Request und Response diesem Dokument entsprechen;
 - Pflichtfelder, Typen, Längen und Enums validiert werden;
@@ -3897,6 +4112,24 @@ Der aktuelle transportneutrale Vertrags-Slice gilt als implementiert, wenn:
 - keine Transport-, Idempotenz- oder private Datenfunktion behauptet wird;
 - README und Roadmap den tatsächlichen Implementierungsstatus zeigen;
 - der Produktions-Build erfolgreich ist.
+
+## SyncService Definition of Done
+
+Die transportneutrale Service-Foundation gilt als implementiert, wenn:
+
+- die öffentliche API exakt `runSyncTest` besitzt und zusätzliche Argumente
+  ohne Inspektion fail-closed ablehnt;
+- Request-Build, Validierung und getrennte unveränderliche Korrelation den
+  dokumentierten Contract verwenden;
+- die Portmethode nach vollständiger Requestvalidierung pro Aufruf höchstens
+  einmal mit dem tief eingefrorenen Transportrequest aufgerufen wird;
+- ausschließlich defensive, normal korrelierte SyncResponses akzeptiert und
+  lokale Fehler getrennt statisch redigiert werden;
+- der In-Memory-Erfolgsfluss ausschließlich in Tests lebt;
+- kein konkreter Transport, Webhook, Storage, UI oder operativer Agent als
+  implementiert behauptet wird;
+- die relevanten Tests und der Produktions-Build real ausgeführt und erst
+  danach mit ihren tatsächlichen Zahlen dokumentiert sind.
 
 ## Offene Vertragsentscheidungen
 

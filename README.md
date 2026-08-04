@@ -10,7 +10,7 @@
 
 **Current release:** `v0.2.2 — LichtwaldLog Local MVP complete, verified, and published`
 
-**Current development:** `v0.3.0 — in progress — SyncContract Foundation`
+**Current development:** `v0.3.0 — in progress — SyncService Foundation`
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -68,17 +68,24 @@ annotated tag and corresponding GitHub Release were published on 2026-08-02,
 making `v0.2.2` the latest published release. `private: true` is package metadata and
 does not make this publicly visible repository private. The published release,
 package version, and tag remain `v0.2.2`, `0.2.2`, and `v0.2.2`. Development
-of `v0.3.0 – SyncAgent and Webhook Foundation` has begun with the
-transport-neutral **SyncContract Foundation**. This first slice implements only
-strict request, response, gateway-error, and raw-body-size validation.
-`syncTest` requests require an exactly empty payload, while successful responses
-are limited to `dataOrigin: "synthetic"`. That value is only a contract
-classification, not proof of actual provenance or privacy. Deterministic,
-side-effect-free guarantees apply to stable, side-effect-free ordinary records,
-arrays, and strings. The slice introduces no network request, webhook,
-`SyncService`, operational `SyncAgent`, n8n connection, authentication,
-signature verification, CORS or rate-limit enforcement, Hub UI, or external
-private-data flow.
+of `v0.3.0 – SyncAgent and Webhook Foundation` began with the transport-neutral
+**SyncContract Foundation**, which remains the binding contract basis. Current
+work is the **SyncService Foundation**. Its frozen API exposes only the
+Promise-based `runSyncTest()`, builds a controlled six-field `syncTest`
+request with an exactly empty payload, validates it, and invokes the injected
+`syncTransport.sendSyncRequest` method at most once afterward. Only a
+defensively projected, fully validated, normally correlated SyncResponse is
+accepted. A valid normal contract error remains a received response; business
+success is expressed by
+`syncResponse.success`, independently of the outer service result.
+
+Successful contract responses remain limited to
+`dataOrigin: "synthetic"`. That value is only a contract classification, not
+proof of actual provenance or privacy. The delivered service has no concrete
+network transport, endpoint, webhook, operational `SyncAgent`, n8n connection,
+authentication, signature verification, CORS or rate-limit enforcement, Hub
+UI, persistence, or `src/main.js` composition. Consequently, this slice
+establishes no external private-data flow.
 
 ## Vision
 
@@ -113,8 +120,9 @@ The first real connected flow will be browser-initiated:
 `GoldenDawn → SyncService → server-side n8n webhook/gateway → SyncAgent →
 validated response`. The browser does not terminate an incoming public webhook.
 The dashboard will not access Airtable, APIs, or specialized agents directly;
-only the DataAgent communicates with Airtable in Version 1. This flow remains
-planned: the current slice implements only its transport-neutral contract.
+only the DataAgent communicates with Airtable in Version 1. This connected flow
+remains planned: the current slice adds a transport-neutral service port but no
+concrete transport or application composition.
 
 See [`docs/architecture.md`](docs/architecture.md) for responsibilities,
 boundaries, and end-to-end data flows.
@@ -544,19 +552,22 @@ synchronization, agent logic, or Airtable integration. Weekly Review is later
 work and is not part of this milestone. The package remains at version
 `0.2.2`. The annotated `v0.2.2` tag and corresponding GitHub Release were
 published on 2026-08-02, and `v0.2.2` is the latest published release.
-`v0.3.0` is now in progress with the SyncContract Foundation. This current
-slice remains transport-neutral. It requires an exactly empty request payload
-and limits successful responses to `dataOrigin: "synthetic"`; that marker is only
-a contract classification, not proof of actual provenance or privacy. The slice
-does not alter any published `v0.2.2` local flow and does not yet establish
-external communication or an operational agent.
+`v0.3.0` is now in progress with the SyncService Foundation on top of the
+implemented SyncContract Foundation. The service keeps request creation,
+transport invocation, correlation, and defensive response validation separate.
+It requires an exactly empty request payload and limits successful responses to
+`dataOrigin: "synthetic"`; that marker is only a contract classification, not
+proof of actual provenance or privacy. The slice does not alter any published
+`v0.2.2` local flow and, without a delivered concrete transport or composition,
+does not establish external communication or an operational agent.
 
 ## Development principles
 
 - Build in small, stable, and verifiable steps.
 - Follow the sequence: **mock → webhook → Airtable → agent logic**.
-- Keep every `v0.2.x` milestone local; `v0.3.0` prepares the external boundary,
-  while its first contract slice still has no external communication.
+- Keep every `v0.2.x` milestone local; `v0.3.0` prepares the external boundary
+  through a strict contract and transport-neutral service before any concrete
+  external communication is composed.
 - Keep UI components independent from concrete storage technologies.
 - Encapsulate local persistence behind storage adapters.
 - Route external communication through services and the SyncAgent.
@@ -598,7 +609,7 @@ non-binding; see the roadmap for details.
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
 | v0.2.2 | LichtwaldLog Local MVP | Complete, verified, and published |
-| v0.3.0 | SyncAgent and Webhook Foundation | In progress: transport-neutral SyncContract Foundation implemented first; transport, webhook, SyncService, and operational SyncAgent remain planned |
+| v0.3.0 | SyncAgent and Webhook Foundation | In progress: SyncContract Foundation implemented; transport-neutral SyncService Foundation current; concrete transport, webhook, and operational SyncAgent remain planned |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
 | v0.6.0 | Integration | Planned integration and verification of the previously introduced local and external components |
@@ -650,10 +661,11 @@ suite with 0 skips and 0 todos. The production build transformed exactly 46
 modules. The annotated `v0.2.2` tag and corresponding GitHub Release were
 published on 2026-08-02. `v0.2.2` is the latest published release.
 
-The unreleased `v0.3.0` SyncContract slice passed 45/45 targeted tests and the
-complete suite passed 978/978 tests, with 0 failures, 0 skips, and 0 todos. The
-production build succeeded and transformed exactly 46 modules. These results
-do not change the published release metadata above.
+The unreleased SyncService Foundation passed 43/43 targeted tests. The combined
+SyncService/SyncContract run passed 88/88 tests, and the complete suite passed
+1021/1021 tests with 0 failures, 0 skips, and 0 todos. The production build
+succeeded and transformed exactly 46 modules. These results do not change the
+published release metadata above.
 
 The published `v0.2.1` release was finally verified with:
 
@@ -675,13 +687,34 @@ synthetic demo data. Private learning, prompt, reflection, health, or other
 personal user content does not belong in the repository. Current user content
 remains in the active browser profile and is not synchronized.
 
-The current SyncContract Foundation requires `syncTest.payload` to be exactly
-`{}`. Successful responses are limited to `dataOrigin: "synthetic"`, which is
-only a contract classification and proves neither actual provenance nor
-privacy. The contract core neither reads nor exports PromptVault, LearningHub,
-or LichtwaldLog data. Its pure raw-body helper measures an already available
-string against exactly 65,536 UTF-8 bytes; without a transport or webhook, it
-does not enforce an HTTP request limit.
+The current SyncService Foundation builds `syncTest.payload` as exactly `{}`
+from controlled contract values. Its default request ID generator uses
+`req_ + crypto.randomUUID()` without a weaker fallback. Successful responses
+remain limited to `dataOrigin: "synthetic"`, which is only a contract
+classification and proves neither actual provenance nor privacy. The service
+does not read or export PromptVault, LearningHub, or LichtwaldLog data. The
+empty payload removes the designated content field but does not by itself prove
+that every metadata value is semantically private.
+
+The injected ID generator, clock, and transport functions are trusted
+executable application configuration. Their Functions and Function Proxies can
+perform arbitrary same-realm side effects. Promise/thenable resolution and
+Proxy reflection can also execute foreign code; observed throws and rejections
+are mapped to static redacted local errors, but already triggered effects
+cannot be prevented or undone. Deep freezing the service's request and response
+snapshots is an immutability boundary, not a sandbox.
+
+The original transport result remains untrusted. The service reads only the
+expected ordinary data shape into a separate projection, validates normal
+response correlation, and never returns or freezes the original object.
+`handledBy: "SyncAgent"` and `processedBy: ["SyncAgent"]` in test fixtures
+simulate the existing contract role only; they do not prove that an operational
+or external agent ran. No concrete transport is shipped or composed, so the
+slice introduces no external data flow.
+
+The contract core's pure raw-body helper measures an already available string
+against exactly 65,536 UTF-8 bytes. The SyncService does not use that helper;
+without a wire transport or webhook, it does not enforce an HTTP request limit.
 
 The validator itself writes no properties and does not read ordinary own
 accessors as values. JavaScript reflection on a Proxy can nevertheless invoke
@@ -722,6 +755,9 @@ Detailed security rules are maintained in
 - **2026-08-03:** Development of `v0.3.0` began with the transport-neutral
   SyncContract Foundation. Package version, latest tag, and latest release
   remain `0.2.2`, `v0.2.2`, and `v0.2.2`.
+- **2026-08-04:** Development continued with the transport-neutral SyncService
+  Foundation. It adds no concrete transport, webhook, operational agent, or
+  release change.
 
 ## Author and collaboration
 
