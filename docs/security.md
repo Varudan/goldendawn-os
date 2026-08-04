@@ -4,9 +4,9 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – SyncContract Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – SyncService Foundation` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell ausschließlich transportneutraler SyncContract-Kern |
+| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell transportneutrale SyncService Foundation auf dem implementierten SyncContract-Kern |
 | Letzte Aktualisierung | 2026-08-04 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
@@ -78,30 +78,45 @@ An jeder Grenze gilt:
 - Berechtigungen werden nicht allein aus Angaben des Clients abgeleitet.
 - Daten werden nur an den Agenten weitergegeben, der sie benötigt.
 
-### Aktuelle Grenze der SyncContract Foundation
+### Aktuelle Grenze der SyncService Foundation
 
-Der aktuelle Slice implementiert keine der Netzwerkgrenzen im Diagramm. Er
-prüft ausschließlich bereits im Speicher vorhandene Vertragswerte. Nur das
-erlaubte Erfolgsprofil enthält `dataOrigin: "synthetic"` als
-Vertragsklassifikation. Es gibt keinen Endpoint, Webhook, `SyncService`,
-operativen `SyncAgent`, n8n-Workflow, keine Authentisierung, Signaturprüfung,
-CORS- oder Rate-Limit-Durchsetzung und keine Telemetrie oder Persistenz.
+Die implementierte SyncContract Foundation bleibt die reine
+Validierungsgrundlage. Der aktuelle Slice ergänzt einen asynchronen
+transportneutralen SyncService, implementiert aber keine der konkreten
+Netzwerkgrenzen im Diagramm. Es gibt keinen Endpoint, Webhook, HTTP-, Fetch-
+oder n8n-Transport, operativen `SyncAgent`, keine Authentisierung,
+Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung und keine Telemetrie,
+Persistenz, UI oder `src/main.js`-Komposition.
 
-Der `syncTest`-Request besitzt kein vorgesehenes Inhalts- oder Freitextfeld;
-`payload` muss exakt `{}` sein. Der Contract-Kern liest, persistiert oder
-exportiert keine privaten lokalen Bestände aus PromptVault, LearningHub oder
-LichtwaldLog. `requestId` wird nur syntaktisch und `timestamp` nur kanonisch
-sowie relativ zur Referenzzeit geprüft. Das beweist weder ihre semantische
-Herkunft noch, dass sie keine privaten oder nutzergenerierten Informationen
-codieren. Ein späterer vertrauenswürdiger Request-Builder muss beide Werte mit
-einem kontrollierten ID-Generator beziehungsweise einer kontrollierten Clock
-erzeugen und darf sie niemals aus privaten oder nutzergenerierten Inhalten
-ableiten.
+Der Service löst zuerst `syncTransport.sendSyncRequest` genau einmal sicher
+auf. Bei fehlender, nicht funktionaler oder werfend aufgelöster Portmethode
+werden Generator und Clock nicht ausgewertet. Erst nach erfolgreicher
+Methodenauflösung erzeugt er `requestId` und `timestamp` jeweils einmal über
+kontrollierte Composition-Dependencies und baut `payload` als frisches exakt
+leeres Objekt. Der Standardgenerator verwendet ausschließlich
+`req_ + crypto.randomUUID()` ohne schwächeren Fallback. Generator- und
+Clock-Ergebnisse müssen primitive Strings sein; Konvertierungs-Hooks wie
+`toString`, `valueOf` oder `Symbol.toPrimitive` werden nicht verwendet.
+Ungültige oder werfende Ergebnisse werden statisch redigiert und führen nicht
+zum Aufruf der Portmethode. Nur die eigentliche Portmethode wird nach
+vollständiger Requestvalidierung höchstens einmal aufgerufen.
+
+Der leere Request-Payload entfernt das vorgesehene Inhaltsfeld, beweist aber
+nicht automatisch die semantische Privatheit aller Metadaten. Die rein
+syntaktische Prüfung von `requestId` sowie die strukturelle, kanonische und
+zeitliche Prüfung des Request-`timestamp` gegen die Referenzzeit beweisen weder
+deren semantische Herkunft noch Kollisionsarmut oder die Abwesenheit privater
+Fragmente.
+
+Injizierte Generatoren und Clocks sind vertrauenswürdige
+Composition-Dependencies und dürfen keine Werte aus PromptVault, LearningHub,
+LichtwaldLog oder anderen privaten Inhalten ableiten.
 
 `dataOrigin: "synthetic"` ist nur eine validierte Vertragsklassifikation und
-kein Beweis tatsächlicher Herkunft oder Datenschutzkonformität. Mangels
-Transport ist in diesem Slice weiterhin kein privater externer Datenfluss
-implementiert.
+kein Beweis tatsächlicher Herkunft oder Datenschutzkonformität. Der Service
+liest, persistiert oder exportiert keine lokalen privaten Bestände. Da kein
+konkreter Transport ausgeliefert oder komponiert ist, ist kein externer
+Datenfluss implementiert.
 
 Dasselbe gilt für `source: "goldendawn-os"`: Der Wert ist nur eine syntaktische
 Contract-Klassifikation und beweist weder Authentisierung noch technische
@@ -128,11 +143,38 @@ ein gewöhnlicher Wert erscheinen. Erfolg bestätigt daher nur die dabei
 beobachtete Struktur und weder Seiteneffektfreiheit noch einen später identischen
 Zustand.
 
+Für die SyncService Foundation gilt dieselbe Grenze zusätzlich für injizierte
+Functions, den Zugriff auf `sendSyncRequest` sowie Promise-/Thenable-Auflösung.
+Functions und Function-Proxies sind beliebiger ausführbarer Same-Realm-Code und
+werden als vertrauenswürdige Anwendungskonfiguration behandelt. Ein
+Methodenzugriff, Aufruf oder `then`-Zugriff kann Seiteneffekte auslösen,
+blockieren oder werfen. Der Service redigiert beobachtbare Throws und
+Rejections, kann bereits ausgelöste Wirkungen aber weder verhindern noch
+rückgängig machen. Eine portable universelle Proxy- oder Thenable-Erkennung und
+die Behauptung, beliebiger Dependency-Code könne niemals werfen oder blockieren,
+werden ausdrücklich vermieden.
+
+Transportrequest und interne Korrelationsgrundlage sind getrennt und tief
+eingefroren. Das schützt ihre nachfolgende Verwendung vor gemeinsamer Mutation,
+ist aber keine Sandbox für den Port. Der Port-Rückgabewert bleibt
+unvertrauenswürdig. Der Service erzeugt daraus eine neue allowlist-basierte
+gewöhnliche Datenprojektion und gibt nur einen vollständig validierten tief
+eingefrorenen Snapshot zurück. Das originale Transportobjekt wird weder
+verändert, eingefroren noch zurückgegeben.
+
+Eine gültige normale Contract-Fehlerresponse bleibt eine empfangene
+SyncResponse; `syncResponse.success` trägt ihren fachlichen Zustand. Lokale
+Servicefehler sind getrennte statische Resultate und behaupten weder
+`handledBy: "SyncAgent"` noch `processedBy: ["SyncAgent"]`. Dieselben Werte in
+Testfixtures simulieren ausschließlich die bestehende Vertragsrolle und
+beweisen keinen operativen oder extern ausgeführten Agenten.
+
 `validateSyncRawBodySize` akzeptiert nur einen bereits vorhandenen String und
 erlaubt inklusive exakt 65.536 UTF-8-Bytes. Die Funktion serialisiert kein
-unvertrauenswürdiges Objekt. Ohne Transport setzt sie weder ein HTTP- noch ein
-Webhook-Limit durch; ein späteres Gateway muss rohe Bodybytes vor JSON-Parsing
-selbst begrenzen. Danach muss es JSON kontrolliert parsen und erst den
+unvertrauenswürdiges Objekt. Ohne konkrete Wire-/Webhook-Transportgrenze setzt
+sie weder ein HTTP- noch ein Webhook-Limit durch; ein späteres Gateway muss rohe
+Bodybytes vor JSON-Parsing selbst begrenzen. Danach muss es JSON kontrolliert
+parsen und erst den
 resultierenden datenförmigen, weiterhin unvertrauenswürdigen Wert validieren.
 `JSON.parse` ohne benutzerdefinierten Reviver transportiert keine Proxies,
 Accessors, Symbole oder Trap-Funktionen.
@@ -466,9 +508,9 @@ beim besonderen Moment sichtbar. Der geplante Implementierungsumfang ist
 vollständig abgeschlossen und geprüft. Der annotierte Tag `v0.2.2` und das
 zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
 das neueste veröffentlichte Release. `v0.3.0` ist mit der transportneutralen
-SyncContract Foundation in Arbeit. ADR 0013, ADR 0014 und ADR
-0015 dokumentieren die unveränderten Contract-, private Storage- und
-Demo-Trennungsgrenzen.
+SyncService Foundation auf Basis der implementierten SyncContract Foundation
+in Arbeit. ADR 0013, ADR 0014 und ADR 0015 dokumentieren die unveränderten
+Contract-, private Storage- und Demo-Trennungsgrenzen.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
@@ -711,9 +753,9 @@ Demo-Trennungsgrenzen.
 ## Webhook-Sicherheit
 
 Dieser Abschnitt beschreibt ausschließlich die noch zu implementierende
-serverseitige Transportgrenze. Der aktuelle SyncContract-Slice stellt keinen
-Webhook bereit und erfüllt diese Regeln nicht bereits durch Dokumentation oder
-Objektvalidierung.
+serverseitige Transportgrenze. Die aktuelle SyncService Foundation stellt
+keinen konkreten Transport oder Webhook bereit und erfüllt diese Regeln nicht
+bereits durch einen injizierten Port, Dokumentation oder Objektvalidierung.
 
 ### Entwicklungsmodus
 
@@ -768,7 +810,9 @@ Kosten und Datenbereinigung kontrolliert sind.
 - `source: "goldendawn-os"` ist kein Herkunfts-, Identitäts-, Authentisierungs-
   oder Berechtigungsnachweis. Routing und Autorisierung verwenden zusätzlich
   vertrauenswürdigen serverseitigen Kontext.
-- Zeitstempel, `requestId` und Feldlängen werden geprüft.
+- `requestId` wird rein syntaktisch geprüft; der Request-`timestamp` wird
+  strukturell, kanonisch und zeitlich gegen die explizite Referenzzeit geprüft.
+  Die jeweils dokumentierten Feldlängen werden eingehalten.
 - Wiederholte schreibende Requests werden erst in späteren Verträgen
   idempotent behandelt; `syncTest` ist nicht schreibend und der aktuelle Slice
   besitzt keinen Idempotenzspeicher.
@@ -972,7 +1016,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
 | `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; vollständig geprüft und veröffentlicht |
 | `v0.2.2` | privater allowlist-basierter View-, Controller-, Service- und Storage-Pfad sowie strikt getrennter synthetischer In-Memory-Demo-Stack mit fester Herkunft, Safe DOM, Closure-/Map-isolierten Entry-IDs, defensiver UI-Projektion, flüchtiger Suche/Filterung, DOM-Unmount-Grenze, statisch redigierten Fehlern, ohne Browser-Key oder Fallback; keine Base64-Bilder in `localStorage`, keine externe Übertragung; vollständig geprüft und veröffentlicht |
-| `v0.3.0` | In Arbeit: geschlossene SyncContract-Allowlist mit als `synthetic` klassifiziertem Erfolgsprofil, exakte Hüllen und Korrelation, statisch redigierte Fehler, descriptor-basierte Fail-closed-Validierung und reine 65.536-UTF-8-Byte-Prüfung; Webhook, Authentisierung, Signaturen, CORS, Rate Limits und externer Transport bleiben offen |
+| `v0.3.0` | In Arbeit: geschlossener SyncContract plus kontrollierter argumentloser SyncService, getrennte tief eingefrorene Transport-/Korrelationsrequests, defensive normale Response-Projektion, statisch redigierte lokale Fehler und dokumentierte Function-/Proxy-/Thenable-Grenzen; konkreter Transport, Webhook, Authentisierung, Signaturen, CORS und Rate Limits bleiben offen |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
 | `v0.5.0` | Prompt-Injection-Schutz, strukturierter TestAgent-Output, keine Direktzugriffe |
 | `v0.6.0` | End-to-End-Sicherheitsreview und vollständige Demo-Trennung |

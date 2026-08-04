@@ -4,9 +4,9 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – SyncContract Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – SyncService Foundation` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell ausschließlich transportneutraler SyncContract-Kern |
+| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell transportneutrale SyncService Foundation auf dem implementierten SyncContract-Kern |
 | Letzte Aktualisierung | 2026-08-04 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
@@ -99,22 +99,49 @@ Diese Regel verhindert:
 
 ### Aktueller v0.3.0-Slice
 
-Die **SyncContract Foundation** implementiert ausschließlich den reinen,
-transportneutralen Vertragskern für `syncTest`. Sie kennt weder UI noch
-Netzwerk, Endpoint, Webhook oder n8n-Workflow und besitzt keine Agentenlogik.
-Der Request besitzt kein vorgesehenes Inhalts- oder Freitextfeld; `payload`
-ist exakt `{}`. Der Kern liest, persistiert oder exportiert keine privaten
+Die implementierte **SyncContract Foundation** bleibt der reine,
+transportneutrale Vertragskern für `syncTest`. Darauf baut die aktuelle
+**SyncService Foundation** auf. `createSyncService` liefert eine eingefrorene
+API mit exakt der Promise-basierten Methode `runSyncTest`. Sie akzeptiert keine
+Argumente und erzeugt den einzigen erlaubten Request aus kontrollierten
+Contractwerten, einem injizierten ID-Generator und einer injizierten Clock.
+`payload` ist in jedem erfolgreich aufgebauten Request ein frisches exakt
+leeres Objekt.
+
+Vor dem Request-Build löst der Service `syncTransport.sendSyncRequest` genau
+einmal sicher auf. Bei fehlender, nicht funktionaler oder werfend aufgelöster
+Methode werden Generator und Clock nicht ausgewertet. Erst nach erfolgreicher
+Methodenauflösung wertet der Builder beide jeweils exakt einmal aus. Nur die
+eigentliche Portmethode wird nach vollständiger Requestvalidierung höchstens
+einmal aufgerufen.
+
+Der erzeugte Request wird vor dem Transport vollständig validiert. Der
+Transport erhält einen tief eingefrorenen Snapshot; eine getrennte ebenfalls
+tief eingefrorene Kopie bleibt die unveränderliche Korrelationsgrundlage. Der
+einzige Port lautet:
+
+```text
+syncTransport.sendSyncRequest(syncRequest)
+```
+
+Der Service behandelt den Rückgabewert als unvertrauenswürdig, projiziert nur
+die erwarteten gewöhnlichen Datenfelder und akzeptiert ausschließlich eine mit
+dem internen Request vollständig validierte normale SyncResponse. Das originale
+Transportobjekt wird weder verändert, eingefroren noch zurückgegeben. Frühe
+Gateway-Fehler sind kein akzeptiertes Profil dieses Slices.
+
+`requestId` und `timestamp` beweisen trotz kontrollierter Composition-
+Dependencies weder ihre semantische Herkunft noch automatisch ihre Freiheit
+von privaten Informationen. Der Standardgenerator verwendet ausschließlich
+`req_ + crypto.randomUUID()` ohne schwächeren Fallback. `synthetic` bleibt nur
+eine Vertragsklassifikation und kein Beweis tatsächlicher Herkunft oder
+Datenschutzkonformität. Der Service liest, persistiert oder exportiert keine
 Bestände aus PromptVault, LearningHub oder LichtwaldLog.
 
-`requestId` und `timestamp` werden nur strukturell beziehungsweise zeitlich
-geprüft. Das beweist weder ihre semantische Herkunft noch ihre Freiheit von
-privaten oder nutzergenerierten Informationen. Ein späterer vertrauenswürdiger
-Request-Builder muss sie aus einem kontrollierten ID-Generator und einer
-kontrollierten Clock erzeugen und darf sie niemals aus privaten oder
-nutzergenerierten Inhalten ableiten. `synthetic` ist nur eine
-Vertragsklassifikation und kein Beweis tatsächlicher Herkunft oder
-Datenschutzkonformität. Mangels Transport ist weiterhin kein privater externer
-Datenfluss implementiert.
+Es wird kein konkreter Transport in `src/` ausgeliefert oder in `src/main.js`
+komponiert. Der kontrollierte Erfolgsfluss existiert ausschließlich mit einem
+klar gekennzeichneten In-Memory-Test-Double. Daher besitzt der aktuelle Slice
+keinen externen Datenfluss.
 
 Der erste reale Fluss bleibt browserinitiiert und ist noch nicht implementiert:
 
@@ -219,16 +246,38 @@ saveLichtwaldLog(lichtwaldLog)
 
 ### Sync-Service
 
-Der noch nicht implementierte SyncService ist als einzige externe
-Kommunikationsschicht des Frontends vorgesehen. Er:
+Die implementierte SyncService Foundation ist die transportneutrale
+Anwendungsgrenze vor einem späteren konkreten externen Transport. Ihre
+öffentliche Factory lautet:
 
-- erstellt Requests nach dem dokumentierten Sync-Vertrag;
-- sendet Requests an den n8n-Webhook;
-- verarbeitet standardisierte Antworten;
-- behandelt Timeouts, Netzwerkfehler und ungültige Antworten kontrolliert;
-- unterstützt einen lokalen Modus ohne konfigurierte Webhook-Verbindung.
+```js
+createSyncService({
+  syncTransport,
+  generateRequestId,
+  getCurrentTimestamp,
+})
+```
 
-Der spätere SyncService enthält keine Prüfungs- oder Airtable-Fachlogik.
+Die eingefrorene API besitzt exakt `runSyncTest`. Der Service:
+
+- erstellt einen frischen Request ausschließlich nach dem dokumentierten
+  SyncContract und besitzt keinen generischen `execute(action, payload)`-Pfad;
+- validiert den Request mit demselben einmal erfassten Clock-Wert als
+  Requestzeit und lokale Referenzzeit;
+- trennt den tief eingefrorenen Transportrequest von der tief eingefrorenen
+  internen Korrelationsgrundlage;
+- ruft den injizierten Port pro Serviceaufruf höchstens einmal mit dem
+  vorgesehenen Receiver auf;
+- projiziert eine Transportantwort defensiv und validiert sie als normale
+  korrelierte SyncResponse;
+- übersetzt lokale Build-, Dependency-, Transport- und Responsefehler in einen
+  getrennten statischen Service-Result.
+
+Der aktuelle Service kennt keinen Endpoint, Client-Modus, konkreten HTTP- oder
+n8n-Transport, Timeout, Retry, Backoff, Idempotenzspeicher, Storage oder
+Telemetrie. Er enthält keine Prüfungs- oder Airtable-Fachlogik. Ein späterer
+Transportadapter bleibt die einzige Stelle, an der konkrete externe
+Kommunikation technisch angebunden wird.
 
 ## Agentenverantwortung
 
@@ -297,8 +346,9 @@ Eigenschaften:
 
 Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
 Alle Datenzugriffe bleiben hinter Modulservices und Storage-Adaptern. Der
-erste `v0.3.0`-Slice führt nur den transportneutralen Vertrag ein;
-externe Kommunikation über den SyncService beginnt erst in einem späteren
+erste `v0.3.0`-Slice führt den transportneutralen Vertrag ein. Der aktuelle
+Slice ergänzt den transportneutralen SyncService-Port ohne konkrete oder
+externe Kommunikation. Reale Kommunikation beginnt erst in einem späteren
 Slice dieses Meilensteins.
 
 #### LearningHub Local MVP in v0.2.1
@@ -725,8 +775,9 @@ besonderen Moments sichtbar. Der geplante Implementierungsumfang ist damit
 vollständig abgeschlossen und geprüft. Der annotierte Tag `v0.2.2` und das
 zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
 das neueste veröffentlichte Release. `v0.3.0` ist mit der transportneutralen
-SyncContract Foundation in Arbeit. ADR 0013, ADR 0014 und ADR 0015
-dokumentieren Contract, private Persistenz und Demo-Trennung.
+SyncService Foundation auf Basis der implementierten SyncContract Foundation
+in Arbeit. ADR 0013, ADR 0014 und ADR 0015 dokumentieren Contract, private
+Persistenz und Demo-Trennung.
 
 Der spätere Zielpfad bleibt:
 
@@ -1098,9 +1149,10 @@ ausschließlich `syncTest`. Sein Request besitzt exakt diese sechs Felder:
 }
 ```
 
-`requestId` ist verpflichtend und wird nur strukturell geprüft. Der kanonische
-UTC-Zeitstempel wird nur zeitlich geprüft und muss gegenüber einer expliziten
-Referenzzeit innerhalb des inklusiven Fensters von `±300000 ms` liegen.
+`requestId` ist verpflichtend und wird rein syntaktisch geprüft. Der Request-
+`timestamp` wird strukturell, kanonisch und zeitlich geprüft und muss gegenüber
+der expliziten Referenzzeit innerhalb des inklusiven Fensters von
+`±300000 ms` liegen.
 `payload` ist exakt `{}`; ein vorgesehenes Inhalts- oder Freitextfeld,
 unbekannte Felder, ein Client-Kontext oder ein deklarativer Modus sind nicht
 erlaubt.
@@ -1141,7 +1193,17 @@ und die öffentliche Validator-API stehen in `docs/data-contracts.md`.
 
 Der Contract-Kern sendet und empfängt selbst nichts. Insbesondere die reine
 Prüfung von maximal 65.536 UTF-8-Bytes für einen bereits vorliegenden String
-ist keine Durchsetzung an einem Webhook.
+ist keine Durchsetzung an einem Webhook. Die SyncService Foundation verwendet
+diesen Raw-Body-Helper nicht. Sie baut und validiert ausschließlich
+JavaScript-Objekte und übergibt sie an den injizierten Port; Wire-Bytes,
+JSON-Parsing und Gateway-Fehler liegen außerhalb ihres Profils.
+
+Der lokale Service-Result besitzt immer exakt `ok`, `status`, `requestId`,
+`syncResponse` und `error`. `ok: true` bedeutet ausschließlich, dass eine
+vollständig gültige und korrelierte normale SyncResponse empfangen wurde. Der
+fachliche Erfolg bleibt `syncResponse.success`. Lokale Servicefehler sind keine
+SyncResponses und behaupten weder `handledBy: "SyncAgent"` noch eine
+`processedBy`-Kette.
 
 ## Späterer verbundener Ablauf eines Lerntests
 
@@ -1186,8 +1248,9 @@ Fehler werden an der Schicht behandelt, die genügend Kontext dafür besitzt:
 | Ungültige Formulareingabe | UI oder Modulservice |
 | Beschädigte lokale JSON-Daten oder Browser-Storage-Fehler | StorageAdapter |
 | Ungültige lokale Domänendaten oder falsche Datenherkunft | fachliche Storage-Schicht und Modulservice |
-| Netzwerkfehler oder Timeout | Sync-Service |
-| Ungültiger Request-Vertrag | aktuell reiner SyncContract-Validator; später SyncAgent an der serverseitigen Grenze |
+| Lokaler Request-Build, Transport-Throw/-Rejection oder ungültige Transportantwort | aktuelle SyncService Foundation mit statischen redigierten lokalen Fehlern |
+| Netzwerkfehler oder Timeout | späterer konkreter Transportadapter; der aktuelle Service implementiert keinen Timeout |
+| Ungültiger Request-Vertrag | aktuell SyncService mit SyncContract-Validator; später erneut SyncAgent an der serverseitigen Grenze |
 | Fehlerhafte Prüfungsantwort | TestAgent |
 | Airtable- oder Mappingfehler | DataAgent |
 
@@ -1206,9 +1269,10 @@ Grundregeln:
   späteren serverseitigen Umgebung.
 - `VITE_*`-Variablen gelten als öffentlich und dürfen keine Secrets enthalten.
 - Eine Webhook-URL wird nicht als alleiniger Schutzmechanismus betrachtet.
-- Requests werden künftig im Frontend und erneut im `SyncAgent` validiert; der
-  aktuelle Slice stellt nur die gemeinsam nutzbare reine Validierungslogik
-  bereit.
+- Die SyncService Foundation validiert jeden kontrolliert aufgebauten Request
+  vor dem Aufruf der Portmethode und jede defensive normale Response-Projektion
+  gegen ihre unveränderte Korrelation. Eine spätere serverseitige Grenze
+  validiert weiterhin erneut, bevor der `SyncAgent` verarbeitet.
 - Payload-Größe, erlaubte Aktionen und Datentypen werden begrenzt.
 - Logs enthalten keine Tokens oder unnötigen personenbezogenen Daten.
 - Private und öffentliche Daten verwenden getrennte Airtable-Bases,
@@ -1253,6 +1317,7 @@ src/
 │   ├── lichtwaldLogStorage.js
 │   └── storageAdapter.js
 ├── contracts/
+│   └── syncContract.js
 ├── data/
 │   └── mock/
 ├── utils/
@@ -1284,7 +1349,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
 | `v0.2.2` | Vollständig geprüft und veröffentlicht; keine externe Kommunikation |
-| `v0.3.0` | In Arbeit: transportneutrale SyncContract Foundation zuerst; SyncService, serverseitiger Webhook/Gateway und operativer SyncAgent folgen |
+| `v0.3.0` | In Arbeit: SyncContract Foundation implementiert; transportneutrale SyncService Foundation aktuell; konkreter Transport, serverseitiger Webhook/Gateway und operativer SyncAgent folgen |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
 | `v0.6.0` | Integrierter Drei-Agenten-Fluss |
@@ -1318,6 +1383,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0014](decisions/0014-lichtwald-log-private-storage-foundation.md) | Begrenzte private LichtwaldLog-Full-Snapshot-Persistenz | Angenommen |
 | [0015](decisions/0015-separated-lichtwald-log-demo-runtime.md) | Getrennte synthetische LichtwaldLog-Demo-Runtime | Angenommen |
 | [0016](decisions/0016-transport-neutral-sync-contract-foundation.md) | Transportneutraler Sync-v1-Kern und künftige Transport- und Hub-Grenze | Angenommen |
+| [0017](decisions/0017-transport-neutral-sync-service-foundation.md) | Transportneutrale SyncService Foundation mit kontrollierter Korrelation | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).

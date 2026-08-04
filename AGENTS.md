@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – in Arbeit – SyncContract Foundation`
+Aktueller Stand: `v0.3.0 – in Arbeit – SyncService Foundation`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -98,12 +98,18 @@ bleibt ausschließlich eine Paketmetadatenentscheidung und macht das öffentlich
 sichtbare Repository nicht privat. Der annotierte Tag `v0.2.2` und das
 zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
 das neueste veröffentlichte Release. `v0.3.0 – SyncAgent and Webhook Foundation`
-ist mit dem ersten Slice `SyncContract Foundation` in Arbeit. Dieser Slice ist
-ausschließlich transportneutral; erfolgreiche Vertragsresponses sind auf
+hat mit der transportneutralen `SyncContract Foundation` begonnen; dieser erste
+Slice ist implementiert und bleibt die verbindliche Vertragsgrundlage. Aktuell
+ist `v0.3.0 – in Arbeit – SyncService Foundation`. Der asynchrone Service
+erstellt einen kontrollierten `syncTest`-Request, validiert ihn und übergibt ihn
+ausschließlich an den injizierten Port `syncTransport.sendSyncRequest`. Nur eine
+vollständig validierte, normal korrelierte SyncResponse wird defensiv
+projiziert und ausgegeben. Erfolgreiche Vertragsresponses sind weiterhin auf
 `dataOrigin: "synthetic"` begrenzt. Dieser Wert ist nur eine
 Vertragsklassifikation und kein Herkunfts- oder Datenschutzbeweis. `v0.2.2`
-bleibt vollständig lokal und auch der aktuelle Vertragskern besitzt keine
-externe Kommunikation, Webhooks, Agentenlogik oder Airtable-Anbindung.
+bleibt vollständig lokal. Auch die aktuelle Service-Foundation besitzt keinen
+konkreten externen Transport, Webhook, operativen Agenten oder
+Airtable-Anbindung und ist nicht in `src/main.js` komponiert.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -147,22 +153,54 @@ dokumentiert wurde.
 
 ## Aktueller Scope für v0.3.0
 
-Der erste Slice `SyncContract Foundation` implementiert ausschließlich den
-reinen transportneutralen Contract-Kern für Version `1.0`, die Aktion
-`syncTest` und den kanonischen Handler `SyncAgent`. Der Request besitzt exakt
-die sechs Felder `version`, `action`, `source`, `requestId`, `timestamp` und
-`payload`; `requestId` ist verpflichtend, beginnt mit `req_`, und `payload` ist
-exakt `{}`. Erfolgreiche Responses sind auf `dataOrigin: "synthetic"` begrenzt;
-das ist nur eine Vertragsklassifikation und kein Herkunfts- oder
-Datenschutzbeweis. Unbekannte Felder, Versionen, Aktionen und Quellen werden
-fail-closed abgelehnt.
+Die implementierte `SyncContract Foundation` bleibt der reine
+transportneutrale Contract-Kern für Version `1.0`, die Aktion `syncTest` und den
+kanonischen Handler `SyncAgent`. Der Request besitzt exakt die sechs Felder
+`version`, `action`, `source`, `requestId`, `timestamp` und `payload`;
+`requestId` ist verpflichtend, beginnt mit `req_`, und `payload` ist exakt `{}`.
+Erfolgreiche Responses sind auf `dataOrigin: "synthetic"` begrenzt; das ist nur
+eine Vertragsklassifikation und kein Herkunfts- oder Datenschutzbeweis.
+Unbekannte Felder, Versionen, Aktionen und Quellen werden fail-closed
+abgelehnt.
 
-Der aktuelle Slice implementiert keinen Netzwerkzugriff, Webhook,
-`SyncService`, operativen `SyncAgent`, n8n-Workflow, keine Authentisierung,
-Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keine AgentHub- oder
-AutomationHub-UI, keinen privaten externen Datenfluss und keinen produktiven
-Datenfluss. PromptVault, LearningHub und LichtwaldLog bleiben lokal und werden
-weder gelesen noch exportiert. Paketversion `0.2.2`, Tag `v0.2.2` und neuestes
+Der aktuelle Slice `SyncService Foundation` implementiert
+`createSyncService({ syncTransport, generateRequestId, getCurrentTimestamp })`
+mit einer eingefrorenen API, die exakt `runSyncTest` bereitstellt. Die Methode
+ist immer Promise-basiert, akzeptiert keine Argumente und besitzt keinen
+generischen Aktions- oder Payloadpfad. Sie löst zuerst
+`syncTransport.sendSyncRequest` genau einmal sicher auf; bei fehlender, nicht
+funktionaler oder werfend aufgelöster Methode werden Generator und Clock nicht
+ausgewertet. Erst danach erzeugt sie `requestId` und `timestamp` über
+kontrollierte Composition-Dependencies, verwendet standardmäßig
+`req_ + crypto.randomUUID()` ohne schwächeren Fallback und baut einen frischen
+Request mit exakt sechs Feldern und einem exakt leeren `payload`. Generator und
+Clock werden dabei jeweils exakt einmal ausgewertet. Erst nach vollständiger
+Requestvalidierung wird die Portmethode höchstens einmal aufgerufen. Transport-
+und interner Korrelationsrequest sind getrennte, tief eingefrorene Snapshots.
+
+Der einzige Port dieses Slices ist
+`syncTransport.sendSyncRequest(syncRequest)`. Sein Rückgabewert bleibt
+unvertrauenswürdige Eingabe. Der Service erzeugt daraus eine allowlist-basierte
+gewöhnliche Datenprojektion und akzeptiert ausschließlich eine mit dem
+unveränderten internen Request vollständig validierte normale SyncResponse.
+Frühe Gateway-Fehler werden nicht akzeptiert. Eine gültige normale
+Contract-Fehlerresponse bleibt eine SyncResponse: Der äußere Service-Result ist
+auch dann `ok: true`; der fachliche Erfolg bleibt ausschließlich
+`syncResponse.success`. Lokale Servicefehler verwenden den getrennten exakten
+Fünf-Felder-Resultvertrag und statische redigierte Fehler. Sie behaupten keine
+Verarbeitung durch den `SyncAgent`.
+
+Der aktuelle Slice implementiert keinen konkreten Netzwerktransport, Endpoint,
+Webhook, operativen `SyncAgent`, n8n-Workflow, keine Authentisierung,
+Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keine Timeouts, Retries,
+Persistenz, Telemetrie, AgentHub- oder AutomationHub-UI und keine
+`src/main.js`-Komposition. PromptVault, LearningHub und LichtwaldLog bleiben
+lokal und werden weder gelesen noch exportiert. Da kein konkreter Transport
+ausgeliefert oder komponiert ist, existiert kein externer Datenfluss. Injizierte
+Functions und Function-Proxies sind vertrauenswürdige ausführbare
+Composition-Dependencies; beobachtbare Exceptions und Rejections werden
+redigiert, bereits ausgelöste Seiteneffekte können aber nicht verhindert oder
+rückgängig gemacht werden. Paketversion `0.2.2`, Tag `v0.2.2` und neuestes
 veröffentlichtes Release `v0.2.2` bleiben unverändert.
 
 Der spätere erste reale Fluss ist browserinitiiert:

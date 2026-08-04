@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – SyncContract Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – SyncService Foundation` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell ausschließlich transportneutraler SyncContract-Kern |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell transportneutrale SyncService Foundation auf dem implementierten SyncContract-Kern |
 | Letzte Aktualisierung | 2026-08-04 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
@@ -22,8 +22,9 @@ nicht starre Kalendertermine.
 - Die Reihenfolge bleibt: **Mock → Webhook → Airtable → Agentenlogik**.
 - Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
   `v0.3.0` bereitet die erste externe Kommunikation zunächst mit einem
-  transportneutralen Vertrag vor; der aktuelle Slice kommuniziert noch nicht
-  extern.
+  transportneutralen Vertrag und einer transportneutralen Servicegrenze vor.
+  Da kein konkreter Transport komponiert ist, kommuniziert der aktuelle Slice
+  noch nicht extern.
 - Weitere Unterversionen dürfen ergänzt werden, wenn neue, klar abgegrenzte
   Arbeitspakete entstehen.
 - Version 1 bleibt auf `SyncAgent`, `DataAgent` und `TestAgent` begrenzt.
@@ -52,7 +53,7 @@ nicht starre Kalendertermine.
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.3.0` | SyncAgent and Webhook Foundation | In Arbeit: transportneutrale SyncContract Foundation; Transport und operative Agentengrenze folgen | 🟡 |
+| `v0.3.0` | SyncAgent and Webhook Foundation | In Arbeit: SyncContract Foundation implementiert; transportneutrale SyncService Foundation aktuell; konkreter Transport und operative Agentengrenze folgen | 🟡 |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
 | `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
@@ -596,23 +597,31 @@ eine spätere Phase geplant.
 
 ### Aktueller Stand
 
-`v0.3.0` ist **in Arbeit – SyncContract Foundation**. Der erste Slice schafft
-ausschließlich einen reinen, transportneutralen Vertragskern für Version `1.0`,
-die Aktion `syncTest` und den Handler `SyncAgent`. Der Request-Payload ist exakt
-leer; erfolgreiche Responses sind auf `dataOrigin: "synthetic"` begrenzt.
-Dieser Wert ist nur eine Vertragsklassifikation und kein Herkunfts- oder
-Datenschutzbeweis. Der Slice implementiert keinen Netzwerkzugriff, Webhook,
-`SyncService`, operativen `SyncAgent`, n8n-Workflow, keine Authentisierung,
-Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keine Hub-UI und mangels
-Transport keinen privaten externen Datenfluss.
+`v0.3.0` ist **in Arbeit – SyncService Foundation**. Der erste Slice
+SyncContract Foundation ist implementiert und bleibt die verbindliche
+Vertragsgrundlage für Version `1.0`, die Aktion `syncTest` und den Handler
+`SyncAgent`. Der aktuelle Slice ergänzt einen asynchronen Service mit
+kontrolliertem Request-Build, injiziertem Transport-Port, unveränderlicher
+Korrelation, defensiver normaler Response-Projektion und getrenntem lokalem
+Resultvertrag.
 
-### Aktueller Slice: SyncContract Foundation
+Der Request-Payload ist exakt leer; erfolgreiche Responses sind auf
+`dataOrigin: "synthetic"` begrenzt. Dieser Wert ist nur eine
+Vertragsklassifikation und kein Herkunfts- oder Datenschutzbeweis. Der Slice
+implementiert keinen konkreten Netzwerktransport, Endpoint, Webhook,
+operativen `SyncAgent`, n8n-Workflow, keine Authentisierung, Signaturprüfung,
+CORS- oder Rate-Limit-Durchsetzung, keine Hub-UI, Persistenz oder
+`src/main.js`-Komposition. Da kein konkreter Transport ausgeliefert oder
+komponiert ist, entsteht kein externer Datenfluss.
+
+### Abgeschlossene Grundlage: SyncContract Foundation
 
 - ✅ Exakt sechs Request-Felder, kein vorgesehenes Inhalts- oder Freitextfeld
   und exakt leeres `syncTest.payload` festgelegt.
-- ✅ `requestId` nur strukturell und `timestamp` nur kanonisch sowie relativ zur
-  expliziten Referenzzeit geprüft. Diese Prüfungen beweisen weder semantische
-  Herkunft noch die Abwesenheit privater oder nutzergenerierter Informationen.
+- ✅ `requestId` rein syntaktisch und den Request-`timestamp` strukturell,
+  kanonisch sowie zeitlich gegen die explizite Referenzzeit geprüft. Diese
+  Prüfungen beweisen weder semantische Herkunft noch die Abwesenheit privater
+  oder nutzergenerierter Informationen.
 - ✅ Der Contract-Kern liest, persistiert oder exportiert keine privaten lokalen
   Bestände. `synthetic` bleibt eine Vertragsklassifikation, kein Beweis
   tatsächlicher Herkunft oder Datenschutzkonformität.
@@ -635,14 +644,38 @@ Transport keinen privaten externen Datenfluss.
 - ✅ ADR 0016 sowie Architektur-, Vertrags-, Roadmap- und Sicherheitsgrenzen
   dokumentiert.
 
+### Aktueller Slice: SyncService Foundation
+
+- ✅ Eingefrorene Service-API mit exakt der immer Promise-basierten Methode
+  `runSyncTest` und fail-closed abgelehnten zusätzlichen Argumenten
+  bereitgestellt.
+- ✅ `syncTransport.sendSyncRequest` vor dem Request-Build genau einmal sicher
+  aufgelöst. Bei fehlender, nicht funktionaler oder werfend aufgelöster Methode
+  werden Generator und Clock nicht ausgewertet.
+- ✅ Erst nach erfolgreicher Methodenauflösung den kontrollierten Request-
+  Builder mit genau einmal ausgewertetem ID-Generator und Clock, frischem exakt
+  leerem Payload sowie vollständiger SyncContract-Validierung eingeführt.
+- ✅ `req_ + crypto.randomUUID()` als einzigen Standard-ID-Pfad ohne
+  `Math.random`-, Timestamp- oder anderen schwächeren Fallback festgelegt.
+- ✅ Transportrequest und interne Korrelationsgrundlage als getrennte, tief
+  eingefrorene Snapshots umgesetzt.
+- ✅ `syncTransport.sendSyncRequest(syncRequest)` als einzige asynchron nutzbare
+  Portmethode festgelegt und erst nach vollständiger Requestvalidierung
+  höchstens einmal aufgerufen; kein Retry, Backoff, Timeout oder zweiter
+  Aufruf.
+- ✅ Transportantworten defensiv allowlist-basiert projiziert und ausschließlich
+  als vollständig validierte normale SyncResponses akzeptiert. Frühe
+  Gateway-Fehler bleiben außerhalb des Profils.
+- ✅ Exakten lokalen Fünf-Felder-Result mit statischer redigierter
+  Fehler-Allowlist von der normalen SyncResponse getrennt.
+- ✅ Deterministischen In-Memory-Erfolgsfluss ausschließlich als klar
+  gekennzeichnetes Test-Double vorgesehen; kein Transport-Mock in `src/`.
+- ✅ Dependency-, Function-Proxy-, Promise- und Thenable-Grenzen sowie die
+  fehlende rückwirkende Kontrolle bereits ausgelöster Seiteneffekte in ADR
+  0017 und den Sicherheitsgrenzen dokumentiert.
+
 ### Spätere Slices innerhalb von v0.3.0
 
-- ⬜ `SyncService` als einzige externe Kommunikationsschicht des Frontends
-  implementieren.
-- ⬜ Einen vertrauenswürdigen Request-Builder einführen, der `requestId` und
-  `timestamp` ausschließlich aus einem kontrollierten ID-Generator und einer
-  kontrollierten Clock erzeugt und nie aus privaten oder nutzergenerierten
-  Inhalten ableitet.
 - ⬜ Serverseitigen n8n-Webhook beziehungsweise Gateway mit HTTP `POST`
   implementieren; der Browser terminiert keinen eingehenden öffentlichen
   Webhook.
@@ -665,34 +698,44 @@ Transport keinen privaten externen Datenfluss.
 
 ### Abnahmekriterien für den aktuellen Slice
 
-- Der Request-Validator akzeptiert ausschließlich den dokumentierten
-  `syncTest`-Request mit syntaktisch gültiger `req_`-ID; ihre tatsächliche
-  Erzeugung oder semantische Herkunft beweist er nicht.
-- Normale Responses korrelieren Version, Aktion und `requestId` exakt; frühe
-  Gateway-Fehler verwenden stattdessen `action: null` und eine serverseitige
-  `gateway_`-Korrelations-ID.
-- Bei stabilen, seiteneffektfreien gewöhnlichen Daten werden unbekannte Felder,
-  Versionen, Aktionen und Quellen ohne Property-Schreibzugriff des Validators
-  kontrolliert abgelehnt. Bei Proxies bestätigt ein Ergebnis nur die während
-  dieses Aufrufs beobachtete Struktur; Trap-Seiteneffekte und eine vollständige
-  portable Proxy-Erkennung sind nicht kontrollierbar. Bereits ausgelöste
-  Seiteneffekte kann der Validator weder verhindern noch rückgängig machen.
-- `source: "goldendawn-os"` bleibt ausschließlich eine syntaktische
-  Klassifikation. Vertrauenswürdige Herkunft, Routing und Berechtigung werden
-  später serverseitig bestimmt und niemals allein aus `source` abgeleitet.
-- Fehlerobjekte verwenden ausschließlich statische, redigierte Profile und
-  übernehmen keine Rohwerte aus Eingaben.
-- Die gezielten SyncContract-Tests bestehen mit 45/45 Tests; die Gesamtsuite
-  besteht mit 978/978 Tests bei 0 Fehlschlägen, 0 Skips und 0 Todos.
+- Die öffentliche API ist eingefroren und besitzt exakt `runSyncTest`;
+  zusätzliche Argumente werden ohne Inspektion und ohne Dependency-Zugriff
+  abgelehnt.
+- Generator und Clock werden erst nach erfolgreicher einmaliger Auflösung von
+  `sendSyncRequest` während des Request-Builds jeweils exakt einmal
+  ausgewertet. Bei einer nicht verfügbaren Portmethode werden sie nicht
+  ausgewertet; ungültige oder werfende Buildergebnisse führen nicht zum Aufruf
+  der Portmethode.
+- Jeder Transportrequest ist vollständig validiert und von seiner
+  unveränderlichen internen Korrelation getrennt.
+- Die Portmethode wird erst nach vollständiger Requestvalidierung und pro
+  Aufruf höchstens einmal aufgerufen. Sequenzielle und parallele Aufrufe teilen
+  keine veränderlichen Records.
+- Nur defensive, vollständig validierte und konkret korrelierte normale
+  SyncResponses werden ausgegeben. Eine gültige normale Contract-Fehlerresponse
+  bleibt außen `ok: true`; der fachliche Zustand bleibt
+  `syncResponse.success`.
+- Lokale Fehler besitzen ausschließlich den exakten Fünf-Felder-Result,
+  statische redigierte Fehler und keine behauptete SyncAgent-Verarbeitung.
+- Injizierte Functions bleiben vertrauenswürdiger ausführbarer Code.
+  Beobachtbare Dependency-, Proxy- und Thenable-Fehler werden redigiert;
+  bereits ausgelöste Seiteneffekte werden nicht als verhinderbar oder
+  rückgängig dargestellt.
+- Die gezielte SyncService-Suite besteht mit 43/43 Tests, die kombinierte
+  SyncService-/SyncContract-Suite mit 88/88 Tests und die Gesamtsuite mit
+  1021/1021 Tests bei 0 Fehlschlägen, 0 Skips und 0 Todos.
 - Der Produktions-Build ist erfolgreich und transformiert exakt 46 Module.
 
 ### Portfolio-Nachweis für den aktuellen Slice
 
-- exakte Request-, Normalfehler- und Gateway-Fehlerbeispiele sowie exakte, als
-  `synthetic` klassifizierte Erfolgsbeispiele;
-- dokumentierte öffentliche Validator-API und harte Grenzen;
-- ADR 0016 mit klarer Trennung von aktuellem Vertragskern und späterem
-  Transport.
+- exakte öffentliche Service-API, kontrollierter Request-Build und
+  unveränderliche Korrelation;
+- getrennter normaler SyncResponse- und lokaler Servicefehlervertrag;
+- ausschließlich testseitiger, vollständig simulierter In-Memory-Fluss mit als
+  `synthetic` klassifizierten Erfolgsdaten; `synthetic` bleibt ausschließlich
+  eine `dataOrigin`-Klassifikation und kein Herkunftsbeweis;
+- ADR 0017 mit klarer Trennung von Transport-Port, konkretem Transport und
+  späterer Gateway-Grenze; ADR 0016 bleibt die unveränderte Contract-Grundlage.
 
 ## v0.4.0 – DataAgent and Airtable Integration
 
@@ -983,14 +1026,16 @@ abgeschlossen und mit 374/374 LichtwaldLog-Tests, 933/933 Tests der Gesamtsuite,
 Modulen geprüft. Die Paketversion ist `0.2.2`; der annotierte Tag `v0.2.2` und
 das zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht. `v0.2.2`
 ist das neueste veröffentlichte Release. `v0.3.0` ist mit der
-transportneutralen SyncContract Foundation in Arbeit. Der veröffentlichte
-`v0.2.2`-Umfang bleibt vollständig lokal; auch der aktuelle Vertrags-Slice
-besitzt keine externe Kommunikation, keinen Webhook, `SyncService`, operativen
-`SyncAgent`, keine n8n-Verbindung oder Airtable-Anbindung.
+transportneutralen SyncService Foundation auf Basis der implementierten
+SyncContract Foundation in Arbeit. Der veröffentlichte `v0.2.2`-Umfang bleibt
+vollständig lokal. Da der aktuelle Service-Slice keinen konkreten Transport und
+keine Anwendungskomposition besitzt, führt er keine externe Kommunikation,
+keinen Webhook, operativen `SyncAgent`, keine n8n-Verbindung oder
+Airtable-Anbindung ein.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein Backend, Benutzerkonten und
 Agentenlogik bleiben offen beziehungsweise beginnen erst in den dafür
 vorgesehenen späteren Slices und Versionen. Der reale Transport folgt innerhalb
-von `v0.3.0 – SyncAgent and Webhook Foundation` erst nach dem aktuell
-transportneutralen Vertragskern.
+von `v0.3.0 – SyncAgent and Webhook Foundation` erst nach den aktuell
+implementierten transportneutralen Contract- und Service-Foundations.

@@ -31,8 +31,8 @@ Release.
   noch rückgängig machen; eine vollständige portable Proxy-Erkennung existiert
   nicht. Erfolg bestätigt nur die während des Aufrufs beobachtete Struktur.
 - Das Raw-Body-Limit exakt auf 65.536 UTF-8-Bytes begrenzt. Der reine Helper
-  serialisiert keine Objekte und ist ohne Transport keine tatsächliche
-  Webhook-Durchsetzung.
+  serialisiert keine Objekte und ist ohne konkrete Wire-/Webhook-
+  Transportgrenze keine tatsächliche Webhook-Durchsetzung.
 - Für die spätere Wire-Grenze die Reihenfolge
   `rohe Bodybytes begrenzen → JSON kontrolliert parsen → datenförmigen weiterhin
   unvertrauenswürdigen Wert validieren` festgelegt. `JSON.parse` ohne
@@ -43,10 +43,50 @@ Release.
   Vertrauenswürdige Herkunft, Routing und Autorisierung folgen später aus
   serverseitigem Kontext und niemals allein aus `source`.
 
+### SyncService Foundation
+
+- `createSyncService({ syncTransport, generateRequestId, getCurrentTimestamp })`
+  als asynchrone transportneutrale Service-Foundation mit einer eingefrorenen
+  API aus exakt `runSyncTest` ergänzt. Der Aufruf akzeptiert keine Argumente
+  und bietet keinen generischen Aktions-, Payload-, Endpoint- oder Moduspfad.
+- Bei einem argumentlosen Aufruf zuerst
+  `syncTransport.sendSyncRequest` in einem einmaligen sicheren
+  Auflösungsversuch aufgelöst. Bei fehlender, nicht funktionaler oder werfend
+  aufgelöster Methode werden Generator und Clock nicht ausgewertet.
+- Erst nach erfolgreicher Methodenauflösung einen frischen exakt sechs Felder
+  umfassenden `syncTest`-Request mit exakt leerem `payload` aus den bestehenden
+  Contract-Konstanten aufgebaut. `requestId` und `timestamp` stammen aus den
+  dabei jeweils exakt einmal ausgewerteten kontrollierten
+  Composition-Dependencies; der Standard-ID-Generator verwendet ausschließlich
+  `req_ + crypto.randomUUID()` ohne schwächeren Fallback.
+- Transportrequest und interne Korrelationsgrundlage als getrennte, tief
+  eingefrorene Snapshots erzeugt. Nur die zuvor aufgelöste Portmethode
+  `syncTransport.sendSyncRequest(syncRequest)` wird nach vollständiger
+  Requestvalidierung pro Aufruf höchstens einmal mit dem vorgesehenen Receiver
+  aufgerufen.
+- Transportantworten als unvertrauenswürdige Eingaben behandelt, über feste
+  Felder defensiv projiziert und ausschließlich als vollständig validierte,
+  normal korrelierte SyncResponses akzeptiert. Frühe Gateway-Fehler gehören
+  weiterhin nicht zum lokalen Transportprofil.
+- Den exakten lokalen Fünf-Felder-Service-Result von der SyncResponse getrennt.
+  Eine gültige normale Contract-Fehlerresponse bleibt außen `ok: true`; ihr
+  fachlicher Zustand wird weiterhin ausschließlich durch
+  `syncResponse.success` ausgedrückt. Lokale Fehler verwenden nur statische
+  redigierte Status-, Code- und Meldungsprofile.
+- Einen klar gekennzeichneten deterministischen In-Memory-Transport
+  ausschließlich als Test-Double vorgesehen. In `src/` wird kein Mock-, HTTP-,
+  Fetch-, Webhook- oder n8n-Transport ausgeliefert.
+- Dokumentiert, dass injizierte Functions und Function-Proxies
+  vertrauenswürdiger ausführbarer Anwendungscode sind. Promise-/Thenable-
+  Auflösung und Proxy-Reflection können fremden Code und Seiteneffekte
+  auslösen; beobachtbare Throws und Rejections werden redigiert, bereits
+  ausgelöste Wirkungen können aber nicht rückgängig gemacht werden.
+
 ### Qualität
 
-- Gezielte SyncContract-Suite mit 45/45 Tests und die vollständige Suite mit
-  978/978 Tests geprüft; 0 Fehlschläge, 0 Skips und 0 Todos.
+- Gezielte SyncService-Suite mit 43/43 Tests, kombinierte
+  SyncService-/SyncContract-Suite mit 88/88 Tests und die vollständige Suite
+  mit 1021/1021 Tests geprüft; 0 Fehlschläge, 0 Skips und 0 Todos.
 - Produktions-Build erfolgreich abgeschlossen; exakt 46 Module transformiert.
 
 ### Architektur- und Sicherheitsgrenzen
@@ -58,13 +98,16 @@ Release.
 - Die spätere Darstellung des `SyncAgent` dem AgentHub und Verbindungen,
   Webhooks, Workflows sowie den einzigen `syncTest`-Auslöser dem AutomationHub
   zugeordnet. In diesem Slice wird keine Hub-UI umgesetzt.
-- Keine Netzwerkkommunikation, keinen Webhook, keinen `SyncService`, keinen
-  operativen `SyncAgent`, keine n8n-Verbindung, Authentisierung,
-  Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keinen privaten externen
-  Datenfluss und keinen produktiven Datenfluss eingeführt.
+- Keine Netzwerkkommunikation, keinen konkreten externen Transport, Endpoint
+  oder Webhook, keinen operativen `SyncAgent`, keine n8n-Verbindung,
+  Authentisierung, Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keinen
+  privaten externen Datenfluss und keinen produktiven Datenfluss eingeführt.
+  Der SyncService ist weder in `src/main.js` noch in einer UI komponiert.
 - ADR 0016 für den transportneutralen Kern und die künftige Transport- und
-  Hub-Grenze angenommen. Paketversion `0.2.2`, Tag `v0.2.2` und neuestes
-  veröffentlichtes Release `v0.2.2` bleiben unverändert.
+  Hub-Grenze bleibt unveränderte Vertragsgrundlage. ADR 0017 dokumentiert die
+  transportneutrale SyncService Foundation. Paketversion `0.2.2`, Tag
+  `v0.2.2` und neuestes veröffentlichtes Release `v0.2.2` bleiben
+  unverändert.
 
 ## v0.2.2 – 2026-08-02
 
