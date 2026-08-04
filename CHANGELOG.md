@@ -6,6 +6,66 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
+## Unveröffentlicht – v0.3.0 in Arbeit
+
+### SyncContract Foundation
+
+- Transportneutralen Vertragskern für Contract-Version `1.0`, die einzige
+  Aktion `syncTest`, den kanonischen Handler `SyncAgent` und ausschließlich
+  als `synthetic` klassifizierte Erfolgsdaten ergänzt.
+- Strikte Validatoren für den exakt sechs Felder umfassenden Request, normal
+  korrelierte Responses, getrennte frühe Gateway-Fehler und bereits als String
+  vorliegende Raw Bodies bereitgestellt. Determinismus und Seiteneffektfreiheit
+  werden nur für stabile gewöhnliche Records, Arrays und Strings zugesichert,
+  deren Beobachtung selbst keine Seiteneffekte auslöst.
+- Pflicht-`requestId`, kanonische UTC-Zeitstempel mit expliziter Referenzzeit,
+  statische redigierte Fehlerprofile, exakte Response-Korrelation und
+  kontrollierte Ablehnung nicht unterstützter beobachteter Strukturen
+  festgelegt.
+- Dokumentiert, dass der Validator selbst keine Properties schreibt und Werte
+  gewöhnlicher eigener Accessors nicht ausliest, Reflection auf Proxies jedoch
+  Traps und Descriptor-Getter ausführen kann. Same-Realm-Proxy-Traps führen
+  beliebigen JavaScript-Code aus und können Eingaben, externen Zustand oder
+  globale Laufzeitobjekte verändern, blockieren oder spätere Operationen zum
+  Werfen bringen. Reflection-Catches können solche Wirkungen weder verhindern
+  noch rückgängig machen; eine vollständige portable Proxy-Erkennung existiert
+  nicht. Erfolg bestätigt nur die während des Aufrufs beobachtete Struktur.
+- Das Raw-Body-Limit exakt auf 65.536 UTF-8-Bytes begrenzt. Der reine Helper
+  serialisiert keine Objekte und ist ohne Transport keine tatsächliche
+  Webhook-Durchsetzung.
+- Für die spätere Wire-Grenze die Reihenfolge
+  `rohe Bodybytes begrenzen → JSON kontrolliert parsen → datenförmigen weiterhin
+  unvertrauenswürdigen Wert validieren` festgelegt. `JSON.parse` ohne
+  benutzerdefinierten Reviver überträgt keine Proxies, Accessors, Symbole oder
+  Trap-Funktionen.
+- `source: "goldendawn-os"` als reine syntaktische Klassifikation festgehalten,
+  nicht als Nachweis für Authentisierung, Herkunft, Identität oder Berechtigung.
+  Vertrauenswürdige Herkunft, Routing und Autorisierung folgen später aus
+  serverseitigem Kontext und niemals allein aus `source`.
+
+### Qualität
+
+- Gezielte SyncContract-Suite mit 45/45 Tests und die vollständige Suite mit
+  978/978 Tests geprüft; 0 Fehlschläge, 0 Skips und 0 Todos.
+- Produktions-Build erfolgreich abgeschlossen; exakt 46 Module transformiert.
+
+### Architektur- und Sicherheitsgrenzen
+
+- Den späteren browserinitiierten Fluss als
+  `GoldenDawn → SyncService → serverseitiger n8n-Webhook/Gateway → SyncAgent →
+  validierte Antwort` dokumentiert; ein Vite-Browserfrontend terminiert keinen
+  eingehenden öffentlichen Webhook.
+- Die spätere Darstellung des `SyncAgent` dem AgentHub und Verbindungen,
+  Webhooks, Workflows sowie den einzigen `syncTest`-Auslöser dem AutomationHub
+  zugeordnet. In diesem Slice wird keine Hub-UI umgesetzt.
+- Keine Netzwerkkommunikation, keinen Webhook, keinen `SyncService`, keinen
+  operativen `SyncAgent`, keine n8n-Verbindung, Authentisierung,
+  Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keinen privaten externen
+  Datenfluss und keinen produktiven Datenfluss eingeführt.
+- ADR 0016 für den transportneutralen Kern und die künftige Transport- und
+  Hub-Grenze angenommen. Paketversion `0.2.2`, Tag `v0.2.2` und neuestes
+  veröffentlichtes Release `v0.2.2` bleiben unverändert.
+
 ## v0.2.2 – 2026-08-02
 
 ### LichtwaldLog Local MVP

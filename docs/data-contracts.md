@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.2 – LichtwaldLog Local MVP vollständig geprüft und veröffentlicht` |
+| Projektphase | `v0.3.0 – in Arbeit – SyncContract Foundation` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,8 +21,8 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `v0.2.2`; `v0.2.2` vollständig geprüft und am `2026-08-02` veröffentlicht; neuestes veröffentlichtes Release `v0.2.2`; `v0.3.0` geplant und unbegonnen; Sync-Vertrag bleibt Zielzustand |
-| Letzte Aktualisierung | 2026-08-02 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; transportneutraler `syncTest`-Vertragskern implementiert; externe Sync- und Agentenflüsse weiterhin geplant |
+| Letzte Aktualisierung | 2026-08-04 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
@@ -31,10 +31,11 @@ dokumentiert außerdem den implementierten LichtwaldLog-Schema-1-Vertrag, seine
 begrenzte private Full-Snapshot-Persistenz, die darauf aufbauenden lokalen
 Service-, Controller- sowie isolierte View- und CSS-Foundation, die reine
 lokale Such- und Filterableitung und deren Anwendungskomposition in
-`src/main.js`. Es dokumentiert außerdem die
-maschinenlesbare Sprache zwischen dem GoldenDawn-OS-Frontend, dem SyncAgent,
-dem DataAgent und dem TestAgent und konkretisiert die Grenzen aus `AGENTS.md`,
-`docs/architecture.md` und `docs/security.md`.
+`src/main.js`. Es dokumentiert außerdem den implementierten transportneutralen
+`syncTest`-Kern sowie die ausdrücklich geplante spätere maschinenlesbare
+Sprache zwischen GoldenDawn OS, `SyncAgent`, `DataAgent` und `TestAgent` und
+konkretisiert die Grenzen aus `AGENTS.md`, `docs/architecture.md` und
+`docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
 In `v0.2.1` sind die LearningHub-Schema-2-Foundation, die lokale
@@ -55,8 +56,10 @@ deterministischer Mock-Test bedienbar. Der LearningHub Local MVP ist vollständi
 geprüft und veröffentlicht. Der annotierte Tag `v0.2.1` und das zugehörige
 GitHub Release wurden am `2026-07-25` veröffentlicht; GoldenDawn OS ist
 seitdem als öffentlich sichtbares Portfolio-Repository ohne Open-Source-Lizenz
-verfügbar. Die externen Sync- und Agentenverträge beschreiben den geplanten
-Zielzustand späterer Versionen.
+verfügbar. Der transportneutrale `syncTest`-Vertragskern ist der erste
+implementierte Slice von `v0.3.0`; alle Transport-, LearningTest-, DataAgent-
+und sonstigen externen Agentenverträge bleiben Zielzustand späterer Slices
+beziehungsweise Versionen.
 
 Für `v0.2.2` sind der reine LichtwaldLog-Schema-1-Vertrag,
 `validateLichtwaldLog`, die zugehörigen synthetischen Contract-Tests und die
@@ -78,7 +81,7 @@ umgesetzt. Die lokalen Foundations und ihre Komposition führen keine externe
 Aktion ein. Der funktionale Umfang ist vollständig abgeschlossen und geprüft.
 Der annotierte Tag `v0.2.2` und das zugehörige GitHub Release wurden am
 `2026-08-02` veröffentlicht; `v0.2.2` ist das neueste veröffentlichte Release,
-und `v0.3.0` ist geplant und noch nicht begonnen.
+und `v0.3.0` ist mit der transportneutralen SyncContract Foundation in Arbeit.
 
 Solange eine externe Aktion noch nicht implementiert ist, muss sie in UI und
 Dokumentation als geplant gekennzeichnet bleiben.
@@ -935,6 +938,7 @@ geprüft und veröffentlicht. Der spätere externe Zielpfad lautet weiterhin:
 ```text
 LearningTestService
   → SyncService
+  → serverseitiger n8n-Webhook/Gateway
   → SyncAgent
   → TestAgent
 ```
@@ -2501,21 +2505,26 @@ Der Vertrag soll:
 
 ### Externe Aktionen des Dashboards
 
-Die folgenden Aktionen gehören zum Zielvertrag für spätere Versionen. Sie sind
-auch im funktional abgeschlossenen lokalen Stand von `v0.2.1` noch nicht
-implementiert.
+Nur `syncTest` ist im aktuellen Slice als transportneutraler Validatorvertrag
+implementiert. Es gibt dazu noch keinen externen Aufruf. Alle LearningTest- und
+DataAgent-Aktionen in diesem Dokument bleiben ausdrücklich geplante
+Zielverträge und werden vom aktuellen SyncContract-Modul nicht akzeptiert.
 
-| Aktion | Zweck | Primärer Handler | Schreibend |
+| Aktion | Zweck | Primärer Handler | Status |
 | --- | --- | --- | --- |
-| `syncTest` | Verbindung und Vertragsformat prüfen | SyncAgent | nein |
-| `learningTest.create` | Lerntest erzeugen und Definition sicher speichern | TestAgent | ja |
-| `learningTest.evaluate` | Antworten bewerten und Ergebnis speichern | TestAgent | ja |
-| `learningTest.result.get` | Gespeichertes Testergebnis abrufen | DataAgent | nein |
+| `syncTest` | geschlossenes `syncTest`-Vertragsformat strukturell prüfen | SyncAgent | Vertragsvalidator implementiert; kein Transport und kein operativer Handler |
+| `learningTest.create` | Lerntest erzeugen und Definition sicher speichern | TestAgent | geplant für eine spätere Version |
+| `learningTest.evaluate` | Antworten bewerten und Ergebnis speichern | TestAgent | geplant für eine spätere Version |
+| `learningTest.result.get` | Gespeichertes Testergebnis abrufen | DataAgent | geplant für eine spätere Version |
 
-Diese Allowlist ist für Version 1 geschlossen. Externe Clients dürfen keine
-`data.*`-Aktionen oder frei gewählten Agentennamen übermitteln.
+Die **implementierte** Allowlist enthält exakt `syncTest`. Die breitere
+Version-1-Ziel-Allowlist ist noch nicht aktiviert. Externe Clients dürfen auch
+später keine `data.*`-Aktionen oder frei gewählten Agentennamen übermitteln.
 
 ### Interne Aktionen zwischen Agenten
+
+Alle Aktionen dieses Unterabschnitts sind ausschließlich geplant und nicht
+Bestandteil der implementierten SyncContract Foundation.
 
 | Aktion | Quelle | Ziel | Zweck |
 | --- | --- | --- | --- |
@@ -2705,9 +2714,118 @@ Das Löschen lokaler Browserdaten kann die PromptVault-Daten entfernen.
 Benutzerkonten, automatische Cloud-Sicherung und Wiederherstellung außerhalb
 des aktuellen Browserprofils sind nicht implementiert.
 
-## Gemeinsamer Request-Umschlag
+## Öffentliche API der SyncContract Foundation
 
-Jeder externe und interne Request verwendet dieselbe Grundstruktur:
+`src/contracts/syncContract.js` exportiert ausschließlich den
+transportneutralen Vertragskern. Die öffentlichen Konstanten sind:
+
+| Export | Verbindlicher Wert oder Inhalt |
+| --- | --- |
+| `SYNC_CONTRACT_VERSION` | `"1.0"` |
+| `SYNC_CONTRACT_ACTIONS` | eingefroren: `["syncTest"]` |
+| `SYNC_CONTRACT_SOURCES` | eingefroren: `["goldendawn-os"]` |
+| `SYNC_CONTRACT_HANDLERS` | eingefroren: `["SyncAgent"]` |
+| `SYNC_CONTRACT_DATA_ORIGINS` | eingefroren: `["synthetic"]` |
+| `SYNC_CONTRACT_MAX_RAW_BODY_BYTES` | `65536` |
+| `SYNC_CONTRACT_REQUEST_ID_MAX_LENGTH` | `64` |
+| `SYNC_CONTRACT_TIMESTAMP_TOLERANCE_MS` | `300000` |
+| `SYNC_CONTRACT_MAX_DURATION_MS` | `300000` |
+| `SYNC_CONTRACT_VALIDATION_ERROR_CODES` | eingefrorene statische interne Validierungsfehler-Allowlist |
+| `SYNC_CONTRACT_RESPONSE_ERROR_PROFILES` | eingefrorene statische, redigierte Normal- und Gateway-Fehlerprofile |
+
+Die statischen Validierungsfehlercodes sind:
+
+```text
+invalidSyncRequest
+invalidSyncResponse
+invalidGatewayErrorResponse
+invalidCorrelatedRequest
+invalidRawBody
+rawBodyTooLarge
+unknownProperty
+missingProperty
+invalidPropertyDescriptor
+unsupportedVersion
+unknownAction
+invalidSource
+invalidRequestId
+requestIdTooLong
+invalidGatewayRequestId
+invalidTimestamp
+invalidReferenceTimestamp
+timestampOutsideTolerance
+invalidPayload
+invalidSuccess
+invalidHandler
+invalidData
+invalidError
+invalidErrorCode
+invalidErrorMessage
+invalidRetryable
+invalidErrorDetails
+invalidWarnings
+invalidMeta
+invalidDuration
+invalidProcessedBy
+invalidGatewayAction
+responseVersionMismatch
+responseActionMismatch
+responseRequestIdMismatch
+```
+
+Die vier öffentlichen Funktionen sind:
+
+| Export | Aufgabe |
+| --- | --- |
+| `validateSyncRequest(syncRequest, referenceTimestamp)` | prüft den exakten `syncTest`-Request und das inklusive Zeitfenster gegenüber der expliziten Referenzzeit |
+| `validateSyncResponse(syncResponse, correlatedRequest)` | prüft Erfolg oder normalen Fehler und die exakte Version-/Aktions-/ID-Korrelation |
+| `validateSyncGatewayErrorResponse(syncResponse)` | prüft ausschließlich das getrennte frühe Gateway-Fehlerprofil |
+| `validateSyncRawBodySize(rawBody)` | prüft ausschließlich einen bereits vorhandenen String auf höchstens 65.536 UTF-8-Bytes |
+
+Für stabile, seiteneffektfreie gewöhnliche Records, Arrays und Strings liefert
+jede Funktion deterministisch `{ ok: true, errors: [] }` oder
+`{ ok: false, errors }`. Der Validator schreibt selbst keine Properties und
+übernimmt keine ungültigen Rohwerte in Meldungen. Das Modul besitzt keinen
+Storage, keine Uhr, keinen Scheduler, keine Netzwerk- oder UI-Abhängigkeit; die
+Referenzzeit wird vom Aufrufer explizit übergeben. Für Proxies gelten die
+nachfolgend dokumentierten engeren Garantien.
+
+### Härtung gegen feindliche JavaScript-Strukturen
+
+Objekte und Arrays werden über eigene Keys und Property-Deskriptoren geprüft.
+Bei gewöhnlichen Records liest der Validator eigene Accessors nicht als Werte
+und ruft deren Getter nicht auf, sondern lehnt ihre Descriptorform ab.
+Symbol-Properties, zusätzliche eigene Felder einschließlich `__proto__`,
+`constructor` oder `prototype`, ungeeignete Prototypen sowie sparse oder
+manipulierte Arrays werden anhand der beobachteten Struktur abgelehnt. Plain
+Objects und Null-Prototyp-Objekte sind erlaubt, wo ein Objekt erwartet wird.
+
+Diese Aussage lässt sich nicht unverändert auf Proxies übertragen:
+`Object.getPrototypeOf`, `Reflect.ownKeys` und
+`Object.getOwnPropertyDescriptor` können Proxy-Traps ausführen. Beim
+Normalisieren eines von einer Trap gelieferten Descriptors kann die
+JavaScript-Laufzeit außerdem Getter auf dem Descriptorobjekt ausführen. Traps
+und solche Descriptor-Getter können Eingaben mutieren, externen Zustand ändern,
+zwischen Reflection-Schritten unterschiedliche Ergebnisse liefern oder werfen.
+Same-Realm-Proxy-Traps sind beliebiger JavaScript-Code und können globale
+Laufzeitobjekte verändern, die Ausführung blockieren oder spätere Operationen
+zum Werfen bringen. Reflection-Catches behandeln beobachtbare Fehler
+kontrolliert, können diese Wirkungen aber weder verhindern noch rückgängig
+machen.
+
+Eine portable vollständige Proxy-Erkennung existiert nicht; insbesondere kann
+ein transparenter Proxy wie sein Ziel erscheinen. Ein erfolgreiches Ergebnis
+bestätigt deshalb nur die während dieses Aufrufs beobachtete Struktur, nicht die
+Abwesenheit von Seiteneffekten, eine unveränderliche Objektidentität oder einen
+später identischen Zustand. Der Validator selbst schreibt weiterhin keine
+Properties und serialisiert unvertrauenswürdige Objekte nicht.
+
+## Implementierter Request-Umschlag der SyncContract Foundation
+
+Der aktuelle Validator akzeptiert ausschließlich einen `syncTest`-Request mit
+exakt sechs eigenen aufzählbaren Dateneigenschaften. Die Reihenfolge der
+JSON-Felder ist nicht semantisch; zusätzliche Felder werden fail-closed
+abgelehnt.
 
 ```json
 {
@@ -2715,12 +2833,7 @@ Jeder externe und interne Request verwendet dieselbe Grundstruktur:
   "action": "syncTest",
   "source": "goldendawn-os",
   "requestId": "req_2f78d95e-9096-4a76-8a2f-6ed149dc53b9",
-  "timestamp": "2026-07-11T12:00:00.000Z",
-  "context": {
-    "mode": "private",
-    "locale": "de-DE",
-    "clientVersion": "0.3.0"
-  },
+  "timestamp": "2026-08-03T12:00:00.000Z",
   "payload": {}
 }
 ```
@@ -2730,74 +2843,98 @@ Jeder externe und interne Request verwendet dieselbe Grundstruktur:
 | Feld | Typ | Pflicht | Regel |
 | --- | --- | --- | --- |
 | `version` | String | ja | exakt `1.0` für diesen Vertrag |
-| `action` | String | ja | Wert aus der passenden Allowlist |
-| `source` | String | ja | erlaubte Quelle, nicht frei vertrauenswürdig |
-| `requestId` | String | bedingt | für alle schreibenden Aktionen verpflichtend |
-| `timestamp` | ISO-8601-String | ja | UTC mit `Z` |
-| `context` | Objekt | nein | nur erlaubte Kontextfelder |
-| `payload` | Objekt | ja | aktionsspezifische Struktur |
+| `action` | String | ja | exakt `syncTest` |
+| `source` | String | ja | exakt `goldendawn-os` |
+| `requestId` | String | ja | ASCII, Präfix `req_`, 5 bis 64 Zeichen |
+| `timestamp` | ISO-8601-String | ja | kanonisch `YYYY-MM-DDTHH:mm:ss.sssZ` |
+| `payload` | Objekt | ja | exakt leeres Plain- oder Null-Prototyp-Objekt |
+
+Der aktuelle Request besitzt kein vorgesehenes Inhalts- oder Freitextfeld;
+`payload` ist exakt `{}`. Der Contract-Kern liest, persistiert oder exportiert
+keine privaten lokalen Bestände. Mangels Transport ist in diesem Slice kein
+privater externer Datenfluss implementiert.
+
+`context`, Client-Modus, Locale, Clientversion, Endpoint- oder Agentenauswahl
+sind keine Felder dieses Vertrags. Ein deklarativer Client-Modus dürfte auch
+später weder Umgebung, Endpoint noch Berechtigungen bestimmen; diese Auswahl
+liegt an der serverseitigen Grenze.
 
 ### Regeln für die Vertragsversion
 
 - Version `1.0` wird als String übertragen.
-- Eine nicht unterstützte Hauptversion wird mit `UNSUPPORTED_VERSION`
-  abgelehnt.
-- Abwärtskompatible optionale Felder dürfen innerhalb von Version 1 ergänzt
-  werden.
+- Eine nicht unterstützte Version erzeugt im aktuellen Validator den statischen
+  Code `unsupportedVersion`; ein späteres Gateway kann daraus das redigierte
+  Response-Profil `UNSUPPORTED_VERSION` bilden.
+- Der implementierte Validator akzeptiert in Version `1.0` keine unbekannten
+  oder optional hinzugefügten Felder.
 - Pflichtfelder, Feldbedeutungen und Datentypen werden nicht stillschweigend
   geändert.
 - Breaking Changes benötigen eine neue Hauptversion und aktualisierte Beispiele.
 
 ### Regeln für Aktionen
 
-- Aktionen sind case-sensitive.
-- Externe Aktionen verwenden stabile englische Namen.
-- Punktnotation trennt Domäne und Operation, beispielsweise
-  `learningTest.evaluate`.
-- `syncTest` bleibt aus Kompatibilitätsgründen die einzige Aktion ohne
-  Domänenpräfix.
-- Der Client wählt keinen Agenten. Der SyncAgent routet ausschließlich anhand
-  der validierten Aktion.
-- Unbekannte Aktionen erhalten `UNKNOWN_ACTION`.
+- Aktionen sind case-sensitive; die implementierte Allowlist enthält exakt
+  `syncTest`.
+- Der Client wählt keinen Agenten. `handledBy` ist kein Request-Feld.
+- Unbekannte Aktionen werden abgelehnt; ein späteres Gateway kann daraus das
+  statische Profil `UNKNOWN_ACTION` bilden.
 
 ### Regeln für Quellen
 
-Erlaubte Quellen:
+Die implementierte Quellen-Allowlist enthält exakt:
 
 | Kontext | `source` |
 | --- | --- |
-| Dashboard an SyncAgent | `goldendawn-os` |
-| SyncAgent an Fachagent | `SyncAgent` |
-| TestAgent an SyncAgent | `TestAgent` |
-| DataAgent an SyncAgent | `DataAgent` |
+| GoldenDawn-Vertragsrequest | `goldendawn-os` |
 
-Ein externer Request darf sich nicht durch `source: "SyncAgent"` als interner
-Request ausgeben. Die vertrauenswürdige Quelle wird an der Systemgrenze durch
-den Workflow-Kontext bestimmt und nicht nur aus dem JSON-Feld abgeleitet.
+`source: "goldendawn-os"` ist ausschließlich eine syntaktische Klassifikation
+innerhalb dieses Objektvertrags. Der Wert beweist weder Authentisierung noch
+technische Herkunft, Identität oder Berechtigung. Eine spätere Wire-Grenze muss
+vertrauenswürdige Herkunft aus serverseitigem Transport- und
+Authentisierungskontext ableiten; Routing und Autorisierung dürfen niemals
+allein auf `source` beruhen.
+
+Interne Quellen wie `SyncAgent`, `TestAgent` oder `DataAgent` sind geplanten
+Agentenverträgen vorbehalten und werden vom aktuellen Validator abgelehnt.
 
 ### Regeln für Request-IDs
 
-- Format: Präfix `req_` plus UUID oder vergleichbar kollisionsarme ID.
+- Das Feld ist für jeden regulären Request verpflichtend. Der aktuelle
+  Validator prüft nur seine syntaktische Struktur.
+- Format: Präfix `req_` plus mindestens ein ASCII-Buchstabe oder eine Ziffer;
+  danach sind ASCII-Buchstaben, Ziffern, `_` und `-` erlaubt.
 - Empfohlene Erzeugung im Browser: `req_${crypto.randomUUID()}`.
-- Maximale Länge: 64 Zeichen.
+- Gesamtlänge: mindestens 5 und höchstens 64 Zeichen.
+- Die syntaktische Gültigkeit garantiert keine Kollisionsarmut. Der spätere
+  GoldenDawn-ID-Generator ist für eine kollisionsarme Erzeugung verantwortlich.
 - Eine ID wird im gesamten Agentenfluss beibehalten.
-- Schreibende Aktionen ohne `requestId` werden abgelehnt.
-- `syncTest` darf während der frühen Entwicklung ohne ID eintreffen; der
-  SyncAgent erzeugt dann eine ID und gibt sie in der Antwort zurück.
-- Gleiche `requestId` plus gleiche Aktion und gleiche Nutzlast gilt als Retry.
-- Gleiche `requestId` mit abweichender Aktion oder Nutzlast ergibt
-  `IDEMPOTENCY_CONFLICT`.
+- Fehlende, falsch präfixierte, nicht-ASCII- oder überlange IDs werden
+  abgelehnt. Der aktuelle Slice erzeugt keine IDs und besitzt keinen
+  Idempotenzspeicher.
 
 ### Regeln für Zeitstempel
 
-- Systemübergreifende Zeitstempel verwenden ISO 8601 in UTC.
-- Beispiel: `2026-07-11T12:00:00.000Z`.
-- Im verbundenen Modus wird eine Abweichung von mehr als fünf Minuten
-  standardmäßig abgelehnt, sofern kein dokumentierter Queue-Modus existiert.
+- Request- und Response-Zeitstempel verwenden kanonisches ISO 8601 in UTC mit
+  Millisekunden und `Z`.
+- Beispiel: `2026-08-03T12:00:00.000Z`.
+- `validateSyncRequest` erhält die Referenzzeit explizit im selben kanonischen
+  Format. Das inklusive Fenster beträgt `±300000 ms`; exakt an beiden Grenzen
+  ist der Request gültig.
+- Diese Struktur- und Zeitprüfungen beweisen weder die semantische Herkunft von
+  `requestId` und `timestamp` noch, dass sie keine privaten oder
+  nutzergenerierten Informationen codieren.
+- Ein späterer vertrauenswürdiger Request-Builder muss `requestId` über einen
+  kontrollierten ID-Generator und `timestamp` über eine kontrollierte Clock
+  erzeugen. Beide Werte dürfen niemals aus privaten oder nutzergenerierten
+  Inhalten abgeleitet werden.
 - Reine Kalenderdaten verwenden `YYYY-MM-DD`.
 - Kalenderdaten werden nicht unnötig über `new Date("YYYY-MM-DD")` geparst.
 
-### Regeln für den Request-Kontext
+### Geplanter Kontext späterer Verträge
+
+Der folgende Kontext ist **nicht implementiert** und wird vom aktuellen
+SyncContract-Validator als unbekanntes Feld abgelehnt. Er bleibt lediglich eine
+Planungsnotiz für spätere, neu zu versionierende Agentenverträge:
 
 ```json
 {
@@ -2813,16 +2950,16 @@ den Workflow-Kontext bestimmt und nicht nur aus dem JSON-Feld abgeleitet.
 | `locale` | String | für Version 1 primär `de-DE` |
 | `clientVersion` | String | gültige Anwendungsversionsangabe |
 
-`mode` ist keine Berechtigung. Die tatsächliche Datenquelle wird serverseitig
-durch getrennte Workflows und Konfigurationen bestimmt.
+`mode` ist auch später keine Berechtigung. Die tatsächliche Datenquelle wird
+serverseitig durch getrennte Workflows und Konfigurationen bestimmt.
 
 ### Größen- und Längenlimits
 
 | Element | Limit für Version 1 |
 | --- | --- |
-| gesamter JSON-Request | maximal 64 KiB |
-| `action` | maximal 64 Zeichen |
-| `requestId` | maximal 64 Zeichen |
+| bereits vorliegender roher Request-String | maximal 65.536 UTF-8-Bytes, inklusive |
+| `action` | exakt `syncTest` |
+| `requestId` | 5 bis 64 ASCII-Zeichen |
 | kurzer Titel | maximal 160 Zeichen |
 | kurze Beschreibung | maximal 500 Zeichen |
 | Lernzusammenfassung | maximal 12.000 Zeichen |
@@ -2831,13 +2968,23 @@ durch getrennte Workflows und Konfigurationen bestimmt.
 | Array von Antworten | maximal 10 Einträge |
 | Fehlermeldung für Clients | maximal 500 Zeichen |
 
-Alle Strings werden als UTF-8 verarbeitet. Eingaben werden validiert und für
-fachliche Vergleiche bei Bedarf getrimmt, aber nicht unbemerkt inhaltlich
-umgeschrieben.
+`validateSyncRawBodySize` akzeptiert ausschließlich einen bereits vorhandenen
+String, misst dessen UTF-8-Bytes und serialisiert niemals ein Objekt. Die
+Funktion implementiert keinen Transport und setzt das Limit daher nicht an
+einem tatsächlichen Webhook durch. Die übrigen Zeilen der Tabelle sind
+Planungsgrenzen späterer LearningTest-Verträge.
 
-## Gemeinsamer Response-Umschlag
+Die spätere Wire-Grenze muss davon getrennt zuerst die tatsächlich empfangenen
+rohen Bodybytes begrenzen, danach JSON unter kontrollierter Fehlerbehandlung
+parsen und erst den resultierenden datenförmigen, weiterhin
+unvertrauenswürdigen Wert mit dem
+Contract-Validator prüfen. `JSON.parse` ohne benutzerdefinierten Reviver erzeugt
+aus JSON gewöhnliche Datenwerte; es transportiert keine Proxies, Accessors,
+Symbole oder Trap-Funktionen.
 
-Jede Antwort an das Dashboard verwendet diese Struktur:
+## Implementierter Response-Umschlag
+
+Eine erfolgreiche `syncTest`-Response besitzt exakt diese zehn Felder:
 
 ```json
 {
@@ -2846,12 +2993,16 @@ Jede Antwort an das Dashboard verwendet diese Struktur:
   "requestId": "req_2f78d95e-9096-4a76-8a2f-6ed149dc53b9",
   "action": "syncTest",
   "handledBy": "SyncAgent",
-  "timestamp": "2026-07-11T12:00:00.245Z",
-  "data": {},
+  "timestamp": "2026-08-03T12:00:00.245Z",
+  "data": {
+    "status": "ok",
+    "dataOrigin": "synthetic"
+  },
   "error": null,
   "warnings": [],
   "meta": {
-    "durationMs": 245
+    "durationMs": 245,
+    "processedBy": ["SyncAgent"]
   }
 }
 ```
@@ -2860,95 +3011,152 @@ Jede Antwort an das Dashboard verwendet diese Struktur:
 
 | Feld | Typ | Regel |
 | --- | --- | --- |
-| `version` | String | verwendete Vertragsversion |
-| `success` | Boolean | Erfolg der primären fachlichen Aktion |
-| `requestId` | String | immer vorhanden |
-| `action` | String | ursprüngliche externe Aktion |
-| `handledBy` | String | Agent des primären fachlichen Ergebnisses |
-| `timestamp` | ISO-8601-String | Zeitpunkt der Antwort in UTC |
-| `data` | Objekt oder `null` | bei Erfolg aktionsspezifisch |
-| `error` | Objekt oder `null` | bei Fehler strukturiert |
-| `warnings` | Array | nicht-blockierende Probleme |
-| `meta` | Objekt | sichere technische Metadaten |
+| `version` | String | exakt wie der korrelierte Request, aktuell `1.0` |
+| `success` | Boolean | `true` für Erfolg, `false` für normalen Fehler |
+| `requestId` | String | exakt wie im korrelierten Request |
+| `action` | String | exakt wie im korrelierten Request, aktuell `syncTest` |
+| `handledBy` | String | exakt `SyncAgent` |
+| `timestamp` | ISO-8601-String | kanonischer UTC-Zeitpunkt mit Millisekunden |
+| `data` | Objekt oder `null` | bei Erfolg exakt `{ status: "ok", dataOrigin: "synthetic" }`, sonst `null` |
+| `error` | Objekt oder `null` | bei Erfolg `null`, sonst exaktes statisches Fehlerprofil |
+| `warnings` | Array | aktuell exakt leer |
+| `meta` | Objekt | exakt `durationMs` und `processedBy` |
 
-`success` beschreibt die primäre Aktion. Bei `learningTest.evaluate` kann eine
-Bewertung fachlich erfolgreich sein, obwohl die anschließende Speicherung
-fehlschlägt. In diesem Fall bleibt `success: true`, während `persistence.status`
-und `warnings` den Speicherfehler sichtbar machen.
+`dataOrigin: "synthetic"` ist ausschließlich eine validierte
+Vertragsklassifikation. Der Wert beweist weder die tatsächliche Herkunft der
+Werte noch ihre Freiheit von privaten Informationen oder allgemeine
+Datenschutzkonformität.
+
+Version, Aktion und `requestId` werden von `validateSyncResponse` exakt gegen
+den vollständig strukturvalidierten korrelierten Request geprüft. Weil diese
+Funktion keine Referenzzeit erhält, wiederholt sie die Freshness-Prüfung des
+Requests nicht. Es gibt keine partielle oder normalisierte Korrelation.
 
 ### Sichere Response-Metadaten
 
 ```json
 {
   "durationMs": 842,
-  "processedBy": ["SyncAgent", "TestAgent", "DataAgent"]
+  "processedBy": ["SyncAgent"]
 }
 ```
 
-- `durationMs` ist eine nicht-negative Ganzzahl.
-- `processedBy` enthält nur Agentennamen, keine Node- oder Workflow-Interna.
+- `durationMs` ist eine sichere Ganzzahl im inklusiven Bereich `0..300000`.
+- `processedBy` ist für normale Responses exakt `["SyncAgent"]` und für frühe
+  Gateway-Fehler exakt `[]`.
 - Stacktraces, Credential-IDs und Airtable-interne Details werden nicht an den
   Client zurückgegeben.
 
 ## Fehlervertrag
 
-### Struktur eines Fehlers
+### Normal korrelierter Fehler
 
 ```json
 {
   "version": "1.0",
   "success": false,
   "requestId": "req_2f78d95e-9096-4a76-8a2f-6ed149dc53b9",
-  "action": "learningTest.evaluate",
+  "action": "syncTest",
   "handledBy": "SyncAgent",
-  "timestamp": "2026-07-11T12:00:00.245Z",
+  "timestamp": "2026-08-03T12:00:00.245Z",
   "data": null,
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "Die Anfrage enthält ungültige Felder.",
+    "message": "Die Anfrage entspricht nicht dem Sync-Vertrag.",
     "retryable": false,
-    "details": [
-      {
-        "field": "payload.answers",
-        "reason": "Mindestens eine Antwort ist erforderlich."
-      }
-    ]
+    "details": []
   },
   "warnings": [],
   "meta": {
-    "durationMs": 12
+    "durationMs": 12,
+    "processedBy": ["SyncAgent"]
   }
 }
 ```
 
-### Erlaubte Fehlercodes
+Normale Fehler korrelieren Version, Aktion und `requestId` exakt mit dem
+Request. Sie erlauben nur diese statischen Profile:
+
+| Code | Exakte Meldung | `retryable` |
+| --- | --- | --- |
+| `VALIDATION_ERROR` | `Die Anfrage entspricht nicht dem Sync-Vertrag.` | `false` |
+| `SERVICE_UNAVAILABLE` | `Der Sync-Dienst ist vorübergehend nicht verfügbar.` | `true` |
+| `INTERNAL_ERROR` | `Die Anfrage konnte nicht verarbeitet werden.` | `false` |
+
+### Früher Gateway-Fehler
+
+Fehler vor einem gültig korrelierbaren Request verwenden ein getrenntes Profil
+mit `version: "1.0"` und `success: false`. Die `requestId` wird serverseitig
+erzeugt, beginnt mit `gateway_`,
+enthält danach mindestens ein ASCII-alphanumerisches Zeichen und anschließend
+nur ASCII-Buchstaben, Ziffern, `_` oder `-`; die syntaktische Mindestlänge ist
+damit 9, die Höchstlänge 64 Zeichen. `action`, `handledBy` und `data` sind `null`;
+`warnings` und `error.details` sind leer, `meta.processedBy` ist `[]`.
+Auch hier garantiert das Format keine Kollisionsarmut; dafür ist der spätere
+serverseitige Gateway-ID-Generator verantwortlich.
+
+```json
+{
+  "version": "1.0",
+  "success": false,
+  "requestId": "gateway_example_001",
+  "action": null,
+  "handledBy": null,
+  "timestamp": "2026-08-03T12:00:00.010Z",
+  "data": null,
+  "error": {
+    "code": "INVALID_JSON",
+    "message": "Die Anfrage enthält kein gültiges JSON.",
+    "retryable": false,
+    "details": []
+  },
+  "warnings": [],
+  "meta": {
+    "durationMs": 10,
+    "processedBy": []
+  }
+}
+```
+
+| Code | Exakte Meldung | `retryable` |
+| --- | --- | --- |
+| `INVALID_JSON` | `Die Anfrage enthält kein gültiges JSON.` | `false` |
+| `VALIDATION_ERROR` | `Die Anfrage entspricht nicht dem Sync-Vertrag.` | `false` |
+| `UNSUPPORTED_VERSION` | `Die Vertragsversion wird nicht unterstützt.` | `false` |
+| `UNKNOWN_ACTION` | `Die angeforderte Aktion wird nicht unterstützt.` | `false` |
+| `PAYLOAD_TOO_LARGE` | `Die Anfrage überschreitet die zulässige Größe.` | `false` |
+| `FORBIDDEN` | `Die Anfrage ist in diesem Kontext nicht erlaubt.` | `false` |
+
+`validateSyncGatewayErrorResponse` prüft dieses Profil ohne einen korrelierten
+Request. Es ist keine normale SyncAgent-Response und behauptet keine
+Verarbeitung durch einen Agenten.
+
+### Geplante Fehlercodes späterer Verträge
+
+Die folgenden breiteren Codes sind nicht Teil der implementierten
+SyncContract-Profile. Sie bleiben Zielplanung für LearningTest-, DataAgent- und
+Transport-Slices:
 
 | Code | Bedeutung | Retry |
 | --- | --- | --- |
-| `INVALID_JSON` | Body ist kein gültiges JSON | nein |
-| `VALIDATION_ERROR` | Umschlag oder Payload ist ungültig | nein |
-| `UNSUPPORTED_VERSION` | Vertragsversion wird nicht unterstützt | nein |
-| `UNKNOWN_ACTION` | Aktion steht nicht auf der Allowlist | nein |
 | `UNAUTHORIZED` | Authentisierung fehlt oder ist ungültig | nein |
-| `FORBIDDEN` | Aktion ist in diesem Kontext nicht erlaubt | nein |
 | `NOT_FOUND` | Angeforderte Ressource existiert nicht | nein |
 | `CONFLICT` | Fachlicher Konflikt | nein |
 | `IDEMPOTENCY_CONFLICT` | Request-ID wurde anders verwendet | nein |
-| `PAYLOAD_TOO_LARGE` | Request überschreitet das Limit | nein |
 | `RATE_LIMITED` | Aufruflimit wurde überschritten | ja, verzögert |
 | `TEST_GENERATION_FAILED` | TestAgent konnte keinen gültigen Test erzeugen | bedingt |
 | `TEST_EVALUATION_FAILED` | TestAgent konnte nicht valide bewerten | bedingt |
 | `DATA_READ_FAILED` | DataAgent konnte nicht lesen | bedingt |
 | `DATA_WRITE_FAILED` | DataAgent konnte nicht schreiben | bedingt |
 | `UPSTREAM_TIMEOUT` | Externes System antwortet nicht rechtzeitig | ja |
-| `SERVICE_UNAVAILABLE` | Benötigter Dienst ist vorübergehend nicht verfügbar | ja |
-| `INTERNAL_ERROR` | Unerwarteter interner Fehler | bedingt |
 
-`retryable: true` bedeutet nicht, dass der Client sofort oder unbegrenzt
-wiederholen darf. Wiederholungen verwenden dieselbe `requestId` und eine
-begrenzte Backoff-Strategie.
+Der aktuelle Slice führt keine Retries aus. `retryable` ist ausschließlich ein
+statischer Wert des Fehlerprofils und keine Retry-Automatik.
 
-### HTTP-Statuszuordnung
+### Geplante HTTP-Statuszuordnung
+
+Der transportneutrale Kern kennt keine HTTP-Statuscodes. Die folgende Tabelle
+ist ausschließlich eine spätere Transportplanung:
 
 | HTTP | Verwendung |
 | --- | --- |
@@ -2968,7 +3176,8 @@ begrenzte Backoff-Strategie.
 
 ## Warnungsvertrag
 
-Warnungen blockieren das primäre fachliche Ergebnis nicht:
+Die implementierte SyncContract Foundation akzeptiert ausschließlich
+`warnings: []`. Strukturierte Warnungen sind erst für spätere Verträge geplant:
 
 ```json
 {
@@ -2977,7 +3186,7 @@ Warnungen blockieren das primäre fachliche Ergebnis nicht:
 }
 ```
 
-Erlaubte Warnungen für Version 1:
+Geplante Warnungen für spätere Version-1-Aktionen:
 
 | Code | Verwendung |
 | --- | --- |
@@ -2998,20 +3207,15 @@ Fehlermeldungen.
   "action": "syncTest",
   "source": "goldendawn-os",
   "requestId": "req_2f78d95e-9096-4a76-8a2f-6ed149dc53b9",
-  "timestamp": "2026-07-11T12:00:00.000Z",
-  "context": {
-    "mode": "private",
-    "locale": "de-DE",
-    "clientVersion": "0.3.0"
-  },
-  "payload": {
-    "message": "GoldenDawn OS connection test"
-  }
+  "timestamp": "2026-08-03T12:00:00.000Z",
+  "payload": {}
 }
 ```
 
-`payload.message` ist optional und auf 120 Zeichen begrenzt. Der SyncAgent gibt
-nicht die gesamte beliebige Payload zurück.
+`payload` ist exakt leer und kein vorgesehenes Inhalts- oder Freitextfeld.
+Freier Text, Echo-Verhalten, Kontext und Client-Modus sind nicht erlaubt. Der
+Contract-Kern führt keinen Sync aus und liest, persistiert oder exportiert
+keine privaten lokalen Anwendungsbestände.
 
 ### Response für syncTest
 
@@ -3022,15 +3226,10 @@ nicht die gesamte beliebige Payload zurück.
   "requestId": "req_2f78d95e-9096-4a76-8a2f-6ed149dc53b9",
   "action": "syncTest",
   "handledBy": "SyncAgent",
-  "timestamp": "2026-07-11T12:00:00.105Z",
+  "timestamp": "2026-08-03T12:00:00.105Z",
   "data": {
     "status": "ok",
-    "agent": "SyncAgent",
-    "mode": "private",
-    "receivedAt": "2026-07-11T12:00:00.032Z",
-    "echo": {
-      "message": "GoldenDawn OS connection test"
-    }
+    "dataOrigin": "synthetic"
   },
   "error": null,
   "warnings": [],
@@ -3040,6 +3239,15 @@ nicht die gesamte beliebige Payload zurück.
   }
 }
 ```
+
+## Geplante LearningTest- und DataAgent-Verträge
+
+Alle folgenden Abschnitte ab `learningTest.create` beschreiben weiterhin nur
+den Zielzustand späterer Versionen. Sie sind nicht in `src/contracts/syncContract.js`
+implementiert, werden von dessen aktuellen Allowlists nicht akzeptiert und
+begründen weder einen Netzwerkfluss noch einen operativen `TestAgent` oder
+`DataAgent`. Ihre Beispiele können vor Implementierung eine neue
+Vertragsversion oder einen neuen ADR erfordern.
 
 ## Vertrag für learningTest.create
 
@@ -3570,22 +3778,32 @@ Eine neue fachliche Prüfung ist kein technischer Retry. Sie erhält:
 - ein neues `resultId`;
 - weiterhin dieselbe `testId`, wenn derselbe Test erneut beantwortet wird.
 
-## Validierungsreihenfolge im SyncAgent
+## Geplante Validierungsreihenfolge an der Transportgrenze
 
-Der SyncAgent validiert in dieser Reihenfolge:
+Diese Reihenfolge gilt erst für den späteren serverseitigen Gateway- und
+SyncAgent-Fluss; sie ist im transportneutralen Slice nicht implementiert:
 
 1. HTTP-Methode und Content-Type;
-2. Payload-Größe und gültiges JSON;
-3. gemeinsamer Request-Umschlag;
-4. unterstützte Vertragsversion;
-5. vertrauenswürdiger Workflow-Kontext und erlaubte Quelle;
-6. Zeitstempel und `requestId`;
-7. Aktions-Allowlist;
-8. aktionsspezifische Payload;
-9. Modus und serverseitige Datenquellenzuordnung;
-10. Idempotenzstatus vor schreibenden Aktionen.
+2. tatsächlich empfangene rohe Bodybytes vor Decodierung oder Parsing begrenzen;
+3. JSON kontrolliert parsen und Parsingfehler statisch redigieren;
+4. den resultierenden datenförmigen, weiterhin unvertrauenswürdigen Wert als gemeinsamen
+   Request-Umschlag validieren;
+5. unterstützte Vertragsversion;
+6. vertrauenswürdiger serverseitiger Kontext und syntaktisch erlaubte Quelle;
+7. Zeitstempel und `requestId`;
+8. Aktions-Allowlist;
+9. aktionsspezifische Payload;
+10. Modus und serverseitige Datenquellenzuordnung;
+11. Idempotenzstatus vor schreibenden Aktionen.
 
 Erst danach wird an TestAgent oder DataAgent geroutet.
+
+Der aktuelle Kern prüft stattdessen ausschließlich bereits vorliegende
+JavaScript-Werte beziehungsweise die UTF-8-Länge eines bereits vorliegenden
+Strings. Raw-Byte-Begrenzung, JSON-Parsing und Envelope-Validierung bleiben
+getrennte Schritte; `validateSyncRawBodySize` parst oder serialisiert nichts.
+`source` wird auch nach erfolgreicher Strukturvalidierung nicht zum
+Herkunfts-, Identitäts- oder Berechtigungsnachweis.
 
 ## Datenschutz- und Sicherheitsregeln
 
@@ -3603,6 +3821,11 @@ Erst danach wird an TestAgent oder DataAgent geroutet.
 ## Kompatibilitäts- und Änderungsregeln
 
 ### Abwärtskompatible Änderungen
+
+Für die aktuell strikt geschlossenen `syncTest`-Profile gibt es keine
+unbekannten optionalen Felder: Jede Erweiterung muss zuerst dokumentiert,
+versioniert und in Validatoren sowie Tests umgesetzt werden. Die folgenden
+Regeln betreffen nur den geplanten breiteren Zielvertrag:
 
 - neues optionales Response-Feld;
 - neuer optionaler Warning-Code;
@@ -3627,52 +3850,51 @@ Breaking Changes benötigen:
 4. Abgleich mit Architektur, Sicherheit, Roadmap und AGENTS.md;
 5. manuellen Pull Request und Review.
 
-## Implementierungsartefakte
+## Implementierungsartefakt
 
-Wenn die Verträge implementiert werden, sollen daraus kleine prüfbare Module
-entstehen:
+Der aktuelle Slice ist bewusst ein kleines, zusammenhängendes ES-Modul:
 
 ```text
 src/
 └── contracts/
-    ├── contractConstants.js
-    ├── requestValidation.js
-    ├── responseValidation.js
-    └── actionSchemas.js
+    └── syncContract.js
 ```
 
-Für Version 1 werden zunächst Browser- und JavaScript-Funktionen verwendet.
-Eine Schema-Bibliothek wird nur nach dokumentierter Entscheidung eingeführt.
+Es verwendet ausschließlich JavaScript- und Plattformfunktionen. Eine
+Schema-Bibliothek, neue Abhängigkeit oder Transportabstraktion wurde nicht
+eingeführt.
 
 ## Vertrags-Testmatrix
 
 | Fall | Erwartung |
 | --- | --- |
-| gültiger `syncTest` | `200`, `success: true`, Request-ID vorhanden |
-| fehlende Version | `400`, `VALIDATION_ERROR` |
-| Version `2.0` | `400`, `UNSUPPORTED_VERSION` |
-| unbekannte Aktion | `400`, `UNKNOWN_ACTION` |
-| übergroße Payload | `413`, `PAYLOAD_TOO_LARGE` |
-| ungültiger Zeitstempel | `400`, `VALIDATION_ERROR` |
-| Schreibrequest ohne `requestId` | `400`, `VALIDATION_ERROR` |
-| externer `data.record.create` | `403`, `FORBIDDEN` |
-| Test mit unbekannter Frage | `422`, `VALIDATION_ERROR` |
-| identischer Retry | bestehendes Ergebnis, kein Duplikat |
-| Request-ID mit anderer Payload | `409`, `IDEMPOTENCY_CONFLICT` |
-| erfolgreiche Bewertung, Speicherfehler | `success: true`, Warning und `failed`-Status |
-| Airtable-Timeout beim Lesen | `504`, `UPSTREAM_TIMEOUT` |
+| gültiger `syncTest`-Request | `ok: true`, keine Fehler |
+| exakt `±300000 ms` Zeitabweichung | gültig; ein Millisekundenschritt darüber ungültig |
+| fehlendes oder zusätzliches Feld | fail-closed mit statischem Validierungsfehler |
+| unbekannte Version, Aktion oder Quelle | fail-closed mit statischem Validierungsfehler |
+| ungültige, nicht-ASCII- oder überlange `req_`-ID | ungültig |
+| exakt 65.536 UTF-8-Bytes | gültig; 65.537 Bytes ungültig |
+| Objekt statt Raw-Body-String | ungültig; keine Serialisierung |
+| gültige Erfolgsresponse | `ok: true`, als `synthetic` klassifizierte Erfolgsdaten und exakte Korrelation |
+| gültiger normaler Fehler | `ok: true`, statisches Normalfehlerprofil und exakte Korrelation |
+| gültiger früher Gateway-Fehler | `ok: true`, `gateway_`-ID und keine normale Korrelation |
+| abweichende Response-Version, -Aktion oder -ID | ungültig |
+| inkonsistente `success`-/`data`-/`error`-Felder | ungültig |
+| gewöhnlicher eigener Accessor, Symbol, Zusatzfeld oder manipulierter Array | kontrollierte Ablehnung; der Validator schreibt keine Properties und liest den Accessor nicht als Wert |
+| Proxy mit werfender Trap | kontrollierter Validierungsfehler, soweit die Reflection-Exception beobachtbar ist; bereits ausgelöste Seiteneffekte werden nicht rückgängig gemacht |
+| transparenter oder zustandsabhängiger Proxy | Erfolg bestätigt nur die während dieses Aufrufs beobachtete Struktur; keine vollständige Proxy-Erkennung oder Seiteneffektgarantie |
 
 ## Contract Definition of Done
 
-Eine Vertragsaktion gilt erst als implementiert, wenn:
+Der aktuelle transportneutrale Vertrags-Slice gilt als implementiert, wenn:
 
 - Request und Response diesem Dokument entsprechen;
 - Pflichtfelder, Typen, Längen und Enums validiert werden;
 - unbekannte Felder gemäß Aktionsschema kontrolliert behandelt werden;
-- positive, negative und Retry-Fälle geprüft sind;
-- Fehlercode und HTTP-Status zusammenpassen;
+- positive, negative, Grenzwert- und hostile-input-Fälle geprüft sind;
+- statische Normal- und Gateway-Fehlerprofile exakt geprüft sind;
 - keine Secrets oder internen Daten offengelegt werden;
-- Idempotenz für schreibende Aktionen nachgewiesen ist;
+- keine Transport-, Idempotenz- oder private Datenfunktion behauptet wird;
 - README und Roadmap den tatsächlichen Implementierungsstatus zeigen;
 - der Produktions-Build erfolgreich ist.
 

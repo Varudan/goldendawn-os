@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.2 – LichtwaldLog Local MVP vollständig geprüft und veröffentlicht` |
+| Projektphase | `v0.3.0 – in Arbeit – SyncContract Foundation` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; Paketversion `v0.2.2`; `v0.2.2` vollständig geprüft und am `2026-08-02` veröffentlicht; neuestes veröffentlichtes Release `v0.2.2`; `v0.3.0` geplant und unbegonnen |
-| Letzte Aktualisierung | 2026-08-02 |
+| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell ausschließlich transportneutraler SyncContract-Kern |
+| Letzte Aktualisierung | 2026-08-04 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -60,7 +60,8 @@ Daten sein. Sie werden neu erstellt und als Demo-Inhalte gekennzeichnet.
 
 ```mermaid
 flowchart TD
-    Browser["Browser und Vite-Frontend"] --> Webhook["n8n-Webhook"]
+    Browser["Browser und Vite-Frontend"] --> Service["SyncService"]
+    Service --> Webhook["Serverseitiger n8n-Webhook/Gateway"]
     Webhook --> Sync["SyncAgent"]
     Sync --> Test["TestAgent"]
     Sync --> Data["DataAgent"]
@@ -76,6 +77,65 @@ An jeder Grenze gilt:
 - Fehlerantworten enthalten keine Secrets oder internen Stacktraces.
 - Berechtigungen werden nicht allein aus Angaben des Clients abgeleitet.
 - Daten werden nur an den Agenten weitergegeben, der sie benötigt.
+
+### Aktuelle Grenze der SyncContract Foundation
+
+Der aktuelle Slice implementiert keine der Netzwerkgrenzen im Diagramm. Er
+prüft ausschließlich bereits im Speicher vorhandene Vertragswerte. Nur das
+erlaubte Erfolgsprofil enthält `dataOrigin: "synthetic"` als
+Vertragsklassifikation. Es gibt keinen Endpoint, Webhook, `SyncService`,
+operativen `SyncAgent`, n8n-Workflow, keine Authentisierung, Signaturprüfung,
+CORS- oder Rate-Limit-Durchsetzung und keine Telemetrie oder Persistenz.
+
+Der `syncTest`-Request besitzt kein vorgesehenes Inhalts- oder Freitextfeld;
+`payload` muss exakt `{}` sein. Der Contract-Kern liest, persistiert oder
+exportiert keine privaten lokalen Bestände aus PromptVault, LearningHub oder
+LichtwaldLog. `requestId` wird nur syntaktisch und `timestamp` nur kanonisch
+sowie relativ zur Referenzzeit geprüft. Das beweist weder ihre semantische
+Herkunft noch, dass sie keine privaten oder nutzergenerierten Informationen
+codieren. Ein späterer vertrauenswürdiger Request-Builder muss beide Werte mit
+einem kontrollierten ID-Generator beziehungsweise einer kontrollierten Clock
+erzeugen und darf sie niemals aus privaten oder nutzergenerierten Inhalten
+ableiten.
+
+`dataOrigin: "synthetic"` ist nur eine validierte Vertragsklassifikation und
+kein Beweis tatsächlicher Herkunft oder Datenschutzkonformität. Mangels
+Transport ist in diesem Slice weiterhin kein privater externer Datenfluss
+implementiert.
+
+Dasselbe gilt für `source: "goldendawn-os"`: Der Wert ist nur eine syntaktische
+Contract-Klassifikation und beweist weder Authentisierung noch technische
+Herkunft, Identität oder Berechtigung. Eine spätere serverseitige Grenze muss
+vertrauenswürdige Herkunft aus ihrem Transport- und Authentisierungskontext
+bestimmen. Routing und Autorisierung dürfen nie allein aus `source` folgen.
+
+Für stabile, seiteneffektfreie gewöhnliche Records, Arrays und Strings prüft der
+Validator eigene Keys und Property-Deskriptoren deterministisch. Er schreibt
+selbst keine Properties und liest gewöhnliche eigene Accessors nicht als Werte;
+deren Getter werden dabei nicht aufgerufen. Reflection auf einem Proxy kann
+jedoch `getPrototypeOf`-, `ownKeys`- und `getOwnPropertyDescriptor`-Traps sowie
+Getter eines von einer Trap gelieferten Descriptorobjekts ausführen. Solcher
+Code kann Eingaben mutieren oder externen Zustand ändern. Same-Realm-Proxy-Traps
+sind beliebiger JavaScript-Code und können globale Laufzeitobjekte verändern,
+die Ausführung blockieren oder spätere Operationen zum Werfen bringen.
+Reflection-Catches können solche Wirkungen weder verhindern noch rückgängig
+machen.
+
+Eine portable vollständige Proxy-Erkennung existiert nicht. Beobachtbar
+werfende Reflection-Schritte werden kontrolliert als ungültig behandelt, aber
+ein transparenter oder zustandsabhängiger Proxy kann während eines Aufrufs wie
+ein gewöhnlicher Wert erscheinen. Erfolg bestätigt daher nur die dabei
+beobachtete Struktur und weder Seiteneffektfreiheit noch einen später identischen
+Zustand.
+
+`validateSyncRawBodySize` akzeptiert nur einen bereits vorhandenen String und
+erlaubt inklusive exakt 65.536 UTF-8-Bytes. Die Funktion serialisiert kein
+unvertrauenswürdiges Objekt. Ohne Transport setzt sie weder ein HTTP- noch ein
+Webhook-Limit durch; ein späteres Gateway muss rohe Bodybytes vor JSON-Parsing
+selbst begrenzen. Danach muss es JSON kontrolliert parsen und erst den
+resultierenden datenförmigen, weiterhin unvertrauenswürdigen Wert validieren.
+`JSON.parse` ohne benutzerdefinierten Reviver transportiert keine Proxies,
+Accessors, Symbole oder Trap-Funktionen.
 
 ## Bedrohungsmodell für Version 1
 
@@ -405,8 +465,8 @@ bedienbarer Runtime-Stack umgesetzt; Herkunft und Reload-Verhalten bleiben auch
 beim besonderen Moment sichtbar. Der geplante Implementierungsumfang ist
 vollständig abgeschlossen und geprüft. Der annotierte Tag `v0.2.2` und das
 zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
-das neueste veröffentlichte Release. `v0.3.0` ist geplant und noch nicht
-begonnen. ADR 0013, ADR 0014 und ADR
+das neueste veröffentlichte Release. `v0.3.0` ist mit der transportneutralen
+SyncContract Foundation in Arbeit. ADR 0013, ADR 0014 und ADR
 0015 dokumentieren die unveränderten Contract-, private Storage- und
 Demo-Trennungsgrenzen.
 
@@ -650,6 +710,11 @@ Demo-Trennungsgrenzen.
 
 ## Webhook-Sicherheit
 
+Dieser Abschnitt beschreibt ausschließlich die noch zu implementierende
+serverseitige Transportgrenze. Der aktuelle SyncContract-Slice stellt keinen
+Webhook bereit und erfüllt diese Regeln nicht bereits durch Dokumentation oder
+Objektvalidierung.
+
 ### Entwicklungsmodus
 
 Ein n8n-Test-Webhook ohne Authentisierung ist nur zulässig, wenn:
@@ -690,14 +755,23 @@ Kosten und Datenbereinigung kontrolliert sind.
 
 ### Request-Regeln
 
-- Nur die benötigten HTTP-Methoden sind aktiv; für Version 1 primär `POST`.
+- Später sind nur die benötigten HTTP-Methoden aktiv; für Version 1 primär
+  `POST`.
 - Der erwartete Content-Type ist `application/json`.
 - Erlaubte Aktionen werden über eine feste Allowlist definiert.
 - Payloads werden gegen das Schema aus `docs/data-contracts.md` validiert.
-- Für Version 1 gilt als Ziel ein maximales JSON-Payload von `64 KiB`, sofern
-  ein dokumentierter Anwendungsfall keine andere Grenze verlangt.
+- Das spätere Gateway begrenzt den rohen Request-Body vor JSON-Parsing auf
+  höchstens 65.536 UTF-8-Bytes. Die aktuelle reine String-Prüfung ist nur eine
+  wiederverwendbare Vertragsfunktion und keine serverseitige Durchsetzung.
+- Nach der Raw-Bodybyte-Grenze wird JSON kontrolliert geparst; erst der daraus
+  entstandene datenförmige, weiterhin unvertrauenswürdige Wert wird validiert.
+- `source: "goldendawn-os"` ist kein Herkunfts-, Identitäts-, Authentisierungs-
+  oder Berechtigungsnachweis. Routing und Autorisierung verwenden zusätzlich
+  vertrauenswürdigen serverseitigen Kontext.
 - Zeitstempel, `requestId` und Feldlängen werden geprüft.
-- Wiederholte Schreibrequests werden idempotent behandelt.
+- Wiederholte schreibende Requests werden erst in späteren Verträgen
+  idempotent behandelt; `syncTest` ist nicht schreibend und der aktuelle Slice
+  besitzt keinen Idempotenzspeicher.
 - CORS erlaubt nur bekannte Origins; `*` wird im verbundenen Produktionsmodus
   nicht verwendet.
 - CORS ist keine Authentisierung und ersetzt keinen Zugriffsschutz.
@@ -786,6 +860,9 @@ Der DataAgent:
   dargestellt wird.
 
 ### Schutz des SyncAgent
+
+Der `SyncAgent` ist noch nicht operativ. Die folgenden Regeln gelten für seine
+spätere serverseitige Implementierung:
 
 - Der SyncAgent verwendet eine feste Aktions-Allowlist.
 - Routingentscheidungen basieren auf validierten Feldern, nicht auf frei
@@ -895,7 +972,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
 | `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; vollständig geprüft und veröffentlicht |
 | `v0.2.2` | privater allowlist-basierter View-, Controller-, Service- und Storage-Pfad sowie strikt getrennter synthetischer In-Memory-Demo-Stack mit fester Herkunft, Safe DOM, Closure-/Map-isolierten Entry-IDs, defensiver UI-Projektion, flüchtiger Suche/Filterung, DOM-Unmount-Grenze, statisch redigierten Fehlern, ohne Browser-Key oder Fallback; keine Base64-Bilder in `localStorage`, keine externe Übertragung; vollständig geprüft und veröffentlicht |
-| `v0.3.0` | Geplant und unbegonnen; künftiger Beginn externer Kommunikation mit Webhook-Allowlist, Schema- und Größenprüfung sowie kontrollierten CORS-Regeln |
+| `v0.3.0` | In Arbeit: geschlossene SyncContract-Allowlist mit als `synthetic` klassifiziertem Erfolgsprofil, exakte Hüllen und Korrelation, statisch redigierte Fehler, descriptor-basierte Fail-closed-Validierung und reine 65.536-UTF-8-Byte-Prüfung; Webhook, Authentisierung, Signaturen, CORS, Rate Limits und externer Transport bleiben offen |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
 | `v0.5.0` | Prompt-Injection-Schutz, strukturierter TestAgent-Output, keine Direktzugriffe |
 | `v0.6.0` | End-to-End-Sicherheitsreview und vollständige Demo-Trennung |

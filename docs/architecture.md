@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.2 – LichtwaldLog Local MVP vollständig geprüft und veröffentlicht` |
+| Projektphase | `v0.3.0 – in Arbeit – SyncContract Foundation` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; Paketversion `v0.2.2`; `v0.2.2` vollständig geprüft und am `2026-08-02` veröffentlicht; neuestes veröffentlichtes Release `v0.2.2`; `v0.3.0` geplant und unbegonnen |
-| Letzte Aktualisierung | 2026-08-02 |
+| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell ausschließlich transportneutraler SyncContract-Kern |
+| Letzte Aktualisierung | 2026-08-04 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -59,8 +59,9 @@ Folgende Punkte werden bewusst nicht umgesetzt:
 flowchart TD
     User["Jan oder Demo-Nutzer"] --> UI["GoldenDawn OS Dashboard"]
     UI --> Local["Lokaler Storage-Adapter"]
-    UI --> Sync["Sync-Service"]
-    Sync --> Router["SyncAgent in n8n"]
+    UI --> Sync["SyncService"]
+    Sync --> Gateway["Serverseitiger n8n-Webhook/Gateway"]
+    Gateway --> Router["SyncAgent"]
     Router --> Test["TestAgent"]
     Router --> Data["DataAgent"]
     Test --> Router
@@ -81,7 +82,8 @@ angesprochen.
 
 ```text
 Dashboard
-  → Sync-Service
+  → SyncService
+  → serverseitiger n8n-Webhook/Gateway
   → SyncAgent
   → TestAgent oder DataAgent
   → Airtable ausschließlich über DataAgent
@@ -94,6 +96,48 @@ Diese Regel verhindert:
 - doppelte Validierungs- und Routinglogik;
 - direkte Abhängigkeiten zwischen Benutzeroberfläche und Airtable-Schema;
 - vermischte Verantwortlichkeiten der Agenten.
+
+### Aktueller v0.3.0-Slice
+
+Die **SyncContract Foundation** implementiert ausschließlich den reinen,
+transportneutralen Vertragskern für `syncTest`. Sie kennt weder UI noch
+Netzwerk, Endpoint, Webhook oder n8n-Workflow und besitzt keine Agentenlogik.
+Der Request besitzt kein vorgesehenes Inhalts- oder Freitextfeld; `payload`
+ist exakt `{}`. Der Kern liest, persistiert oder exportiert keine privaten
+Bestände aus PromptVault, LearningHub oder LichtwaldLog.
+
+`requestId` und `timestamp` werden nur strukturell beziehungsweise zeitlich
+geprüft. Das beweist weder ihre semantische Herkunft noch ihre Freiheit von
+privaten oder nutzergenerierten Informationen. Ein späterer vertrauenswürdiger
+Request-Builder muss sie aus einem kontrollierten ID-Generator und einer
+kontrollierten Clock erzeugen und darf sie niemals aus privaten oder
+nutzergenerierten Inhalten ableiten. `synthetic` ist nur eine
+Vertragsklassifikation und kein Beweis tatsächlicher Herkunft oder
+Datenschutzkonformität. Mangels Transport ist weiterhin kein privater externer
+Datenfluss implementiert.
+
+Der erste reale Fluss bleibt browserinitiiert und ist noch nicht implementiert:
+
+```text
+GoldenDawn
+  → SyncService
+  → serverseitiger n8n-Webhook/Gateway
+  → SyncAgent
+  → validierte Antwort
+```
+
+Das Vite-Browserfrontend ist dabei Client. Es terminiert keinen eingehenden
+öffentlichen Webhook. Serverseitige Authentisierung, Signaturprüfung, CORS,
+Rate Limits und Raw-Body-Durchsetzung werden erst zusammen mit der
+Transportgrenze entschieden und implementiert.
+
+### Spätere Hub-Verantwortung
+
+Der AgentHub stellt später den `SyncAgent`, seine Fähigkeiten und seinen
+Ausführungsstatus dar. Der AutomationHub stellt später Verbindungen, Webhooks
+und Workflows dar und ist der einzige vorgesehene Ort, an dem `syncTest`
+ausgelöst wird. Der aktuelle Slice dokumentiert diese Zuständigkeit nur; er
+implementiert weder AgentHub- noch AutomationHub-UI.
 
 ## Frontend-Schichten
 
@@ -175,8 +219,8 @@ saveLichtwaldLog(lichtwaldLog)
 
 ### Sync-Service
 
-Der Sync-Service ist die einzige externe Kommunikationsschicht des Frontends.
-Er:
+Der noch nicht implementierte SyncService ist als einzige externe
+Kommunikationsschicht des Frontends vorgesehen. Er:
 
 - erstellt Requests nach dem dokumentierten Sync-Vertrag;
 - sendet Requests an den n8n-Webhook;
@@ -184,23 +228,24 @@ Er:
 - behandelt Timeouts, Netzwerkfehler und ungültige Antworten kontrolliert;
 - unterstützt einen lokalen Modus ohne konfigurierte Webhook-Verbindung.
 
-Der Sync-Service enthält keine Prüfungs- oder Airtable-Fachlogik.
+Der spätere SyncService enthält keine Prüfungs- oder Airtable-Fachlogik.
 
 ## Agentenverantwortung
 
 ### SyncAgent
 
-Der `SyncAgent` ist Gateway und Orchestrator. Er:
+Der noch nicht operative `SyncAgent` ist hinter dem serverseitigen
+n8n-Webhook/Gateway als Orchestrator vorgesehen. Er:
 
-1. nimmt einen Request vom Sync-Service entgegen;
+1. nimmt einen Request vom serverseitigen n8n-Webhook/Gateway entgegen;
 2. prüft Version, Aktion, Quelle, Zeitstempel und Payload;
-3. erzeugt oder übernimmt eine `requestId`;
+3. übernimmt die verpflichtende, zuvor von GoldenDawn erzeugte `requestId`;
 4. klassifiziert die Anfrage;
 5. routet sie an `TestAgent` oder `DataAgent`;
 6. normalisiert das Ergebnis;
 7. gibt eine standardisierte Antwort an das Dashboard zurück.
 
-Der `SyncAgent` darf keine Airtable-Credentials verwenden und keine
+Der spätere `SyncAgent` darf keine Airtable-Credentials verwenden und keine
 fachspezifische Prüfungsbewertung durchführen.
 
 ### TestAgent
@@ -251,8 +296,10 @@ Eigenschaften:
 ### Lokale Module der Reihe v0.2.x
 
 Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
-Alle Datenzugriffe bleiben hinter Modulservices und Storage-Adaptern. Erst
-`v0.3.0` beginnt mit externer Kommunikation über den Sync-Service.
+Alle Datenzugriffe bleiben hinter Modulservices und Storage-Adaptern. Der
+erste `v0.3.0`-Slice führt nur den transportneutralen Vertrag ein;
+externe Kommunikation über den SyncService beginnt erst in einem späteren
+Slice dieses Meilensteins.
 
 #### LearningHub Local MVP in v0.2.1
 
@@ -677,8 +724,8 @@ umgesetzt; Herkunft und Reload-Verhalten bleiben auch bei der Präsentation des
 besonderen Moments sichtbar. Der geplante Implementierungsumfang ist damit
 vollständig abgeschlossen und geprüft. Der annotierte Tag `v0.2.2` und das
 zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
-das neueste veröffentlichte Release. `v0.3.0` ist geplant und noch nicht
-begonnen. ADR 0013, ADR 0014 und ADR 0015
+das neueste veröffentlichte Release. `v0.3.0` ist mit der transportneutralen
+SyncContract Foundation in Arbeit. ADR 0013, ADR 0014 und ADR 0015
 dokumentieren Contract, private Persistenz und Demo-Trennung.
 
 Der spätere Zielpfad bleibt:
@@ -686,6 +733,7 @@ Der spätere Zielpfad bleibt:
 ```text
 LearningTestService
   → SyncService
+  → serverseitiger n8n-Webhook/Gateway
   → SyncAgent
   → TestAgent
 ```
@@ -1023,11 +1071,12 @@ darf nicht automatisch oder vollständig weitergegeben werden.
 
 ### Verbundener Modus
 
-Der verbundene Modus ergänzt die lokale Anwendung um kontrollierte externe
-Verarbeitung.
+Der noch nicht implementierte verbundene Modus wird die lokale Anwendung um
+kontrollierte externe Verarbeitung ergänzen.
 
 ```text
-UI → Service → Sync-Service → SyncAgent → Fachagent
+UI → Service → SyncService → serverseitiger n8n-Webhook/Gateway → SyncAgent
+  → validierte Antwort
 ```
 
 Ein Modul entscheidet nicht selbst, welcher Fachagent angesprochen wird. Diese
@@ -1035,7 +1084,8 @@ Entscheidung liegt beim `SyncAgent`.
 
 ## Sync-Vertrag
 
-Der grundlegende Request-Umschlag lautet:
+Der in `v0.3.0` implementierte transportneutrale Kern akzeptiert aktuell
+ausschließlich `syncTest`. Sein Request besitzt exakt diese sechs Felder:
 
 ```json
 {
@@ -1043,28 +1093,55 @@ Der grundlegende Request-Umschlag lautet:
   "action": "syncTest",
   "source": "goldendawn-os",
   "requestId": "req_example_001",
-  "timestamp": "2026-07-11T12:00:00.000Z",
+  "timestamp": "2026-08-03T12:00:00.000Z",
   "payload": {}
 }
 ```
 
-Eine standardisierte Antwort soll mindestens folgende Struktur unterstützen:
+`requestId` ist verpflichtend und wird nur strukturell geprüft. Der kanonische
+UTC-Zeitstempel wird nur zeitlich geprüft und muss gegenüber einer expliziten
+Referenzzeit innerhalb des inklusiven Fensters von `±300000 ms` liegen.
+`payload` ist exakt `{}`; ein vorgesehenes Inhalts- oder Freitextfeld,
+unbekannte Felder, ein Client-Kontext oder ein deklarativer Modus sind nicht
+erlaubt.
+
+Die exakt korrelierte Erfolgsantwort lautet:
 
 ```json
 {
   "version": "1.0",
   "success": true,
   "requestId": "req_example_001",
-  "handledBy": "SyncAgent",
   "action": "syncTest",
-  "data": {},
-  "error": null
+  "handledBy": "SyncAgent",
+  "timestamp": "2026-08-03T12:00:00.125Z",
+  "data": {
+    "status": "ok",
+    "dataOrigin": "synthetic"
+  },
+  "error": null,
+  "warnings": [],
+  "meta": {
+    "durationMs": 125,
+    "processedBy": ["SyncAgent"]
+  }
 }
 ```
 
-Die konkreten Aktionen, Payloads und Antwortdaten werden verbindlich in
-`docs/data-contracts.md` definiert. Dieses Dokument legt nur den gemeinsamen
-Umschlag und die Verantwortungsgrenzen fest.
+`dataOrigin: "synthetic"` kommt ausschließlich im erlaubten Erfolgsprofil vor
+und ist nur eine Vertragsklassifikation. Der Wert beweist weder tatsächliche
+Herkunft noch die Abwesenheit privater Daten.
+
+Normale Fehler behalten Version, Aktion und `requestId` exakt bei und erlauben
+nur `VALIDATION_ERROR`, `SERVICE_UNAVAILABLE` oder `INTERNAL_ERROR`. Frühe
+Gateway-Fehler sind ein getrenntes Profil mit serverseitiger `gateway_`-ID,
+`action: null`, `handledBy: null`, `data: null` und leerer
+`processedBy`-Kette. Die vollständigen exakten Profile, statischen Meldungen
+und die öffentliche Validator-API stehen in `docs/data-contracts.md`.
+
+Der Contract-Kern sendet und empfängt selbst nichts. Insbesondere die reine
+Prüfung von maximal 65.536 UTF-8-Bytes für einen bereits vorliegenden String
+ist keine Durchsetzung an einem Webhook.
 
 ## Späterer verbundener Ablauf eines Lerntests
 
@@ -1072,20 +1149,26 @@ Umschlag und die Verantwortungsgrenzen fest.
 sequenceDiagram
     actor User as Jan
     participant UI as Dashboard
+    participant Service as SyncService
+    participant Gateway as serverseitiger n8n-Webhook/Gateway
     participant Sync as SyncAgent
     participant Test as TestAgent
     participant Data as DataAgent
     participant DB as Airtable
 
     User->>UI: Test starten oder Antwort abgeben
-    UI->>Sync: Validierter Request
+    UI->>Service: Validierter Request
+    Service->>Gateway: Browserinitiierter Request
+    Gateway->>Sync: Validierter Vertragsrequest
     Sync->>Test: Prüfungsauftrag
     Test-->>Sync: Test oder Bewertung
     Sync->>Data: Ergebnis speichern
     Data->>DB: Strukturierter Schreibauftrag
     DB-->>Data: Gespeicherter Datensatz
     Data-->>Sync: Normalisiertes Ergebnis
-    Sync-->>UI: Standardisierte Antwort
+    Sync-->>Gateway: Normalisierte Antwort
+    Gateway-->>Service: Validierte Antwort
+    Service-->>UI: Standardisierte Antwort
     UI-->>User: Ergebnis und Feedback
 ```
 
@@ -1104,7 +1187,7 @@ Fehler werden an der Schicht behandelt, die genügend Kontext dafür besitzt:
 | Beschädigte lokale JSON-Daten oder Browser-Storage-Fehler | StorageAdapter |
 | Ungültige lokale Domänendaten oder falsche Datenherkunft | fachliche Storage-Schicht und Modulservice |
 | Netzwerkfehler oder Timeout | Sync-Service |
-| Ungültiger Request-Vertrag | SyncAgent |
+| Ungültiger Request-Vertrag | aktuell reiner SyncContract-Validator; später SyncAgent an der serverseitigen Grenze |
 | Fehlerhafte Prüfungsantwort | TestAgent |
 | Airtable- oder Mappingfehler | DataAgent |
 
@@ -1123,7 +1206,9 @@ Grundregeln:
   späteren serverseitigen Umgebung.
 - `VITE_*`-Variablen gelten als öffentlich und dürfen keine Secrets enthalten.
 - Eine Webhook-URL wird nicht als alleiniger Schutzmechanismus betrachtet.
-- Requests werden im Frontend und erneut im `SyncAgent` validiert.
+- Requests werden künftig im Frontend und erneut im `SyncAgent` validiert; der
+  aktuelle Slice stellt nur die gemeinsam nutzbare reine Validierungslogik
+  bereit.
 - Payload-Größe, erlaubte Aktionen und Datentypen werden begrenzt.
 - Logs enthalten keine Tokens oder unnötigen personenbezogenen Daten.
 - Private und öffentliche Daten verwenden getrennte Airtable-Bases,
@@ -1199,7 +1284,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
 | `v0.2.2` | Vollständig geprüft und veröffentlicht; keine externe Kommunikation |
-| `v0.3.0` | Geplanter und noch nicht begonnener SyncService-, Webhook- und SyncAgent-Pfad als erste externe Kommunikationsschicht |
+| `v0.3.0` | In Arbeit: transportneutrale SyncContract Foundation zuerst; SyncService, serverseitiger Webhook/Gateway und operativer SyncAgent folgen |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
 | `v0.6.0` | Integrierter Drei-Agenten-Fluss |
@@ -1232,6 +1317,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0013](decisions/0013-lichtwald-log-local-contract.md) | Lokaler LichtwaldLog-Vertrag mit einzelner Fokusreferenz | Angenommen |
 | [0014](decisions/0014-lichtwald-log-private-storage-foundation.md) | Begrenzte private LichtwaldLog-Full-Snapshot-Persistenz | Angenommen |
 | [0015](decisions/0015-separated-lichtwald-log-demo-runtime.md) | Getrennte synthetische LichtwaldLog-Demo-Runtime | Angenommen |
+| [0016](decisions/0016-transport-neutral-sync-contract-foundation.md) | Transportneutraler Sync-v1-Kern und künftige Transport- und Hub-Grenze | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).

@@ -10,7 +10,7 @@
 
 **Current release:** `v0.2.2 — LichtwaldLog Local MVP complete, verified, and published`
 
-**Next planned milestone:** `v0.3.0 — SyncAgent and Webhook Foundation; not started`
+**Current development:** `v0.3.0 — in progress — SyncContract Foundation`
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -66,10 +66,19 @@ complete suite with 0 skips and 0 todos; the production build transformed
 exactly 46 modules. `v0.2.2` is complete, verified, and published. Its
 annotated tag and corresponding GitHub Release were published on 2026-08-02,
 making `v0.2.2` the latest published release. `private: true` is package metadata and
-does not make this publicly visible repository private. The next milestone,
-`v0.3.0 – SyncAgent and Webhook Foundation`, is planned and has not started.
-`v0.2.2` remains fully local and includes no external communication, webhooks,
-agent logic, or Airtable integration.
+does not make this publicly visible repository private. The published release,
+package version, and tag remain `v0.2.2`, `0.2.2`, and `v0.2.2`. Development
+of `v0.3.0 – SyncAgent and Webhook Foundation` has begun with the
+transport-neutral **SyncContract Foundation**. This first slice implements only
+strict request, response, gateway-error, and raw-body-size validation.
+`syncTest` requests require an exactly empty payload, while successful responses
+are limited to `dataOrigin: "synthetic"`. That value is only a contract
+classification, not proof of actual provenance or privacy. Deterministic,
+side-effect-free guarantees apply to stable, side-effect-free ordinary records,
+arrays, and strings. The slice introduces no network request, webhook,
+`SyncService`, operational `SyncAgent`, n8n connection, authentication,
+signature verification, CORS or rate-limit enforcement, Hub UI, or external
+private-data flow.
 
 ## Vision
 
@@ -92,16 +101,20 @@ flowchart TD
     UI["Dashboard and modules"] --> Services["Application services"]
     Services --> Local["Local storage adapter"]
     Services --> Sync["Sync service"]
-    Sync --> Agent["SyncAgent in n8n"]
+    Sync --> Gateway["Server-side n8n webhook/gateway"]
+    Gateway --> Agent["SyncAgent"]
     Agent --> Test["TestAgent"]
     Agent --> Data["DataAgent"]
     Test --> Agent
     Data --> Airtable["Airtable"]
 ```
 
-The dashboard will communicate with external systems through the SyncAgent
-instead of accessing Airtable, APIs, or specialized agents directly.
-Only the DataAgent communicates with Airtable in Version 1.
+The first real connected flow will be browser-initiated:
+`GoldenDawn → SyncService → server-side n8n webhook/gateway → SyncAgent →
+validated response`. The browser does not terminate an incoming public webhook.
+The dashboard will not access Airtable, APIs, or specialized agents directly;
+only the DataAgent communicates with Airtable in Version 1. This flow remains
+planned: the current slice implements only its transport-neutral contract.
 
 See [`docs/architecture.md`](docs/architecture.md) for responsibilities,
 boundaries, and end-to-end data flows.
@@ -120,8 +133,8 @@ Accepted architecture decisions and their rationale are indexed in
 | PromptVault | Local prompt library with editing, search, category filters, favorites, immutable history, and restoration | `v0.2.0` | Local MVP implemented; milestone complete |
 | LearningHub | User-configured modules, trackable chapters, text-based LearningNodes, local notes and summaries, and deterministic local tests | `v0.2.1` | Local MVP complete, verified, and published |
 | LichtwaldLog | Local text journal with search and exact calendar-date and tag filters plus a strictly separated synthetic in-memory demo | `v0.2.2` | Local MVP complete, verified, and published |
-| Agent Hub | Agent overview, capabilities, and execution status | Later milestone | Planned |
-| Automation Hub | Visibility into n8n workflows and results | Later milestone | Planned |
+| Agent Hub | Later presentation of the SyncAgent, its capabilities, and execution status | Later milestone | Responsibility documented; no UI implemented |
+| Automation Hub | Later presentation of connections, webhooks, and workflows, including the only `syncTest` trigger | Later milestone | Responsibility documented; no UI implemented |
 | Weekly Review | Structured summaries, progress, and next actions | Later, after the LichtwaldLog Local MVP | Planned; not part of `v0.2.2` |
 
 ### PromptVault local MVP
@@ -294,6 +307,7 @@ deferred to `v0.5.0`, using the later path:
 ```text
 LearningTestService
   → SyncService
+  → server-side n8n webhook/gateway
   → SyncAgent
   → TestAgent
 ```
@@ -528,16 +542,21 @@ UTF-16-code-unit limit, browser quota, read preflight, TOCTOU, and multi-tab
 limitations remain unchanged. `v0.2.2` includes no external communication, webhooks,
 synchronization, agent logic, or Airtable integration. Weekly Review is later
 work and is not part of this milestone. The package remains at version
-`v0.2.2`. The annotated `v0.2.2` tag and corresponding GitHub Release were
+`0.2.2`. The annotated `v0.2.2` tag and corresponding GitHub Release were
 published on 2026-08-02, and `v0.2.2` is the latest published release.
-`v0.3.0` is planned and has not started.
+`v0.3.0` is now in progress with the SyncContract Foundation. This current
+slice remains transport-neutral. It requires an exactly empty request payload
+and limits successful responses to `dataOrigin: "synthetic"`; that marker is only
+a contract classification, not proof of actual provenance or privacy. The slice
+does not alter any published `v0.2.2` local flow and does not yet establish
+external communication or an operational agent.
 
 ## Development principles
 
 - Build in small, stable, and verifiable steps.
 - Follow the sequence: **mock → webhook → Airtable → agent logic**.
-- Keep every `v0.2.x` milestone local; external communication starts with
-  `v0.3.0`.
+- Keep every `v0.2.x` milestone local; `v0.3.0` prepares the external boundary,
+  while its first contract slice still has no external communication.
 - Keep UI components independent from concrete storage technologies.
 - Encapsulate local persistence behind storage adapters.
 - Route external communication through services and the SyncAgent.
@@ -579,13 +598,14 @@ non-binding; see the roadmap for details.
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
 | v0.2.2 | LichtwaldLog Local MVP | Complete, verified, and published |
-| v0.3.0 | SyncService, webhook, and SyncAgent | Planned first external communication boundary with validated n8n requests; not started |
+| v0.3.0 | SyncAgent and Webhook Foundation | In progress: transport-neutral SyncContract Foundation implemented first; transport, webhook, SyncService, and operational SyncAgent remain planned |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
 | v0.6.0 | Integration | Planned integration and verification of the previously introduced local and external components |
 | v1.0.0 | Portfolio release | Planned secure demo separation, portfolio documentation, and deployment |
 
-The `v0.2.x` line intentionally remains local, and `v0.3.0` begins external
+The `v0.2.x` line intentionally remains local. `v0.3.0` prepares the first
+external boundary with a transport-neutral contract before later slices add
 communication. Additional patch or minor versions may be inserted when needed
 without reordering these milestones. The architecture sequence remains
 **mock → webhook → Airtable → agent logic**.
@@ -630,6 +650,11 @@ suite with 0 skips and 0 todos. The production build transformed exactly 46
 modules. The annotated `v0.2.2` tag and corresponding GitHub Release were
 published on 2026-08-02. `v0.2.2` is the latest published release.
 
+The unreleased `v0.3.0` SyncContract slice passed 45/45 targeted tests and the
+complete suite passed 978/978 tests, with 0 failures, 0 skips, and 0 todos. The
+production build succeeded and transformed exactly 46 modules. These results
+do not change the published release metadata above.
+
 The published `v0.2.1` release was finally verified with:
 
 ```bash
@@ -650,6 +675,31 @@ synthetic demo data. Private learning, prompt, reflection, health, or other
 personal user content does not belong in the repository. Current user content
 remains in the active browser profile and is not synchronized.
 
+The current SyncContract Foundation requires `syncTest.payload` to be exactly
+`{}`. Successful responses are limited to `dataOrigin: "synthetic"`, which is
+only a contract classification and proves neither actual provenance nor
+privacy. The contract core neither reads nor exports PromptVault, LearningHub,
+or LichtwaldLog data. Its pure raw-body helper measures an already available
+string against exactly 65,536 UTF-8 bytes; without a transport or webhook, it
+does not enforce an HTTP request limit.
+
+The validator itself writes no properties and does not read ordinary own
+accessors as values. JavaScript reflection on a Proxy can nevertheless invoke
+traps and descriptor-conversion getters, which may mutate the input or external
+state. Same-realm Proxy traps are arbitrary JavaScript and can also change
+global runtime objects, block execution, or make later operations throw.
+Reflection catches cannot prevent or undo those effects. A successful result
+confirms only the structure observed during that validation call, and there is
+no portable way to detect every Proxy.
+
+`source: "goldendawn-os"` is only a syntactic contract classification. It does
+not prove authentication, origin, identity, or authorization; a later server
+boundary must establish trusted provenance and must never route or authorize
+from `source` alone. That wire boundary must limit raw body bytes first, parse
+JSON under controlled error handling, and then validate the resulting
+data-shaped value as still untrusted. `JSON.parse` without a custom reviver does
+not transport Proxies, accessors, symbols, or trap functions.
+
 `localStorage` is unencrypted browser storage, not a secret store, cloud
 backup, or cross-device synchronization mechanism. A public repository must
 not contain productive webhooks, credentials, private Airtable identifiers,
@@ -669,6 +719,9 @@ Detailed security rules are maintained in
   with the corresponding GitHub Release.
 - **2026-07-25:** The `v0.2.1` LearningHub Local MVP was published with its corresponding GitHub Release, and GoldenDawn OS became publicly visible as a portfolio repository.
 - **2026-08-02:** The `v0.2.2` LichtwaldLog Local MVP was published with its annotated tag and corresponding GitHub Release.
+- **2026-08-03:** Development of `v0.3.0` began with the transport-neutral
+  SyncContract Foundation. Package version, latest tag, and latest release
+  remain `0.2.2`, `v0.2.2`, and `v0.2.2`.
 
 ## Author and collaboration
 

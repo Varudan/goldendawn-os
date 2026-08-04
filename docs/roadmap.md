@@ -4,11 +4,11 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.2.2 – LichtwaldLog Local MVP vollständig geprüft und veröffentlicht` |
+| Projektphase | `v0.3.0 – in Arbeit – SyncContract Foundation` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `v0.2.2`; `v0.2.2` vollständig geprüft und am `2026-08-02` veröffentlicht; neuestes veröffentlichtes Release `v0.2.2`; `v0.3.0` geplant und unbegonnen |
-| Letzte Aktualisierung | 2026-08-02 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell ausschließlich transportneutraler SyncContract-Kern |
+| Letzte Aktualisierung | 2026-08-04 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -20,8 +20,10 @@ nicht starre Kalendertermine.
 - Eine neue Phase beginnt erst, wenn die Abnahmekriterien der vorherigen Phase
   erfüllt sind.
 - Die Reihenfolge bleibt: **Mock → Webhook → Airtable → Agentenlogik**.
-- Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten;
-  `v0.3.0` markiert den Beginn der externen Kommunikation.
+- Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
+  `v0.3.0` bereitet die erste externe Kommunikation zunächst mit einem
+  transportneutralen Vertrag vor; der aktuelle Slice kommuniziert noch nicht
+  extern.
 - Weitere Unterversionen dürfen ergänzt werden, wenn neue, klar abgegrenzte
   Arbeitspakete entstehen.
 - Version 1 bleibt auf `SyncAgent`, `DataAgent` und `TestAgent` begrenzt.
@@ -50,7 +52,7 @@ nicht starre Kalendertermine.
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.3.0` | SyncAgent and Webhook Foundation | Geplante, noch nicht begonnene erste externe Kommunikationsschicht | ⬜ |
+| `v0.3.0` | SyncAgent and Webhook Foundation | In Arbeit: transportneutrale SyncContract Foundation; Transport und operative Agentengrenze folgen | 🟡 |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
 | `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
@@ -340,6 +342,7 @@ Der spätere Zielpfad bleibt:
 ```text
 LearningTestService
   → SyncService
+  → serverseitiger n8n-Webhook/Gateway
   → SyncAgent
   → TestAgent
 ```
@@ -591,44 +594,105 @@ eine spätere Phase geplant.
 
 ## v0.3.0 – SyncAgent and Webhook Foundation
 
-### Ziel der Webhook-Grundlage
+### Aktueller Stand
 
-`v0.3.0` ist geplant und noch nicht begonnen.
+`v0.3.0` ist **in Arbeit – SyncContract Foundation**. Der erste Slice schafft
+ausschließlich einen reinen, transportneutralen Vertragskern für Version `1.0`,
+die Aktion `syncTest` und den Handler `SyncAgent`. Der Request-Payload ist exakt
+leer; erfolgreiche Responses sind auf `dataOrigin: "synthetic"` begrenzt.
+Dieser Wert ist nur eine Vertragsklassifikation und kein Herkunfts- oder
+Datenschutzbeweis. Der Slice implementiert keinen Netzwerkzugriff, Webhook,
+`SyncService`, operativen `SyncAgent`, n8n-Workflow, keine Authentisierung,
+Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keine Hub-UI und mangels
+Transport keinen privaten externen Datenfluss.
 
-Den ersten kontrollierten Kommunikationsfluss zwischen Dashboard und n8n
-bereitstellen, ohne Airtable oder Fachagenten einzubeziehen. `v0.3.0` markiert
-damit den Beginn der externen Kommunikationsschicht.
+### Aktueller Slice: SyncContract Foundation
 
-### Umfang der Webhook-Grundlage
+- ✅ Exakt sechs Request-Felder, kein vorgesehenes Inhalts- oder Freitextfeld
+  und exakt leeres `syncTest.payload` festgelegt.
+- ✅ `requestId` nur strukturell und `timestamp` nur kanonisch sowie relativ zur
+  expliziten Referenzzeit geprüft. Diese Prüfungen beweisen weder semantische
+  Herkunft noch die Abwesenheit privater oder nutzergenerierter Informationen.
+- ✅ Der Contract-Kern liest, persistiert oder exportiert keine privaten lokalen
+  Bestände. `synthetic` bleibt eine Vertragsklassifikation, kein Beweis
+  tatsächlicher Herkunft oder Datenschutzkonformität.
+- ✅ Erfolg, normal korrelierten Fehler und frühen Gateway-Fehler als getrennte
+  exakte Response-Profile definiert.
+- ✅ Statische redigierte Fehlerprofile, geschlossene Allowlists und exakte
+  Korrelation von Version, Aktion und `requestId` festgelegt.
+- ✅ Reine Größenprüfung eines bereits vorliegenden Strings bis einschließlich
+  65.536 UTF-8-Bytes umgesetzt; sie serialisiert keine Objekte und setzt ohne
+  Transport kein Webhook-Limit durch.
+- ✅ Deterministische Validierung für stabile, seiteneffektfreie gewöhnliche
+  Records, Arrays und Strings umgesetzt. Der
+  Validator schreibt selbst keine Properties und liest gewöhnliche eigene
+  Accessors nicht als Werte; Proxy-Reflection kann jedoch Traps und
+  Descriptor-Getter auslösen, die Eingaben oder externen Zustand verändern.
+  Same-Realm-Proxy-Traps sind beliebiger JavaScript-Code und können globale
+  Laufzeitobjekte verändern, die Ausführung blockieren oder spätere Operationen
+  zum Werfen bringen. Reflection-Catches können solche Wirkungen weder
+  verhindern noch rückgängig machen.
+- ✅ ADR 0016 sowie Architektur-, Vertrags-, Roadmap- und Sicherheitsgrenzen
+  dokumentiert.
 
-- ⬜ `docs/data-contracts.md` für Request und Response finalisieren.
+### Spätere Slices innerhalb von v0.3.0
+
 - ⬜ `SyncService` als einzige externe Kommunikationsschicht des Frontends
-  implementieren und den Übergang von lokalen Mocks zum Webhook vorbereiten.
-- ⬜ Konfigurierbaren Webhook-Endpunkt außerhalb von UI-Komponenten verwalten.
-- ⬜ Direkte externe Kommunikation aus UI-Komponenten ausschließen.
-- ⬜ Lokalen Modus bei fehlender Webhook-Konfiguration erhalten.
-- ⬜ n8n-Webhook mit HTTP `POST` erstellen.
-- ⬜ SyncAgent als Validierungs- und Routinggerüst aufbauen.
-- ⬜ Reproduzierbare Aktion `syncTest` implementieren.
-- ⬜ Standardisierte Erfolgs- und Fehlerantworten zurückgeben.
-- ⬜ Timeout, ungültiges JSON und nicht unterstützte Aktionen behandeln.
+  implementieren.
+- ⬜ Einen vertrauenswürdigen Request-Builder einführen, der `requestId` und
+  `timestamp` ausschließlich aus einem kontrollierten ID-Generator und einer
+  kontrollierten Clock erzeugt und nie aus privaten oder nutzergenerierten
+  Inhalten ableitet.
+- ⬜ Serverseitigen n8n-Webhook beziehungsweise Gateway mit HTTP `POST`
+  implementieren; der Browser terminiert keinen eingehenden öffentlichen
+  Webhook.
+- ⬜ An der Wire-Grenze zuerst rohe Bodybytes begrenzen, danach JSON kontrolliert
+  parsen und erst den resultierenden datenförmigen, weiterhin
+  unvertrauenswürdigen Wert
+  validieren. `JSON.parse` ohne benutzerdefinierten Reviver transportiert keine
+  Proxies, Accessors, Symbole oder Trap-Funktionen.
+- ⬜ Den operativen `SyncAgent` als Validierungs- und Routinggerüst aufbauen.
+- ⬜ Den ersten realen browserinitiierten Fluss
+  `GoldenDawn → SyncService → serverseitiger n8n-Webhook/Gateway → SyncAgent →
+  validierte Antwort` herstellen.
+- ⬜ Authentisierung, Signaturprüfung, CORS, Rate Limits, Timeout- und
+  Transportfehler vor einem realen verbundenen Betrieb entscheiden und
+  implementieren.
+- ⬜ `SyncAgent` später im AgentHub darstellen; Verbindungen, Webhooks,
+  Workflows und den einzigen `syncTest`-Auslöser später im AutomationHub
+  darstellen. Diese UI ist im aktuellen Slice nicht enthalten.
 - ⬜ Bereinigten n8n-Workflow-Export dokumentieren.
 
-### Abnahmekriterien für v0.3.0
+### Abnahmekriterien für den aktuellen Slice
 
-- Das Dashboard sendet einen gültigen `syncTest`-Request.
-- Der SyncAgent übernimmt oder erzeugt eine `requestId`.
-- Die Antwort entspricht dem dokumentierten Vertrag.
-- Eine ungültige Aktion wird kontrolliert abgewiesen oder als `unknown`
-  behandelt.
-- Ein Netzwerkfehler erzeugt einen verständlichen UI-Zustand.
-- Im Frontend befinden sich keine Airtable- oder Modell-Credentials.
+- Der Request-Validator akzeptiert ausschließlich den dokumentierten
+  `syncTest`-Request mit syntaktisch gültiger `req_`-ID; ihre tatsächliche
+  Erzeugung oder semantische Herkunft beweist er nicht.
+- Normale Responses korrelieren Version, Aktion und `requestId` exakt; frühe
+  Gateway-Fehler verwenden stattdessen `action: null` und eine serverseitige
+  `gateway_`-Korrelations-ID.
+- Bei stabilen, seiteneffektfreien gewöhnlichen Daten werden unbekannte Felder,
+  Versionen, Aktionen und Quellen ohne Property-Schreibzugriff des Validators
+  kontrolliert abgelehnt. Bei Proxies bestätigt ein Ergebnis nur die während
+  dieses Aufrufs beobachtete Struktur; Trap-Seiteneffekte und eine vollständige
+  portable Proxy-Erkennung sind nicht kontrollierbar. Bereits ausgelöste
+  Seiteneffekte kann der Validator weder verhindern noch rückgängig machen.
+- `source: "goldendawn-os"` bleibt ausschließlich eine syntaktische
+  Klassifikation. Vertrauenswürdige Herkunft, Routing und Berechtigung werden
+  später serverseitig bestimmt und niemals allein aus `source` abgeleitet.
+- Fehlerobjekte verwenden ausschließlich statische, redigierte Profile und
+  übernehmen keine Rohwerte aus Eingaben.
+- Die gezielten SyncContract-Tests bestehen mit 45/45 Tests; die Gesamtsuite
+  besteht mit 978/978 Tests bei 0 Fehlschlägen, 0 Skips und 0 Todos.
+- Der Produktions-Build ist erfolgreich und transformiert exakt 46 Module.
 
-### Portfolio-Nachweis für v0.3.0
+### Portfolio-Nachweis für den aktuellen Slice
 
-- Request- und Response-Beispiel;
-- n8n-Workflow-Diagramm ohne Credentials;
-- kurze Demonstration des lokalen und verbundenen Modus.
+- exakte Request-, Normalfehler- und Gateway-Fehlerbeispiele sowie exakte, als
+  `synthetic` klassifizierte Erfolgsbeispiele;
+- dokumentierte öffentliche Validator-API und harte Grenzen;
+- ADR 0016 mit klarer Trennung von aktuellem Vertragskern und späterem
+  Transport.
 
 ## v0.4.0 – DataAgent and Airtable Integration
 
@@ -676,7 +740,8 @@ kontrollierter Ergebnisspeicherung umsetzen.
 ### Umfang der TestAgent-Lerntests
 
 - ⬜ `LearningTestService` über eine dokumentierte Provider- oder
-  Adaptergrenze an `SyncService → SyncAgent → TestAgent` anbinden, ohne direkte
+  Adaptergrenze an `SyncService → serverseitiger n8n-Webhook/Gateway →
+  SyncAgent → TestAgent` anbinden, ohne direkte
   Agentenaufrufe aus UI-Komponenten oder stille Erweiterung der lokalen
   Schema-1-Verträge.
 - ⬜ Request- und Ergebnisformat für Lerntests definieren.
@@ -915,16 +980,17 @@ als eigener Storage-, Service-, Controller- und View-Stack vollständig
 bedienbar integriert. Der geplante Implementierungsumfang ist vollständig
 abgeschlossen und mit 374/374 LichtwaldLog-Tests, 933/933 Tests der Gesamtsuite,
 0 Skips, 0 Todos sowie einem Produktions-Build mit exakt 46 transformierten
-Modulen geprüft. Die Paketversion ist `v0.2.2`; der annotierte Tag `v0.2.2` und
+Modulen geprüft. Die Paketversion ist `0.2.2`; der annotierte Tag `v0.2.2` und
 das zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht. `v0.2.2`
-ist das neueste veröffentlichte Release. `v0.3.0` ist der nächste geplante
-Entwicklungsmeilenstein, bleibt jedoch unbegonnen; seine Implementierung hat
-noch nicht begonnen. `v0.2.2` bleibt
-vollständig lokal und besitzt keine externe Kommunikation, Webhooks,
-Agentenlogik oder Airtable-Anbindung.
+ist das neueste veröffentlichte Release. `v0.3.0` ist mit der
+transportneutralen SyncContract Foundation in Arbeit. Der veröffentlichte
+`v0.2.2`-Umfang bleibt vollständig lokal; auch der aktuelle Vertrags-Slice
+besitzt keine externe Kommunikation, keinen Webhook, `SyncService`, operativen
+`SyncAgent`, keine n8n-Verbindung oder Airtable-Anbindung.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein Backend, Benutzerkonten und
 Agentenlogik bleiben offen beziehungsweise beginnen erst in den dafür
-vorgesehenen späteren Versionen. Die externe Kommunikationsschicht beginnt
-bewusst erst mit `v0.3.0 – SyncAgent and Webhook Foundation`.
+vorgesehenen späteren Slices und Versionen. Der reale Transport folgt innerhalb
+von `v0.3.0 – SyncAgent and Webhook Foundation` erst nach dem aktuell
+transportneutralen Vertragskern.

@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.2.2 – LichtwaldLog Local MVP vollständig abgeschlossen, geprüft und veröffentlicht`
+Aktueller Stand: `v0.3.0 – in Arbeit – SyncContract Foundation`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -93,14 +93,17 @@ unberührt. Die synthetische Herkunft und der Reset bei Reload bleiben auch bei
 der Präsentation des besonderen Moments sichtbar. Damit ist `v0.2.2`
 vollständig abgeschlossen und geprüft: 374/374 LichtwaldLog-Tests und 933/933
 Tests der Gesamtsuite bestehen bei 0 Skips und 0 Todos; der Produktions-Build
-transformiert exakt 46 Module. Die Paketversion ist `v0.2.2`; `private: true`
+transformiert exakt 46 Module. Die Paketversion ist `0.2.2`; `private: true`
 bleibt ausschließlich eine Paketmetadatenentscheidung und macht das öffentlich
 sichtbare Repository nicht privat. Der annotierte Tag `v0.2.2` und das
 zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
 das neueste veröffentlichte Release. `v0.3.0 – SyncAgent and Webhook Foundation`
-ist der nächste geplante und noch nicht begonnene Meilenstein. `v0.2.2` bleibt
-vollständig lokal und besitzt keine externe Kommunikation, Webhooks,
-Agentenlogik oder Airtable-Anbindung.
+ist mit dem ersten Slice `SyncContract Foundation` in Arbeit. Dieser Slice ist
+ausschließlich transportneutral; erfolgreiche Vertragsresponses sind auf
+`dataOrigin: "synthetic"` begrenzt. Dieser Wert ist nur eine
+Vertragsklassifikation und kein Herkunfts- oder Datenschutzbeweis. `v0.2.2`
+bleibt vollständig lokal und auch der aktuelle Vertragskern besitzt keine
+externe Kommunikation, Webhooks, Agentenlogik oder Airtable-Anbindung.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -130,8 +133,10 @@ Halte diese Reihenfolge der Hauptmeilensteine ein:
 7. `v0.6.0`: Integration der zuvor eingeführten lokalen und externen Bausteine;
 8. `v1.0.0`: abgesicherte, dokumentierte Portfolio-Version.
 
-Die gesamte Reihe `v0.2.x` bleibt bewusst lokal. `v0.3.0` markiert den Beginn
-der externen Kommunikation. Zusätzliche Unterversionen dürfen zwischen den
+Die gesamte Reihe `v0.2.x` bleibt bewusst lokal. `v0.3.0` bereitet die externe
+Kommunikation zunächst transportneutral vor; der reale Transport folgt erst in
+einem späteren Slice dieses Meilensteins. Zusätzliche Unterversionen dürfen
+zwischen den
 Hauptmeilensteinen liegen, dürfen deren Reihenfolge und Architekturgrenzen aber
 nicht verändern. Die technische Entwicklung folgt damit verbindlich dem Pfad
 `Mock → Webhook → Airtable → Agentenlogik`.
@@ -139,6 +144,41 @@ nicht verändern. Die technische Entwicklung folgt damit verbindlich dem Pfad
 Implementiere keine spätere Phase vorzeitig, sofern die Aufgabe dies nicht
 ausdrücklich verlangt und die dafür notwendige Architekturentscheidung nicht
 dokumentiert wurde.
+
+## Aktueller Scope für v0.3.0
+
+Der erste Slice `SyncContract Foundation` implementiert ausschließlich den
+reinen transportneutralen Contract-Kern für Version `1.0`, die Aktion
+`syncTest` und den kanonischen Handler `SyncAgent`. Der Request besitzt exakt
+die sechs Felder `version`, `action`, `source`, `requestId`, `timestamp` und
+`payload`; `requestId` ist verpflichtend, beginnt mit `req_`, und `payload` ist
+exakt `{}`. Erfolgreiche Responses sind auf `dataOrigin: "synthetic"` begrenzt;
+das ist nur eine Vertragsklassifikation und kein Herkunfts- oder
+Datenschutzbeweis. Unbekannte Felder, Versionen, Aktionen und Quellen werden
+fail-closed abgelehnt.
+
+Der aktuelle Slice implementiert keinen Netzwerkzugriff, Webhook,
+`SyncService`, operativen `SyncAgent`, n8n-Workflow, keine Authentisierung,
+Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keine AgentHub- oder
+AutomationHub-UI, keinen privaten externen Datenfluss und keinen produktiven
+Datenfluss. PromptVault, LearningHub und LichtwaldLog bleiben lokal und werden
+weder gelesen noch exportiert. Paketversion `0.2.2`, Tag `v0.2.2` und neuestes
+veröffentlichtes Release `v0.2.2` bleiben unverändert.
+
+Der spätere erste reale Fluss ist browserinitiiert:
+
+```text
+GoldenDawn
+  → SyncService
+  → serverseitiger n8n-Webhook/Gateway
+  → SyncAgent
+  → validierte Antwort
+```
+
+Das Browserfrontend terminiert keinen eingehenden öffentlichen Webhook. Der
+`SyncAgent` wird später im AgentHub dargestellt. Verbindungen, Webhooks,
+Workflows und der einzige `syncTest`-Auslöser werden später im AutomationHub
+dargestellt. Diese Hub-Grenzen sind aktuell nur dokumentiert.
 
 ## Lokale Modulgrenzen für v0.2.x
 
@@ -199,6 +239,7 @@ Testfluss lautet:
 ```text
 LearningTestService
   → SyncService
+  → serverseitiger n8n-Webhook/Gateway
   → SyncAgent
   → TestAgent
 ```
@@ -417,7 +458,8 @@ Der vorgesehene Datenfluss lautet:
 UI-Komponente
   → Anwendungs- oder Modulservice
   → lokaler Storage-Adapter oder Sync-Service
-  → SyncAgent in n8n
+  → serverseitiger n8n-Webhook/Gateway
+  → SyncAgent
   → TestAgent oder DataAgent
   → Airtable ausschließlich über den DataAgent
 ```
@@ -459,6 +501,8 @@ Der vorgesehene Ablauf für ein Lerntestergebnis lautet:
 
 ```text
 Dashboard
+  → SyncService
+  → serverseitiger n8n-Webhook/Gateway
   → SyncAgent
   → TestAgent
   → SyncAgent
@@ -485,8 +529,8 @@ Basis-Request lautet:
   "version": "1.0",
   "action": "syncTest",
   "source": "goldendawn-os",
-  "requestId": "optional-stable-id",
-  "timestamp": "2026-07-11T12:00:00.000Z",
+  "requestId": "req_example_001",
+  "timestamp": "2026-08-03T12:00:00.000Z",
   "payload": {}
 }
 ```
@@ -496,8 +540,11 @@ Regeln:
 - Ändere Vertragsfelder nicht stillschweigend.
 - Dokumentiere Verträge und Änderungen in `docs/data-contracts.md`.
 - Validiere Pflichtfelder an Systemgrenzen.
-- Behandle unbekannte Aktionen kontrolliert als `unknown` oder lehne sie mit
-  einer verständlichen Fehlermeldung ab.
+- Für den aktuellen `syncTest`-Vertrag sind alle sechs Felder verpflichtend;
+  zusätzliche Felder und ein Client-Modus sind nicht erlaubt.
+- Lehne unbekannte Aktionen im aktuellen `syncTest`-Vertrag fail-closed ab. Ein
+  späterer Vertrag darf `unknown` nur nach ausdrücklicher Dokumentation als
+  kontrollierten Wert einführen.
 - Verwende ISO 8601 für Zeitstempel und UTC für systemübergreifende Ereignisse.
 - Speichere reine Kalenderdaten als `YYYY-MM-DD` und formatiere sie erst für die
   Anzeige. Parse reine Datumswerte nicht unnötig mit `new Date(...)`, um
