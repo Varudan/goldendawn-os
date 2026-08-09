@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – in Arbeit – SyncService Foundation`
+Aktueller Stand: `v0.3.0 – in Arbeit – SyncGateway Request Boundary Foundation`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -99,17 +99,25 @@ sichtbare Repository nicht privat. Der annotierte Tag `v0.2.2` und das
 zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
 das neueste veröffentlichte Release. `v0.3.0 – SyncAgent and Webhook Foundation`
 hat mit der transportneutralen `SyncContract Foundation` begonnen; dieser erste
-Slice ist implementiert und bleibt die verbindliche Vertragsgrundlage. Aktuell
-ist `v0.3.0 – in Arbeit – SyncService Foundation`. Der asynchrone Service
+Slice ist implementiert und bleibt die verbindliche Vertragsgrundlage. Die
+darauf aufbauende `SyncService Foundation` ist ebenfalls implementiert. Der
+asynchrone Service
 erstellt einen kontrollierten `syncTest`-Request, validiert ihn und übergibt ihn
 ausschließlich an den injizierten Port `syncTransport.sendSyncRequest`. Nur eine
 vollständig validierte, normal korrelierte SyncResponse wird defensiv
-projiziert und ausgegeben. Erfolgreiche Vertragsresponses sind weiterhin auf
-`dataOrigin: "synthetic"` begrenzt. Dieser Wert ist nur eine
-Vertragsklassifikation und kein Herkunfts- oder Datenschutzbeweis. `v0.2.2`
-bleibt vollständig lokal. Auch die aktuelle Service-Foundation besitzt keinen
-konkreten externen Transport, Webhook, operativen Agenten oder
-Airtable-Anbindung und ist nicht in `src/main.js` komponiert.
+projiziert und ausgegeben. Aktuell ist
+`v0.3.0 – in Arbeit – SyncGateway Request Boundary Foundation`. Die synchrone
+transportneutrale Boundary begrenzt ausschließlich einen bereits
+materialisierten Raw-Body-Wert, parst einen bestandenen String exakt einmal
+ohne Reviver, validiert zuerst den unveränderten Parsed-Wert und gibt nur eine
+erneut validierte, tief eingefrorene defensive Sechs-Felder-Projektion oder
+eine vollständig gültige frühe Gateway-Fehlerresponse aus. Erfolgreiche
+Vertragsresponses sind weiterhin auf `dataOrigin: "synthetic"` begrenzt.
+Dieser Wert ist nur eine Vertragsklassifikation und kein Herkunfts- oder
+Datenschutzbeweis. `v0.2.2` bleibt vollständig lokal. Auch die aktuelle
+Boundary besitzt keinen HTTP-Handler, konkreten externen Transport, Webhook,
+operativen Agenten oder Airtable-Anbindung und ist nicht in `src/main.js`
+komponiert.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -163,7 +171,7 @@ eine Vertragsklassifikation und kein Herkunfts- oder Datenschutzbeweis.
 Unbekannte Felder, Versionen, Aktionen und Quellen werden fail-closed
 abgelehnt.
 
-Der aktuelle Slice `SyncService Foundation` implementiert
+Die implementierte `SyncService Foundation` stellt
 `createSyncService({ syncTransport, generateRequestId, getCurrentTimestamp })`
 mit einer eingefrorenen API, die exakt `runSyncTest` bereitstellt. Die Methode
 ist immer Promise-basiert, akzeptiert keine Argumente und besitzt keinen
@@ -190,18 +198,93 @@ auch dann `ok: true`; der fachliche Erfolg bleibt ausschließlich
 Fünf-Felder-Resultvertrag und statische redigierte Fehler. Sie behaupten keine
 Verarbeitung durch den `SyncAgent`.
 
-Der aktuelle Slice implementiert keinen konkreten Netzwerktransport, Endpoint,
-Webhook, operativen `SyncAgent`, n8n-Workflow, keine Authentisierung,
-Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keine Timeouts, Retries,
-Persistenz, Telemetrie, AgentHub- oder AutomationHub-UI und keine
-`src/main.js`-Komposition. PromptVault, LearningHub und LichtwaldLog bleiben
-lokal und werden weder gelesen noch exportiert. Da kein konkreter Transport
-ausgeliefert oder komponiert ist, existiert kein externer Datenfluss. Injizierte
-Functions und Function-Proxies sind vertrauenswürdige ausführbare
-Composition-Dependencies; beobachtbare Exceptions und Rejections werden
-redigiert, bereits ausgelöste Seiteneffekte können aber nicht verhindert oder
-rückgängig gemacht werden. Paketversion `0.2.2`, Tag `v0.2.2` und neuestes
-veröffentlichtes Release `v0.2.2` bleiben unverändert.
+Der aktuelle Slice `SyncGateway Request Boundary Foundation` implementiert
+`createSyncGatewayRequestBoundary({ generateGatewayRequestId,
+getCurrentTimestamp })` mit einer eingefrorenen gewöhnlichen API, die exakt die
+synchrone Methode `processSyncRawBody` bereitstellt. Die Methode akzeptiert
+exakt ein Argument. Fehlende oder zusätzliche Argumente werden ohne
+Argumentinspektion, Größenprüfung, Parsing, Clock- oder Generatorzugriff als
+statischer lokaler `invalidInvocation`-Result abgelehnt. Jeder Boundary-Result
+besitzt exakt `ok`, `status`, `syncRequest`, `gatewayErrorResponse` und
+`error`; lokale Boundary-Fehler sind keine SyncContract-Responses.
+
+Bei exakt einem Argument wird der unveränderte Wert zuerst mit
+`validateSyncRawBodySize` geprüft. Nur ein bestandener String wird exakt einmal
+mit nativem `JSON.parse(rawBody)` ohne Reviver geparst. Der unveränderte
+Parsed-Wert muss den bestehenden geschlossenen SyncContract vollständig
+bestehen, bevor descriptor-basiert eine neue Sechs-Felder-Projektion mit
+frischem exakt leerem Payload entsteht. Projektion und finaler tief
+eingefrorener Snapshot werden mit derselben höchstens einmal erfassten
+Referenzzeit erneut validiert. Es gibt weder Trimmen, Reparatur oder
+Normalisierung noch einen Stringify-/Parse-Roundtrip, Merge oder eine
+Bereinigung zusätzlicher Felder vor der maßgeblichen Validierung. Native
+doppelte JSON-Membernamen folgen der Last-Key-Wins-Semantik von `JSON.parse`;
+Duplikatfreiheit oder kanonisches JSON werden nicht behauptet.
+
+Beherrschte Eingabeablehnungen erzeugen pro Aufruf eine vollständig validierte,
+defensive und tief eingefrorene frühe Gateway-Fehlerresponse mit einer neuen
+kontrollierten `gateway_`-ID, `action: null`, `handledBy: null`,
+`processedBy: []` und statischem `durationMs: 0`. Die Zuordnung lautet:
+`rawBodyTooLarge` zu `PAYLOAD_TOO_LARGE`, anderer regulärer Raw-Body-Fehler zu
+`VALIDATION_ERROR`, Parser-Throw zu `INVALID_JSON`, alleiniger
+`unsupportedVersion`- beziehungsweise `unknownAction`-Fehler zu
+`UNSUPPORTED_VERSION` beziehungsweise `UNKNOWN_ACTION` und jedes sonstige oder
+gemischte Requestfehlerbild zu `VALIDATION_ERROR`. Ein
+`invalidReferenceTimestamp` sowie unerwartete Clock-, Generator-, Builder-,
+Projektions-, Freeze- oder Validatorfehler führen statisch redigiert zu
+`boundaryFailed` und nie zu einer Gateway-Response. `FORBIDDEN`,
+`SERVICE_UNAVAILABLE` und `INTERNAL_ERROR` werden an dieser Grenze nicht
+erzeugt.
+
+Clock und Generator sind vertrauenswürdige Same-Realm-Composition-
+Dependencies. Für einen akzeptierten Request oder eine ausgegebene
+Gateway-Fehlerresponse wird die Clock exakt einmal ausgewertet. Der Generator
+wird nur für eine tatsächlich benötigte Ablehnung exakt einmal verwendet; sein
+Defaultpfad ist ausschließlich `gateway_ + crypto.randomUUID()` ohne
+schwächeren Fallback. Beobachtbare Exceptions werden redigiert, bereits
+ausgelöste Seiteneffekte können aber nicht verhindert oder rückgängig gemacht
+werden. Deep Freeze ist keine Sandbox.
+
+`validateSyncRawBodySize` begrenzt nur die berechnete UTF-8-Länge eines bereits
+allozierten JavaScript-Strings. Dies ist keine tatsächliche Raw-Wire-
+Bytebegrenzung, kein Schutz vor vorheriger Body-Allokation und keine produktive
+Webhook- oder DoS-Durchsetzung. Die spätere reale HTTP-/Transportreihenfolge
+prüft zuerst Methode, Content-Type, Origin/CORS und frühe Transportkontrollen
+einschließlich Netzwerk-/IP-Limits und gegebenenfalls headerbasierter
+Authentisierung. Danach werden Raw Bytes während des Empfangs hart begrenzt,
+Signaturen über exakt diese Bytes und relevante Header vor Decodierung und
+Parsing geprüft, die Bytes kontrolliert einmal dekodiert und ausschließlich
+durch diese Boundary einmal geparst, validiert und projiziert. Erst anschließend
+wird die validierte Aktion mit vertrauenswürdiger Identität und serverseitigem
+Kontext autorisiert und geroutet. CORS ersetzt weder Authentisierung noch
+Autorisierung; Rate Limits dürfen mehrschichtig sein.
+
+Der aktuelle Slice implementiert keinen konkreten Netzwerktransport, HTTP-
+Handler, Endpoint, Webhook, operativen `SyncAgent` oder n8n-Workflow, keine
+Header-, Methoden-, Statuscode-, Encoding- oder Content-Type-Verarbeitung,
+Authentisierung, Autorisierung, Signaturprüfung, Secrets, CORS- oder
+Rate-Limit-Durchsetzung, keine Timeouts, Retries, Replay-, Idempotenz- oder
+Deduplizierungsschicht, Persistenz, Logs, Telemetrie, AgentHub- oder
+AutomationHub-UI und keine `src/main.js`-Komposition. PromptVault, LearningHub
+und LichtwaldLog bleiben lokal und werden weder gelesen noch exportiert. Da
+kein konkreter Transport oder HTTP-Handler ausgeliefert oder komponiert ist,
+existiert kein externer Datenfluss. Paketversion `0.2.2`, Tag `v0.2.2` und
+neuestes veröffentlichtes Release `v0.2.2` bleiben unverändert.
+
+Die mutationsgerichtete Testhärtung belegt zusätzlich die reale Validierungs-
+und Freeze-Reihenfolge für Requests und Gateway-Responses, die unveränderte
+UTF-8-Größenprüfung vor jeder Normalisierung und Parserauflösung, einen
+Console-stillen Erfolgspfad, exakt einen Dependency-Versuch nach einem Throw
+sowie vollständig frische Fehlergraphen auch innerhalb desselben
+`INVALID_JSON`-Profils. Globale Instrumentierungen laufen mit
+`concurrency: false` und werden im `finally` restauriert.
+
+Die gezielte Boundary-Suite besteht mit 54/54 Tests unter dem exakt geforderten
+`node --test tests/syncGatewayRequestBoundary.test.js`. Boundary plus
+SyncContract bestehen mit 99/99, Boundary plus SyncContract plus SyncService
+mit 142/142 und die Gesamtsuite mit 1075/1075 Tests; alle vier Läufe besitzen 0
+Fehlschläge, 0 Skips und 0 Todos. Der Produktions-Build ist erfolgreich und
+transformiert exakt 46 Module.
 
 Der spätere erste reale Fluss ist browserinitiiert:
 

@@ -10,7 +10,7 @@
 
 **Current release:** `v0.2.2 — LichtwaldLog Local MVP complete, verified, and published`
 
-**Current development:** `v0.3.0 — in progress — SyncService Foundation`
+**Current development:** `v0.3.0 — in progress — SyncGateway Request Boundary Foundation`
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -69,23 +69,34 @@ making `v0.2.2` the latest published release. `private: true` is package metadat
 does not make this publicly visible repository private. The published release,
 package version, and tag remain `v0.2.2`, `0.2.2`, and `v0.2.2`. Development
 of `v0.3.0 – SyncAgent and Webhook Foundation` began with the transport-neutral
-**SyncContract Foundation**, which remains the binding contract basis. Current
-work is the **SyncService Foundation**. Its frozen API exposes only the
-Promise-based `runSyncTest()`, builds a controlled six-field `syncTest`
-request with an exactly empty payload, validates it, and invokes the injected
-`syncTransport.sendSyncRequest` method at most once afterward. Only a
-defensively projected, fully validated, normally correlated SyncResponse is
-accepted. A valid normal contract error remains a received response; business
-success is expressed by
-`syncResponse.success`, independently of the outer service result.
+**SyncContract Foundation**, which remains the binding contract basis. The
+transport-neutral **SyncService Foundation** is also implemented. Its frozen
+API exposes only the Promise-based `runSyncTest()`, builds and validates a
+controlled six-field `syncTest` request with an exactly empty payload, and
+invokes the injected `syncTransport.sendSyncRequest` method at most once
+afterward. Only a defensively projected, fully validated, normally correlated
+SyncResponse is accepted.
+
+Current work is the synchronous, transport-neutral **SyncGateway Request
+Boundary Foundation**. Its frozen ordinary API exposes only
+`processSyncRawBody(rawBody)` and accepts exactly one already materialized
+Raw-Body value. It checks that unchanged value with the existing UTF-8-size
+validator before parsing, calls native `JSON.parse` exactly once without a
+reviver, validates the unchanged parsed request before any projection, then
+creates, validates, deep-freezes, and finally revalidates a fresh defensive
+six-field snapshot with a fresh empty payload. Accepted requests and
+controlled input rejections are separated from static local boundary failures.
+Controlled rejections use a fresh, fully validated early Gateway error
+response with no claimed `SyncAgent` processing.
 
 Successful contract responses remain limited to
 `dataOrigin: "synthetic"`. That value is only a contract classification, not
-proof of actual provenance or privacy. The delivered service has no concrete
-network transport, endpoint, webhook, operational `SyncAgent`, n8n connection,
-authentication, signature verification, CORS or rate-limit enforcement, Hub
-UI, persistence, or `src/main.js` composition. Consequently, this slice
-establishes no external private-data flow.
+proof of actual provenance or privacy. Neither the delivered service nor the
+new request boundary has a concrete network transport, HTTP handler, endpoint,
+webhook, operational `SyncAgent`, n8n connection, authentication,
+authorization, signature verification, CORS or rate-limit enforcement, Hub
+UI, persistence, logging, telemetry, or `src/main.js` composition.
+Consequently, this slice establishes no external private-data flow.
 
 ## Vision
 
@@ -121,8 +132,10 @@ The first real connected flow will be browser-initiated:
 validated response`. The browser does not terminate an incoming public webhook.
 The dashboard will not access Airtable, APIs, or specialized agents directly;
 only the DataAgent communicates with Airtable in Version 1. This connected flow
-remains planned: the current slice adds a transport-neutral service port but no
-concrete transport or application composition.
+remains planned: the completed service foundation adds a transport-neutral
+port, and the current request-boundary slice processes only an already
+materialized string. Neither foundation implements a concrete transport,
+application composition, HTTP, raw wire-byte handling, or a webhook.
 
 See [`docs/architecture.md`](docs/architecture.md) for responsibilities,
 boundaries, and end-to-end data flows.
@@ -552,22 +565,29 @@ synchronization, agent logic, or Airtable integration. Weekly Review is later
 work and is not part of this milestone. The package remains at version
 `0.2.2`. The annotated `v0.2.2` tag and corresponding GitHub Release were
 published on 2026-08-02, and `v0.2.2` is the latest published release.
-`v0.3.0` is now in progress with the SyncService Foundation on top of the
-implemented SyncContract Foundation. The service keeps request creation,
-transport invocation, correlation, and defensive response validation separate.
-It requires an exactly empty request payload and limits successful responses to
-`dataOrigin: "synthetic"`; that marker is only a contract classification, not
-proof of actual provenance or privacy. The slice does not alter any published
-`v0.2.2` local flow and, without a delivered concrete transport or composition,
-does not establish external communication or an operational agent.
+`v0.3.0` is now in progress with the SyncGateway Request Boundary Foundation
+on top of the implemented SyncContract and SyncService Foundations. The
+service keeps outgoing request creation, transport invocation, correlation,
+and defensive response validation separate. The new synchronous boundary
+checks an already materialized Raw-Body value, parses an accepted string once,
+validates the unchanged parsed structure, and emits only a defensive frozen
+request snapshot or a controlled early Gateway rejection. It neither strips
+unknown fields before validation nor returns the parsed original. The
+SyncService request and every accepted Boundary request require an exactly
+empty payload; the contract limits successful responses to
+`dataOrigin: "synthetic"`. That marker is only a contract
+classification, not proof of actual provenance or privacy. The slice does not
+alter any published `v0.2.2` local flow and, without a delivered HTTP handler,
+concrete transport, or composition, does not establish external communication
+or an operational agent.
 
 ## Development principles
 
 - Build in small, stable, and verifiable steps.
 - Follow the sequence: **mock → webhook → Airtable → agent logic**.
 - Keep every `v0.2.x` milestone local; `v0.3.0` prepares the external boundary
-  through a strict contract and transport-neutral service before any concrete
-  external communication is composed.
+  through a strict contract, transport-neutral service, and materialized-string
+  request boundary before any concrete external communication is composed.
 - Keep UI components independent from concrete storage technologies.
 - Encapsulate local persistence behind storage adapters.
 - Route external communication through services and the SyncAgent.
@@ -609,14 +629,15 @@ non-binding; see the roadmap for details.
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
 | v0.2.2 | LichtwaldLog Local MVP | Complete, verified, and published |
-| v0.3.0 | SyncAgent and Webhook Foundation | In progress: SyncContract Foundation implemented; transport-neutral SyncService Foundation current; concrete transport, webhook, and operational SyncAgent remain planned |
+| v0.3.0 | SyncAgent and Webhook Foundation | In progress: SyncContract and SyncService Foundations implemented; transport-neutral SyncGateway Request Boundary Foundation current; HTTP transport, webhook, and operational SyncAgent remain planned |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
 | v0.6.0 | Integration | Planned integration and verification of the previously introduced local and external components |
 | v1.0.0 | Portfolio release | Planned secure demo separation, portfolio documentation, and deployment |
 
 The `v0.2.x` line intentionally remains local. `v0.3.0` prepares the first
-external boundary with a transport-neutral contract before later slices add
+external boundary with a transport-neutral contract, service, and
+already-materialized-string request boundary before later slices add HTTP and
 communication. Additional patch or minor versions may be inserted when needed
 without reordering these milestones. The architecture sequence remains
 **mock → webhook → Airtable → agent logic**.
@@ -661,10 +682,18 @@ suite with 0 skips and 0 todos. The production build transformed exactly 46
 modules. The annotated `v0.2.2` tag and corresponding GitHub Release were
 published on 2026-08-02. `v0.2.2` is the latest published release.
 
-The unreleased SyncService Foundation passed 43/43 targeted tests. The combined
-SyncService/SyncContract run passed 88/88 tests, and the complete suite passed
-1021/1021 tests with 0 failures, 0 skips, and 0 todos. The production build
-succeeded and transformed exactly 46 modules. These results do not change the
+The unreleased SyncGateway Request Boundary Foundation passed 54/54 targeted
+tests with the exact requested
+`node --test tests/syncGatewayRequestBoundary.test.js` command. Boundary plus
+SyncContract passed 99/99 tests; Boundary plus SyncContract plus SyncService
+passed 142/142; and the complete suite passed 1075/1075. Every run had 0
+failures, 0 skips, and 0 todos. The mutation-focused coverage additionally
+proves validation/freeze ordering for accepted requests and Gateway errors,
+original-byte sizing before Unicode normalization or parser resolution, a
+console-silent success path, one dependency attempt after a throw, and fresh
+object graphs for repeated `INVALID_JSON` responses. Global instrumentation is
+non-concurrent and restored in `finally`. The production build succeeded and
+transformed exactly 46 modules. These unreleased results do not change the
 published release metadata above.
 
 The published `v0.2.1` release was finally verified with:
@@ -696,13 +725,14 @@ does not read or export PromptVault, LearningHub, or LichtwaldLog data. The
 empty payload removes the designated content field but does not by itself prove
 that every metadata value is semantically private.
 
-The injected ID generator, clock, and transport functions are trusted
-executable application configuration. Their Functions and Function Proxies can
-perform arbitrary same-realm side effects. Promise/thenable resolution and
-Proxy reflection can also execute foreign code; observed throws and rejections
-are mapped to static redacted local errors, but already triggered effects
-cannot be prevented or undone. Deep freezing the service's request and response
-snapshots is an immutability boundary, not a sandbox.
+The injected service and boundary ID generators, clocks, and transport function
+are trusted executable application configuration. Their Functions and Function
+Proxies can perform arbitrary same-realm side effects. Promise/thenable
+resolution, Proxy reflection, and manipulated same-realm intrinsics can also
+execute foreign code; observed throws and rejections are mapped to static
+redacted local errors, but already triggered effects cannot be prevented or
+undone. Deep freezing newly created snapshots is an immutability boundary, not
+a sandbox.
 
 The original transport result remains untrusted. The service reads only the
 expected ordinary data shape into a separate projection, validates normal
@@ -712,9 +742,32 @@ simulate the existing contract role only; they do not prove that an operational
 or external agent ran. No concrete transport is shipped or composed, so the
 slice introduces no external data flow.
 
-The contract core's pure raw-body helper measures an already available string
-against exactly 65,536 UTF-8 bytes. The SyncService does not use that helper;
-without a wire transport or webhook, it does not enforce an HTTP request limit.
+The contract core's pure raw-body helper measures an already allocated string
+against exactly 65,536 calculated UTF-8 bytes. The SyncService does not use
+that helper. The SyncGateway Request Boundary does use it before parsing, but
+the string may already have been allocated and decoded from wire bytes. This is
+not an HTTP byte limit, protection against prior body allocation, productive
+webhook enforcement, or a denial-of-service guarantee.
+
+After a string passes that check, the boundary calls native `JSON.parse`
+exactly once without a reviver. It does not trim, remove a BOM, normalize
+Unicode, repair input, or perform a stringify/parse round trip. Parser
+exceptions, which can internally contain sensitive source excerpts, are
+discarded completely; the Raw Body is not returned, logged, persisted, or
+forwarded. Duplicate JSON member names intentionally follow native ECMAScript
+last-key-wins behavior. The project therefore claims neither duplicate-free
+nor canonical JSON, and a future composition must not parse the same body a
+second time with different semantics.
+
+Controlled rejections create a fresh `gateway_` ID and use only static
+`INVALID_JSON`, `VALIDATION_ERROR`, `UNSUPPORTED_VERSION`,
+`UNKNOWN_ACTION`, or `PAYLOAD_TOO_LARGE` profiles. They always use
+`action: null`, `handledBy: null`, and an empty processing chain. The
+boundary does not emit `FORBIDDEN` because it performs no authentication or
+authorization, and it does not invent early `SERVICE_UNAVAILABLE` or
+`INTERNAL_ERROR` profiles. Clock, generator, projection, freeze, or validator
+inconsistencies become separate static local failures without a Gateway
+response.
 
 The validator itself writes no properties and does not read ordinary own
 accessors as values. JavaScript reflection on a Proxy can nevertheless invoke
@@ -728,10 +781,21 @@ no portable way to detect every Proxy.
 `source: "goldendawn-os"` is only a syntactic contract classification. It does
 not prove authentication, origin, identity, or authorization; a later server
 boundary must establish trusted provenance and must never route or authorize
-from `source` alone. That wire boundary must limit raw body bytes first, parse
-JSON under controlled error handling, and then validate the resulting
-data-shaped value as still untrusted. `JSON.parse` without a custom reviver does
-not transport Proxies, accessors, symbols, or trap functions.
+from `source` alone. A syntactically valid incoming `req_` ID proves no
+identity, collision resistance, authorization, or replay protection, and the
+timestamp tolerance is not idempotency or deduplication. An exactly empty
+payload removes the designated content field but does not establish semantic
+privacy for the remaining metadata.
+
+The future HTTP boundary must first enforce method, Content-Type, Origin/CORS,
+early transport controls, network/IP rate limits, and any body-independent
+header authentication. It must hard-limit raw body bytes while receiving them,
+verify signatures over those exact limited bytes and relevant headers before
+decoding or parsing, decode once under controlled rules, and let only this
+boundary perform the single parse, validation, and projection. It may authorize
+the validated action only from trusted identity and server-side context, and
+route only afterward. CORS is not authentication or authorization, and rate
+limits may be layered. These controls remain outside the current slice.
 
 `localStorage` is unencrypted browser storage, not a secret store, cloud
 backup, or cross-device synchronization mechanism. A public repository must
@@ -758,6 +822,10 @@ Detailed security rules are maintained in
 - **2026-08-04:** Development continued with the transport-neutral SyncService
   Foundation. It adds no concrete transport, webhook, operational agent, or
   release change.
+- **2026-08-06:** Development continued with the synchronous transport-neutral
+  SyncGateway Request Boundary Foundation for an already materialized Raw-Body
+  value. It adds no HTTP handler, wire-byte enforcement, webhook, operational
+  agent, or release change.
 
 ## Author and collaboration
 

@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – SyncService Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – SyncGateway Request Boundary Foundation` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell transportneutrale SyncService Foundation auf dem implementierten SyncContract-Kern |
-| Letzte Aktualisierung | 2026-08-04 |
+| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; SyncContract und SyncService Foundations implementiert; aktuell transportneutrale SyncGateway Request Boundary Foundation |
+| Letzte Aktualisierung | 2026-08-06 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -78,14 +78,17 @@ An jeder Grenze gilt:
 - Berechtigungen werden nicht allein aus Angaben des Clients abgeleitet.
 - Daten werden nur an den Agenten weitergegeben, der sie benötigt.
 
-### Aktuelle Grenze der SyncService Foundation
+### Aktuelle Grenzen der transportneutralen Sync-Foundations
 
 Die implementierte SyncContract Foundation bleibt die reine
-Validierungsgrundlage. Der aktuelle Slice ergänzt einen asynchronen
-transportneutralen SyncService, implementiert aber keine der konkreten
-Netzwerkgrenzen im Diagramm. Es gibt keinen Endpoint, Webhook, HTTP-, Fetch-
-oder n8n-Transport, operativen `SyncAgent`, keine Authentisierung,
-Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung und keine Telemetrie,
+Validierungsgrundlage. Die asynchrone transportneutrale SyncService Foundation
+ist ebenfalls implementiert. Der aktuelle Slice ergänzt eine synchrone
+transportneutrale Request Boundary für einen bereits materialisierten Raw-Body-
+Wert, aber weiterhin keine konkrete Netzwerkgrenze im Diagramm. Es gibt keinen
+HTTP-Handler, Endpoint, Webhook, HTTP-, Fetch- oder n8n-Transport, operativen
+`SyncAgent`, keine Header-, Methoden-, Statuscode-, Content-Type-, Charset-
+oder Encoding-Verarbeitung, Authentisierung, Autorisierung, Signaturprüfung,
+Secrets, CORS- oder Rate-Limit-Durchsetzung und keine Logs, Telemetrie,
 Persistenz, UI oder `src/main.js`-Komposition.
 
 Der Service löst zuerst `syncTransport.sendSyncRequest` genau einmal sicher
@@ -169,15 +172,95 @@ Servicefehler sind getrennte statische Resultate und behaupten weder
 Testfixtures simulieren ausschließlich die bestehende Vertragsrolle und
 beweisen keinen operativen oder extern ausgeführten Agenten.
 
+Die aktuelle SyncGateway Request Boundary erwartet exakt einen Aufrufwert.
+Fehlende oder zusätzliche Argumente werden ohne Inspektion, Konvertierung,
+Größenprüfung, Parsing, Clock- oder Generatorzugriff als statischer lokaler
+Fehler abgelehnt. Bei exakt einem Argument gibt sie den unveränderten Wert
+zuerst an `validateSyncRawBodySize`. Auch nicht primitive Stringwerte werden
+nicht über `String`, `toString`, `valueOf` oder `Symbol.toPrimitive`
+konvertiert und ihre Properties werden nicht absichtlich gelesen.
+
 `validateSyncRawBodySize` akzeptiert nur einen bereits vorhandenen String und
-erlaubt inklusive exakt 65.536 UTF-8-Bytes. Die Funktion serialisiert kein
-unvertrauenswürdiges Objekt. Ohne konkrete Wire-/Webhook-Transportgrenze setzt
-sie weder ein HTTP- noch ein Webhook-Limit durch; ein späteres Gateway muss rohe
-Bodybytes vor JSON-Parsing selbst begrenzen. Danach muss es JSON kontrolliert
-parsen und erst den
-resultierenden datenförmigen, weiterhin unvertrauenswürdigen Wert validieren.
-`JSON.parse` ohne benutzerdefinierten Reviver transportiert keine Proxies,
-Accessors, Symbole oder Trap-Funktionen.
+erlaubt inklusive exakt 65.536 berechnete UTF-8-Bytes. Der String wurde zu
+diesem Zeitpunkt bereits alloziert und möglicherweise bereits aus Wire-Bytes
+dekodiert. Weder Helper noch Boundary begrenzen deshalb tatsächlich empfangene
+HTTP-Bytes, schützen vor vorheriger Body-Allokation oder bieten eine
+produktive Webhook- beziehungsweise DoS-Garantie.
+
+Nur nach bestandener Raw-Body-Prüfung ruft die Boundary natives
+`JSON.parse(rawBody)` exakt einmal, mit exakt einem Argument und ohne Reviver
+auf. Sie trimmt, entfernt oder normalisiert weder Whitespace, BOM noch Unicode
+und repariert den String nicht. Parserexceptions können intern sensible
+Textausschnitte enthalten; sie werden vollständig verworfen. Raw Body,
+Parserexception und Parsed-Original werden weder zurückgegeben noch geloggt,
+persistiert oder weitergereicht.
+
+Native doppelte JSON-Membernamen folgen bewusst der ECMAScript-Last-Key-Wins-
+Semantik. Die Foundation behauptet weder duplikatfreies noch kanonisches JSON
+und führt keinen eigenen Parser, Reviver oder Duplicate-Key-Scanner ein. Eine
+spätere Komposition darf den Raw Body nicht durch einen zweiten Parser mit
+abweichender Semantik interpretieren.
+
+Der unveränderte Parsed-Wert muss den bestehenden geschlossenen SyncContract
+vollständig bestehen, bevor eine defensive Projektion entsteht. Zusatzfelder,
+Symbole, Accessors und ungeeignete Prototypen werden nicht vor der maßgeblichen
+Validierung bereinigt. Nur danach übernimmt eine descriptor-basierte neue
+Sechs-Felder-Projektion die bereits validierten primitiven Werte und erzeugt
+ein frisches exakt leeres Payload. Projektion und finaler tief eingefrorener
+Snapshot werden mit derselben einmal erfassten Referenzzeit erneut validiert.
+Parsed-Original und Ausgabe teilen keine mutablen Recordidentitäten. Deep
+Freeze schützt nur die neue gewöhnliche Ausgabe und ist keine Sandbox.
+
+Eine beherrschte Eingabeablehnung erzeugt pro Aufruf eine neue vollständig
+validierte frühe Gateway-Fehlerresponse. Sie verwendet eine kontrollierte
+`gateway_`-ID, `action: null`, `handledBy: null`, `data: null`, frische
+leere `details`, `warnings` und `processedBy` sowie statisches, nicht
+gemessenes `durationMs: 0`. Sie spiegelt niemals eine eingehende `req_`-ID
+und behauptet keine SyncAgent-Verarbeitung.
+
+Die Boundary ordnet ausschließlich statisch zu: Übergröße zu
+`PAYLOAD_TOO_LARGE`, andere reguläre Raw-Body-Fehler zu
+`VALIDATION_ERROR`, Parser-Throw zu `INVALID_JSON`, einen alleinigen
+Versions- oder Aktionsfehler zum jeweiligen spezifischen Profil und sonstige
+oder gemischte Requestfehler zu `VALIDATION_ERROR`. `FORBIDDEN` wird ohne
+Authentisierung oder Autorisierung nicht erzeugt. `SERVICE_UNAVAILABLE` und
+`INTERNAL_ERROR` werden nicht als frühe Fehler erfunden. Ungültige
+Referenzzeit sowie Clock-, Generator-, Builder-, Projektions-, Freeze- oder
+Validatorfehler bleiben statische lokale Boundary-Fehler ohne Gateway-Response.
+
+Für einen akzeptierten Request oder eine ausgegebene Gateway-Fehlerresponse
+wird die Clock exakt einmal ausgewertet. Der Gateway-ID-Generator wird nur bei
+einer tatsächlich benötigten Ablehnung aufgerufen; sein Default verwendet
+ausschließlich `gateway_ + crypto.randomUUID()` ohne schwächeren Fallback.
+Clock, Generator und Function-Proxies sind vertrauenswürdige ausführbare
+Same-Realm-Composition-Dependencies. Manipulierte Intrinsics und Reflection
+können beliebigen Code ausführen, blockieren, werfen oder Seiteneffekte
+auslösen. Beobachtbare Fehler werden redigiert; bereits ausgelöste Wirkungen
+können nicht verhindert oder rückgängig gemacht werden.
+
+Natives `JSON.parse` ohne Reviver erzeugt aus JSON selbst keine Proxies,
+Accessors, Symbole, Functions oder Thenables. Manipulierte Same-Realm-
+Intrinsics bleiben außerhalb einer Sandboxgarantie. Eine universelle Proxy-
+oder Thenable-Erkennung und die Behauptung, beliebiger Runtime- oder
+Dependency-Code könne niemals werfen oder blockieren, werden vermieden.
+
+Die spätere reale Reihenfolge bleibt:
+
+```text
+rohe Bodybytes am Transport begrenzen
+→ kontrolliert in einen String dekodieren
+→ diese Boundary genau einmal parsen lassen
+→ ausschließlich die defensive Projektion weiterreichen
+```
+
+`source: "goldendawn-os"` und eine gültige `req_`-ID sind nur syntaktisch
+gültig und beweisen keine Authentisierung, Herkunft, Identität, Berechtigung,
+Kollisionsfreiheit oder Replay-Sicherheit. Die Timestamp-Toleranz ist kein
+Idempotenz- oder Deduplizierungsschutz. Der exakt leere Payload entfernt das
+vorgesehene Inhaltsfeld, beweist aber nicht die semantische Privatheit anderer
+Metadaten. Die Boundary liest, persistiert oder exportiert keine Bestände aus
+PromptVault, LearningHub oder LichtwaldLog. Ohne HTTP-Handler und konkreten
+Transport entsteht kein externer Datenfluss.
 
 ## Bedrohungsmodell für Version 1
 
@@ -508,9 +591,10 @@ beim besonderen Moment sichtbar. Der geplante Implementierungsumfang ist
 vollständig abgeschlossen und geprüft. Der annotierte Tag `v0.2.2` und das
 zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
 das neueste veröffentlichte Release. `v0.3.0` ist mit der transportneutralen
-SyncService Foundation auf Basis der implementierten SyncContract Foundation
-in Arbeit. ADR 0013, ADR 0014 und ADR 0015 dokumentieren die unveränderten
-Contract-, private Storage- und Demo-Trennungsgrenzen.
+SyncGateway Request Boundary Foundation auf Basis der implementierten
+SyncContract und SyncService Foundations in Arbeit. ADR 0013, ADR 0014 und ADR
+0015 dokumentieren die unveränderten Contract-, private Storage- und
+Demo-Trennungsgrenzen.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
@@ -753,9 +837,11 @@ Contract-, private Storage- und Demo-Trennungsgrenzen.
 ## Webhook-Sicherheit
 
 Dieser Abschnitt beschreibt ausschließlich die noch zu implementierende
-serverseitige Transportgrenze. Die aktuelle SyncService Foundation stellt
-keinen konkreten Transport oder Webhook bereit und erfüllt diese Regeln nicht
-bereits durch einen injizierten Port, Dokumentation oder Objektvalidierung.
+serverseitige Transportgrenze. Die aktuellen transportneutralen SyncContract-,
+SyncService- und SyncGateway-Request-Boundary-Foundations stellen keinen
+konkreten HTTP-Transport oder Webhook bereit und erfüllen diese Regeln nicht
+bereits durch einen injizierten Port, einen bereits materialisierten String,
+Dokumentation oder Objektvalidierung.
 
 ### Entwicklungsmodus
 
@@ -802,11 +888,17 @@ Kosten und Datenbereinigung kontrolliert sind.
 - Der erwartete Content-Type ist `application/json`.
 - Erlaubte Aktionen werden über eine feste Allowlist definiert.
 - Payloads werden gegen das Schema aus `docs/data-contracts.md` validiert.
-- Das spätere Gateway begrenzt den rohen Request-Body vor JSON-Parsing auf
-  höchstens 65.536 UTF-8-Bytes. Die aktuelle reine String-Prüfung ist nur eine
-  wiederverwendbare Vertragsfunktion und keine serverseitige Durchsetzung.
-- Nach der Raw-Bodybyte-Grenze wird JSON kontrolliert geparst; erst der daraus
-  entstandene datenförmige, weiterhin unvertrauenswürdige Wert wird validiert.
+- Das spätere Gateway begrenzt die tatsächlich empfangenen rohen Request-Bytes
+  vor vollständiger Allokation, Decodierung oder JSON-Parsing. Die aktuelle
+  Prüfung eines bereits materialisierten Strings auf höchstens 65.536
+  berechnete UTF-8-Bytes ist keine serverseitige Wire-Durchsetzung.
+- Nach der Raw-Bodybyte-Grenze werden die Bytes kontrolliert in genau einen
+  String dekodiert. Ausschließlich die SyncGateway Request Boundary parst
+  diesen String exakt einmal ohne Reviver; nur ihre defensive validierte
+  Projektion wird weitergereicht.
+- Doppelte JSON-Membernamen folgen dabei nativ Last-Key-Wins. Ein zweiter
+  Parser, Reviver, Duplicate-Key-Scanner oder die Behauptung kanonischen JSONs
+  wird nicht eingeführt.
 - `source: "goldendawn-os"` ist kein Herkunfts-, Identitäts-, Authentisierungs-
   oder Berechtigungsnachweis. Routing und Autorisierung verwenden zusätzlich
   vertrauenswürdigen serverseitigen Kontext.
@@ -1016,7 +1108,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
 | `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; vollständig geprüft und veröffentlicht |
 | `v0.2.2` | privater allowlist-basierter View-, Controller-, Service- und Storage-Pfad sowie strikt getrennter synthetischer In-Memory-Demo-Stack mit fester Herkunft, Safe DOM, Closure-/Map-isolierten Entry-IDs, defensiver UI-Projektion, flüchtiger Suche/Filterung, DOM-Unmount-Grenze, statisch redigierten Fehlern, ohne Browser-Key oder Fallback; keine Base64-Bilder in `localStorage`, keine externe Übertragung; vollständig geprüft und veröffentlicht |
-| `v0.3.0` | In Arbeit: geschlossener SyncContract plus kontrollierter argumentloser SyncService, getrennte tief eingefrorene Transport-/Korrelationsrequests, defensive normale Response-Projektion, statisch redigierte lokale Fehler und dokumentierte Function-/Proxy-/Thenable-Grenzen; konkreter Transport, Webhook, Authentisierung, Signaturen, CORS und Rate Limits bleiben offen |
+| `v0.3.0` | In Arbeit: geschlossener SyncContract, kontrollierter argumentloser SyncService und synchrone SyncGateway Request Boundary für materialisierte Raw Bodies; Größenprüfung vor einmaligem Parse, unveränderte Contractvalidierung vor defensiver Projektion, Validierung vor und nach Deep Freeze, statische frühe Gateway-Ablehnungen ohne Agentenbehauptung sowie dokumentierte Function-, Proxy-, Intrinsic-, Duplicate-Key-, Single-Parser- und Wire-Grenzen; HTTP-Transport, Webhook, Authentisierung, Autorisierung, Signaturen, CORS und Rate Limits bleiben offen |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
 | `v0.5.0` | Prompt-Injection-Schutz, strukturierter TestAgent-Output, keine Direktzugriffe |
 | `v0.6.0` | End-to-End-Sicherheitsreview und vollständige Demo-Trennung |
