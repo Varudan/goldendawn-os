@@ -4,11 +4,11 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – SyncService Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – SyncGateway Request Boundary Foundation` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell transportneutrale SyncService Foundation auf dem implementierten SyncContract-Kern |
-| Letzte Aktualisierung | 2026-08-04 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; SyncContract und SyncService Foundations implementiert; aktuell transportneutrale SyncGateway Request Boundary Foundation |
+| Letzte Aktualisierung | 2026-08-06 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -22,9 +22,10 @@ nicht starre Kalendertermine.
 - Die Reihenfolge bleibt: **Mock → Webhook → Airtable → Agentenlogik**.
 - Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
   `v0.3.0` bereitet die erste externe Kommunikation zunächst mit einem
-  transportneutralen Vertrag und einer transportneutralen Servicegrenze vor.
-  Da kein konkreter Transport komponiert ist, kommuniziert der aktuelle Slice
-  noch nicht extern.
+  transportneutralen Vertrag, einer transportneutralen Servicegrenze und einer
+  synchronen Request Boundary für bereits materialisierte Raw-Body-Werte vor.
+  Da kein HTTP-Handler oder konkreter Transport komponiert ist, kommuniziert
+  der aktuelle Slice noch nicht extern.
 - Weitere Unterversionen dürfen ergänzt werden, wenn neue, klar abgegrenzte
   Arbeitspakete entstehen.
 - Version 1 bleibt auf `SyncAgent`, `DataAgent` und `TestAgent` begrenzt.
@@ -53,7 +54,7 @@ nicht starre Kalendertermine.
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.3.0` | SyncAgent and Webhook Foundation | In Arbeit: SyncContract Foundation implementiert; transportneutrale SyncService Foundation aktuell; konkreter Transport und operative Agentengrenze folgen | 🟡 |
+| `v0.3.0` | SyncAgent and Webhook Foundation | In Arbeit: SyncContract und SyncService Foundations implementiert; transportneutrale SyncGateway Request Boundary Foundation aktuell; HTTP-Transport und operative Agentengrenze folgen | 🟡 |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
 | `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
@@ -597,22 +598,25 @@ eine spätere Phase geplant.
 
 ### Aktueller Stand
 
-`v0.3.0` ist **in Arbeit – SyncService Foundation**. Der erste Slice
-SyncContract Foundation ist implementiert und bleibt die verbindliche
+`v0.3.0` ist **in Arbeit – SyncGateway Request Boundary Foundation**. Der
+erste Slice SyncContract Foundation ist implementiert und bleibt die verbindliche
 Vertragsgrundlage für Version `1.0`, die Aktion `syncTest` und den Handler
-`SyncAgent`. Der aktuelle Slice ergänzt einen asynchronen Service mit
+`SyncAgent`. Der zweite Slice, die asynchrone SyncService Foundation mit
 kontrolliertem Request-Build, injiziertem Transport-Port, unveränderlicher
-Korrelation, defensiver normaler Response-Projektion und getrenntem lokalem
-Resultvertrag.
+Korrelation und defensiver normaler Response-Projektion, ist ebenfalls
+implementiert. Der aktuelle dritte Slice ergänzt ausschließlich eine synchrone
+transportneutrale Grenze für einen bereits materialisierten Raw-Body-Wert.
 
 Der Request-Payload ist exakt leer; erfolgreiche Responses sind auf
 `dataOrigin: "synthetic"` begrenzt. Dieser Wert ist nur eine
-Vertragsklassifikation und kein Herkunfts- oder Datenschutzbeweis. Der Slice
-implementiert keinen konkreten Netzwerktransport, Endpoint, Webhook,
-operativen `SyncAgent`, n8n-Workflow, keine Authentisierung, Signaturprüfung,
-CORS- oder Rate-Limit-Durchsetzung, keine Hub-UI, Persistenz oder
-`src/main.js`-Komposition. Da kein konkreter Transport ausgeliefert oder
-komponiert ist, entsteht kein externer Datenfluss.
+Vertragsklassifikation und kein Herkunfts- oder Datenschutzbeweis. Der aktuelle
+Slice implementiert keinen konkreten Netzwerktransport, HTTP-Handler, Endpoint,
+Webhook, operativen `SyncAgent`, n8n-Workflow, keine Header-, Methoden-,
+Statuscode-, Content-Type-, Charset- oder Encoding-Verarbeitung,
+Authentisierung, Autorisierung, Signaturprüfung, Secrets, CORS- oder
+Rate-Limit-Durchsetzung, keine Hub-UI, Persistenz, Logs, Telemetrie oder
+`src/main.js`-Komposition. Da kein HTTP-Handler oder konkreter Transport
+ausgeliefert oder komponiert ist, entsteht kein externer Datenfluss.
 
 ### Abgeschlossene Grundlage: SyncContract Foundation
 
@@ -644,7 +648,7 @@ komponiert ist, entsteht kein externer Datenfluss.
 - ✅ ADR 0016 sowie Architektur-, Vertrags-, Roadmap- und Sicherheitsgrenzen
   dokumentiert.
 
-### Aktueller Slice: SyncService Foundation
+### Abgeschlossene Grundlage: SyncService Foundation
 
 - ✅ Eingefrorene Service-API mit exakt der immer Promise-basierten Methode
   `runSyncTest` und fail-closed abgelehnten zusätzlichen Argumenten
@@ -674,29 +678,91 @@ komponiert ist, entsteht kein externer Datenfluss.
   fehlende rückwirkende Kontrolle bereits ausgelöster Seiteneffekte in ADR
   0017 und den Sicherheitsgrenzen dokumentiert.
 
+### Aktueller Slice: SyncGateway Request Boundary Foundation
+
+- ✅ `createSyncGatewayRequestBoundary({ generateGatewayRequestId,
+  getCurrentTimestamp })` als einzige Factory und eine eingefrorene gewöhnliche
+  API exakt mit der synchronen Methode `processSyncRawBody` bereitgestellt.
+- ✅ Exakt einen Aufrufwert verlangt; fehlende oder zusätzliche Argumente ohne
+  Inspektion, Konvertierung, Größenprüfung, Parsing, Clock- oder
+  Generatorzugriff als statischen lokalen `invalidInvocation`-Result
+  abgelehnt.
+- ✅ Jeden Aufruf auf den tief eingefrorenen exakten Fünf-Felder-Result
+  `ok`, `status`, `syncRequest`, `gatewayErrorResponse` und `error`
+  begrenzt; lokale Fehler strikt von SyncContract-Responses getrennt.
+- ✅ Unveränderten Einzelwert zuerst mit `validateSyncRawBodySize` geprüft und
+  nur einen bestandenen String exakt einmal nativ ohne Reviver geparst.
+  Übergröße besitzt Vorrang vor JSON-Syntax.
+- ✅ Unveränderten Parsed-Wert vor jeder Projektion vollständig gegen den
+  bestehenden geschlossenen SyncContract validiert. Zusatzfelder werden nicht
+  zuerst entfernt; es gibt keine Reparatur, Normalisierung, Trimmung, Merge-
+  oder Stringify-/Parse-Roundtrip.
+- ✅ Descriptor-basiert eine neue Sechs-Felder-Projektion mit frischem exakt
+  leerem Payload erzeugt, mit derselben einmal erfassten Referenzzeit erneut
+  validiert, tief eingefroren und final nochmals validiert. Parsed-Original und
+  Ausgabe teilen keine mutablen Recordidentitäten.
+- ✅ Statische Fehlerzuordnung umgesetzt: `rawBodyTooLarge` zu
+  `PAYLOAD_TOO_LARGE`, andere reguläre Raw-Body-Fehler zu
+  `VALIDATION_ERROR`, Parser-Throw zu `INVALID_JSON`, alleinige
+  Versions-/Aktionsfehler zum spezifischen Profil und sonstige oder gemischte
+  Requestfehler zu `VALIDATION_ERROR`.
+- ✅ `invalidReferenceTimestamp` sowie unerwartete Builder-, Projektions-,
+  Freeze- oder Validatorinkonsistenzen als statischen lokalen
+  `boundaryFailed`-Pfad ohne Gateway-Response behandelt. `FORBIDDEN`,
+  `SERVICE_UNAVAILABLE` und `INTERNAL_ERROR` werden an dieser Grenze nicht
+  erfunden.
+- ✅ Jede beherrschte Ablehnung als neue vollständig validierte und tief
+  eingefrorene frühe Gateway-Fehlerresponse mit kontrollierter `gateway_`-ID,
+  `action: null`, `handledBy: null`, leerer Verarbeitungskette und statischem
+  `durationMs: 0` erzeugt; eingehende `req_`-IDs werden nie gespiegelt.
+- ✅ Clock bei einem akzeptierten Request oder einer ausgegebenen
+  Gateway-Fehlerresponse jeweils exakt einmal ausgewertet. Generator nur für
+  eine tatsächlich benötigte Ablehnung verwendet; Default ausschließlich
+  `gateway_ + crypto.randomUUID()` ohne schwächeren Fallback.
+- ✅ Native Last-Key-Wins-Semantik doppelter JSON-Membernamen und die
+  Single-Parser-Grenze dokumentiert; kein eigener Parser, Reviver,
+  Duplicate-Key-Scanner oder kanonisches JSON behauptet.
+- ✅ Materialisierte Stringgrenze von der späteren Wire-Grenze getrennt:
+  tatsächliche Raw Bytes müssen an der späteren Transportgrenze vor
+  String-Materialisierung und kontrollierter Decodierung begrenzt werden. Die
+  Boundary ist keine HTTP-, Webhook-, Body-Allokations- oder DoS-Durchsetzung.
+- ✅ Function-, Function-Proxy-, Reflection-, Intrinsic- und Deep-Freeze-
+  Grenzen sowie die fehlende rückwirkende Kontrolle ausgelöster
+  Seiteneffekte in ADR 0018 dokumentiert.
+
 ### Spätere Slices innerhalb von v0.3.0
 
 - ⬜ Serverseitigen n8n-Webhook beziehungsweise Gateway mit HTTP `POST`
   implementieren; der Browser terminiert keinen eingehenden öffentlichen
   Webhook.
-- ⬜ An der Wire-Grenze zuerst rohe Bodybytes begrenzen, danach JSON kontrolliert
-  parsen und erst den resultierenden datenförmigen, weiterhin
-  unvertrauenswürdigen Wert
-  validieren. `JSON.parse` ohne benutzerdefinierten Reviver transportiert keine
-  Proxies, Accessors, Symbole oder Trap-Funktionen.
+- ⬜ An der HTTP-Grenze zuerst Methode, Content-Type, Origin/CORS und frühe
+  Transportkontrollen, frühe Netzwerk-/IP-Limits sowie gegebenenfalls eine
+  bodyunabhängige Header-Authentisierung durchsetzen.
+- ⬜ Tatsächlich empfangene Raw Bytes bereits während des Empfangs hart
+  begrenzen, vorgesehene Signaturen über exakt diese Bytes und relevante Header
+  vor Decodierung und JSON-Parsing prüfen, kontrolliert genau einmal dekodieren
+  und ausschließlich die bestehende Request Boundary einmal parsen, validieren
+  und projizieren lassen.
+- ⬜ Die validierte Aktion erst anhand vertrauenswürdiger Identität und
+  serverseitigem Kontext autorisieren und erst danach routen. CORS ersetzt
+  weder Authentisierung noch Autorisierung; Rate Limits können zusätzlich
+  identitäts-, mandanten- oder aktionsbezogen greifen.
+- ⬜ Integration früher Gateway-Fehlerresponses in den realen Transport- und
+  SyncService-Fluss ausdrücklich entscheiden; die aktuelle SyncService
+  Foundation akzeptiert weiterhin nur normale korrelierte Responses.
 - ⬜ Den operativen `SyncAgent` als Validierungs- und Routinggerüst aufbauen.
 - ⬜ Den ersten realen browserinitiierten Fluss
   `GoldenDawn → SyncService → serverseitiger n8n-Webhook/Gateway → SyncAgent →
   validierte Antwort` herstellen.
-- ⬜ Authentisierung, Signaturprüfung, CORS, Rate Limits, Timeout- und
-  Transportfehler vor einem realen verbundenen Betrieb entscheiden und
+- ⬜ Timeout-, Replay-, Idempotenz-, Deduplizierungs- und weitere
+  Transportfehlergrenzen vor einem realen verbundenen Betrieb entscheiden und
   implementieren.
 - ⬜ `SyncAgent` später im AgentHub darstellen; Verbindungen, Webhooks,
   Workflows und den einzigen `syncTest`-Auslöser später im AutomationHub
   darstellen. Diese UI ist im aktuellen Slice nicht enthalten.
 - ⬜ Bereinigten n8n-Workflow-Export dokumentieren.
 
-### Abnahmekriterien für den aktuellen Slice
+### Abnahmekriterien der abgeschlossenen SyncService Foundation
 
 - Die öffentliche API ist eingefroren und besitzt exakt `runSyncTest`;
   zusätzliche Argumente werden ohne Inspektion und ohne Dependency-Zugriff
@@ -726,7 +792,7 @@ komponiert ist, entsteht kein externer Datenfluss.
   1021/1021 Tests bei 0 Fehlschlägen, 0 Skips und 0 Todos.
 - Der Produktions-Build ist erfolgreich und transformiert exakt 46 Module.
 
-### Portfolio-Nachweis für den aktuellen Slice
+### Portfolio-Nachweis der abgeschlossenen SyncService Foundation
 
 - exakte öffentliche Service-API, kontrollierter Request-Build und
   unveränderliche Korrelation;
@@ -736,6 +802,64 @@ komponiert ist, entsteht kein externer Datenfluss.
   eine `dataOrigin`-Klassifikation und kein Herkunftsbeweis;
 - ADR 0017 mit klarer Trennung von Transport-Port, konkretem Transport und
   späterer Gateway-Grenze; ADR 0016 bleibt die unveränderte Contract-Grundlage.
+
+### Abnahmekriterien für den aktuellen Slice
+
+- Die öffentliche API ist eingefroren, gewöhnlich und besitzt exakt die
+  synchrone Methode `processSyncRawBody`; falsche Argumentanzahlen werden ohne
+  Inspektion und ohne Dependency-Zugriff abgelehnt.
+- Die Prüfung des unveränderten Raw-Body-Werts erfolgt garantiert vor dem
+  einzigen nativen Parse ohne Reviver. Übergröße wird ohne Parserzugriff
+  abgelehnt.
+- Der unveränderte Parsed-Wert muss den geschlossenen SyncContract vollständig
+  bestehen, bevor eine defensive Projektion entsteht. Zusatzfelder werden
+  nicht vor dieser Prüfung entfernt.
+- Die neue Sechs-Felder-Projektion verwendet ein frisches exakt leeres Payload,
+  wird mit derselben einmal erfassten Referenzzeit validiert, tief eingefroren
+  und final erneut validiert.
+- Jeder Result besitzt exakt fünf Felder. Ein akzeptierter Request, eine
+  kontrollierte frühe Gateway-Ablehnung und ein lokaler Boundary-Fehler bleiben
+  semantisch getrennt.
+- Gateway-Fehlerprofile folgen ausschließlich der dokumentierten statischen
+  Zuordnung. Gemischte Requestfehler ergeben `VALIDATION_ERROR`; interne
+  Clock-, Generator-, Builder-, Freeze- oder Validatorfehler ergeben keine
+  Gateway-Response.
+- Jede Gateway-Ablehnung besitzt frische Records und Arrays, eine neue
+  kontrollierte `gateway_`-ID, keine gespiegelte `req_`-ID, keinen Handler
+  und eine leere Verarbeitungskette.
+- Clock und Generator werden höchstens in den dokumentierten Pfaden ausgewertet
+  und weder fremde Werte noch Exceptions, Parser- oder Validatorinterna werden
+  ausgegeben oder geloggt.
+- Mutationsgerichtete Tests belegen die reale Validierungs-/Freeze-Reihenfolge,
+  die unveränderte Originalgrößenprüfung vor NFC-Normalisierung und Parsing,
+  einen Console-stillen Erfolgspfad, exakt einen Versuch werfender Functions,
+  Function-Proxies und des Default-UUID-Pfads sowie vollständig getrennte
+  Identitäten wiederholter `INVALID_JSON`-Responses. Globale
+  Instrumentierungen laufen mit `concurrency: false` und `finally`-Restore.
+- Native Duplicate-Key-/Last-Key-Wins- und Single-Parser-Semantik sowie die
+  Grenze zwischen bereits materialisiertem String und späterer Wire-
+  Bytebegrenzung sind dokumentiert.
+- Es gibt keinen HTTP-Handler, Endpoint, konkreten Transport, Webhook, n8n,
+  operativen Agenten, Storage, Logging, Telemetrie, UI oder
+  `src/main.js`-Komposition.
+- Die gezielte Boundary-Suite besteht mit 54/54 Tests unter dem exakt
+  geforderten `node --test tests/syncGatewayRequestBoundary.test.js`; Boundary
+  plus SyncContract bestehen mit 99/99 und Boundary plus SyncContract plus
+  SyncService mit 142/142 Tests.
+- Die Gesamtsuite besteht mit 1075/1075 Tests. Alle vier Läufe besitzen 0
+  Fehlschläge, 0 Skips und 0 Todos.
+- Der Produktions-Build ist erfolgreich und transformiert exakt 46 Module.
+
+### Portfolio-Nachweis für den aktuellen Slice
+
+- exakte synchrone Boundary-API und exakter Fünf-Felder-Resultvertrag;
+- nachvollziehbarer Raw-Body-, Single-Parse-, ursprünglicher
+  Contractvalidierungs-, Projektions- und Freeze-Fluss;
+- statische redigierte frühe Gateway-Ablehnungen ohne erfundene
+  SyncAgent-Verarbeitung;
+- ADR 0018 mit klarer Trennung von materialisiertem String, späterer
+  Wire-Byte-Grenze und HTTP-/Webhook-Komposition; ADR 0016 und ADR 0017 bleiben
+  unveränderte Grundlagen.
 
 ## v0.4.0 – DataAgent and Airtable Integration
 
@@ -1026,16 +1150,18 @@ abgeschlossen und mit 374/374 LichtwaldLog-Tests, 933/933 Tests der Gesamtsuite,
 Modulen geprüft. Die Paketversion ist `0.2.2`; der annotierte Tag `v0.2.2` und
 das zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht. `v0.2.2`
 ist das neueste veröffentlichte Release. `v0.3.0` ist mit der
-transportneutralen SyncService Foundation auf Basis der implementierten
-SyncContract Foundation in Arbeit. Der veröffentlichte `v0.2.2`-Umfang bleibt
-vollständig lokal. Da der aktuelle Service-Slice keinen konkreten Transport und
-keine Anwendungskomposition besitzt, führt er keine externe Kommunikation,
-keinen Webhook, operativen `SyncAgent`, keine n8n-Verbindung oder
-Airtable-Anbindung ein.
+transportneutralen SyncGateway Request Boundary Foundation auf Basis der
+implementierten SyncContract und SyncService Foundations in Arbeit. Der
+veröffentlichte `v0.2.2`-Umfang bleibt vollständig lokal. Da der aktuelle
+Boundary-Slice keinen HTTP-Handler, konkreten Transport und keine
+Anwendungskomposition besitzt, führt er keine externe Kommunikation, keinen
+Webhook, operativen `SyncAgent`, keine n8n-Verbindung oder Airtable-Anbindung
+ein.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein Backend, Benutzerkonten und
 Agentenlogik bleiben offen beziehungsweise beginnen erst in den dafür
 vorgesehenen späteren Slices und Versionen. Der reale Transport folgt innerhalb
 von `v0.3.0 – SyncAgent and Webhook Foundation` erst nach den aktuell
-implementierten transportneutralen Contract- und Service-Foundations.
+implementierten transportneutralen Contract-, Service- und Request-Boundary-
+Foundations.

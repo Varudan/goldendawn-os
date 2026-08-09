@@ -8,6 +8,69 @@ Release.
 
 ## Unveröffentlicht – v0.3.0 in Arbeit
 
+### SyncGateway Request Boundary Foundation
+
+- `createSyncGatewayRequestBoundary({ generateGatewayRequestId,
+  getCurrentTimestamp })` als synchrone transportneutrale Grenze für einen
+  bereits vollständig materialisierten Raw-Body-Wert ergänzt. Die eingefrorene
+  gewöhnliche API exportiert exakt `processSyncRawBody`; die Methode akzeptiert
+  exakt einen Wert und ist kein HTTP-Handler.
+- Jeden Aufruf synchron auf einen tief eingefrorenen exakten Fünf-Felder-Result
+  aus `ok`, `status`, `syncRequest`, `gatewayErrorResponse` und `error`
+  begrenzt. Beherrschte Eingabeablehnungen liefern eine vollständig gültige
+  frühe Gateway-Fehlerresponse; ungültige Invocation sowie interne oder
+  Dependency-Fehler bleiben getrennte statisch redigierte lokale Results.
+- Die fail-closed Reihenfolge
+  `Raw-Body-Größe prüfen → exakt einmal ohne Reviver parsen → unveränderten
+  Parsed-Wert validieren → defensive Sechs-Felder-Projektion mit frischem
+  leerem Payload erzeugen → erneut validieren → tief einfrieren → final erneut
+  validieren` umgesetzt. Zusatzfelder werden nicht vor der maßgeblichen
+  Contractvalidierung entfernt; Parsed-Original und Ausgabe teilen keine
+  mutablen Recordidentitäten.
+- Statische Ablehnungszuordnung festgelegt: Übergröße zu
+  `PAYLOAD_TOO_LARGE`, andere reguläre Raw-Body-Fehler zu
+  `VALIDATION_ERROR`, native Parser-Throws zu `INVALID_JSON`, ein alleiniger
+  `unsupportedVersion`- oder `unknownAction`-Fehler zum jeweils spezifischen
+  Profil und sonstige oder gemischte Requestfehler zu `VALIDATION_ERROR`.
+  `invalidReferenceTimestamp` sowie Builder-, Projektions-, Freeze- und
+  Validatorinkonsistenzen bleiben lokale `boundaryFailed`-Pfade.
+- Frühe Gateway-Responses pro Aufruf aus frischen Records und Arrays gebaut,
+  vor und nach Deep Freeze vollständig validiert und mit neuer kontrollierter
+  `gateway_`-ID, `action: null`, `handledBy: null`,
+  `meta.processedBy: []` sowie statischem, nicht gemessenem
+  `durationMs: 0` ausgegeben. Eingehende `req_`-IDs werden nie gespiegelt und
+  eine Verarbeitung durch den `SyncAgent` wird nicht behauptet.
+- Clock für jeden akzeptierten Request oder ausgegebenen Gateway-Fehler exakt
+  einmal erfasst. Gateway-ID-Generator ausschließlich für eine tatsächlich
+  benötigte Ablehnung ausgewertet; der Default verwendet nur
+  `gateway_ + crypto.randomUUID()` ohne schwächeren Fallback.
+- Native ECMAScript-Last-Key-Wins-Semantik für doppelte JSON-Membernamen und die
+  Single-Parser-Grenze dokumentiert. Es gibt keinen Reviver, zweiten Parser,
+  Duplicate-Key-Scanner, Stringify-/Parse-Roundtrip, Trim-, BOM-,
+  Unicode-Normalisierungs- oder Reparaturpfad.
+- Klargestellt, dass die Grenze nur die berechnete UTF-8-Länge eines bereits
+  allozierten Strings prüft. Sie ist keine tatsächliche Raw-Wire-
+  Bytebegrenzung, kein Schutz vor vorheriger Body-Allokation und keine HTTP-,
+  Webhook- oder DoS-Durchsetzung. Für die spätere HTTP-/Transportgrenze die
+  mechanismusgerechte Reihenfolge aus frühen Methoden-, Content-Type-,
+  Origin-/CORS-, Rate-Limit- und gegebenenfalls Header-Auth-Kontrollen, harter
+  Raw-Byte-Begrenzung während des Empfangs, Signaturprüfung vor Decodierung und
+  Parsing, einmaliger kontrollierter Decodierung, alleiniger Boundary-
+  Verarbeitung, kontextgebundener Autorisierung und erst anschließendem
+  Routing dokumentiert. CORS ersetzt keine Authentisierung oder Autorisierung;
+  Rate Limits können mehrschichtig sein.
+- Die Boundary-Suite gezielt gegen verschobene Post-Freeze-Validierungen,
+  NFC-Normalisierung vor der Originalgrößenprüfung, Console-Ausgaben im
+  Erfolgspfad, wiederholte Dependency-Aufrufe nach Throws und geteilte
+  Identitäten desselben Gateway-Fehlerprofils gehärtet. Globale
+  Instrumentierungen laufen nicht konkurrierend und werden garantiert im
+  `finally` restauriert.
+- ADR 0018 ergänzt, ohne ADR 0016 oder ADR 0017 umzudeuten. Kein konkreter
+  Transport, HTTP-Handler, Endpoint, Webhook, n8n, operativer `SyncAgent`,
+  keine Authentisierung, Autorisierung, Signaturprüfung, Secrets, CORS oder
+  Rate Limits, keine Persistenz, Logs, Telemetrie, Hub-UI oder
+  `src/main.js`-Komposition wurden eingeführt.
+
 ### SyncContract Foundation
 
 - Transportneutralen Vertragskern für Contract-Version `1.0`, die einzige
@@ -33,11 +96,13 @@ Release.
 - Das Raw-Body-Limit exakt auf 65.536 UTF-8-Bytes begrenzt. Der reine Helper
   serialisiert keine Objekte und ist ohne konkrete Wire-/Webhook-
   Transportgrenze keine tatsächliche Webhook-Durchsetzung.
-- Für die spätere Wire-Grenze die Reihenfolge
-  `rohe Bodybytes begrenzen → JSON kontrolliert parsen → datenförmigen weiterhin
-  unvertrauenswürdigen Wert validieren` festgelegt. `JSON.parse` ohne
-  benutzerdefinierten Reviver überträgt keine Proxies, Accessors, Symbole oder
-  Trap-Funktionen.
+- Für die spätere Wire-Grenze festgelegt, rohe Bodybytes während des Empfangs
+  hart zu begrenzen, vorgesehene Signaturen über exakt diese Bytes vor der
+  kontrollierten einmaligen Decodierung zu prüfen, den resultierenden String
+  ausschließlich von der Boundary einmal parsen und projizieren zu lassen und
+  erst nach kontextgebundener Autorisierung zu routen. Natives `JSON.parse`
+  ohne benutzerdefinierten Reviver erzeugt aus JSON selbst keine Proxies,
+  Accessors, Symbole oder Trap-Funktionen.
 - `source: "goldendawn-os"` als reine syntaktische Klassifikation festgehalten,
   nicht als Nachweis für Authentisierung, Herkunft, Identität oder Berechtigung.
   Vertrauenswürdige Herkunft, Routing und Autorisierung folgen später aus
@@ -84,9 +149,13 @@ Release.
 
 ### Qualität
 
-- Gezielte SyncService-Suite mit 43/43 Tests, kombinierte
-  SyncService-/SyncContract-Suite mit 88/88 Tests und die vollständige Suite
-  mit 1021/1021 Tests geprüft; 0 Fehlschläge, 0 Skips und 0 Todos.
+- Die gezielte Boundary-Suite mit dem exakt geforderten
+  `node --test tests/syncGatewayRequestBoundary.test.js` mit 54/54 Tests
+  geprüft; 0 Fehlschläge, 0 Skips und 0 Todos.
+- Boundary und SyncContract gemeinsam mit 99/99 Tests sowie Boundary,
+  SyncContract und SyncService gemeinsam mit 142/142 Tests geprüft. Die
+  vollständige Suite besteht mit 1075/1075 Tests; alle Läufe besitzen 0
+  Fehlschläge, 0 Skips und 0 Todos.
 - Produktions-Build erfolgreich abgeschlossen; exakt 46 Module transformiert.
 
 ### Architektur- und Sicherheitsgrenzen
@@ -97,17 +166,19 @@ Release.
   eingehenden öffentlichen Webhook.
 - Die spätere Darstellung des `SyncAgent` dem AgentHub und Verbindungen,
   Webhooks, Workflows sowie den einzigen `syncTest`-Auslöser dem AutomationHub
-  zugeordnet. In diesem Slice wird keine Hub-UI umgesetzt.
-- Keine Netzwerkkommunikation, keinen konkreten externen Transport, Endpoint
-  oder Webhook, keinen operativen `SyncAgent`, keine n8n-Verbindung,
-  Authentisierung, Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keinen
-  privaten externen Datenfluss und keinen produktiven Datenfluss eingeführt.
-  Der SyncService ist weder in `src/main.js` noch in einer UI komponiert.
+  zugeordnet. Im aktuellen Slice wird keine Hub-UI umgesetzt.
+- Keine Netzwerkkommunikation, keinen HTTP-Handler, konkreten externen
+  Transport, Endpoint oder Webhook, keinen operativen `SyncAgent`, keine
+  n8n-Verbindung, Header-, Methoden-, Statuscode-, Content-Type-, Charset- oder
+  Encoding-Verarbeitung, Authentisierung, Autorisierung, Signaturprüfung,
+  Secrets, CORS- oder Rate-Limit-Durchsetzung, keinen privaten externen
+  Datenfluss und keinen produktiven Datenfluss eingeführt. SyncService und
+  Boundary sind weder in `src/main.js` noch in einer UI komponiert.
 - ADR 0016 für den transportneutralen Kern und die künftige Transport- und
   Hub-Grenze bleibt unveränderte Vertragsgrundlage. ADR 0017 dokumentiert die
-  transportneutrale SyncService Foundation. Paketversion `0.2.2`, Tag
-  `v0.2.2` und neuestes veröffentlichtes Release `v0.2.2` bleiben
-  unverändert.
+  transportneutrale SyncService Foundation; ADR 0018 die materialisierte
+  Request Boundary und ihre spätere Wire-Grenze. Paketversion `0.2.2`, Tag
+  `v0.2.2` und neuestes veröffentlichtes Release `v0.2.2` bleiben unverändert.
 
 ## v0.2.2 – 2026-08-02
 

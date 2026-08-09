@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – SyncService Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – SyncGateway Request Boundary Foundation` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; `v0.3.0` in Arbeit, aktuell transportneutrale SyncService Foundation auf dem implementierten SyncContract-Kern |
-| Letzte Aktualisierung | 2026-08-04 |
+| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; SyncContract und SyncService Foundations implementiert; aktuell transportneutrale SyncGateway Request Boundary Foundation |
+| Letzte Aktualisierung | 2026-08-06 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -100,13 +100,12 @@ Diese Regel verhindert:
 ### Aktueller v0.3.0-Slice
 
 Die implementierte **SyncContract Foundation** bleibt der reine,
-transportneutrale Vertragskern für `syncTest`. Darauf baut die aktuelle
-**SyncService Foundation** auf. `createSyncService` liefert eine eingefrorene
-API mit exakt der Promise-basierten Methode `runSyncTest`. Sie akzeptiert keine
-Argumente und erzeugt den einzigen erlaubten Request aus kontrollierten
-Contractwerten, einem injizierten ID-Generator und einer injizierten Clock.
-`payload` ist in jedem erfolgreich aufgebauten Request ein frisches exakt
-leeres Objekt.
+transportneutrale Vertragskern für `syncTest`. Darauf baut die ebenfalls
+implementierte **SyncService Foundation** auf. `createSyncService` liefert eine
+eingefrorene API mit exakt der Promise-basierten Methode `runSyncTest`. Sie
+akzeptiert keine Argumente, erzeugt den einzigen erlaubten Request aus
+kontrollierten Contractwerten und übergibt ihn nach vollständiger Validierung
+höchstens einmal an `syncTransport.sendSyncRequest`.
 
 Vor dem Request-Build löst der Service `syncTransport.sendSyncRequest` genau
 einmal sicher auf. Bei fehlender, nicht funktionaler oder werfend aufgelöster
@@ -128,20 +127,112 @@ Der Service behandelt den Rückgabewert als unvertrauenswürdig, projiziert nur
 die erwarteten gewöhnlichen Datenfelder und akzeptiert ausschließlich eine mit
 dem internen Request vollständig validierte normale SyncResponse. Das originale
 Transportobjekt wird weder verändert, eingefroren noch zurückgegeben. Frühe
-Gateway-Fehler sind kein akzeptiertes Profil dieses Slices.
+Gateway-Fehler sind kein akzeptiertes Serviceprofil.
 
-`requestId` und `timestamp` beweisen trotz kontrollierter Composition-
-Dependencies weder ihre semantische Herkunft noch automatisch ihre Freiheit
-von privaten Informationen. Der Standardgenerator verwendet ausschließlich
-`req_ + crypto.randomUUID()` ohne schwächeren Fallback. `synthetic` bleibt nur
-eine Vertragsklassifikation und kein Beweis tatsächlicher Herkunft oder
-Datenschutzkonformität. Der Service liest, persistiert oder exportiert keine
-Bestände aus PromptVault, LearningHub oder LichtwaldLog.
+Der aktuelle Slice ergänzt daneben die synchrone transportneutrale
+**SyncGateway Request Boundary Foundation**. Ihre Factory lautet:
+
+```js
+createSyncGatewayRequestBoundary({
+  generateGatewayRequestId,
+  getCurrentTimestamp,
+})
+```
+
+Die eingefrorene gewöhnliche API besitzt exakt die synchrone Methode
+`processSyncRawBody(rawBody)`. Sie ist kein HTTP-Handler und akzeptiert exakt
+einen bereits vollständig materialisierten Raw-Body-Wert. Fehlende oder
+zusätzliche Argumente führen ohne Inspektion, Größenprüfung, Parsing, Clock-
+oder Generatorzugriff zu einem statischen lokalen `invalidInvocation`-Result.
+Bei genau einem Argument wird der unveränderte Wert zuerst mit
+`validateSyncRawBodySize` geprüft und nicht konvertiert.
+
+Nur ein bestandener String wird exakt einmal mit nativem
+`JSON.parse(rawBody)` und ohne Reviver geparst. Der unveränderte Parsed-Wert
+muss zuerst den bestehenden geschlossenen SyncContract vollständig bestehen.
+Erst danach entsteht descriptor-basiert eine neue gewöhnliche Projektion aus
+exakt `version`, `action`, `source`, `requestId`, `timestamp` und einem
+frischen exakt leeren `payload`. Projektion und finaler tief eingefrorener
+Snapshot werden mit derselben höchstens einmal erfassten Referenzzeit erneut
+validiert. Es gibt keine vorherige Bereinigung zusätzlicher Felder, keine
+Normalisierung, Reparatur, Trimmung, keinen Merge und keinen
+Stringify-/Parse-Roundtrip. Der Parsed-Wert wird weder verändert, eingefroren,
+zurückgegeben, geloggt noch persistiert.
+
+Der synchrone Boundary-Result besitzt exakt:
+
+```js
+{
+  ok,
+  status,
+  syncRequest,
+  gatewayErrorResponse,
+  error
+}
+```
+
+`syncRequestAccepted` enthält nur die defensive tief eingefrorene
+Sechs-Felder-Projektion und bedeutet ausschließlich lokale Contractakzeptanz.
+`syncRequestRejected` enthält eine vollständig validierte defensive frühe
+Gateway-Fehlerresponse. `invalidInvocation` und `boundaryFailed` sind
+getrennte lokale Fehler und keine SyncContract-Responses.
+
+Die statische Zuordnung lautet: `rawBodyTooLarge` zu
+`PAYLOAD_TOO_LARGE`, andere reguläre Raw-Body-Fehler zu
+`VALIDATION_ERROR`, native Parser-Throws zu `INVALID_JSON`, ein exakt
+alleiniger `unsupportedVersion`- oder `unknownAction`-Fehler zum jeweiligen
+spezifischen Profil und sonstige oder gemischte Requestfehler zu
+`VALIDATION_ERROR`. `invalidReferenceTimestamp` sowie unerwartete Builder-,
+Projektions-, Freeze- oder Validatorinkonsistenzen sind lokale
+`boundaryFailed`-Pfade. Die Boundary emittiert weder `FORBIDDEN` noch frühe
+`SERVICE_UNAVAILABLE`- oder `INTERNAL_ERROR`-Profile.
+
+Jede beherrschte Ablehnung verwendet eine neue kontrollierte `gateway_`-ID,
+`action: null`, `handledBy: null`, `data: null`, leere `details`,
+`warnings` und `processedBy` sowie statisches `durationMs: 0`. Response,
+Error, Meta und Arrays werden pro Aufruf frisch erzeugt und vor sowie nach Deep
+Freeze vollständig validiert. Eine eingehende `req_`-ID wird nie gespiegelt
+und eine Verarbeitung durch den `SyncAgent` nie behauptet.
+
+Für einen akzeptierten Request oder eine tatsächlich ausgegebene
+Gateway-Fehlerresponse wird die Clock exakt einmal ausgewertet. Derselbe Wert
+ist Referenzzeit und bei Ablehnung Response-Timestamp. Der Gateway-ID-Generator
+wird nur für eine benötigte Ablehnung exakt einmal aufgerufen; sein Default ist
+ausschließlich `gateway_ + crypto.randomUUID()` ohne schwächeren Fallback.
+Clock und Generator sind vertrauenswürdige ausführbare Same-Realm-Composition-
+Dependencies.
+
+Native doppelte JSON-Membernamen folgen bewusst der Last-Key-Wins-Semantik von
+`JSON.parse`; die Foundation behauptet weder duplikatfreies noch kanonisches
+JSON. Es gibt keinen eigenen Parser, Reviver oder Duplicate-Key-Scanner. Die
+spätere reale Komposition darf den Raw Body nicht ein zweites Mal mit
+abweichender Semantik parsen.
+
+`validateSyncRawBodySize` prüft ausschließlich die berechnete UTF-8-Länge
+eines bereits allozierten JavaScript-Strings. Das ist keine tatsächliche
+Raw-Wire-Bytebegrenzung, kein Schutz vor vorheriger Body-Allokation und keine
+HTTP-, Webhook- oder DoS-Durchsetzung. Die spätere reale Reihenfolge bleibt:
+
+```text
+rohe Bodybytes am Transport begrenzen
+→ kontrolliert in einen String dekodieren
+→ diese Boundary genau einmal parsen lassen
+→ ausschließlich die defensive Projektion weiterreichen
+```
+
+`requestId`, `timestamp` und `source` beweisen trotz syntaktischer
+Validierung weder sichere Herkunft, Identität, Berechtigung, Kollisionsfreiheit
+noch Replay-Schutz. Der exakt leere Payload beweist nicht die semantische
+Privatheit anderer Metadaten. Die Foundations lesen, persistieren oder
+exportieren keine Bestände aus PromptVault, LearningHub oder LichtwaldLog.
 
 Es wird kein konkreter Transport in `src/` ausgeliefert oder in `src/main.js`
-komponiert. Der kontrollierte Erfolgsfluss existiert ausschließlich mit einem
-klar gekennzeichneten In-Memory-Test-Double. Daher besitzt der aktuelle Slice
-keinen externen Datenfluss.
+komponiert. Es gibt keinen HTTP-Handler, Endpoint, Webhook, n8n-Workflow,
+operativen `SyncAgent`, keine Header-, Methoden-, Statuscode-, Content-Type-,
+Charset- oder Encoding-Verarbeitung, keine Authentisierung, Autorisierung,
+Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keine Persistenz, Logs,
+Telemetrie oder Hub-UI. Daher besitzt der aktuelle Slice keinen externen
+Datenfluss.
 
 Der erste reale Fluss bleibt browserinitiiert und ist noch nicht implementiert:
 
@@ -279,6 +370,31 @@ Telemetrie. Er enthält keine Prüfungs- oder Airtable-Fachlogik. Ein späterer
 Transportadapter bleibt die einzige Stelle, an der konkrete externe
 Kommunikation technisch angebunden wird.
 
+### SyncGateway Request Boundary
+
+Die implementierte Request Boundary ist eine synchrone transportneutrale
+Objektgrenze zwischen einem später kontrolliert dekodierten String und einem
+späteren Gateway- beziehungsweise SyncAgent-Fluss. Sie:
+
+- akzeptiert ausschließlich einen bereits materialisierten Raw-Body-Wert;
+- prüft den unveränderten Wert vor jedem Parsing mit dem bestehenden
+  Raw-Body-Helper;
+- parst einen bestandenen String exakt einmal nativ und ohne Reviver;
+- validiert den unveränderten Parsed-Wert vor jeder Projektion;
+- erzeugt ausschließlich eine neue Sechs-Felder-Projektion mit frischem exakt
+  leerem Payload;
+- validiert die Projektion vor und nach Deep Freeze;
+- trennt gültigen Request, frühe Gateway-Ablehnung und lokalen Boundary-Fehler
+  über den exakten Fünf-Felder-Result;
+- liest, loggt, persistiert oder exportiert weder Raw Body noch lokale
+  Modulbestände.
+
+Sie verarbeitet keine HTTP-Methode, Header, Statuscodes, Content-Type, Charset,
+Encoding, Streams, Buffer oder Wire-Bytes. Ein späterer HTTP-Adapter muss die
+tatsächlich empfangenen Bytes an der Transportgrenze vor
+String-Materialisierung und kontrollierter Decodierung begrenzen und darf nur
+den defensiven Boundary-Snapshot weiterreichen.
+
 ## Agentenverantwortung
 
 ### SyncAgent
@@ -346,10 +462,11 @@ Eigenschaften:
 
 Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
 Alle Datenzugriffe bleiben hinter Modulservices und Storage-Adaptern. Der
-erste `v0.3.0`-Slice führt den transportneutralen Vertrag ein. Der aktuelle
-Slice ergänzt den transportneutralen SyncService-Port ohne konkrete oder
-externe Kommunikation. Reale Kommunikation beginnt erst in einem späteren
-Slice dieses Meilensteins.
+erste `v0.3.0`-Slice führt den transportneutralen Vertrag ein, der zweite den
+transportneutralen SyncService-Port. Der aktuelle dritte Slice ergänzt nur die
+synchrone Request Boundary für einen bereits materialisierten Raw-Body-Wert.
+Keiner dieser Slices komponiert konkrete externe Kommunikation. Reale
+Kommunikation beginnt erst in einem späteren Slice dieses Meilensteins.
 
 #### LearningHub Local MVP in v0.2.1
 
@@ -775,9 +892,9 @@ besonderen Moments sichtbar. Der geplante Implementierungsumfang ist damit
 vollständig abgeschlossen und geprüft. Der annotierte Tag `v0.2.2` und das
 zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
 das neueste veröffentlichte Release. `v0.3.0` ist mit der transportneutralen
-SyncService Foundation auf Basis der implementierten SyncContract Foundation
-in Arbeit. ADR 0013, ADR 0014 und ADR 0015 dokumentieren Contract, private
-Persistenz und Demo-Trennung.
+SyncGateway Request Boundary Foundation auf Basis der implementierten
+SyncContract und SyncService Foundations in Arbeit. ADR 0013, ADR 0014 und ADR
+0015 dokumentieren Contract, private Persistenz und Demo-Trennung.
 
 Der spätere Zielpfad bleibt:
 
@@ -1195,8 +1312,16 @@ Der Contract-Kern sendet und empfängt selbst nichts. Insbesondere die reine
 Prüfung von maximal 65.536 UTF-8-Bytes für einen bereits vorliegenden String
 ist keine Durchsetzung an einem Webhook. Die SyncService Foundation verwendet
 diesen Raw-Body-Helper nicht. Sie baut und validiert ausschließlich
-JavaScript-Objekte und übergibt sie an den injizierten Port; Wire-Bytes,
-JSON-Parsing und Gateway-Fehler liegen außerhalb ihres Profils.
+JavaScript-Objekte und übergibt sie an den injizierten Port.
+
+Die SyncGateway Request Boundary verwendet den Helper dagegen vor dem Parsing
+eines bereits materialisierten Strings. Danach parst sie exakt einmal ohne
+Reviver, validiert zuerst den unveränderten Parsed-Wert und gibt ausschließlich
+eine erneut validierte defensive Projektion oder eine kontrollierte frühe
+Gateway-Fehlerresponse aus. Sie besitzt trotzdem keine Wire-Bytes, HTTP-
+Decodierung oder produktive Webhook-Grenze. Native doppelte JSON-Membernamen
+folgen Last-Key-Wins; Duplikatfreiheit und kanonisches JSON werden nicht
+behauptet.
 
 Der lokale Service-Result besitzt immer exakt `ok`, `status`, `requestId`,
 `syncResponse` und `error`. `ok: true` bedeutet ausschließlich, dass eine
@@ -1248,9 +1373,11 @@ Fehler werden an der Schicht behandelt, die genügend Kontext dafür besitzt:
 | Ungültige Formulareingabe | UI oder Modulservice |
 | Beschädigte lokale JSON-Daten oder Browser-Storage-Fehler | StorageAdapter |
 | Ungültige lokale Domänendaten oder falsche Datenherkunft | fachliche Storage-Schicht und Modulservice |
-| Lokaler Request-Build, Transport-Throw/-Rejection oder ungültige Transportantwort | aktuelle SyncService Foundation mit statischen redigierten lokalen Fehlern |
+| Ungültiger materialisierter Raw Body oder ungültiger geparster Request | SyncGateway Request Boundary als statische frühe Gateway-Ablehnung |
+| Ungültige Invocation, Clock, Gateway-ID oder interne Boundary-Inkonsistenz | SyncGateway Request Boundary als statischer lokaler Fehler ohne Gateway-Response |
+| Lokaler Request-Build, Transport-Throw/-Rejection oder ungültige Transportantwort | SyncService Foundation mit statischen redigierten lokalen Fehlern |
 | Netzwerkfehler oder Timeout | späterer konkreter Transportadapter; der aktuelle Service implementiert keinen Timeout |
-| Ungültiger Request-Vertrag | aktuell SyncService mit SyncContract-Validator; später erneut SyncAgent an der serverseitigen Grenze |
+| Ungültiger Request-Vertrag | aktuell SyncService und SyncGateway Request Boundary mit SyncContract-Validator; später erneut SyncAgent an der serverseitigen Grenze |
 | Fehlerhafte Prüfungsantwort | TestAgent |
 | Airtable- oder Mappingfehler | DataAgent |
 
@@ -1271,8 +1398,12 @@ Grundregeln:
 - Eine Webhook-URL wird nicht als alleiniger Schutzmechanismus betrachtet.
 - Die SyncService Foundation validiert jeden kontrolliert aufgebauten Request
   vor dem Aufruf der Portmethode und jede defensive normale Response-Projektion
-  gegen ihre unveränderte Korrelation. Eine spätere serverseitige Grenze
-  validiert weiterhin erneut, bevor der `SyncAgent` verarbeitet.
+  gegen ihre unveränderte Korrelation.
+- Die SyncGateway Request Boundary validiert den unveränderten Parsed-Wert vor
+  jeder Projektion, anschließend die neue Projektion vor und nach Deep Freeze.
+  Eine frühe Ablehnung behauptet keine SyncAgent-Verarbeitung. Eine spätere
+  serverseitige Grenze validiert weiterhin erneut, bevor der `SyncAgent`
+  verarbeitet.
 - Payload-Größe, erlaubte Aktionen und Datentypen werden begrenzt.
 - Logs enthalten keine Tokens oder unnötigen personenbezogenen Daten.
 - Private und öffentliche Daten verwenden getrennte Airtable-Bases,
@@ -1308,6 +1439,8 @@ src/
 │   ├── learningTestService.js
 │   ├── lichtwaldLogService.js
 │   └── syncService.js
+├── gateways/
+│   └── syncGatewayRequestBoundary.js
 ├── storage/
 │   ├── learningArtifactStorage.js
 │   ├── learningHubStorage.js
@@ -1349,7 +1482,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
 | `v0.2.2` | Vollständig geprüft und veröffentlicht; keine externe Kommunikation |
-| `v0.3.0` | In Arbeit: SyncContract Foundation implementiert; transportneutrale SyncService Foundation aktuell; konkreter Transport, serverseitiger Webhook/Gateway und operativer SyncAgent folgen |
+| `v0.3.0` | In Arbeit: SyncContract und SyncService Foundations implementiert; transportneutrale SyncGateway Request Boundary Foundation aktuell; HTTP-Transport, serverseitige Webhook-Komposition und operativer SyncAgent folgen |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
 | `v0.6.0` | Integrierter Drei-Agenten-Fluss |
@@ -1384,6 +1517,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0015](decisions/0015-separated-lichtwald-log-demo-runtime.md) | Getrennte synthetische LichtwaldLog-Demo-Runtime | Angenommen |
 | [0016](decisions/0016-transport-neutral-sync-contract-foundation.md) | Transportneutraler Sync-v1-Kern und künftige Transport- und Hub-Grenze | Angenommen |
 | [0017](decisions/0017-transport-neutral-sync-service-foundation.md) | Transportneutrale SyncService Foundation mit kontrollierter Korrelation | Angenommen |
+| [0018](decisions/0018-transport-neutral-sync-gateway-request-boundary-foundation.md) | Transportneutrale SyncGateway Request Boundary für materialisierte Raw Bodies | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).
