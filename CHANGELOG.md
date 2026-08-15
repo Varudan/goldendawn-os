@@ -8,6 +8,70 @@ Release.
 
 ## Unveröffentlicht – v0.3.0 in Arbeit
 
+### ADR 0019 – Local SyncGateway before n8n Cloud Decision
+
+- ADR 0019 als angenommene, ausschließlich dokumentationsbasierte Entscheidung
+  ergänzt. Der aktuelle Stand lautet
+  `v0.3.0 – in Arbeit – Local SyncGateway before n8n Cloud Decision`.
+- Die spätere Zieltopologie als
+  `GoldenDawn-Browser → SyncService → lokaler SyncTransport → lokales
+  SyncGateway auf GD-WS01 → authentisierter n8n-Cloud-Webhook → SyncAgent →
+  validierte normale SyncResponse` entschieden. Alle neuen Transport-, Gateway-,
+  Cloud- und Agentenkomponenten bleiben geplant und nicht implementiert.
+- Das lokale SyncGateway als schmale, Loopback-only Transport- und
+  Sicherheitsgrenze festgelegt. Es ist kein vierter Agent, keine Fachlogik,
+  kein allgemeines Backend, kein Storage, kein Ersatz für den `SyncAgent` und
+  keine UI-Komponente. ADR 0002, ADR 0005 und ADR 0016 bis ADR 0018 bleiben
+  unverändert gültig.
+- Browsercaller als nicht authentisiert und unvertrauenswürdig eingeordnet.
+  `POST`, fester serverseitiger Pfad, kontrolliertes JSON/UTF-8, Ablehnung
+  komprimierter Bodies und nicht unterstützter Content-Encodings sowie exakte
+  Origin-Allowlist entschieden. `OPTIONS` darf nur einen CORS-Preflight
+  bedienen; CORS und Loopback beweisen keine Identität.
+- Die geplante lokale Raw-Wire-Reihenfolge entschieden: `Content-Length` nur als
+  frühes Signal, tatsächliche Streaming-Bytezählung bis 65.536, Abbruch bei Byte
+  65.537 vor vollständiger Materialisierung, exakt eine strikte UTF-8-
+  Decodierung mit Erhalt einer gültigen BOM als U+FEFF und ohne Entfernung oder
+  Reparatur, danach exakt ein Aufruf der vorhandenen kanonischen Request
+  Boundary und ausschließliche Weiterverwendung ihrer defensiven Projektion.
+- Für den ersten leeren, nebenwirkungsfreien synthetischen Cloudfluss n8n Header
+  Authentication mit dediziertem hochentropischem gemeinsamen Bearer-Secret
+  und HTTPS entschieden. Das Secret darf ausschließlich im n8n-Credential-
+  Store und vertrauenswürdiger serverseitiger Gateway-Laufzeitkonfiguration
+  liegen und wird nur für den `syncTest`-Webhook verwendet. Sein Besitznachweis
+  ist keine starke Geräte-, Prozess- oder Benutzeridentität und kein n8n-RBAC-
+  Principal. Header Authentication ist keine Bodysignatur; TLS ist kein Replay-
+  oder Idempotenzschutz. HMAC-, JWT-Body-Binding und Replay-Nachweis bleiben vor
+  privaten oder schreibenden Aktionen neu zu entscheiden.
+- `src/contracts/syncContract.js` und
+  `src/gateways/syncGatewayRequestBoundary.js` als kanonische Cloudquellen
+  bestätigt. Weil n8n Cloud nach dem datierten offiziellen Plattformbefund vom
+  2026-08-15 keine beliebigen externen npm-Module im Code Node importiert, darf
+  ein späterer Workflow nur ein reproduzierbar generiertes, selbstständiges und
+  automatisiert auf Integrität, Parität und Mutationen geprüftes Artefakt
+  verwenden; eine manuell gepflegte Contractkopie ist ausgeschlossen.
+- Die n8n-Option `Raw Body` nicht als Nachweis byteidentischer ursprünglicher
+  Wire-Oktette oder einer GoldenDawn-spezifischen 65.536-Byte-Prüfung vor
+  Provider-Allokation behandelt. Aktivierung erst nach versions- und
+  tenantgebundenem Laufzeitnachweis tatsächlicher Binärdaten vor Decodierung;
+  andernfalls ist ADR 0019 neu zu bewerten. Die geplante n8n-Prüfung bleibt eine
+  nachgelagerte Defense-in-Depth-Schicht; das lokale Gateway die geplante exakte
+  vorgelagerte Wire-Grenze.
+- Responseebenen getrennt: Der SyncService akzeptiert weiterhin nur normale,
+  vollständig korrelierte SyncResponses. HTTP-, Authentisierungs-, Timeout-,
+  frühe `gateway_`-, lokale Gateway- und ungeeignete Cloudresponses werden
+  später als statisch redigierte lokale Transportfehler behandelt und niemals
+  zu normalen SyncAgent-Responses umgeschrieben.
+- Keine Produktions-, Test-, Paket-, Lock-, Workflow-, Vault- oder
+  `src/`-Datei geändert. Kein Server, Transport, Webhook, n8n-Workflow, Bundle,
+  Credential, operativer Agent, externer Datenfluss, Storage, Logging,
+  Monitoring oder UI wurde implementiert. Paketversion `0.2.2`, Tag `v0.2.2`
+  und neuestes Release `v0.2.2` bleiben unverändert.
+- Den Dokumentationsslice am `2026-08-15` mit der vollständigen seriellen Suite
+  tatsächlich geprüft: 1075/1075 Tests bestanden, 0 Fehlschläge, 0 Skips und
+  0 Todos. Der Produktions-Build war erfolgreich und transformierte exakt 46
+  Module.
+
 ### SyncGateway Request Boundary Foundation
 
 - `createSyncGatewayRequestBoundary({ generateGatewayRequestId,
@@ -54,10 +118,12 @@ Release.
   Webhook- oder DoS-Durchsetzung. Für die spätere HTTP-/Transportgrenze die
   mechanismusgerechte Reihenfolge aus frühen Methoden-, Content-Type-,
   Origin-/CORS-, Rate-Limit- und gegebenenfalls Header-Auth-Kontrollen, harter
-  Raw-Byte-Begrenzung während des Empfangs, Signaturprüfung vor Decodierung und
-  Parsing, einmaliger kontrollierter Decodierung, alleiniger Boundary-
-  Verarbeitung, kontextgebundener Autorisierung und erst anschließendem
-  Routing dokumentiert. CORS ersetzt keine Authentisierung oder Autorisierung;
+  Raw-Byte-Begrenzung während des Empfangs, einer nur nach gesonderter
+  Entscheidung erforderlichen Signaturprüfung vor Decodierung und Parsing,
+  einmaliger kontrollierter Decodierung, alleiniger Boundary-Verarbeitung,
+  kontextgebundener Autorisierung und erst anschließendem Routing dokumentiert.
+  ADR 0019 entscheidet für den ersten synthetischen Flow Header Authentication
+  ohne Bodysignatur. CORS ersetzt keine Authentisierung oder Autorisierung;
   Rate Limits können mehrschichtig sein.
 - Die Boundary-Suite gezielt gegen verschobene Post-Freeze-Validierungen,
   NFC-Normalisierung vor der Originalgrößenprüfung, Console-Ausgaben im
@@ -96,13 +162,15 @@ Release.
 - Das Raw-Body-Limit exakt auf 65.536 UTF-8-Bytes begrenzt. Der reine Helper
   serialisiert keine Objekte und ist ohne konkrete Wire-/Webhook-
   Transportgrenze keine tatsächliche Webhook-Durchsetzung.
-- Für die spätere Wire-Grenze festgelegt, rohe Bodybytes während des Empfangs
-  hart zu begrenzen, vorgesehene Signaturen über exakt diese Bytes vor der
-  kontrollierten einmaligen Decodierung zu prüfen, den resultierenden String
-  ausschließlich von der Boundary einmal parsen und projizieren zu lassen und
-  erst nach kontextgebundener Autorisierung zu routen. Natives `JSON.parse`
-  ohne benutzerdefinierten Reviver erzeugt aus JSON selbst keine Proxies,
-  Accessors, Symbole oder Trap-Funktionen.
+- Für eine spätere Wire-Grenze allgemein festgehalten, rohe Bodybytes während
+  des Empfangs hart zu begrenzen und eine künftig gesondert entschiedene
+  Bodysignatur gegebenenfalls über exakt diese Bytes vor der kontrollierten
+  Decodierung zu prüfen. ADR 0019 konkretisiert den ersten synthetischen Flow
+  ohne HMAC-, JWT-Body-Binding- oder Replay-Nachweis: Der resultierende String
+  wird ausschließlich von der Boundary einmal geparst und projiziert und erst
+  nach serverseitiger Policy geroutet. Natives `JSON.parse` ohne
+  benutzerdefinierten Reviver erzeugt aus JSON selbst keine Proxies, Accessors,
+  Symbole oder Trap-Funktionen.
 - `source: "goldendawn-os"` als reine syntaktische Klassifikation festgehalten,
   nicht als Nachweis für Authentisierung, Herkunft, Identität oder Berechtigung.
   Vertrauenswürdige Herkunft, Routing und Autorisierung folgen später aus
@@ -160,10 +228,10 @@ Release.
 
 ### Architektur- und Sicherheitsgrenzen
 
-- Den späteren browserinitiierten Fluss als
-  `GoldenDawn → SyncService → serverseitiger n8n-Webhook/Gateway → SyncAgent →
-  validierte Antwort` dokumentiert; ein Vite-Browserfrontend terminiert keinen
-  eingehenden öffentlichen Webhook.
+- Den späteren browserinitiierten Fluss durch ADR 0019 um den geplanten lokalen
+  SyncTransport und das geplante lokale SyncGateway auf GD-WS01 vor dem
+  authentisierten n8n-Cloud-Webhook konkretisiert; ein Vite-Browserfrontend
+  terminiert keinen eingehenden öffentlichen Webhook.
 - Die spätere Darstellung des `SyncAgent` dem AgentHub und Verbindungen,
   Webhooks, Workflows sowie den einzigen `syncTest`-Auslöser dem AutomationHub
   zugeordnet. Im aktuellen Slice wird keine Hub-UI umgesetzt.
