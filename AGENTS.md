@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – in Arbeit – SyncGateway Request Boundary Foundation`
+Aktueller Stand: `v0.3.0 – in Arbeit – Local SyncGateway before n8n Cloud Decision`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -105,9 +105,9 @@ asynchrone Service
 erstellt einen kontrollierten `syncTest`-Request, validiert ihn und übergibt ihn
 ausschließlich an den injizierten Port `syncTransport.sendSyncRequest`. Nur eine
 vollständig validierte, normal korrelierte SyncResponse wird defensiv
-projiziert und ausgegeben. Aktuell ist
-`v0.3.0 – in Arbeit – SyncGateway Request Boundary Foundation`. Die synchrone
-transportneutrale Boundary begrenzt ausschließlich einen bereits
+projiziert und ausgegeben. Die synchrone transportneutrale
+**SyncGateway Request Boundary Foundation** ist ebenfalls implementiert. Sie
+begrenzt ausschließlich einen bereits
 materialisierten Raw-Body-Wert, parst einen bestandenen String exakt einmal
 ohne Reviver, validiert zuerst den unveränderten Parsed-Wert und gibt nur eine
 erneut validierte, tief eingefrorene defensive Sechs-Felder-Projektion oder
@@ -117,7 +117,12 @@ Dieser Wert ist nur eine Vertragsklassifikation und kein Herkunfts- oder
 Datenschutzbeweis. `v0.2.2` bleibt vollständig lokal. Auch die aktuelle
 Boundary besitzt keinen HTTP-Handler, konkreten externen Transport, Webhook,
 operativen Agenten oder Airtable-Anbindung und ist nicht in `src/main.js`
-komponiert.
+komponiert. Aktuell ist
+`v0.3.0 – in Arbeit – Local SyncGateway before n8n Cloud Decision`. ADR 0019
+entscheidet den zusätzlichen künftigen lokalen Transport-Sicherheits-Hop auf
+GD-WS01 vor n8n Cloud. Die Entscheidung ist angenommen; lokaler
+SyncTransport, lokales SyncGateway, authentisierter n8n-Cloud-Webhook und
+operativer `SyncAgent` bleiben geplant und sind nicht implementiert.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -198,7 +203,7 @@ auch dann `ok: true`; der fachliche Erfolg bleibt ausschließlich
 Fünf-Felder-Resultvertrag und statische redigierte Fehler. Sie behaupten keine
 Verarbeitung durch den `SyncAgent`.
 
-Der aktuelle Slice `SyncGateway Request Boundary Foundation` implementiert
+Der implementierte Slice `SyncGateway Request Boundary Foundation` stellt
 `createSyncGatewayRequestBoundary({ generateGatewayRequestId,
 getCurrentTimestamp })` mit einer eingefrorenen gewöhnlichen API, die exakt die
 synchrone Methode `processSyncRawBody` bereitstellt. Die Methode akzeptiert
@@ -248,18 +253,41 @@ werden. Deep Freeze ist keine Sandbox.
 `validateSyncRawBodySize` begrenzt nur die berechnete UTF-8-Länge eines bereits
 allozierten JavaScript-Strings. Dies ist keine tatsächliche Raw-Wire-
 Bytebegrenzung, kein Schutz vor vorheriger Body-Allokation und keine produktive
-Webhook- oder DoS-Durchsetzung. Die spätere reale HTTP-/Transportreihenfolge
-prüft zuerst Methode, Content-Type, Origin/CORS und frühe Transportkontrollen
-einschließlich Netzwerk-/IP-Limits und gegebenenfalls headerbasierter
-Authentisierung. Danach werden Raw Bytes während des Empfangs hart begrenzt,
-Signaturen über exakt diese Bytes und relevante Header vor Decodierung und
-Parsing geprüft, die Bytes kontrolliert einmal dekodiert und ausschließlich
-durch diese Boundary einmal geparst, validiert und projiziert. Erst anschließend
-wird die validierte Aktion mit vertrauenswürdiger Identität und serverseitigem
-Kontext autorisiert und geroutet. CORS ersetzt weder Authentisierung noch
-Autorisierung; Rate Limits dürfen mehrschichtig sein.
+Webhook- oder DoS-Durchsetzung. ADR 0019 entscheidet für den ersten späteren
+realen, weiterhin rein synthetischen `syncTest`-Transport ein separates lokales
+SyncGateway auf GD-WS01. Es bindet ausschließlich an Loopback, behandelt den
+Browsercaller dennoch als nicht authentisiert und unvertrauenswürdig und prüft
+zuerst Methode, festen Pfad, Content-Type, Content-Encoding, frühe
+Transportregeln und die exakte Origin-Allowlist. `Content-Length` ist nur ein
+frühes Signal. Tatsächlich empfangene Bytes werden beim Streaming auf 65.536
+begrenzt und der Empfang bei Byte 65.537 vor vollständiger Bodymaterialisierung
+abgebrochen. Danach wird exakt einmal streng als UTF-8 dekodiert; ungültiges
+UTF-8 wird fail-closed abgelehnt. Eine gültige BOM bleibt als U+FEFF erhalten,
+wird weder entfernt noch repariert und folgt damit der bestehenden
+Parsersemantik. Es wird weder normalisiert noch getrimmt oder repariert.
+Ausschließlich der resultierende String gelangt an die bestehende Boundary, und
+nur deren defensive Projektion darf nach serverseitiger Policy an n8n Cloud
+gesendet werden. CORS und Loopback ersetzen weder Identität noch
+Authentisierung oder Autorisierung; Rate Limits bleiben geplant.
 
-Der aktuelle Slice implementiert keinen konkreten Netzwerktransport, HTTP-
+Das lokale Gateway authentisiert sich später ausschließlich über HTTPS und
+n8n Header Authentication mit einem dedizierten hochentropischen gemeinsamen
+Bearer-Secret am einzigen `syncTest`-Webhook. Das Credential wird mit keinem
+anderen Workflow geteilt. Das Secret liegt nur im n8n-Credential-Store und in
+vertrauenswürdiger serverseitiger Gateway-Laufzeitkonfiguration, niemals im
+Browser, in `VITE_*`, Storage, URL, Repository, Vault, Workflow-Export,
+Testfixture, Screenshot oder Log. Vor Aktivierung ist diese Anforderung auch für
+n8n-Ausführungsdaten und verfügbare Provider-Redaction tenant-, plan- und
+versionsgebunden nachzuweisen. Der erfolgreiche Secret-Besitznachweis belegt
+keine starke Geräte-, Prozess- oder Benutzeridentität und keinen n8n-RBAC-
+Principal. Header Authentication ist keine Bodysignatur, und TLS ist kein
+Replay- oder Idempotenzschutz. Der erste synthetische Flow besitzt bewusst noch
+kein HMAC-, JWT-Body-Binding- oder Replay-Verfahren. Falls eine spätere Aktion
+eine Bodysignatur benötigt, wird sie über exakte Raw Bytes und relevante Header
+vor Decodierung und Parsing geprüft.
+
+Der aktuelle Dokumentationsslice implementiert keinen konkreten
+Netzwerktransport, HTTP-
 Handler, Endpoint, Webhook, operativen `SyncAgent` oder n8n-Workflow, keine
 Header-, Methoden-, Statuscode-, Encoding- oder Content-Type-Verarbeitung,
 Authentisierung, Autorisierung, Signaturprüfung, Secrets, CORS- oder
@@ -289,14 +317,26 @@ transformiert exakt 46 Module.
 Der spätere erste reale Fluss ist browserinitiiert:
 
 ```text
-GoldenDawn
+GoldenDawn-Browser
   → SyncService
-  → serverseitiger n8n-Webhook/Gateway
+  → künftiger lokaler SyncTransport
+  → künftiges lokales SyncGateway auf GD-WS01
+  → authentisierter n8n-Cloud-Webhook
   → SyncAgent
-  → validierte Antwort
+  → validierte normale SyncResponse
 ```
 
-Das Browserfrontend terminiert keinen eingehenden öffentlichen Webhook. Der
+Das lokale SyncGateway ist dabei kein Agent, keine Fachlogik, kein allgemeines
+Backend, kein Storage, kein Ersatz für den `SyncAgent` und keine UI-Komponente.
+Der Browser bestimmt weder Cloudziel, Umgebung, Handler noch Berechtigungen.
+Der n8n-Cloud-Workflow muss die kanonische Contract- und Boundary-Semantik
+später defense-in-depth über ein reproduzierbar generiertes, automatisiert auf
+Parität und Integrität geprüftes Artefakt anwenden; eine manuell gepflegte
+zweite Implementierung ist nicht erlaubt. Die Cloudkomposition darf nur nach
+einem versions- und tenantgebundenen Nachweis tatsächlicher Binärdaten vor
+Decodierung aktiviert werden; andernfalls ist ADR 0019 neu zu bewerten. Der
+Browser terminiert keinen
+eingehenden öffentlichen Webhook. Der
 `SyncAgent` wird später im AgentHub dargestellt. Verbindungen, Webhooks,
 Workflows und der einzige `syncTest`-Auslöser werden später im AutomationHub
 dargestellt. Diese Hub-Grenzen sind aktuell nur dokumentiert.
@@ -360,10 +400,16 @@ Testfluss lautet:
 ```text
 LearningTestService
   → SyncService
-  → serverseitiger n8n-Webhook/Gateway
+  → künftiger lokaler SyncTransport
+  → künftiges lokales SyncGateway auf GD-WS01
+  → authentisierter n8n-Cloud-Webhook
   → SyncAgent
   → TestAgent
 ```
+
+Diese spätere private und fachlich weitergehende Capability ist durch ADR 0019
+nicht autorisiert. Vor ihrer Freigabe sind Contract, Identität, Berechtigung,
+Body-Binding, Replay, Idempotenz und Datenschutz neu zu entscheiden.
 
 Freitextbewertung und die Anbindung des TestAgent gehören erst zu `v0.5.0`.
 
@@ -561,7 +607,9 @@ onResetFilters
 - Verwende Vite mit Vanilla JavaScript, HTML und CSS.
 - Führe React oder ein anderes Frontend-Framework nicht ohne dokumentierte
   Entscheidung ein.
-- Führe zunächst kein eigenes Backend ein.
+- Führe zunächst kein allgemeines Fachbackend ein. Das durch ADR 0019
+  entschiedene, noch nicht implementierte lokale SyncGateway bleibt eine
+  schmale Transport- und Sicherheitsgrenze ohne Fachlogik oder Storage.
 - Füge keine neue Abhängigkeit hinzu und ändere `package.json` nicht, sofern die
   Aufgabe dies nicht ausdrücklich erfordert.
 - Bevorzuge Browser- und Plattformfunktionen gegenüber zusätzlichen Paketen.
@@ -573,16 +621,19 @@ onResetFilters
 
 ## Zielarchitektur
 
-Der vorgesehene Datenfluss lautet:
+Die vorgesehenen lokalen und externen Pfade verzweigen ausdrücklich:
 
 ```text
 UI-Komponente
   → Anwendungs- oder Modulservice
-  → lokaler Storage-Adapter oder Sync-Service
-  → serverseitiger n8n-Webhook/Gateway
-  → SyncAgent
-  → TestAgent oder DataAgent
-  → Airtable ausschließlich über den DataAgent
+      ├→ lokaler Storage-Adapter → localStorage
+      └→ SyncService
+          → künftiger lokaler SyncTransport
+          → künftiges lokales SyncGateway auf GD-WS01
+          → künftiger authentisierter n8n-Cloud-Webhook
+          → SyncAgent
+          → TestAgent oder DataAgent
+          → Airtable ausschließlich über den DataAgent
 ```
 
 Dabei gelten folgende Grenzen:
@@ -623,7 +674,9 @@ Der vorgesehene Ablauf für ein Lerntestergebnis lautet:
 ```text
 Dashboard
   → SyncService
-  → serverseitiger n8n-Webhook/Gateway
+  → künftiger lokaler SyncTransport
+  → künftiges lokales SyncGateway auf GD-WS01
+  → authentisierter n8n-Cloud-Webhook
   → SyncAgent
   → TestAgent
   → SyncAgent
@@ -757,6 +810,9 @@ Regeln:
 ## Dokumentation
 
 - `README.md` beschreibt den öffentlich verständlichen Projektstand.
+- README.md records project-foundation milestones and published releases only.
+  Unreleased slices and internal development steps belong in CHANGELOG.md,
+  docs/roadmap.md, and the relevant ADRs.
 - `docs/architecture.md` beschreibt Komponenten, Datenfluss und Systemgrenzen.
 - `docs/roadmap.md` enthält Phasen und überprüfbare Ergebnisse.
 - `docs/security.md` dokumentiert Sicherheits- und Datenschutzregeln.

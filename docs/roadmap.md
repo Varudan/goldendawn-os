@@ -4,11 +4,11 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – SyncGateway Request Boundary Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – Local SyncGateway before n8n Cloud Decision` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; SyncContract und SyncService Foundations implementiert; aktuell transportneutrale SyncGateway Request Boundary Foundation |
-| Letzte Aktualisierung | 2026-08-06 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; SyncContract, SyncService und SyncGateway Request Boundary Foundations implementiert; ADR 0019 zum geplanten lokalen SyncGateway vor n8n Cloud angenommen |
+| Letzte Aktualisierung | 2026-08-15 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -24,8 +24,11 @@ nicht starre Kalendertermine.
   `v0.3.0` bereitet die erste externe Kommunikation zunächst mit einem
   transportneutralen Vertrag, einer transportneutralen Servicegrenze und einer
   synchronen Request Boundary für bereits materialisierte Raw-Body-Werte vor.
-  Da kein HTTP-Handler oder konkreter Transport komponiert ist, kommuniziert
-  der aktuelle Slice noch nicht extern.
+  Mit ADR 0019 ist als nächster Architekturschritt die lokale Sicherheitsgrenze
+  vor n8n Cloud entschieden.
+  Da Server, HTTP-Handler, konkreter Transport, Webhook und Workflow noch nicht
+  implementiert oder komponiert sind, kommuniziert der aktuelle Stand nicht
+  extern.
 - Weitere Unterversionen dürfen ergänzt werden, wenn neue, klar abgegrenzte
   Arbeitspakete entstehen.
 - Version 1 bleibt auf `SyncAgent`, `DataAgent` und `TestAgent` begrenzt.
@@ -54,7 +57,7 @@ nicht starre Kalendertermine.
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.3.0` | SyncAgent and Webhook Foundation | In Arbeit: SyncContract und SyncService Foundations implementiert; transportneutrale SyncGateway Request Boundary Foundation aktuell; HTTP-Transport und operative Agentengrenze folgen | 🟡 |
+| `v0.3.0` | SyncAgent and Webhook Foundation | In Arbeit: SyncContract, SyncService und SyncGateway Request Boundary Foundations implementiert; ADR 0019 für das geplante lokale SyncGateway vor n8n Cloud angenommen; alle Netzwerk- und Cloudkomponenten folgen | 🟡 |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
 | `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
@@ -344,13 +347,17 @@ Der spätere Zielpfad bleibt:
 ```text
 LearningTestService
   → SyncService
-  → serverseitiger n8n-Webhook/Gateway
+  → künftiger lokaler SyncTransport
+  → künftiges lokales SyncGateway auf GD-WS01
+  → authentisierter n8n-Cloud-Webhook
   → SyncAgent
   → TestAgent
 ```
 
 Semantische Freitextbewertung und echte `TestAgent`-Logik bleiben für `v0.5.0`
-geplant.
+geplant. ADR 0019 autorisiert für den ersten externen Flow ausschließlich den
+synthetischen, leeren und nebenwirkungsfreien `syncTest`, nicht diesen späteren
+privaten Lernpfad.
 
 ### Abnahmekriterien für v0.2.1
 
@@ -598,25 +605,27 @@ eine spätere Phase geplant.
 
 ### Aktueller Stand
 
-`v0.3.0` ist **in Arbeit – SyncGateway Request Boundary Foundation**. Der
-erste Slice SyncContract Foundation ist implementiert und bleibt die verbindliche
-Vertragsgrundlage für Version `1.0`, die Aktion `syncTest` und den Handler
-`SyncAgent`. Der zweite Slice, die asynchrone SyncService Foundation mit
-kontrolliertem Request-Build, injiziertem Transport-Port, unveränderlicher
-Korrelation und defensiver normaler Response-Projektion, ist ebenfalls
-implementiert. Der aktuelle dritte Slice ergänzt ausschließlich eine synchrone
-transportneutrale Grenze für einen bereits materialisierten Raw-Body-Wert.
+`v0.3.0` ist **in Arbeit – Local SyncGateway before n8n Cloud Decision**. Die
+SyncContract Foundation für Version `1.0`, die Aktion `syncTest` und den Handler
+`SyncAgent`, die asynchrone SyncService Foundation sowie die synchrone,
+transportneutrale SyncGateway Request Boundary für einen bereits
+materialisierten Raw-Body-String sind implementiert. ADR 0019 ist als nächste
+Architektur- und Sicherheitsentscheidung angenommen: Der spätere Browserfluss
+führt über einen separaten lokalen Loopback-Prozess auf GD-WS01, bevor ein
+authentisierter n8n-Cloud-Webhook erreicht wird.
 
 Der Request-Payload ist exakt leer; erfolgreiche Responses sind auf
 `dataOrigin: "synthetic"` begrenzt. Dieser Wert ist nur eine
-Vertragsklassifikation und kein Herkunfts- oder Datenschutzbeweis. Der aktuelle
-Slice implementiert keinen konkreten Netzwerktransport, HTTP-Handler, Endpoint,
-Webhook, operativen `SyncAgent`, n8n-Workflow, keine Header-, Methoden-,
-Statuscode-, Content-Type-, Charset- oder Encoding-Verarbeitung,
-Authentisierung, Autorisierung, Signaturprüfung, Secrets, CORS- oder
-Rate-Limit-Durchsetzung, keine Hub-UI, Persistenz, Logs, Telemetrie oder
-`src/main.js`-Komposition. Da kein HTTP-Handler oder konkreter Transport
-ausgeliefert oder komponiert ist, entsteht kein externer Datenfluss.
+Vertragsklassifikation und kein Herkunfts- oder Datenschutzbeweis. Die aktuelle
+Arbeit ist ausschließlich Dokumentation. Sie implementiert keinen lokalen
+Server, Netzwerktransport, HTTP-Handler, Endpoint, Webhook, operativen
+`SyncAgent`, n8n-Workflow, kein generiertes Cloudartefakt, keine Header-,
+Methoden-, Statuscode-, Content-Type-, Charset- oder Encoding-Verarbeitung,
+Authentisierung, Autorisierung, Secrets, CORS- oder Rate-Limit-Durchsetzung,
+keine Timeouts, Retries, Replay-, Idempotenz- oder Deduplizierungsschicht, Hub-
+UI, Persistenz, Logs, Telemetrie oder `src/main.js`-Komposition. Es entsteht
+kein externer Datenfluss; Paketversion, Tag und Release bleiben `0.2.2`/
+`v0.2.2`.
 
 ### Abgeschlossene Grundlage: SyncContract Foundation
 
@@ -678,7 +687,7 @@ ausgeliefert oder komponiert ist, entsteht kein externer Datenfluss.
   fehlende rückwirkende Kontrolle bereits ausgelöster Seiteneffekte in ADR
   0017 und den Sicherheitsgrenzen dokumentiert.
 
-### Aktueller Slice: SyncGateway Request Boundary Foundation
+### Abgeschlossene Grundlage: SyncGateway Request Boundary Foundation
 
 - ✅ `createSyncGatewayRequestBoundary({ generateGatewayRequestId,
   getCurrentTimestamp })` als einzige Factory und eine eingefrorene gewöhnliche
@@ -730,37 +739,61 @@ ausgeliefert oder komponiert ist, entsteht kein externer Datenfluss.
   Grenzen sowie die fehlende rückwirkende Kontrolle ausgelöster
   Seiteneffekte in ADR 0018 dokumentiert.
 
-### Spätere Slices innerhalb von v0.3.0
+### Aktueller Slice: ADR 0019 – Local SyncGateway before n8n Cloud Decision
 
-- ⬜ Serverseitigen n8n-Webhook beziehungsweise Gateway mit HTTP `POST`
-  implementieren; der Browser terminiert keinen eingehenden öffentlichen
-  Webhook.
-- ⬜ An der HTTP-Grenze zuerst Methode, Content-Type, Origin/CORS und frühe
-  Transportkontrollen, frühe Netzwerk-/IP-Limits sowie gegebenenfalls eine
-  bodyunabhängige Header-Authentisierung durchsetzen.
-- ⬜ Tatsächlich empfangene Raw Bytes bereits während des Empfangs hart
-  begrenzen, vorgesehene Signaturen über exakt diese Bytes und relevante Header
-  vor Decodierung und JSON-Parsing prüfen, kontrolliert genau einmal dekodieren
-  und ausschließlich die bestehende Request Boundary einmal parsen, validieren
-  und projizieren lassen.
-- ⬜ Die validierte Aktion erst anhand vertrauenswürdiger Identität und
-  serverseitigem Kontext autorisieren und erst danach routen. CORS ersetzt
-  weder Authentisierung noch Autorisierung; Rate Limits können zusätzlich
-  identitäts-, mandanten- oder aktionsbezogen greifen.
-- ⬜ Integration früher Gateway-Fehlerresponses in den realen Transport- und
-  SyncService-Fluss ausdrücklich entscheiden; die aktuelle SyncService
-  Foundation akzeptiert weiterhin nur normale korrelierte Responses.
-- ⬜ Den operativen `SyncAgent` als Validierungs- und Routinggerüst aufbauen.
-- ⬜ Den ersten realen browserinitiierten Fluss
-  `GoldenDawn → SyncService → serverseitiger n8n-Webhook/Gateway → SyncAgent →
-  validierte Antwort` herstellen.
-- ⬜ Timeout-, Replay-, Idempotenz-, Deduplizierungs- und weitere
-  Transportfehlergrenzen vor einem realen verbundenen Betrieb entscheiden und
-  implementieren.
-- ⬜ `SyncAgent` später im AgentHub darstellen; Verbindungen, Webhooks,
-  Workflows und den einzigen `syncTest`-Auslöser später im AutomationHub
-  darstellen. Diese UI ist im aktuellen Slice nicht enthalten.
-- ⬜ Bereinigten n8n-Workflow-Export dokumentieren.
+- ✅ ADR 0019 als angenommene Architektur- und Sicherheitsentscheidung
+  dokumentiert, ohne ADR 0002, ADR 0005 oder ADR 0016–0018 zu ersetzen.
+- ✅ Den Zielpfad
+  `Browser → SyncService → künftiger lokaler SyncTransport → künftiges lokales
+  SyncGateway auf GD-WS01 → authentisierter n8n-Cloud-Webhook → SyncAgent`
+  sowie die Trust Zones A, B und C festgelegt.
+- ✅ Lokale HTTP-, Raw-Wire-, UTF-8-, Boundary-, Capability-, Secret-, Cloud-,
+  Response-, Timeout-, Rate-Limit-, Privacy- und Retention-Grenzen entschieden
+  beziehungsweise ausdrücklich als spätere Gates gekennzeichnet.
+- ✅ Den n8n-Plattformbefund vom 2026-08-15 und die Strategie eines
+  reproduzierbar generierten, integritäts-, paritäts- und
+  mutationsgeprüften Boundary-Artefakts dokumentiert.
+- ✅ Alle Komponenten dieses Zielpfads als geplant und nicht implementiert
+  ausgewiesen; Vertrag, Service, Boundary, Paketversion und veröffentlichtes
+  Release bleiben unverändert.
+
+### Verbindliche Slice-Reihenfolge innerhalb von v0.3.0
+
+1. ✅ **ADR 0019 entschieden:** lokales SyncGateway als Sicherheitsgrenze vor
+   n8n Cloud dokumentiert.
+2. ⬜ **Lokale Raw-Wire-/HTTP-Foundation:** separaten Loopback-Prozess mit
+   fester POST-/OPTIONS-/Origin-/Content-Policy, Streaminglimit von 65.536
+   Bytes, Abbruch bei Byte 65.537, strikter einmaliger UTF-8-Decodierung,
+   erhaltener U+FEFF-BOM und exakt einem Boundary-Aufruf implementieren.
+3. ⬜ **Generiertes n8n-Boundary-Bundle:** aus den kanonischen lokalen Quellen
+   ein reproduzierbares selbstständiges Cloudartefakt erzeugen und dessen
+   Integrität, Parität und Mutationshärte automatisiert prüfen; keine manuelle
+   Contractkopie.
+4. ⬜ **Bereinigter Webhook und minimales SyncAgent-Gerüst:** n8n Header
+   Authentication, Raw Body und ausschließlich den synthetischen `syncTest`
+   komponieren. Eine Byte-/Decoder-/Boundary-Prüfung vor Decodierung darf erst
+   nach einem versions- und tenantgebundenen Nachweis tatsächlicher Binärdaten
+   aktiviert werden; andernfalls ist ADR 0019 neu zu bewerten.
+5. ⬜ **Browser-SyncTransport:** den konkreten lokalen Clienttransport hinter
+   `syncTransport.sendSyncRequest(syncRequest)` mit endlichem Timeout,
+   statisch redigierten lokalen Fehlern und ohne automatische Retries
+   implementieren.
+6. ⬜ **End-to-End-`syncTest`:** den einzigen leeren, nebenwirkungsfreien,
+   synthetischen Fluss über beide Transporthops und die normale korrelierte
+   SyncResponse nachweisen.
+7. ⬜ **Betriebshärtung:** konkrete lokale und Cloud-Rate-Limits, Monitoring,
+   Retention/Redaction sowie Replay-, Idempotenz- und Deduplizierungsregeln vor
+   einer Capability-Erweiterung neu entscheiden und implementieren.
+8. ⬜ **Hub-Oberflächen später:** `SyncAgent` im AgentHub und Verbindungen,
+   Webhook, Workflow sowie den einzigen `syncTest`-Auslöser im AutomationHub
+   darstellen; keine UI gehört zu den vorherigen Foundations.
+
+Eine normale vollständig korrelierte Contract-Fehlerresponse bleibt im
+SyncService außen `ok: true`, während `syncResponse.success: false` den
+fachlichen Misserfolg trägt. HTTP-Fehler, Authentisierungsfehler, Timeouts,
+frühe `gateway_`-Responses, lokale Gatewayfehler und ungeeignete
+Cloudresponses bleiben dagegen statisch redigierte lokale Transport- oder
+Responsefehler und werden nie in normale SyncAgent-Responses umgeschrieben.
 
 ### Abnahmekriterien der abgeschlossenen SyncService Foundation
 
@@ -803,7 +836,7 @@ ausgeliefert oder komponiert ist, entsteht kein externer Datenfluss.
 - ADR 0017 mit klarer Trennung von Transport-Port, konkretem Transport und
   späterer Gateway-Grenze; ADR 0016 bleibt die unveränderte Contract-Grundlage.
 
-### Abnahmekriterien für den aktuellen Slice
+### Abnahmekriterien der abgeschlossenen SyncGateway Request Boundary Foundation
 
 - Die öffentliche API ist eingefroren, gewöhnlich und besitzt exakt die
   synchrone Methode `processSyncRawBody`; falsche Argumentanzahlen werden ohne
@@ -850,7 +883,7 @@ ausgeliefert oder komponiert ist, entsteht kein externer Datenfluss.
   Fehlschläge, 0 Skips und 0 Todos.
 - Der Produktions-Build ist erfolgreich und transformiert exakt 46 Module.
 
-### Portfolio-Nachweis für den aktuellen Slice
+### Portfolio-Nachweis der abgeschlossenen SyncGateway Request Boundary Foundation
 
 - exakte synchrone Boundary-API und exakter Fünf-Felder-Resultvertrag;
 - nachvollziehbarer Raw-Body-, Single-Parse-, ursprünglicher
@@ -907,10 +940,12 @@ kontrollierter Ergebnisspeicherung umsetzen.
 ### Umfang der TestAgent-Lerntests
 
 - ⬜ `LearningTestService` über eine dokumentierte Provider- oder
-  Adaptergrenze an `SyncService → serverseitiger n8n-Webhook/Gateway →
-  SyncAgent → TestAgent` anbinden, ohne direkte
+  Adaptergrenze an `SyncService → lokaler SyncTransport → lokales SyncGateway
+  auf GD-WS01 → authentisierter n8n-Cloud-Webhook → SyncAgent → TestAgent`
+  anbinden, ohne direkte
   Agentenaufrufe aus UI-Komponenten oder stille Erweiterung der lokalen
-  Schema-1-Verträge.
+  Schema-1-Verträge. Dafür ist vorab eine neue Architektur- und
+  Sicherheitsentscheidung nötig; ADR 0019 erlaubt nur `syncTest`.
 - ⬜ Request- und Ergebnisformat für Lerntests definieren.
 - ⬜ Freigegebenen Lernkontext strukturiert an den TestAgent übergeben.
 - ⬜ Testfragen mit erwarteten Antwortmerkmalen erzeugen.
@@ -1149,19 +1184,20 @@ abgeschlossen und mit 374/374 LichtwaldLog-Tests, 933/933 Tests der Gesamtsuite,
 0 Skips, 0 Todos sowie einem Produktions-Build mit exakt 46 transformierten
 Modulen geprüft. Die Paketversion ist `0.2.2`; der annotierte Tag `v0.2.2` und
 das zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht. `v0.2.2`
-ist das neueste veröffentlichte Release. `v0.3.0` ist mit der
-transportneutralen SyncGateway Request Boundary Foundation auf Basis der
-implementierten SyncContract und SyncService Foundations in Arbeit. Der
-veröffentlichte `v0.2.2`-Umfang bleibt vollständig lokal. Da der aktuelle
-Boundary-Slice keinen HTTP-Handler, konkreten Transport und keine
-Anwendungskomposition besitzt, führt er keine externe Kommunikation, keinen
-Webhook, operativen `SyncAgent`, keine n8n-Verbindung oder Airtable-Anbindung
-ein.
+ist das neueste veröffentlichte Release. In `v0.3.0` sind SyncContract,
+SyncService und SyncGateway Request Boundary Foundations implementiert. ADR
+0019 ist als Architektur- und Sicherheitsentscheidung für ein späteres lokales
+SyncGateway auf GD-WS01 vor n8n Cloud angenommen. Der veröffentlichte
+`v0.2.2`-Umfang bleibt vollständig lokal. Da weder lokaler Server noch
+konkreter Transport, Webhook, Cloudworkflow oder Anwendungskomposition
+implementiert sind, besteht weiterhin keine externe Kommunikation, kein
+operativer `SyncAgent` und keine Airtable-Anbindung.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
-automatische Cloud-Sicherung, Airtable, ein Backend, Benutzerkonten und
-Agentenlogik bleiben offen beziehungsweise beginnen erst in den dafür
-vorgesehenen späteren Slices und Versionen. Der reale Transport folgt innerhalb
-von `v0.3.0 – SyncAgent and Webhook Foundation` erst nach den aktuell
-implementierten transportneutralen Contract-, Service- und Request-Boundary-
-Foundations.
+automatische Cloud-Sicherung, Airtable, ein allgemeines Fachbackend,
+Benutzerkonten und Agentenlogik bleiben offen beziehungsweise beginnen erst in
+den dafür vorgesehenen späteren Slices und Versionen. Der nächste konkrete
+Schritt ist die geplante **lokale Raw-Wire-/HTTP-Foundation** aus Schritt 2 der
+verbindlichen v0.3.0-Slice-Reihenfolge. Erst danach folgen generiertes
+n8n-Boundary-Bundle, bereinigter Cloudwebhook, konkreter Browser-SyncTransport
+und der End-to-End-`syncTest`.

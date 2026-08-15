@@ -10,7 +10,7 @@
 
 **Current release:** `v0.2.2 — LichtwaldLog Local MVP complete, verified, and published`
 
-**Current development:** `v0.3.0 — in progress — SyncGateway Request Boundary Foundation`
+**Current development:** `v0.3.0 – in Arbeit – Local SyncGateway before n8n Cloud Decision`
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -77,8 +77,8 @@ invokes the injected `syncTransport.sendSyncRequest` method at most once
 afterward. Only a defensively projected, fully validated, normally correlated
 SyncResponse is accepted.
 
-Current work is the synchronous, transport-neutral **SyncGateway Request
-Boundary Foundation**. Its frozen ordinary API exposes only
+The synchronous, transport-neutral **SyncGateway Request Boundary Foundation**
+is also implemented. Its frozen ordinary API exposes only
 `processSyncRawBody(rawBody)` and accepts exactly one already materialized
 Raw-Body value. It checks that unchanged value with the existing UTF-8-size
 validator before parsing, calls native `JSON.parse` exactly once without a
@@ -89,14 +89,22 @@ controlled input rejections are separated from static local boundary failures.
 Controlled rejections use a fresh, fully validated early Gateway error
 response with no claimed `SyncAgent` processing.
 
+Current work is the documentation-only decision in **ADR 0019 – Local
+SyncGateway before n8n Cloud**. It adds a planned local transport-security hop
+on GD-WS01 to the target topology before n8n Cloud. The decision is accepted;
+the local SyncTransport, loopback-only local SyncGateway, authenticated
+n8n-Cloud webhook, generated Cloud boundary artifact, and operational
+`SyncAgent` remain planned and are not implemented.
+
 Successful contract responses remain limited to
 `dataOrigin: "synthetic"`. That value is only a contract classification, not
 proof of actual provenance or privacy. Neither the delivered service nor the
-new request boundary has a concrete network transport, HTTP handler, endpoint,
+request boundary has a concrete network transport, HTTP handler, endpoint,
 webhook, operational `SyncAgent`, n8n connection, authentication,
 authorization, signature verification, CORS or rate-limit enforcement, Hub
-UI, persistence, logging, telemetry, or `src/main.js` composition.
-Consequently, this slice establishes no external private-data flow.
+UI, persistence, logging, telemetry, or `src/main.js` composition. ADR 0019
+implements none of these components either. Consequently, this slice
+establishes no external data flow.
 
 ## Vision
 
@@ -119,8 +127,10 @@ flowchart TD
     UI["Dashboard and modules"] --> Services["Application services"]
     Services --> Local["Local storage adapter"]
     Services --> Sync["Sync service"]
-    Sync --> Gateway["Server-side n8n webhook/gateway"]
-    Gateway --> Agent["SyncAgent"]
+    Sync --> Transport["Planned local SyncTransport"]
+    Transport --> Gateway["Planned local SyncGateway on GD-WS01"]
+    Gateway --> Cloud["Planned authenticated n8n-Cloud webhook"]
+    Cloud --> Agent["SyncAgent"]
     Agent --> Test["TestAgent"]
     Agent --> Data["DataAgent"]
     Test --> Agent
@@ -128,14 +138,17 @@ flowchart TD
 ```
 
 The first real connected flow will be browser-initiated:
-`GoldenDawn → SyncService → server-side n8n webhook/gateway → SyncAgent →
-validated response`. The browser does not terminate an incoming public webhook.
+`GoldenDawn browser → SyncService → planned local SyncTransport → planned
+local SyncGateway on GD-WS01 → authenticated n8n-Cloud webhook → SyncAgent →
+validated normal SyncResponse`. The browser does not terminate an incoming
+public webhook.
 The dashboard will not access Airtable, APIs, or specialized agents directly;
 only the DataAgent communicates with Airtable in Version 1. This connected flow
 remains planned: the completed service foundation adds a transport-neutral
-port, and the current request-boundary slice processes only an already
-materialized string. Neither foundation implements a concrete transport,
-application composition, HTTP, raw wire-byte handling, or a webhook.
+port, and the completed request-boundary slice processes only an already
+materialized string. ADR 0019 decides the additional local security hop but
+implements no concrete transport, application composition, HTTP, raw wire-byte
+handling, webhook, Cloud workflow, or agent.
 
 See [`docs/architecture.md`](docs/architecture.md) for responsibilities,
 boundaries, and end-to-end data flows.
@@ -328,10 +341,16 @@ deferred to `v0.5.0`, using the later path:
 ```text
 LearningTestService
   → SyncService
-  → server-side n8n webhook/gateway
+  → planned local SyncTransport
+  → planned local SyncGateway on GD-WS01
+  → authenticated n8n-Cloud webhook
   → SyncAgent
   → TestAgent
 ```
+
+ADR 0019 does not authorize this later private, stateful capability. Its
+contract, identity, authorization, body binding, replay, idempotency, and
+privacy model require a new decision before implementation.
 
 ## LichtwaldLog Local MVP (released in v0.2.2)
 
@@ -565,10 +584,11 @@ synchronization, agent logic, or Airtable integration. Weekly Review is later
 work and is not part of this milestone. The package remains at version
 `0.2.2`. The annotated `v0.2.2` tag and corresponding GitHub Release were
 published on 2026-08-02, and `v0.2.2` is the latest published release.
-`v0.3.0` is now in progress with the SyncGateway Request Boundary Foundation
-on top of the implemented SyncContract and SyncService Foundations. The
-service keeps outgoing request creation, transport invocation, correlation,
-and defensive response validation separate. The new synchronous boundary
+`v0.3.0` is now in progress with the documentation-only Local SyncGateway
+before n8n Cloud decision on top of the implemented SyncContract, SyncService,
+and SyncGateway Request Boundary Foundations. The service keeps outgoing
+request creation, transport invocation, correlation, and defensive response
+validation separate. The synchronous boundary
 checks an already materialized Raw-Body value, parses an accepted string once,
 validates the unchanged parsed structure, and emits only a defensive frozen
 request snapshot or a controlled early Gateway rejection. It neither strips
@@ -576,10 +596,13 @@ unknown fields before validation nor returns the parsed original. The
 SyncService request and every accepted Boundary request require an exactly
 empty payload; the contract limits successful responses to
 `dataOrigin: "synthetic"`. That marker is only a contract
-classification, not proof of actual provenance or privacy. The slice does not
-alter any published `v0.2.2` local flow and, without a delivered HTTP handler,
-concrete transport, or composition, does not establish external communication
-or an operational agent.
+classification, not proof of actual provenance or privacy. ADR 0019 adds the
+planned topology `browser → SyncService → local SyncTransport → local
+SyncGateway on GD-WS01 → authenticated n8n-Cloud webhook → SyncAgent`, but
+does not implement any of those planned transport components. The slice does
+not alter any published `v0.2.2` local flow and, without a delivered HTTP
+handler, concrete transport, or composition, does not establish external
+communication or an operational agent.
 
 ## Development principles
 
@@ -587,7 +610,8 @@ or an operational agent.
 - Follow the sequence: **mock → webhook → Airtable → agent logic**.
 - Keep every `v0.2.x` milestone local; `v0.3.0` prepares the external boundary
   through a strict contract, transport-neutral service, and materialized-string
-  request boundary before any concrete external communication is composed.
+  request boundary. ADR 0019 additionally decides a local transport-security
+  hop before n8n Cloud; all concrete communication remains planned.
 - Keep UI components independent from concrete storage technologies.
 - Encapsulate local persistence behind storage adapters.
 - Route external communication through services and the SyncAgent.
@@ -629,7 +653,7 @@ non-binding; see the roadmap for details.
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
 | v0.2.2 | LichtwaldLog Local MVP | Complete, verified, and published |
-| v0.3.0 | SyncAgent and Webhook Foundation | In progress: SyncContract and SyncService Foundations implemented; transport-neutral SyncGateway Request Boundary Foundation current; HTTP transport, webhook, and operational SyncAgent remain planned |
+| v0.3.0 | SyncAgent and Webhook Foundation | In progress: three transport-neutral Foundations implemented; ADR 0019 accepted for a planned local SyncGateway before n8n Cloud; HTTP, Cloud workflow, browser transport, and operational SyncAgent remain planned |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
 | v0.6.0 | Integration | Planned integration and verification of the previously introduced local and external components |
@@ -637,8 +661,9 @@ non-binding; see the roadmap for details.
 
 The `v0.2.x` line intentionally remains local. `v0.3.0` prepares the first
 external boundary with a transport-neutral contract, service, and
-already-materialized-string request boundary before later slices add HTTP and
-communication. Additional patch or minor versions may be inserted when needed
+already-materialized-string request boundary. ADR 0019 decides the additional
+local security hop before later slices add HTTP and communication. Additional
+patch or minor versions may be inserted when needed
 without reordering these milestones. The architecture sequence remains
 **mock → webhook → Airtable → agent logic**.
 
@@ -695,6 +720,11 @@ object graphs for repeated `INVALID_JSON` responses. Global instrumentation is
 non-concurrent and restored in `finally`. The production build succeeded and
 transformed exactly 46 modules. These unreleased results do not change the
 published release metadata above.
+
+The documentation-only ADR 0019 slice was reverified on 2026-08-15 with the
+complete serial suite: 1075/1075 tests passed with 0 failures, 0 skips, and 0
+todos. The production build succeeded and transformed exactly 46 modules. No
+release metadata changed.
 
 The published `v0.2.1` release was finally verified with:
 
@@ -787,15 +817,38 @@ timestamp tolerance is not idempotency or deduplication. An exactly empty
 payload removes the designated content field but does not establish semantic
 privacy for the remaining metadata.
 
-The future HTTP boundary must first enforce method, Content-Type, Origin/CORS,
-early transport controls, network/IP rate limits, and any body-independent
-header authentication. It must hard-limit raw body bytes while receiving them,
-verify signatures over those exact limited bytes and relevant headers before
-decoding or parsing, decode once under controlled rules, and let only this
-boundary perform the single parse, validation, and projection. It may authorize
-the validated action only from trusted identity and server-side context, and
-route only afterward. CORS is not authentication or authorization, and rate
-limits may be layered. These controls remain outside the current slice.
+ADR 0019 decides that the first real synthetic flow will use a separate local
+Node process on GD-WS01, bound only to loopback. The browser caller remains
+unauthenticated and untrusted; loopback and CORS prove no identity. The planned
+gateway will enforce the fixed method, path, JSON/UTF-8 content rules and exact
+Origin allowlist, count actual streamed bytes through 65,536, abort at byte
+65,537 before full body materialization, decode valid UTF-8 exactly once while
+preserving a BOM for the existing parser semantics, and pass the resulting
+string only to the canonical request boundary. No implementation exists yet.
+
+The planned local gateway will authenticate to the single n8n-Cloud
+`syncTest` webhook over HTTPS using n8n Header Authentication and a
+dedicated high-entropy shared Bearer secret held only in the n8n credential
+store and trusted server-side gateway runtime configuration. It must never
+enter the browser, `VITE_*`, storage, URLs, repository, Vault, workflow
+exports, fixtures, screenshots, or logs; that requirement must be verified
+against tenant execution-data and redaction behavior before activation. Secret
+possession does not prove strong device, process, or user identity or a separate
+n8n RBAC principal. Header Authentication is not a body signature; TLS does not
+provide replay or idempotency protection. The first empty, side-effect-free
+synthetic flow deliberately has no HMAC/JWT body binding or replay proof.
+
+As of 2026-08-15, n8n Cloud documents that Code nodes cannot import arbitrary
+external npm modules, while Webhook nodes support Header Authentication and a
+`Raw Body` option. That option does not document byte-identical access to the
+original wire octets or a pre-allocation 65,536-byte guarantee. A later Cloud
+workflow may be activated only after a version- and tenant-specific runtime
+proof establishes actual binary data before decoding; otherwise ADR 0019 must
+be reconsidered. It must also use a reproducibly generated standalone boundary
+artifact with automated integrity, parity, and mutation checks, never a
+manually copied contract. n8n revalidation remains defense-in-depth after
+possible provider allocation; the planned local gateway remains the exact
+upstream wire-byte boundary.
 
 `localStorage` is unencrypted browser storage, not a secret store, cloud
 backup, or cross-device synchronization mechanism. A public repository must
@@ -816,16 +869,6 @@ Detailed security rules are maintained in
   with the corresponding GitHub Release.
 - **2026-07-25:** The `v0.2.1` LearningHub Local MVP was published with its corresponding GitHub Release, and GoldenDawn OS became publicly visible as a portfolio repository.
 - **2026-08-02:** The `v0.2.2` LichtwaldLog Local MVP was published with its annotated tag and corresponding GitHub Release.
-- **2026-08-03:** Development of `v0.3.0` began with the transport-neutral
-  SyncContract Foundation. Package version, latest tag, and latest release
-  remain `0.2.2`, `v0.2.2`, and `v0.2.2`.
-- **2026-08-04:** Development continued with the transport-neutral SyncService
-  Foundation. It adds no concrete transport, webhook, operational agent, or
-  release change.
-- **2026-08-06:** Development continued with the synchronous transport-neutral
-  SyncGateway Request Boundary Foundation for an already materialized Raw-Body
-  value. It adds no HTTP handler, wire-byte enforcement, webhook, operational
-  agent, or release change.
 
 ## Author and collaboration
 
