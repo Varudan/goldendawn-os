@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – Local SyncGateway before n8n Cloud Decision` |
+| Projektphase | `v0.3.0 – in Arbeit – Local SyncGateway Raw-Wire and HTTP Foundation` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; SyncContract, SyncService und SyncGateway Request Boundary Foundations implementiert; ADR 0019 zum geplanten lokalen SyncGateway vor n8n Cloud angenommen |
-| Letzte Aktualisierung | 2026-08-15 |
+| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; transportneutrale Sync-Foundations und separat startbare Local SyncGateway Raw-Wire and HTTP Foundation implementiert und verifiziert; kein Browser- oder Cloudtransport |
+| Letzte Aktualisierung | 2026-08-16 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -62,7 +62,7 @@ flowchart TD
     UI --> Local["Lokaler Storage-Adapter"]
     UI --> Sync["SyncService"]
     Sync --> Transport["Künftiger lokaler SyncTransport"]
-    Transport --> Gateway["Künftiges lokales SyncGateway auf GD-WS01"]
+    Transport --> Gateway["Separat startbares lokales SyncGateway auf GD-WS01"]
     Gateway --> Cloud["Künftiger authentisierter n8n-Cloud-Webhook"]
     Cloud --> Router["SyncAgent"]
     Router --> Test["TestAgent"]
@@ -87,7 +87,7 @@ angesprochen.
 Dashboard
   → SyncService
   → künftiger lokaler SyncTransport
-  → künftiges lokales SyncGateway auf GD-WS01
+  → implementiertes lokales SyncGateway auf GD-WS01
   → authentisierter n8n-Cloud-Webhook
   → SyncAgent
   → TestAgent oder DataAgent
@@ -104,14 +104,15 @@ Diese Regel verhindert:
 
 ### Aktueller v0.3.0-Slice
 
-Der aktuelle, ausschließlich dokumentationsbasierte Slice ist
-`Local SyncGateway before n8n Cloud Decision`. Mit ADR 0019 ist die
-Zieltopologie um einen künftigen lokalen Transport- und Sicherheits-Hop auf
-GD-WS01 vor n8n Cloud ergänzt. Die Entscheidung ist angenommen; lokaler
-SyncTransport, lokales SyncGateway, authentisierter n8n-Cloud-Webhook,
-generiertes Cloud-Boundary-Artefakt und operativer `SyncAgent` bleiben geplant
-und nicht implementiert. ADR 0002, ADR 0005 sowie ADR 0016 bis ADR 0018 werden
-nicht ersetzt oder rückwirkend verändert.
+Der vorherige, ausschließlich dokumentationsbasierte Slice
+`Local SyncGateway before n8n Cloud Decision` hat mit ADR 0019 die
+Zieltopologie um einen lokalen Transport- und Sicherheits-Hop auf GD-WS01 vor
+n8n Cloud ergänzt. Der aktuelle Slice `Local SyncGateway Raw-Wire and HTTP
+Foundation` setzt davon ausschließlich den separat startbaren lokalen
+Node-HTTP-Prozess um. Lokaler Browser-SyncTransport, authentisierter
+n8n-Cloud-Webhook, generiertes Cloud-Boundary-Artefakt und operativer
+`SyncAgent` bleiben geplant und nicht implementiert. ADR 0002, ADR 0005 sowie
+ADR 0016 bis ADR 0019 werden nicht ersetzt oder rückwirkend verändert.
 
 Die implementierte **SyncContract Foundation** bleibt der reine,
 transportneutrale Vertragskern für `syncTest`. Darauf baut die ebenfalls
@@ -223,9 +224,10 @@ spätere reale Komposition darf den Raw Body nicht ein zweites Mal mit
 abweichender Semantik parsen.
 
 `validateSyncRawBodySize` prüft ausschließlich die berechnete UTF-8-Länge
-eines bereits allozierten JavaScript-Strings. Das ist keine tatsächliche
+eines bereits allozierten JavaScript-Strings. Für sich genommen ist das keine
 Raw-Wire-Bytebegrenzung, kein Schutz vor vorheriger Body-Allokation und keine
-HTTP-, Webhook- oder DoS-Durchsetzung. Die spätere reale Reihenfolge bleibt:
+HTTP-, Webhook- oder DoS-Durchsetzung. Der neue lokale Node-Prozess setzt die
+vorgelagerte reale Reihenfolge nun separat um:
 
 ```text
 rohe Bodybytes am Transport begrenzen
@@ -240,12 +242,13 @@ noch Replay-Schutz. Der exakt leere Payload beweist nicht die semantische
 Privatheit anderer Metadaten. Die Foundations lesen, persistieren oder
 exportieren keine Bestände aus PromptVault, LearningHub oder LichtwaldLog.
 
-Es wird kein konkreter Transport in `src/` ausgeliefert oder in `src/main.js`
-komponiert. Es gibt keinen HTTP-Handler, Endpoint, Webhook, n8n-Workflow,
-operativen `SyncAgent`, keine Header-, Methoden-, Statuscode-, Content-Type-,
-Charset- oder Encoding-Verarbeitung, keine Authentisierung, Autorisierung,
-Signaturprüfung, CORS- oder Rate-Limit-Durchsetzung, keine Persistenz, Logs,
-Telemetrie oder Hub-UI. Daher besitzt der aktuelle Slice keinen externen
+Es wird weiterhin kein konkreter Transport in `src/` ausgeliefert oder in
+`src/main.js` komponiert. Der neue HTTP-Handler liegt ausschließlich unter
+`server/`, wird nur explizit als eigener Prozess gestartet und nimmt nur lokale
+Loopback-Requests an. Es gibt keinen Webhook, n8n-Workflow, operativen
+`SyncAgent`, keine Authentisierung, Autorisierung, Signaturprüfung, Secrets,
+Rate Limits, Persistenz, Logs, Telemetrie oder Hub-UI. Der Prozess sendet
+nichts an einen externen Port; daher besitzt auch dieser Slice keinen externen
 Datenfluss.
 
 Der erste reale Fluss bleibt browserinitiiert und ist noch nicht implementiert:
@@ -254,17 +257,18 @@ Der erste reale Fluss bleibt browserinitiiert und ist noch nicht implementiert:
 GoldenDawn-Browser
   → SyncService
   → künftiger lokaler SyncTransport
-  → künftiges lokales SyncGateway auf GD-WS01
+  → implementiertes lokales SyncGateway auf GD-WS01
   → authentisierter n8n-Cloud-Webhook
   → SyncAgent
   → validierte normale SyncResponse
 ```
 
-Das Vite-Browserfrontend ist dabei Client. Es terminiert keinen eingehenden
-öffentlichen Webhook. ADR 0019 entscheidet die spätere Loopback-, Raw-Wire-,
-Decodierungs-, Origin-, Policy- und n8n-Header-Authentication-Grenze, setzt sie
-aber nicht um. Body-Binding, Replay, Idempotenz und private oder schreibende
-Aktionen benötigen vor ihrer Freigabe eine neue Entscheidung.
+Das Vite-Browserfrontend ist dabei der spätere Client. Es terminiert keinen
+eingehenden öffentlichen Webhook und verwendet den lokalen Prozess noch nicht.
+Die Loopback-, Raw-Wire-, Decodierungs-, Origin- und frühe HTTP-Policygrenze
+ist umgesetzt; die n8n-Header-Authentication- und Cloudgrenze bleibt geplant.
+Body-Binding, Replay, Idempotenz und private oder schreibende Aktionen
+benötigen vor ihrer Freigabe eine neue Entscheidung.
 
 ### Spätere Hub-Verantwortung
 
@@ -406,59 +410,310 @@ späteren Gateway- beziehungsweise SyncAgent-Fluss. Sie:
 - liest, loggt, persistiert oder exportiert weder Raw Body noch lokale
   Modulbestände.
 
-Sie verarbeitet keine HTTP-Methode, Header, Statuscodes, Content-Type, Charset,
-Encoding, Streams, Buffer oder Wire-Bytes. Ein späterer HTTP-Adapter muss die
-tatsächlich empfangenen Bytes an der Transportgrenze vor
-String-Materialisierung und kontrollierter Decodierung begrenzen und darf nur
-den defensiven Boundary-Snapshot weiterreichen.
+Die Boundary selbst verarbeitet weiterhin keine HTTP-Methode, Header,
+Statuscodes, Content-Type, Charset, Encoding, Streams, Buffer oder Wire-Bytes.
+Der nachfolgend beschriebene separate HTTP-Adapter begrenzt die tatsächlich
+empfangenen Bytes vor Stringmaterialisierung und kontrollierter Decodierung;
+in diesem Slice leitet er auch einen akzeptierten defensiven Boundary-Snapshot
+noch nicht weiter.
 
-### Geplantes lokales SyncGateway vor n8n Cloud
+### Implementiertes lokales SyncGateway vor n8n Cloud
 
 ADR 0019 trennt drei Vertrauenszonen:
 
 | Zone | Inhalt | Vertrauensannahme |
 | --- | --- | --- |
 | A | GoldenDawn-Browser und SyncService | kein Secret-Speicher; Caller am Gateway nicht authentisiert und nicht vertrauenswürdig |
-| B | künftiger separater lokaler Node-Prozess auf GD-WS01 | Loopback-only, aber Browser-, Origin- und Prozesseigentümerwerte beweisen keine Identität |
+| B | separat startbarer lokaler Node-Prozess auf GD-WS01 | Loopback-only, aber Browser-, Origin- und Prozesseigentümerwerte beweisen keine Identität |
 | C | n8n Cloud mit authentisiertem Webhook und späterem SyncAgent-Gerüst | externer Dienst; eingehende Daten und Providergrenzen erneut prüfen |
 
 Das lokale SyncGateway ist kein Agent, keine Fachlogik, kein allgemeines
 Backend, kein Storage, kein Ersatz für den `SyncAgent` und keine
 UI-Komponente. Der `SyncAgent` bleibt der einzige Einstieg in das
 Agentensystem; Version 1 bleibt auf `SyncAgent`, `DataAgent` und `TestAgent`
-begrenzt.
+begrenzt. Die Produktionsdateien sind:
+
+- `server/localSyncGatewayRuntimeConfig.js` für die serverseitige
+  Runtime-Konfiguration;
+- `server/localSyncGatewayHttpServer.js` für Listener, HTTP-Policy,
+  Streaminggrenze, Decoder und Boundary-Komposition;
+- `server/startLocalSyncGateway.js` als import-inerter Prozesseinstieg.
+
+Das Config-Modul exportiert ausschließlich
+`readLocalSyncGatewayRuntimeConfig(environment = process.env)`. Sein tief
+eingefrorener Result besitzt exakt `ok`, `status`, `config` und `error`.
+Erfolg liefert `runtimeConfigurationAccepted` mit exakt `port` und
+`allowedOrigin`; jede fehlende, werfende oder ungültige Konfiguration liefert
+statisch redigiert `runtimeConfigurationRejected`. Der Produktionsport stammt
+nur aus `GOLDENDAWN_SYNC_GATEWAY_PORT`, ist eine kanonische Dezimalzahl von 1
+bis 65.535 und erlaubt niemals `0`. Die einzige erlaubte Origin stammt aus
+`GOLDENDAWN_SYNC_GATEWAY_ALLOWED_ORIGIN` und muss exakt eine kanonische
+absolute HTTP(S)-Origin für `localhost`, `127.0.0.1` oder `[::1]` ohne
+Credentials, Pfad, Query oder Fragment sein. Es gibt keine Default-Origin und
+keine `VITE_*`-Konfiguration.
+
+Das HTTP-Modul exportiert ausschließlich die tief eingefrorenen
+`LOCAL_SYNC_GATEWAY_HTTP_LIMITS` und:
+
+```js
+createLocalSyncGatewayHttpServer({
+  port,
+  allowedOrigin,
+  syncGatewayRequestBoundary,
+  createTextDecoder,
+  onFatal = () => {},
+  useTestTimeoutPolicy,
+})
+```
+
+Nur die Factory erlaubt Port `0` für temporäre automatisierte Tests. Sie
+liefert die eingefrorene API mit exakt den Promise-basierten Methoden `start`
+und `stop`. Jeder Lifecycle-Result besitzt exakt `ok`, `status`, `host`,
+`port` und `error`. Ein erfolgreicher Start liefert `started` mit der
+tatsächlichen Loopbackadresse und dem tatsächlichen Port; doppelter Start,
+Startfehler, Stop vor Start, zweiter Stop und Stopfehler bleiben als
+`alreadyStarted`, `startFailed`, `notStarted`, `alreadyStopped` und
+`stopFailed` eindeutig und statisch redigiert. Eine Instanz wird nach dem Stop
+nicht neu gestartet. Der Stop schließt den Listener und zerstört noch
+verfolgte Sockets kontrolliert. Jeder Startfehler durchläuft denselben
+irreversiblen Cleanup-Pfad: `boundPort` wird verworfen, der Listener defensiv
+best effort geschlossen und alle verfolgten Sockets werden zerstört, bevor der
+bestehende statische `startFailed`-Result zurückgegeben wird. Nach einem
+synchronen Close-Throw folgt genau ein Retry; ein weiterhin werfender Listener
+wird dereferenziert, und der Prozesseinstieg versucht zusätzlich `stop`.
+Der Listening-Handler schließt den vollständigen Aufruf von `server.address()`
+sowie das jeweils einmalige Lesen der Resultfelder `address` und `port` in
+diese Fehlerbehandlung ein. Ein werfender Getter führt deshalb vollständig zum
+normalen Start-Cleanup und ruft `onFatal` nicht auf.
+Ein erfolgreicher Start verlangt außerdem einen gemeldeten Safe-Integer-Port
+von `1` bis `65535`. Bei einem angeforderten Produktionsport muss er exakt
+übereinstimmen; nur Factory-Port `0` akzeptiert jeden tatsächlich gebundenen
+Port in diesem Bereich. `0`, `-1`, `65536` oder ein abweichender gültiger
+Produktionsport führen ebenfalls zum statischen `startFailed`-Cleanup ohne
+`onFatal`.
+
+Ein Serverfehler nach erfolgreichem Start verwirft `boundPort` sofort und
+versetzt die Instanz irreversibel in `failed`. Der Listener wird best effort
+geschlossen, alle verfolgten Sockets werden zerstört und der Requestpfad prüft
+den Betriebszustand vor weiterer Verarbeitung erneut. Damit erreichen auch
+bereits eingeplante Ereignisse im Fehlerzustand weder Decoder noch Boundary;
+interne Exceptiontexte werden nicht ausgegeben. Die Factory ruft dafür den
+internen Kompositionsport `onFatal = () => {}` ohne Argumente und höchstens
+einmal auf. Ein synchroner Throw oder eine zurückgegebene Rejection wird
+vollständig konsumiert; die eingefrorene öffentliche API bleibt exakt
+`{ start, stop }`.
+
+| Lifecycle-Status | `ok` | Errorcode | Exakte Meldung |
+| --- | --- | --- | --- |
+| `started` | `true` | – | – |
+| `alreadyStarted` | `false` | `localSyncGatewayAlreadyStarted` | `Das lokale SyncGateway wurde bereits gestartet.` |
+| `startFailed` | `false` | `localSyncGatewayStartFailed` | `Das lokale SyncGateway konnte nicht gestartet werden.` |
+| `stopped` | `true` | – | – |
+| `notStarted` | `false` | `localSyncGatewayNotStarted` | `Das lokale SyncGateway wurde noch nicht gestartet.` |
+| `alreadyStopped` | `false` | `localSyncGatewayAlreadyStopped` | `Das lokale SyncGateway wurde bereits gestoppt.` |
+| `stopFailed` | `false` | `localSyncGatewayStopFailed` | `Das lokale SyncGateway konnte nicht kontrolliert gestoppt werden.` |
+
+`npm run gateway:local` startet den Prozess explizit. Ein Import des
+Einstiegspunkts startet keinen Listener; `npm run dev` startet ihn ebenfalls
+nicht. Der Listener bindet fest und nicht konfigurierbar an `127.0.0.1`.
+`SIGINT` und `SIGTERM` lösen den kontrollierten Stop aus. Start-, Config- und
+Stopfehler werden ohne Stack oder eingehenden Wert statisch gemeldet. Nach dem
+payloadlosen Fatal-Signal entfernt der Einstiegspunkt beide Signalhandler,
+setzt `process.exitCode = 1`, versucht den Cleanup idempotent und schreibt genau
+einmal ausschließlich
+`Das lokale SyncGateway wurde nach einem internen Serverfehler beendet.`.
+Mehrfache Signale sowie fehlschlagende oder werfende Cleanup-Versuche erzeugen
+keine zweite Meldung und keine unbehandelte Exception.
 
 Browserwerte bestimmen weder Cloudziel, Umgebung, Handler noch Berechtigungen.
-Der lokale HTTP-Pfad ist serverseitig festgelegt; fachlich ist nur `POST` für
-den vorhandenen `syncTest` erlaubt. `OPTIONS` darf ausschließlich den
-CORS-Preflight behandeln. Kontrolliertes JSON mit UTF-8, abgelehnte
-Kompression und nicht unterstützte Content-Encodings sowie eine exakte
-Origin-Allowlist ohne `*` oder unkontrolliertes Echo sind entschieden. CORS und
-Loopback sind keine Authentisierung oder Autorisierung. Die kleine anonyme
-Capability ist nur vertretbar, weil sie ein exakt leeres Payload besitzt, keine
-privaten Bestände liest, keinen fachlichen Zustand verändert und nur eine als
-`synthetic` klassifizierte Antwort erzeugen darf.
+Das Gateway unterstützt ausschließlich HTTP/1.1. Ein als HTTP/1.0 geparster
+Request endet statisch als `invalidHttpRequest`, bevor Raw-Header projiziert,
+ein Decoder erzeugt oder die Boundary aufgerufen wird.
 
-Die geplante lokale Wire-Reihenfolge lautet:
+Eine factory-lokale Request-Admission pro physischem Socket ist vom
+Response-Owner getrennt. `request`, `checkContinue` und `checkExpectation`
+durchlaufen als ersten Anwendungsschritt dasselbe Gate. Nur der erste Request
+eines Sockets wird zugelassen; jeder weitere beansprucht den terminalen
+Response-Owner, pausiert und zerstört den Socket ohne zweite Response, bevor
+HTTP-Version, Headerprojektion, Decoder oder Boundary ausgewertet werden.
+Beim regulären HTTP/1.1-Pipelinepfad erreicht der erste gültige Raw Body
+Decoderfactory, Decode und Boundary jeweils exakt einmal. Für jedes zweite
+reguläre oder Expect-Ereignis bleibt ein instrumentierter `rawHeaders`-Zugriff
+exakt null; Response beziehungsweise Socket ist nach dem Dispatch terminal.
+
+Der lokale Pfad ist exakt `/api/sync-test`; Querystrings, absolute
+Request-Targets und andere Pfade werden abgelehnt. Bei tatsächlich gebundenem
+Port `80` muss `Host` exakt `127.0.0.1` oder explizit `127.0.0.1:80` sein. Bei
+jedem anderen Port ist ausschließlich
+`127.0.0.1:<tatsächlicher Port>` zulässig. Fachlich ist nur `POST` erlaubt.
+`OPTIONS` beantwortet ausschließlich einen gültigen CORS-Preflight für `POST`
+und genau den angeforderten Header `Content-Type`, liefert `204` ohne Body und
+führt weder Decoder noch Boundary aus. Andere Methoden liefern `405` mit
+`Allow: POST, OPTIONS`; `CONNECT`, Upgrade und `Expect` besitzen getrennte
+frühe Abbruchpfade und lösen keinen Syncfluss aus.
+
+Der Server setzt bewusst `requireHostHeader: false`. Damit wird ausschließlich
+Nodes automatische HTTP/1.1-`400`-Antwort vor dem Requestevent deaktiviert;
+die Hostpflicht wird nicht gelockert. Im ansonsten regulären Requestpfad,
+sofern keine frühere fail-closed Target- oder Sonderpfadablehnung greift,
+durchläuft jeder regulär parsebare fehlende, doppelte oder falsche Host zuerst
+Admission und anschließend unter dem anwendungsseitigen Response-Owner die
+bestehende Raw-Header-Prüfung. Er endet im statischen eigenen
+`invalidHttpRequest`-Envelope mit kontrolliertem `Content-Length`, ohne
+Decoder- oder Boundary-Aufruf. Falsches Target, `CONNECT` und Erwartungen
+behalten ihre früheren fail-closed Antworten `404`, `405` beziehungsweise
+`417`. Die Option öffnet keinen akzeptierenden Pfad.
+
+Host, Origin, Content-Type, Content-Encoding, Content-Length,
+Transfer-Encoding, Connection, Expect, Upgrade, die beiden Preflight-Header
+und Trailer werden aus `rawHeaders` beurteilt. Mehrfach vorhandene
+sicherheitsrelevante Header werden nicht über zusammengeführte Node-Header
+verdeckt, sondern fail-closed abgelehnt. Origin ist genau einmal erforderlich
+und wird ohne Normalisierung exakt mit der konfigurierten Origin verglichen.
+Nur bei diesem exakten Match stammt `Access-Control-Allow-Origin` aus der
+serverseitigen Konfiguration; es gibt weder `*`, unkontrolliertes Echo noch
+`Access-Control-Allow-Credentials`. CORS und Loopback sind keine
+Authentisierung oder Autorisierung.
+
+POST akzeptiert ausschließlich `application/json`, optional mit genau
+`charset=utf-8`; HTTP-Tokens werden case-insensitiv behandelt. Content-Encoding
+darf fehlen oder genau `identity` sein. Kompression und andere oder mehrfache
+Encodings werden ohne Dekompression mit `415` abgelehnt. Ein vorhandenes
+Content-Length muss eindeutig, dezimal, nicht negativ und als Safe Integer
+auswertbar sein. Ein Wert über der kanonischen Contractgrenze wird früh mit
+`413` abgelehnt; fehlendes Content-Length bleibt für einen kontrollierten
+chunked Request zulässig.
+
+Die implementierte lokale Wire-Reihenfolge lautet:
 
 ```text
-Methode, Pfad, Content-Type, Content-Encoding und frühe Transportregeln prüfen
+Request am factory-lokalen Socket-Gate zulassen; Folgerequest sofort beenden
+→ HTTP/1.1 prüfen; HTTP/1.0 statisch vor Raw-Header-Projektion ablehnen
+→ mit `requireHostHeader: false` Nodes Hostantwort umgehen, Hostpflicht behalten
+→ frühere Target-/Sonderpfadablehnungen fail-closed anwenden
+→ im übrigen regulären Pfad Raw-Header-Struktur und Host exakt selbst prüfen
+→ Methode prüfen
 → Origin/CORS prüfen
-→ Content-Length nur als frühes Signal prüfen
+→ Preflight oder Content-Type, Content-Encoding und Framing prüfen
+→ Content-Length dabei nur als frühes Signal behandeln
 → tatsächlich empfangene Bytes beim Streaming auf 65.536 begrenzen
 → bei Byte 65.537 vor vollständiger Bodymaterialisierung abbrechen
 → exakt einmal streng als UTF-8 dekodieren; ungültiges UTF-8 ablehnen
 → eine gültige BOM als U+FEFF erhalten und weder entfernen noch reparieren
 → nicht normalisieren, trimmen oder reparieren
 → materialisierten String genau einmal an die kanonische Boundary geben
-→ ausschließlich deren defensive Projektion anhand Serverpolicy autorisieren
-→ erst danach an n8n Cloud senden
+→ akzeptierte defensive Projektion in diesem Slice nicht weiterleiten
+→ statisch mit 503 enden, weil der Upstream noch nicht implementiert ist
 ```
 
-Die konkrete Decoderkonfiguration wird erst im Implementierungsslice getestet.
-Eine erhaltene führende U+FEFF-BOM folgt weiterhin der bestehenden nativen
-Parsersemantik und ergibt `INVALID_JSON`; sie wird nicht als separater
-Encodingfehler umgedeutet.
+Die Streamingzählung verwendet
+`SYNC_CONTRACT_MAX_RAW_BODY_BYTES` als einzige kanonische fachliche Wahrheit.
+Chunks bleiben Bytes; `request.setEncoding()` und Bodyparser werden nicht
+verwendet. Ein Chunk wird nur gehalten, solange die Gesamtlänge höchstens
+65.536 Bytes beträgt. Bei Byte 65.537 werden keine weiteren Bytes übernommen,
+die gehaltenen Referenzen verworfen, der Request pausiert und Boundary sowie
+Decoder nicht aufgerufen. Erst nach einem vollständigen gültigen Empfang wird
+ein begrenzter Gesamtpuffer erzeugt. Node und Betriebssystem können den gerade
+gelieferten Chunk bereits alloziert haben; zugesagt ist nur die begrenzte
+Anwendungspufferung, keine Kernel-, Socket- oder Plattformgarantie.
+
+Danach wird pro vollständig empfangenem Body genau ein Decoder aus
+`new TextDecoder('utf-8', { fatal: true, ignoreBOM: true })` verwendet. Seine
+beiden Optionen und die Decode-Methode werden vor dem einzigen Decode-Aufruf
+fail-closed geprüft. Ungültiges UTF-8 oder eine unvollständige Mehrbytefolge
+wird ohne Replacement Character abgelehnt. Es gibt kein per-Chunk-Decoding,
+keine Normalisierung, Trimmung, Reparatur oder BOM-Entfernung. Unter Node
+bedeutet `ignoreBOM: true`, dass eine gültige BOM als U+FEFF im String bleibt;
+sie erreicht die Boundary einmal und ergibt dort nach nativer Parsersemantik
+`INVALID_JSON`.
+
+Der primitive unveränderte String wird exakt einmal an
+`processSyncRawBody` übergeben. Die HTTP-Schicht besitzt keinen JSON-Parser,
+Reviver oder Stringify-/Parse-Roundtrip. Eine kontrollierte Boundary-Ablehnung
+serialisiert bei HTTP `400` ausschließlich die erneut validierte frühe
+`gatewayErrorResponse`. Ein lokaler oder strukturell ungeeigneter
+Boundary-Result wird zum statischen lokalen `500`-Envelope. Als akzeptiert gilt
+nur eine Projektion mit exakt sechs kanonischen eigenen Dateneigenschaften, die
+den bestehenden Requestvalidator besteht und deren Root sowie leeres Payload
+eingefroren sind. Ein solcher Request verwendet die defensive Projektion weder
+für einen Upstream noch für die Clientresponse, sondern endet statisch mit
+`503`. Es wird keine normale SyncResponse und keine Verarbeitung durch den
+`SyncAgent` erfunden.
+
+Selbst erzeugte lokale JSON-Responses besitzen exakt:
+
+```js
+{
+  ok: false,
+  status,
+  error: { code, message },
+}
+```
+
+| HTTP | Status | Errorcode | Exakte Meldung |
+| --- | --- | --- | --- |
+| `400` | `invalidHttpRequest` | `invalidLocalSyncGatewayHttpRequest` | `Die lokale SyncGateway-HTTP-Anfrage ist ungültig.` |
+| `403` | `originRejected` | `localSyncGatewayOriginRejected` | `Die Anfrage ist für diese lokale Origin nicht erlaubt.` |
+| `404` | `routeNotFound` | `localSyncGatewayRouteNotFound` | `Die angeforderte lokale SyncGateway-Route ist nicht verfügbar.` |
+| `405` | `methodNotAllowed` | `localSyncGatewayMethodNotAllowed` | `Die HTTP-Methode ist für das lokale SyncGateway nicht erlaubt.` |
+| `413` | `payloadTooLarge` | `localSyncGatewayPayloadTooLarge` | `Die lokale SyncGateway-Anfrage überschreitet die zulässige Größe.` |
+| `415` | `unsupportedMediaType` | `localSyncGatewayUnsupportedMediaType` | `Medientyp oder Inhaltskodierung der lokalen SyncGateway-Anfrage wird nicht unterstützt.` |
+| `417` | `expectationRejected` | `localSyncGatewayExpectationRejected` | `Die HTTP-Erwartung wird vom lokalen SyncGateway nicht unterstützt.` |
+| `431` | `requestHeadersTooLarge` | `localSyncGatewayRequestHeadersTooLarge` | `Die HTTP-Header der lokalen SyncGateway-Anfrage überschreiten die zulässige Größe.` |
+| `500` | `gatewayFailed` | `localSyncGatewayFailed` | `Die lokale SyncGateway-Anfrage konnte nicht sicher verarbeitet werden.` |
+| `503` | `upstreamUnavailable` | `localSyncGatewayUpstreamUnavailable` | `Der lokale SyncGateway-Upstream ist noch nicht implementiert.` |
+
+JSON-Responses setzen
+`Content-Type: application/json; charset=utf-8`, `Cache-Control: no-store`,
+`X-Content-Type-Options: nosniff` und `Connection: close`. CORS wird nur für
+die exakt konfigurierte Origin gesetzt. Parserfehler vor dem Handler erhalten
+einen kontrollierten statischen Raw-Socket-Fehler ohne CORS oder eingehende
+Details.
+
+Pro physischem Socket beansprucht der erste Application- oder Raw-Socket-
+Responsepfad vor seinem ersten Write genau einen Response-Owner. Ist der Socket
+bereits übernommen, schreibt ein späteres `clientError` keine zweite
+Statuszeile und keine zweite Response. Ein Raw-Pfad versucht seine statische
+redigierte Response best effort auszugeben und zerstört den Socket danach
+zuverlässig. Ist der Owner bereits beansprucht, schreibt der konkurrierende
+Raw-Pfad nichts und zerstört den Socket unmittelbar. Ein Parserfehler vor jeder
+Anwendungsübernahme kann weiterhin genau eine kontrollierte Raw-Socket-Response
+übernehmen. Damit bleiben auch halb offene CONNECT-, Upgrade- und Parserfehler-
+Sockets begrenzt, wenn der Client nach Response oder FIN weiter sendet.
+Asynchrone Fehler des best-effort Raw-Writes werden redigiert abgefangen und
+führen ausschließlich zum idempotenten Destroy.
+
+Die endlichen Node-Grenzen sind 8.192 Headerbytes, höchstens 32 akzeptierte
+Headerfelder mit einem Parser-Sentinel von 33, 5.000 ms Header-Timeout,
+10.000 ms Request-Timeout, ein festes
+`connectionsCheckingInterval` von 100 ms, 10.000 ms Socket-Idle-Timeout,
+1.000 ms Keep-Alive-Timeout und höchstens ein Request pro Socket. Header- und
+Request-Timeout sind absolute Fristen und werden durch regelmäßig tröpfelnde
+Teilbytes nicht zurückgesetzt. Bei responsivem Eventloop werden sie mit
+höchstens einem Prüftakt konfigurierter Erkennungstoleranz, also spätestens
+nach 5.100 beziehungsweise 10.100 ms, erkannt und fail-closed beendet. Das ist
+weder Rate Limiting noch ein vollständiger DoS-Schutz. `insecureHTTPParser`
+wird nicht verwendet. Das separate anwendungsseitige Admission-Gate setzt das
+Ein-Request-Limit primär durch. `maxRequestsPerSocket: 1` und ein expliziter
+synchroner `dropRequest`-Handler dienen zusätzlich als Defense-in-Depth: Der
+Handler beansprucht den terminalen Response-Owner, zerstört den Socket und
+erzeugt für einen verworfenen pipelinierten Folgerequest keine
+zusätzliche Node- oder Gateway-Response.
+
+Nur für Factory-Port `0` kann der primitive boolesche Wert
+`useTestTimeoutPolicy: true` die fest verdrahtete Testpolicy mit 250 ms Header-,
+500 ms Request-, 500 ms Socket-Idle-Timeout und 25 ms Prüftakt aktivieren. Die
+private Naht ist keine Environment- oder Produktionskonfiguration, kann die
+festen Produktionswerte nicht abschwächen und verändert die eingefrorene
+öffentliche `{ start, stop }`-API nicht.
+Ein abgelaufener Parser-, Request- oder Socketpfad wird fail-closed beendet.
+Abhängig vom bereits erreichten Node-Parserzustand kann nur ein
+Verbindungsabschluss oder eine minimale laufzeiteigene Timeoutantwort möglich
+sein; die Architektur behauptet dort keinen stets auslieferbaren lokalen
+JSON-Envelope. Blockierte Eventloop-Ausführung sowie Betriebssystem- und
+Netzwerkplanung können den tatsächlichen Schließzeitpunkt über die konfigurierte
+Erkennungstoleranz hinaus verzögern; diese Grenze ist keine
+laufzeitunabhängige Wall-Clock-Garantie.
 
 Das lokale Gateway authentisiert sich später ausschließlich über HTTPS und n8n
 Header Authentication mit einem dedizierten hochentropischen gemeinsamen
@@ -482,19 +737,21 @@ Grenze vor Provider-Allokation. Vor Aktivierung muss ein versions- und
 tenantgebundener Laufzeitnachweis tatsächliche Binärdaten vor Decodierung
 belegen; andernfalls ist n8n Cloud für diese Boundary-Komposition ungeeignet und
 ADR 0019 neu zu bewerten. Erst nach erfolgreichem Nachweis bleibt die erneute
-Cloudprüfung Defense-in-Depth; die exakte vorgelagerte Wire-Grenze liegt geplant
-lokal.
+Cloudprüfung Defense-in-Depth; die exakte vorgelagerte Wire-Grenze liegt nun im
+separat gestarteten lokalen Prozess.
 
 Der SyncService akzeptiert unverändert nur normale, vollständig korrelierte
 SyncResponses. HTTP-, Authentisierungs-, Timeout-, frühe `gateway_`-, lokale
 Gateway- und ungeeignete Cloudresponse-Fehler werden nicht zu normalen
-SyncAgent-Responses umgeschrieben. Das genaue HTTP- und lokale
-Transportfehler-API wird erst im Implementierungsslice festgelegt und getestet.
+SyncAgent-Responses umgeschrieben. Die lokale HTTP-Fehler-API ist oben
+festgelegt; das spätere Browsertransport-Fehler-API bleibt getrennt zu
+entscheiden.
 
-Dieser Dokumentationsslice implementiert weder den Prozess noch HTTP, Wire-
-Byte-Limit, Decoder, CORS, Authentisierung, Rate Limits, Timeout, Cloudworkflow,
-Bundle, Credential, operativen Agenten, Logging, Monitoring oder externen
-Datenfluss.
+Dieser Slice implementiert Prozess, lokale HTTP-, Wire-, Decoder-, CORS-,
+Timeout- und Boundary-Komposition. Er implementiert weiterhin keine
+Authentisierung, Autorisierung, Rate Limits, Replay- oder Idempotenzschicht,
+keinen Browsertransport, Cloudworkflow, Bundle, Credential, operativen
+Agenten, Logging, Monitoring oder externen Datenfluss.
 
 ## Agentenverantwortung
 
@@ -566,11 +823,12 @@ Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
 Alle Datenzugriffe bleiben hinter Modulservices und Storage-Adaptern. Der
 erste `v0.3.0`-Slice führt den transportneutralen Vertrag ein, der zweite den
 transportneutralen SyncService-Port. Der dritte Slice ergänzt die synchrone
-Request Boundary für einen bereits materialisierten Raw-Body-Wert. Der aktuelle
-Dokumentationsslice entscheidet mit ADR 0019 den zusätzlichen lokalen
-Sicherheits-Hop vor n8n Cloud. Keiner dieser Slices komponiert konkrete externe
-Kommunikation. Reale Kommunikation beginnt erst in einem späteren Slice dieses
-Meilensteins.
+Request Boundary für einen bereits materialisierten Raw-Body-Wert. Der vierte,
+historische Dokumentationsslice entscheidet mit ADR 0019 den zusätzlichen
+lokalen Sicherheits-Hop vor n8n Cloud. Der aktuelle fünfte Slice implementiert
+dessen separat startbare Raw-Wire- und HTTP-Foundation, komponiert sie aber
+weder mit Browser noch Cloud. Externe Kommunikation beginnt erst in einem
+späteren Slice dieses Meilensteins.
 
 #### LearningHub Local MVP in v0.2.1
 
@@ -1006,7 +1264,7 @@ Der spätere Zielpfad bleibt:
 LearningTestService
   → SyncService
   → künftiger lokaler SyncTransport
-  → künftiges lokales SyncGateway auf GD-WS01
+  → implementiertes lokales SyncGateway auf GD-WS01
   → authentisierter n8n-Cloud-Webhook
   → SyncAgent
   → TestAgent
@@ -1348,11 +1606,12 @@ darf nicht automatisch oder vollständig weitergegeben werden.
 ### Verbundener Modus
 
 Der noch nicht implementierte verbundene Modus wird die lokale Anwendung um
-kontrollierte externe Verarbeitung ergänzen.
+kontrollierte externe Verarbeitung ergänzen. Der lokale Gateway-Prozess ist
+bereits vorhanden, wird aber noch von keinem Browsertransport verwendet.
 
 ```text
 UI → Service → SyncService → künftiger lokaler SyncTransport
-  → künftiges lokales SyncGateway auf GD-WS01
+  → implementiertes lokales SyncGateway auf GD-WS01
   → authentisierter n8n-Cloud-Webhook → SyncAgent
   → validierte normale SyncResponse
 ```
@@ -1492,8 +1751,11 @@ Fehler werden an der Schicht behandelt, die genügend Kontext dafür besitzt:
 | Ungültiger materialisierter Raw Body oder ungültiger geparster Request | SyncGateway Request Boundary als statische frühe Gateway-Ablehnung |
 | Ungültige Invocation, Clock, Gateway-ID oder interne Boundary-Inkonsistenz | SyncGateway Request Boundary als statischer lokaler Fehler ohne Gateway-Response |
 | Lokaler Request-Build, Transport-Throw/-Rejection oder ungültige Transportantwort | SyncService Foundation mit statischen redigierten lokalen Fehlern |
-| Falsche Methode, ungeeigneter Content-Type/-Encoding oder Origin | geplantes lokales SyncGateway als frühe statisch redigierte Transport-/Policyablehnung |
-| Übergroße Wire-Bytes oder ungültiges UTF-8 | geplante lokale Streaming- beziehungsweise Decodierungsgrenze vor der Request Boundary |
+| Falscher Pfad oder Host, falsche Methode, ungeeigneter Content-Type/-Encoding, Origin, Preflight, Expect oder Upgrade | implementiertes lokales SyncGateway als frühe statisch redigierte HTTP-/Policyablehnung |
+| Übergroße Wire-Bytes oder ungültiges UTF-8 | implementierte lokale Streaming- beziehungsweise Decodierungsgrenze vor der Request Boundary |
+| Startfehler | lokales SyncGateway verwirft den gebundenen Port, schließt den Listener best effort, zerstört Sockets und liefert ausschließlich den bestehenden statischen `startFailed`-Result; dies gilt auch für gemeldete Ports außerhalb `1` bis `65535` oder einen nicht exakt passenden Produktionsport |
+| Serverfehler nach erfolgreichem Start | lokales SyncGateway verwirft den gebundenen Port, schließt den Listener best effort, zerstört Sockets, sperrt Request-, Decoder- und Boundary-Verarbeitung irreversibel und signalisiert den Prozess payloadlos höchstens einmal |
+| Von der Boundary akzeptierter Request ohne Upstream | lokales SyncGateway als statischer `503 upstreamUnavailable`-Transportfehler; keine normale SyncResponse |
 | Cloud-Authentisierungsfehler, Netzwerkfehler oder Timeout | späterer konkreter lokaler Cloudtransport; der aktuelle Service implementiert keinen Timeout |
 | Frühe `gateway_`- oder ungeeignete Cloudresponse | späterer Clienttransport als statisch redigierter lokaler Fehler; keine normale SyncResponse erfinden |
 | Ungültiger Request-Vertrag | aktuell SyncService und SyncGateway Request Boundary mit SyncContract-Validator; später defense-in-depth erneut an der n8n-Cloud-Grenze |
@@ -1515,7 +1777,7 @@ Grundregeln:
   späteren serverseitigen Umgebung.
 - `VITE_*`-Variablen gelten als öffentlich und dürfen keine Secrets enthalten.
 - Eine Webhook-URL wird nicht als alleiniger Schutzmechanismus betrachtet.
-- Das geplante lokale SyncGateway bindet nur an Loopback, behandelt den lokalen
+- Das implementierte lokale SyncGateway bindet nur an `127.0.0.1`, behandelt den lokalen
   Caller aber weiterhin als nicht authentisiert und unvertrauenswürdig. CORS,
   Origin und Loopback sind keine Identitätsnachweise.
 - Das geplante Bearer-Secret für n8n Header Authentication liegt ausschließlich
@@ -1528,7 +1790,8 @@ Grundregeln:
   gegen ihre unveränderte Korrelation.
 - Die SyncGateway Request Boundary validiert den unveränderten Parsed-Wert vor
   jeder Projektion, anschließend die neue Projektion vor und nach Deep Freeze.
-  Eine frühe Ablehnung behauptet keine SyncAgent-Verarbeitung. Eine spätere
+  Der lokale HTTP-Prozess begrenzt Bytes und dekodiert strikt davor. Eine frühe
+  Ablehnung oder lokale `503`-Response behauptet keine SyncAgent-Verarbeitung. Eine spätere
   n8n-Cloud-Grenze validiert über das generierte kanonische Boundary-Artefakt
   erneut, bevor der `SyncAgent`
   verarbeitet.
@@ -1591,6 +1854,11 @@ src/
 ├── utils/
 └── styles/
 
+server/
+├── localSyncGatewayRuntimeConfig.js
+├── localSyncGatewayHttpServer.js
+└── startLocalSyncGateway.js
+
 automation/
 └── n8n/
     └── workflows/
@@ -1617,7 +1885,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
 | `v0.2.2` | Vollständig geprüft und veröffentlicht; keine externe Kommunikation |
-| `v0.3.0` | In Arbeit: drei transportneutrale Foundations implementiert; ADR 0019 zum geplanten lokalen SyncGateway vor n8n Cloud angenommen; HTTP, Cloudworkflow, Browsertransport und operativer SyncAgent folgen |
+| `v0.3.0` | In Arbeit: drei transportneutrale Foundations sowie separat startbare Local SyncGateway Raw-Wire and HTTP Foundation implementiert und verifiziert; Cloudworkflow, Browsertransport und operativer SyncAgent folgen |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
 | `v0.6.0` | Integrierter Drei-Agenten-Fluss |
@@ -1627,6 +1895,12 @@ Die technische Reihenfolge bleibt **Mock → Webhook → Airtable →
 Agentenlogik**. Jede Version muss überprüfbar und dokumentiert sein, bevor die
 nächste begonnen wird. Weitere Unterversionen dürfen für neue, klar
 abgegrenzte Arbeitspakete ergänzt werden.
+
+Die Local-SyncGateway-Foundation wurde mit 50/50 gezielten Tests, 192/192
+kombinierten Sync-Tests und 1125/1125 Tests der vollständigen seriellen Suite
+verifiziert; alle Läufe hatten 0 Fehlschläge, 0 Skips und 0 Todos. Der
+Produktions-Build blieb erfolgreich bei exakt 46 transformierten
+Browsermodulen.
 
 ## Architekturentscheidungen
 
@@ -1654,6 +1928,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0017](decisions/0017-transport-neutral-sync-service-foundation.md) | Transportneutrale SyncService Foundation mit kontrollierter Korrelation | Angenommen |
 | [0018](decisions/0018-transport-neutral-sync-gateway-request-boundary-foundation.md) | Transportneutrale SyncGateway Request Boundary für materialisierte Raw Bodies | Angenommen |
 | [0019](decisions/0019-local-sync-gateway-before-n8n-cloud.md) | Lokales SyncGateway als Sicherheitsgrenze vor n8n Cloud | Angenommen |
+| [0020](decisions/0020-local-sync-gateway-raw-wire-http-foundation.md) | Lokale SyncGateway Raw-Wire and HTTP Foundation | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).

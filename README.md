@@ -10,7 +10,7 @@
 
 **Current release:** `v0.2.2 — LichtwaldLog Local MVP complete, verified, and published`
 
-**Current development:** `v0.3.0 – in Arbeit – Local SyncGateway before n8n Cloud Decision`
+**Current development:** `v0.3.0 – in Arbeit – Local SyncGateway Raw-Wire and HTTP Foundation`
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -89,22 +89,28 @@ controlled input rejections are separated from static local boundary failures.
 Controlled rejections use a fresh, fully validated early Gateway error
 response with no claimed `SyncAgent` processing.
 
-Current work is the documentation-only decision in **ADR 0019 – Local
-SyncGateway before n8n Cloud**. It adds a planned local transport-security hop
-on GD-WS01 to the target topology before n8n Cloud. The decision is accepted;
-the local SyncTransport, loopback-only local SyncGateway, authenticated
-n8n-Cloud webhook, generated Cloud boundary artifact, and operational
-`SyncAgent` remain planned and are not implemented.
+The separate **Local SyncGateway Raw-Wire and HTTP Foundation** is now
+implemented according to ADR 0020. It is an import-inert Node process outside
+the browser build graph and starts only through `npm run gateway:local` with
+validated server-side port and exact loopback-Origin configuration. When
+started explicitly, it binds only to `127.0.0.1`, exposes only the fixed local
+path `/api/sync-test`, enforces the documented HTTP and CORS policy, limits the
+application buffer while streaming, decodes UTF-8 exactly once, and calls the
+existing request boundary exactly once after a valid receive path. Each
+physical socket has at most one response owner, timeout checks use a fixed
+bounded production interval, and a post-start server failure closes the
+listener and tracked sockets before any further request processing.
 
 Successful contract responses remain limited to
 `dataOrigin: "synthetic"`. That value is only a contract classification, not
 proof of actual provenance or privacy. Neither the delivered service nor the
-request boundary has a concrete network transport, HTTP handler, endpoint,
-webhook, operational `SyncAgent`, n8n connection, authentication,
-authorization, signature verification, CORS or rate-limit enforcement, Hub
-UI, persistence, logging, telemetry, or `src/main.js` composition. ADR 0019
-implements none of these components either. Consequently, this slice
-establishes no external data flow.
+request boundary is changed or composed in `src/main.js`. The local Gateway
+does not yet have a browser SyncTransport or an upstream transport. A request
+accepted by the boundary therefore ends with a static local HTTP `503`, never
+with a normal SyncResponse or claimed `SyncAgent` processing. There is still no
+n8n webhook, Cloud connection, credential, authentication, operational agent,
+rate limit, Hub UI, persistence, request logging, telemetry, or external data
+flow.
 
 ## Vision
 
@@ -128,7 +134,7 @@ flowchart TD
     Services --> Local["Local storage adapter"]
     Services --> Sync["Sync service"]
     Sync --> Transport["Planned local SyncTransport"]
-    Transport --> Gateway["Planned local SyncGateway on GD-WS01"]
+    Transport --> Gateway["Separately started local SyncGateway on GD-WS01"]
     Gateway --> Cloud["Planned authenticated n8n-Cloud webhook"]
     Cloud --> Agent["SyncAgent"]
     Agent --> Test["TestAgent"]
@@ -138,17 +144,17 @@ flowchart TD
 ```
 
 The first real connected flow will be browser-initiated:
-`GoldenDawn browser → SyncService → planned local SyncTransport → planned
-local SyncGateway on GD-WS01 → authenticated n8n-Cloud webhook → SyncAgent →
+`GoldenDawn browser → SyncService → planned local SyncTransport → local
+SyncGateway on GD-WS01 → authenticated n8n-Cloud webhook → SyncAgent →
 validated normal SyncResponse`. The browser does not terminate an incoming
 public webhook.
 The dashboard will not access Airtable, APIs, or specialized agents directly;
 only the DataAgent communicates with Airtable in Version 1. This connected flow
-remains planned: the completed service foundation adds a transport-neutral
-port, and the completed request-boundary slice processes only an already
-materialized string. ADR 0019 decides the additional local security hop but
-implements no concrete transport, application composition, HTTP, raw wire-byte
-handling, webhook, Cloud workflow, or agent.
+remains incomplete: the completed service foundation adds a transport-neutral
+port, the completed request-boundary slice processes an already materialized
+string, and ADR 0020 now implements the separate local HTTP and Raw-Wire
+Foundation. The browser transport, application composition, upstream Cloud
+transport, webhook, Cloud workflow, normal response, and agent remain absent.
 
 See [`docs/architecture.md`](docs/architecture.md) for responsibilities,
 boundaries, and end-to-end data flows.
@@ -342,7 +348,7 @@ deferred to `v0.5.0`, using the later path:
 LearningTestService
   → SyncService
   → planned local SyncTransport
-  → planned local SyncGateway on GD-WS01
+  → local SyncGateway on GD-WS01
   → authenticated n8n-Cloud webhook
   → SyncAgent
   → TestAgent
@@ -584,11 +590,11 @@ synchronization, agent logic, or Airtable integration. Weekly Review is later
 work and is not part of this milestone. The package remains at version
 `0.2.2`. The annotated `v0.2.2` tag and corresponding GitHub Release were
 published on 2026-08-02, and `v0.2.2` is the latest published release.
-`v0.3.0` is now in progress with the documentation-only Local SyncGateway
-before n8n Cloud decision on top of the implemented SyncContract, SyncService,
-and SyncGateway Request Boundary Foundations. The service keeps outgoing
-request creation, transport invocation, correlation, and defensive response
-validation separate. The synchronous boundary
+`v0.3.0` is now in progress with the verified Local SyncGateway Raw-Wire and
+HTTP Foundation on top of the implemented SyncContract, SyncService, and
+SyncGateway Request Boundary Foundations. The service keeps outgoing request
+creation, transport invocation, correlation, and defensive response validation
+separate. The synchronous boundary
 checks an already materialized Raw-Body value, parses an accepted string once,
 validates the unchanged parsed structure, and emits only a defensive frozen
 request snapshot or a controlled early Gateway rejection. It neither strips
@@ -597,12 +603,12 @@ SyncService request and every accepted Boundary request require an exactly
 empty payload; the contract limits successful responses to
 `dataOrigin: "synthetic"`. That marker is only a contract
 classification, not proof of actual provenance or privacy. ADR 0019 adds the
-planned topology `browser → SyncService → local SyncTransport → local
-SyncGateway on GD-WS01 → authenticated n8n-Cloud webhook → SyncAgent`, but
-does not implement any of those planned transport components. The slice does
-not alter any published `v0.2.2` local flow and, without a delivered HTTP
-handler, concrete transport, or composition, does not establish external
-communication or an operational agent.
+target topology `browser → SyncService → local SyncTransport → local
+SyncGateway on GD-WS01 → authenticated n8n-Cloud webhook → SyncAgent`. ADR 0020
+implements only the separately started loopback HTTP/Wire hop. The slice does
+not alter any published `v0.2.2` local flow; without a browser transport,
+Cloud upstream, webhook, or application composition, it establishes neither
+external communication nor an operational agent.
 
 ## Development principles
 
@@ -611,7 +617,8 @@ communication or an operational agent.
 - Keep every `v0.2.x` milestone local; `v0.3.0` prepares the external boundary
   through a strict contract, transport-neutral service, and materialized-string
   request boundary. ADR 0019 additionally decides a local transport-security
-  hop before n8n Cloud; all concrete communication remains planned.
+  hop before n8n Cloud; ADR 0020 implements its separately started local HTTP
+  and Raw-Wire Foundation without connecting browser or Cloud.
 - Keep UI components independent from concrete storage technologies.
 - Encapsulate local persistence behind storage adapters.
 - Route external communication through services and the SyncAgent.
@@ -628,6 +635,7 @@ communication or an operational agent.
 - Vanilla JavaScript
 - HTML5
 - CSS3
+- Node HTTP Local SyncGateway Foundation
 - Git and GitHub
 
 ### Planned integrations
@@ -653,7 +661,7 @@ non-binding; see the roadmap for details.
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
 | v0.2.2 | LichtwaldLog Local MVP | Complete, verified, and published |
-| v0.3.0 | SyncAgent and Webhook Foundation | In progress: three transport-neutral Foundations implemented; ADR 0019 accepted for a planned local SyncGateway before n8n Cloud; HTTP, Cloud workflow, browser transport, and operational SyncAgent remain planned |
+| v0.3.0 | SyncAgent and Webhook Foundation | In progress: three transport-neutral Foundations and the separate local SyncGateway Raw-Wire/HTTP Foundation implemented; Cloud workflow, browser transport, and operational SyncAgent remain planned |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
 | v0.6.0 | Integration | Planned integration and verification of the previously introduced local and external components |
@@ -662,10 +670,11 @@ non-binding; see the roadmap for details.
 The `v0.2.x` line intentionally remains local. `v0.3.0` prepares the first
 external boundary with a transport-neutral contract, service, and
 already-materialized-string request boundary. ADR 0019 decides the additional
-local security hop before later slices add HTTP and communication. Additional
-patch or minor versions may be inserted when needed
-without reordering these milestones. The architecture sequence remains
-**mock → webhook → Airtable → agent logic**.
+local security hop, and ADR 0020 implements its separate local HTTP and
+Raw-Wire Foundation. Later slices add browser and Cloud communication.
+Additional patch or minor versions may be inserted when needed without
+reordering these milestones. The architecture sequence remains **mock →
+webhook → Airtable → agent logic**.
 
 ## Getting started
 
@@ -690,6 +699,25 @@ Create a production build with:
 npm run build
 ```
 
+The Local SyncGateway is a separate process. `npm run dev` does not start it.
+For a deliberate local start, set one server-side port and exactly one allowed
+loopback/localhost Origin, then run:
+
+```powershell
+$env:GOLDENDAWN_SYNC_GATEWAY_PORT = '8787'
+$env:GOLDENDAWN_SYNC_GATEWAY_ALLOWED_ORIGIN = 'http://127.0.0.1:5173'
+npm run gateway:local
+```
+
+These values are local examples, not defaults or production configuration.
+The process refuses missing or invalid configuration and listens only on
+`127.0.0.1` at the fixed path `/api/sync-test`. GoldenDawn's browser and
+`SyncService` do not use this listener yet, and the listener has no n8n or
+other external upstream. If an internal server error occurs after startup, the
+process removes its signal handlers, attempts cleanup idempotently, sets exit
+code `1`, and prints exactly one redacted message:
+`Das lokale SyncGateway wurde nach einem internen Serverfehler beendet.`
+
 Safe, local PowerShell helpers for the manual commit and merged-branch cleanup
 process are documented in [the Git workflow guide](docs/git-workflows.md).
 
@@ -706,6 +734,16 @@ Verification passed 374/374 LichtwaldLog tests and 933/933 tests in the complete
 suite with 0 skips and 0 todos. The production build transformed exactly 46
 modules. The annotated `v0.2.2` tag and corresponding GitHub Release were
 published on 2026-08-02. `v0.2.2` is the latest published release.
+
+The unreleased Local SyncGateway Raw-Wire and HTTP Foundation was verified on
+2026-08-16. Its exact targeted command passed 50/50 tests, and the targeted
+Gateway suite together with SyncGateway Request Boundary, SyncContract, and
+SyncService passed 192/192. The complete serial suite passed 1125/1125. Every
+run had 0 failures, 0 skips, and 0 todos. Tests used only synthetic fixtures and
+local loopback communication. The production build succeeded and still
+transformed exactly 46 browser modules, confirming that the separate Node
+server did not enter the browser build graph. These unreleased results do not
+change package version `0.2.2` or the published tag and release `v0.2.2`.
 
 The unreleased SyncGateway Request Boundary Foundation passed 54/54 targeted
 tests with the exact requested
@@ -769,15 +807,21 @@ expected ordinary data shape into a separate projection, validates normal
 response correlation, and never returns or freezes the original object.
 `handledBy: "SyncAgent"` and `processedBy: ["SyncAgent"]` in test fixtures
 simulate the existing contract role only; they do not prove that an operational
-or external agent ran. No concrete transport is shipped or composed, so the
-slice introduces no external data flow.
+or external agent ran. The separately started local SyncGateway HTTP foundation
+is shipped outside the browser composition, but no browser SyncTransport or
+Cloud upstream is composed. An accepted local request therefore ends in a
+static `503` response and the slice introduces no external data flow.
 
 The contract core's pure raw-body helper measures an already allocated string
 against exactly 65,536 calculated UTF-8 bytes. The SyncService does not use
-that helper. The SyncGateway Request Boundary does use it before parsing, but
-the string may already have been allocated and decoded from wire bytes. This is
-not an HTTP byte limit, protection against prior body allocation, productive
-webhook enforcement, or a denial-of-service guarantee.
+that helper. The SyncGateway Request Boundary does use it before parsing. The
+separate local HTTP foundation additionally imports the same canonical limit,
+counts the bytes actually delivered in request chunks, retains at most 65,536
+application-body bytes, and stops before decode or Boundary invocation when
+byte 65,537 is observed. Node, the operating system, and the network stack may
+already have allocated a delivered chunk. This application-buffer rule is not
+a kernel, socket, parser-preallocation, rate-limit, or complete denial-of-service
+guarantee.
 
 After a string passes that check, the boundary calls native `JSON.parse`
 exactly once without a reviver. It does not trim, remove a BOM, normalize
@@ -817,17 +861,78 @@ timestamp tolerance is not idempotency or deduplication. An exactly empty
 payload removes the designated content field but does not establish semantic
 privacy for the remaining metadata.
 
-ADR 0019 decides that the first real synthetic flow will use a separate local
-Node process on GD-WS01, bound only to loopback. The browser caller remains
-unauthenticated and untrusted; loopback and CORS prove no identity. The planned
-gateway will enforce the fixed method, path, JSON/UTF-8 content rules and exact
-Origin allowlist, count actual streamed bytes through 65,536, abort at byte
-65,537 before full body materialization, decode valid UTF-8 exactly once while
-preserving a BOM for the existing parser semantics, and pass the resulting
-string only to the canonical request boundary. No implementation exists yet.
+ADR 0019 decided that the first real synthetic flow uses a separate local Node
+process on GD-WS01, bound only to `127.0.0.1`. ADR 0020 implements its local
+Raw-Wire and HTTP foundation as an explicitly started process. The browser
+caller remains unauthenticated and untrusted; loopback and CORS prove no
+identity. The gateway supports only HTTP/1.1 and enforces the fixed method,
+path, Host, JSON/UTF-8 content rules and exact Origin allowlist. HTTP/1.0 is
+rejected with the static invalid-request profile before raw-header projection,
+decoding, or Boundary invocation. The gateway counts actual streamed bytes
+through 65,536, stops before decode and Boundary invocation at byte 65,537,
+decodes valid UTF-8 exactly once while preserving a BOM as U+FEFF for the
+existing parser semantics, and passes only the resulting primitive string to
+the canonical request boundary. A valid accepted request terminates locally
+with the static `503` upstream-not-implemented envelope.
 
-The planned local gateway will authenticate to the single n8n-Cloud
-`syncTest` webhook over HTTPS using n8n Header Authentication and a
+For a listener whose bound port is `80`, the only accepted Host authorities are
+`127.0.0.1` and explicit `127.0.0.1:80`; every other bound port requires exact
+`127.0.0.1:<port>`. The explicit Node option `requireHostHeader: false` only
+disables Node's early automatic Host response; it does not relax this policy.
+On an otherwise regular request path, when no earlier fail-closed target or
+special-path rejection applies, a parseable request with a missing, duplicate,
+or wrong Host passes through application admission and response ownership into
+the static local `invalidHttpRequest` envelope with controlled `Content-Length`.
+The option opens no accepting path. A factory-local request-admission
+gate, separate from response ownership, is the first shared application step
+for `request`, `checkContinue`, and `checkExpectation`. It admits only the first
+request on a physical socket; a follow-up claims terminal response ownership,
+pauses and destroys the socket without a second response before version,
+header, decoder, or Boundary processing. Tests require the first valid
+HTTP/1.1 request to reach decoder creation, decode, and Boundary exactly once
+with its raw body, while every second regular or Expect event reads
+`rawHeaders` zero times and ends terminally. Exactly one application or
+raw-socket path can own the response for a physical socket. Once ownership is
+claimed, `clientError` never writes a second response. A raw-socket path
+best-effort sends its static
+redacted response and then reliably destroys the socket; if ownership was
+already claimed, it writes nothing and destroys the socket immediately. This
+also bounds half-open clients that continue writing after the server response;
+asynchronous raw-write errors are redacted and used only to trigger destroy.
+`maxRequestsPerSocket: 1` and the explicit synchronous `dropRequest` handler
+remain defense-in-depth; a Node-rejected pipelined follow-up is destroyed
+without an additional Node or Gateway response. The fixed production
+header, request, and socket timeouts remain `5,000`, `10,000`, and `10,000` ms,
+with a fixed `100` ms connection-check interval. On a responsive event loop,
+header and request expiry is therefore detected by the next check, at most
+`100` ms after the nominal deadline; event-loop or operating-system scheduling
+can still delay the observed close. The narrowly scoped
+`useTestTimeoutPolicy: true` factory option is accepted only with test port `0`
+and fixes header/request/socket/check timing at `250`/`500`/`500`/`25` ms. It is
+not reachable through either runtime environment variable and cannot weaken a
+production listener. A server error after startup immediately discards the
+bound port, enters the failed state, closes the listener defensively, destroys
+tracked sockets, and gates all later request, decoder, and Boundary processing;
+internal error details are neither returned nor logged. The internal factory
+option `onFatal = () => {}` is invoked with no arguments and at most once;
+throws and returned rejections are consumed, while the frozen public API stays
+exactly `{ start, stop }`. The process then removes signal handlers, sets exit
+code `1`, attempts cleanup idempotently, and emits only the single fixed
+redacted message documented above. Start failures use the same irreversible
+best-effort listener-and-socket cleanup path before returning their existing
+static result. A synchronous close throw is retried once; a persistently
+throwing listener is unreferenced and the process entry attempts `stop` again.
+The listening handler also contains the complete `server.address()` access,
+including one read each of its `address` and `port` properties. A throwing
+getter follows the same redacted start-failure cleanup and never invokes
+`onFatal`. A successful start additionally requires a reported safe-integer
+port from `1` through `65535`; a requested production port must match exactly,
+whereas factory port `0` accepts any actually bound port within that range.
+Reported `0`, `-1`, `65536`, or a different valid production port follows the
+same `startFailed` cleanup without invoking `onFatal`.
+
+The local gateway's planned Cloud transport will authenticate to the single
+n8n-Cloud `syncTest` webhook over HTTPS using n8n Header Authentication and a
 dedicated high-entropy shared Bearer secret held only in the n8n credential
 store and trusted server-side gateway runtime configuration. It must never
 enter the browser, `VITE_*`, storage, URLs, repository, Vault, workflow
@@ -847,8 +952,9 @@ proof establishes actual binary data before decoding; otherwise ADR 0019 must
 be reconsidered. It must also use a reproducibly generated standalone boundary
 artifact with automated integrity, parity, and mutation checks, never a
 manually copied contract. n8n revalidation remains defense-in-depth after
-possible provider allocation; the planned local gateway remains the exact
-upstream wire-byte boundary.
+possible provider allocation; the implemented local application buffer and
+decoder remain the exact upstream boundary available in this slice, within the
+resource limitations stated above.
 
 `localStorage` is unencrypted browser storage, not a secret store, cloud
 backup, or cross-device synchronization mechanism. A public repository must
