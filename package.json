@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "gateway:local": "node server/startLocalSyncGateway.js",
     "test": "node --test",
     "build": "vite build",
     "preview": "vite preview"
