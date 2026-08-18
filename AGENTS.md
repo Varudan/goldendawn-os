@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – in Arbeit – Local SyncGateway Raw-Wire and HTTP Foundation`
+Aktueller Stand: `v0.3.0 – in Arbeit – Generated n8n Boundary Bundle Foundation`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -116,13 +116,20 @@ Vertragsresponses sind weiterhin auf `dataOrigin: "synthetic"` begrenzt.
 Dieser Wert ist nur eine Vertragsklassifikation und kein Herkunfts- oder
 Datenschutzbeweis. `v0.2.2` bleibt vollständig lokal. Die Boundary selbst
 besitzt weiterhin keinen HTTP-Handler und ist nicht in `src/main.js` komponiert.
-Aktuell ist `v0.3.0 – in Arbeit – Local SyncGateway Raw-Wire and HTTP
-Foundation`. ADR 0019 entschied den zusätzlichen lokalen Transport-
-Sicherheits-Hop auf GD-WS01 vor n8n Cloud; ADR 0020 implementiert dafür einen
-separat und ausschließlich explizit startbaren Node-HTTP-Prozess auf
-`127.0.0.1`. Lokaler Browser-SyncTransport, authentisierter n8n-Cloud-Webhook,
-Cloud-Upstream, normaler Erfolgsresponse und operativer `SyncAgent` bleiben
-geplant und sind nicht implementiert.
+Aktuell ist `v0.3.0 – in Arbeit – Generated n8n Boundary Bundle Foundation`.
+ADR 0019 entschied den zusätzlichen lokalen Transport-Sicherheits-Hop auf
+GD-WS01 vor n8n Cloud; ADR 0020 implementiert dafür einen separat und
+ausschließlich explizit startbaren Node-HTTP-Prozess auf `127.0.0.1`. ADR 0021
+ergänzt nun aus einem unveränderlichen Snapshot der fachlich kanonischen
+Contract- und Boundary-Quellen sowie des gepflegten nichtfachlichen Entry ein
+deterministisch erzeugtes, direkt bindbares Expression-IIFE mit der exakt
+eingefrorenen API `{ createSyncGatewayRequestBoundary }`, ein SHA-256-
+Integritätsmanifest sowie Generator-, Check-, Snapshot-/ABA-, Outputpfad-,
+Paritäts- und Mutationstests.
+Das Artefakt ist nur für eine spätere n8n-Code-Node-Komposition vorbereitet.
+Lokaler Browser-SyncTransport, authentisierter n8n-Cloud-Webhook,
+Cloud-Upstream, Workflow, normaler Erfolgsresponse und operativer `SyncAgent`
+bleiben geplant und sind nicht implementiert.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -393,18 +400,65 @@ kein HMAC-, JWT-Body-Binding- oder Replay-Verfahren. Falls eine spätere Aktion
 eine Bodysignatur benötigt, wird sie über exakte Raw Bytes und relevante Header
 vor Decodierung und Parsing geprüft.
 
-Der aktuelle Slice implementiert ausschließlich diese lokale HTTP-/Wire-
-Foundation und ihren kontrollierten Lifecycle. Er implementiert keinen
-Browser-SyncTransport, Cloud- oder n8n-Transport, öffentlichen Webhook,
-operativen `SyncAgent`, n8n-Workflow, Secret, Credential, Header-
-Authentisierung, Autorisierung, Signaturprüfung, Rate Limit, Retry, Replay-,
-Idempotenz- oder Deduplizierungsschicht, Persistenz, Requestlogs, Telemetrie,
-AgentHub- oder AutomationHub-UI und keine `src/main.js`-Komposition.
-PromptVault, LearningHub und LichtwaldLog bleiben lokal und werden weder
-gelesen noch exportiert. Da kein Browser- oder Cloudtransport komponiert ist
-und angenommene Requests lokal mit `503` enden, existiert kein externer
-Datenfluss. Paketversion `0.2.2`, Tag `v0.2.2` und neuestes veröffentlichtes
-Release `v0.2.2` bleiben unverändert.
+Der aktuelle Slice implementiert ausschließlich den deterministischen lokalen
+Generator `scripts/n8n/generateSyncGatewayBoundaryBundle.js`, den kleinen Entry
+`scripts/n8n/syncGatewayBoundaryBundleEntry.js`, das eingecheckte
+menschenprüfbare Artefakt
+`artifacts/n8n/syncGatewayRequestBoundary.bundle.js`, sein deterministisches
+SHA-256-Manifest und die zugehörigen Generator-, Reproduzierbarkeits-,
+Integritäts-, Snapshot-/ABA-, Outputpfad-, Paritäts- und Mutationstests. Die
+einzigen fachlich kanonischen Quellen bleiben `src/contracts/syncContract.js` und
+`src/gateways/syncGatewayRequestBoundary.js`. Der Entry ist eine kleine
+explizit gepflegte, manifestierte nichtfachliche Glue- und Quelldatei; der
+Generator ist gepflegtes Repository-Tooling. Ausschließlich Bundle und
+Manifest sind reproduzierbar generierte Derivate. `npm run
+bundle:n8n:generate` aktualisiert beide Dateien, während `npm run
+bundle:n8n:check` ausschließlich im Speicher vergleicht und bei Drift ohne
+Projektschreiboperation fehlschlägt.
+
+Die lockfile-gebundene Vite-/Rolldown-Ausgabe verwendet `strict: true` und
+`attachDebugInfo: "none"`, sodass keine potenziell pfadabhängigen
+`//#region …`-/`//#endregion`-Direktiven erzeugt werden. Der Generator prüft
+den exakten Modulgraphen sowie die vollständige erwartete Wrapperform und
+entfernt fail-closed nur den bekannten deklarativen Wrapper. Fachlicher Code
+wird nicht textuell nachbearbeitet. Contract, Boundary und Entry werden jeweils
+exakt einmal über sichere FileHandles gelesen. SHA-256 und Vite-Virtualmodule
+stammen aus demselben danach unveränderlichen In-Memory-Snapshot; der Build
+liest die Live-Quellen nicht erneut. Ein ABA-Wechsel kann deshalb nicht
+unbemerkt andere Build- als Manifestbytes verbinden.
+
+Nach seinem statischen Header sind die Artefaktbytes selbst ein direkt
+bindbares Expression-IIFE ohne Top-Level-`var` oder Globalmutation.
+`"use strict";` ist der erste Prolog im IIFE-Body und kein Top-Level-Statement;
+nach dem Ausdruck folgt kein separates Semikolon-Statement. Das Artefakt kann
+unverändert unmittelbar hinter `const boundaryBundle =` eingesetzt werden. Es
+benötigt zur Laufzeit weder ESM- noch CommonJS-Imports, führt beim Laden keinen
+Request aus und liefert exakt die eingefrorene API
+`{ createSyncGatewayRequestBoundary }`. Die erzeugte Factory behält die
+bestehende Clock- und Gateway-ID-Injektion und liefert exakt die eingefrorene
+API `{ processSyncRawBody }`. Der Slice erfindet keine n8n-Inputstruktur und
+implementiert keinen Browser-SyncTransport, Cloud- oder n8n-Transport,
+öffentlichen Webhook, operativen `SyncAgent`, n8n-Workflow, Secret, Credential,
+Header-Authentisierung, Autorisierung, Signaturprüfung, Rate Limit, Retry,
+Replay-, Idempotenz- oder Deduplizierungsschicht, Persistenz, Requestlogs,
+Telemetrie, AgentHub- oder AutomationHub-UI und keine `src/main.js`-
+Komposition. PromptVault, LearningHub und LichtwaldLog bleiben lokal und werden
+weder gelesen noch exportiert. Da kein Browser- oder Cloudtransport komponiert
+ist und angenommene Requests lokal weiterhin mit `503` enden, existiert kein
+externer Datenfluss. Paketversion `0.2.2`, Tag `v0.2.2` und neuestes
+veröffentlichtes Release `v0.2.2` bleiben unverändert.
+
+Der Generate-Modus prüft den kanonischen Repository-Root, den Zielordner und
+beide festen Outputpfade vor jedem Write auf Containment, von Node erkannte
+symbolische Links und Junctions sowie `realpath`-Abweichungen. Er verwendet
+unvorhersagbar benannte, exklusiv angelegte Tempdateien im verifizierten
+Zielordner, prüft deren Identität und Bytes, ersetzt zuerst das Artefakt und
+zuletzt das Manifest und bereinigt weiterhin identitätsgleich zuordenbare
+Tempdateien. Ein kontrollierter Abbruch zwischen beiden Replaces hinterlässt
+ein vom Checkmodus abgelehntes Mischpaar. Dies ist dennoch keine atomare
+Paartransaktion, keine Power-Loss- oder Single-Writer-Garantie. Die portable
+Node-API attestiert nicht jeden Windows-Reparse-Tag; Schutz gegen einen
+bösartigen gleichzeitigen Reparse-Austausch wird nicht behauptet.
 
 Die mutationsgerichtete Testhärtung belegt zusätzlich die reale Validierungs-
 und Freeze-Reihenfolge für Requests und Gateway-Responses, die unveränderte
@@ -431,6 +485,18 @@ Produktions-Build ist weiterhin erfolgreich und transformiert exakt 46
 Browsermodule. Paketversion `0.2.2`, Tag `v0.2.2` und Release `v0.2.2` bleiben
 unverändert.
 
+Der Generated-n8n-Boundary-Bundle-Slice wird über Syntaxprüfung, gezielte
+Generator-/Integritäts-/Snapshot-/ABA-/Outputpfad-/Paritäts-/Mutationstests,
+die bestehenden Sync-Suites, die vollständige serielle Suite,
+Produktions-Build und den schreibfreien `bundle:n8n:check`-Modus geprüft. Die
+gezielte Bundle-Suite besteht mit 61/61 Tests; Bundle zusammen mit der
+SyncGateway Request Boundary besteht mit 115/115 Tests. SyncContract,
+SyncService, Boundary, Local SyncGateway und Bundle bestehen kombiniert mit
+253/253 Tests; die vollständige serielle Gesamtsuite besteht mit 1186/1186
+Tests. Alle vier Läufe besitzen 0 Fehlschläge, 0 Skips und 0 Todos.
+Der Produktions-Build ist erfolgreich und transformiert weiterhin exakt 46
+Browsermodule; der Bundle-Check meldet keinen Drift.
+
 Der spätere erste reale Fluss ist browserinitiiert:
 
 ```text
@@ -446,10 +512,11 @@ GoldenDawn-Browser
 Das lokale SyncGateway ist dabei kein Agent, keine Fachlogik, kein allgemeines
 Backend, kein Storage, kein Ersatz für den `SyncAgent` und keine UI-Komponente.
 Der Browser bestimmt weder Cloudziel, Umgebung, Handler noch Berechtigungen.
-Der n8n-Cloud-Workflow muss die kanonische Contract- und Boundary-Semantik
-später defense-in-depth über ein reproduzierbar generiertes, automatisiert auf
-Parität und Integrität geprüftes Artefakt anwenden; eine manuell gepflegte
-zweite Implementierung ist nicht erlaubt. Die Cloudkomposition darf nur nach
+Das dafür vorbereitete, reproduzierbar generierte und automatisiert auf
+Integrität, Parität und Mutationen geprüfte Boundary-Artefakt ist implementiert.
+Ein späterer n8n-Cloud-Workflow muss dieses Derivat der kanonischen Contract-
+und Boundary-Quellen defense-in-depth anwenden; eine manuell gepflegte zweite
+Implementierung ist nicht erlaubt. Die Cloudkomposition darf nur nach
 einem versions- und tenantgebundenen Nachweis tatsächlicher Binärdaten vor
 Decodierung aktiviert werden; andernfalls ist ADR 0019 neu zu bewerten. Der
 Browser terminiert keinen

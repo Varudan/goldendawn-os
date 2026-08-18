@@ -10,7 +10,7 @@
 
 **Current release:** `v0.2.2 — LichtwaldLog Local MVP complete, verified, and published`
 
-**Current development:** `v0.3.0 – in Arbeit – Local SyncGateway Raw-Wire and HTTP Foundation`
+**Current development:** `v0.3.0 – in Arbeit – Generated n8n Boundary Bundle Foundation`
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -101,6 +101,22 @@ physical socket has at most one response owner, timeout checks use a fixed
 bounded production interval, and a post-start server failure closes the
 listener and tracked sockets before any further request processing.
 
+The **Generated n8n Boundary Bundle Foundation** is now implemented according
+to ADR 0021. SyncContract and SyncGateway Request Boundary remain the only
+domain-canonical sources. The small manifested entry is explicitly maintained
+non-domain glue, and the deterministic generator is maintained repository
+tooling; only Bundle and manifest are reproducibly generated derivatives.
+Each manifested source is read exactly once through a safe file handle, and
+both its SHA-256 hash and the Vite virtual modules use the same immutable
+snapshot. The complete artifact bytes are one directly bindable,
+side-effect-free expression IIFE: `"use strict";` is the first IIFE-body
+directive rather than a top-level statement, so the unchanged artifact can
+follow `const boundaryBundle =`. Evaluating it returns exactly the frozen API
+`{ createSyncGatewayRequestBoundary }`; the resulting factory API remains
+exactly `{ processSyncRawBody }`. Generate and write-free drift-check modes are
+available through
+`npm run bundle:n8n:generate` and `npm run bundle:n8n:check`.
+
 Successful contract responses remain limited to
 `dataOrigin: "synthetic"`. That value is only a contract classification, not
 proof of actual provenance or privacy. Neither the delivered service nor the
@@ -108,7 +124,8 @@ request boundary is changed or composed in `src/main.js`. The local Gateway
 does not yet have a browser SyncTransport or an upstream transport. A request
 accepted by the boundary therefore ends with a static local HTTP `503`, never
 with a normal SyncResponse or claimed `SyncAgent` processing. There is still no
-n8n webhook, Cloud connection, credential, authentication, operational agent,
+n8n workflow or webhook, Cloud connection, credential, authentication,
+operational agent,
 rate limit, Hub UI, persistence, request logging, telemetry, or external data
 flow.
 
@@ -152,9 +169,11 @@ The dashboard will not access Airtable, APIs, or specialized agents directly;
 only the DataAgent communicates with Airtable in Version 1. This connected flow
 remains incomplete: the completed service foundation adds a transport-neutral
 port, the completed request-boundary slice processes an already materialized
-string, and ADR 0020 now implements the separate local HTTP and Raw-Wire
-Foundation. The browser transport, application composition, upstream Cloud
-transport, webhook, Cloud workflow, normal response, and agent remain absent.
+string, ADR 0020 implements the separate local HTTP and Raw-Wire Foundation,
+and ADR 0021 implements the generated standalone Boundary derivative with its
+deterministic integrity manifest and parity checks. The browser transport,
+application composition, upstream Cloud transport, webhook, Cloud workflow,
+normal response, and agent remain absent.
 
 See [`docs/architecture.md`](docs/architecture.md) for responsibilities,
 boundaries, and end-to-end data flows.
@@ -590,9 +609,10 @@ synchronization, agent logic, or Airtable integration. Weekly Review is later
 work and is not part of this milestone. The package remains at version
 `0.2.2`. The annotated `v0.2.2` tag and corresponding GitHub Release were
 published on 2026-08-02, and `v0.2.2` is the latest published release.
-`v0.3.0` is now in progress with the verified Local SyncGateway Raw-Wire and
-HTTP Foundation on top of the implemented SyncContract, SyncService, and
-SyncGateway Request Boundary Foundations. The service keeps outgoing request
+`v0.3.0` is now in progress with the Generated n8n Boundary Bundle Foundation
+on top of the implemented SyncContract, SyncService, SyncGateway Request
+Boundary, and verified Local SyncGateway Raw-Wire and HTTP Foundations. The
+service keeps outgoing request
 creation, transport invocation, correlation, and defensive response validation
 separate. The synchronous boundary
 checks an already materialized Raw-Body value, parses an accepted string once,
@@ -605,10 +625,12 @@ empty payload; the contract limits successful responses to
 classification, not proof of actual provenance or privacy. ADR 0019 adds the
 target topology `browser → SyncService → local SyncTransport → local
 SyncGateway on GD-WS01 → authenticated n8n-Cloud webhook → SyncAgent`. ADR 0020
-implements only the separately started loopback HTTP/Wire hop. The slice does
-not alter any published `v0.2.2` local flow; without a browser transport,
-Cloud upstream, webhook, or application composition, it establishes neither
-external communication nor an operational agent.
+implements only the separately started loopback HTTP/Wire hop. ADR 0021 derives
+the standalone expression-IIFE Boundary artifact and its SHA-256 manifest from
+the canonical sources without adding a workflow or Cloud adapter. The slice
+does not alter any published `v0.2.2` local flow; without a browser transport,
+Cloud upstream, webhook, workflow, or application composition, it establishes
+neither external communication nor an operational agent.
 
 ## Development principles
 
@@ -618,7 +640,8 @@ external communication nor an operational agent.
   through a strict contract, transport-neutral service, and materialized-string
   request boundary. ADR 0019 additionally decides a local transport-security
   hop before n8n Cloud; ADR 0020 implements its separately started local HTTP
-  and Raw-Wire Foundation without connecting browser or Cloud.
+  and Raw-Wire Foundation, and ADR 0021 adds the generated standalone Boundary
+  derivative without connecting browser or Cloud.
 - Keep UI components independent from concrete storage technologies.
 - Encapsulate local persistence behind storage adapters.
 - Route external communication through services and the SyncAgent.
@@ -636,6 +659,7 @@ external communication nor an operational agent.
 - HTML5
 - CSS3
 - Node HTTP Local SyncGateway Foundation
+- Deterministic standalone n8n Boundary bundle generation
 - Git and GitHub
 
 ### Planned integrations
@@ -661,7 +685,7 @@ non-binding; see the roadmap for details.
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
 | v0.2.2 | LichtwaldLog Local MVP | Complete, verified, and published |
-| v0.3.0 | SyncAgent and Webhook Foundation | In progress: three transport-neutral Foundations and the separate local SyncGateway Raw-Wire/HTTP Foundation implemented; Cloud workflow, browser transport, and operational SyncAgent remain planned |
+| v0.3.0 | SyncAgent and Webhook Foundation | In progress: three transport-neutral Foundations, the separate local SyncGateway Raw-Wire/HTTP Foundation, and the generated n8n Boundary Bundle Foundation implemented; Cloud workflow, browser transport, and operational SyncAgent remain planned |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
 | v0.6.0 | Integration | Planned integration and verification of the previously introduced local and external components |
@@ -670,8 +694,9 @@ non-binding; see the roadmap for details.
 The `v0.2.x` line intentionally remains local. `v0.3.0` prepares the first
 external boundary with a transport-neutral contract, service, and
 already-materialized-string request boundary. ADR 0019 decides the additional
-local security hop, and ADR 0020 implements its separate local HTTP and
-Raw-Wire Foundation. Later slices add browser and Cloud communication.
+local security hop, ADR 0020 implements its separate local HTTP and Raw-Wire
+Foundation, and ADR 0021 adds the generated standalone Boundary derivative and
+integrity gate. Later slices add browser and Cloud communication.
 Additional patch or minor versions may be inserted when needed without
 reordering these milestones. The architecture sequence remains **mock →
 webhook → Airtable → agent logic**.
@@ -698,6 +723,26 @@ Create a production build with:
 ```bash
 npm run build
 ```
+
+Regenerate the checked-in standalone Boundary artifact and deterministic
+SHA-256 manifest, or verify both without changing project files, with:
+
+```bash
+npm run bundle:n8n:generate
+npm run bundle:n8n:check
+```
+
+These commands do not create or contact an n8n workflow, webhook, tenant, or
+other external service. Generate mode verifies the canonical repository root,
+output containment, Node-recognized symbolic links and junctions, and
+`realpath` deviations before it writes. It uses unpredictably named,
+exclusively created temporary files in the verified target directory, checks
+their identity and bytes, replaces the artifact first and the manifest last,
+and cleans up temporary files that remain attributable to it. A controlled
+interruption between replacements leaves a mixed pair rejected by check mode.
+The two replacements are not an atomic pair and do not claim power-loss or
+single-writer safety. Portable Node APIs cannot attest every Windows reparse
+tag, and no protection from a hostile concurrent reparse race is claimed.
 
 The Local SyncGateway is a separate process. `npm run dev` does not start it.
 For a deliberate local start, set one server-side port and exactly one allowed
@@ -744,6 +789,20 @@ local loopback communication. The production build succeeded and still
 transformed exactly 46 browser modules, confirming that the separate Node
 server did not enter the browser build graph. These unreleased results do not
 change package version `0.2.2` or the published tag and release `v0.2.2`.
+
+The unreleased Generated n8n Boundary Bundle Foundation is verified through
+syntax checks, dedicated generator, reproducibility, integrity, immutable
+source-snapshot and ABA, safe-output-path, parity, and mutation tests, the
+existing Sync suites, the complete serial suite, the production build, and the
+write-free `npm run bundle:n8n:check` mode. The targeted Bundle suite passed
+61/61 tests; Bundle plus SyncGateway Request Boundary passed 115/115.
+SyncContract, SyncService, Boundary, Local SyncGateway, and Bundle passed
+253/253 together; the complete serial suite passed 1186/1186. Every run had 0
+failures, 0 skips, and 0 todos. The production build succeeded and still
+transformed exactly 46 browser modules, and the Bundle check reported no drift.
+
+This unreleased foundation does not change package version `0.2.2` or the
+published tag and release `v0.2.2`.
 
 The unreleased SyncGateway Request Boundary Foundation passed 54/54 targeted
 tests with the exact requested
@@ -943,15 +1002,17 @@ n8n RBAC principal. Header Authentication is not a body signature; TLS does not
 provide replay or idempotency protection. The first empty, side-effect-free
 synthetic flow deliberately has no HMAC/JWT body binding or replay proof.
 
-As of 2026-08-15, n8n Cloud documents that Code nodes cannot import arbitrary
-external npm modules, while Webhook nodes support Header Authentication and a
-`Raw Body` option. That option does not document byte-identical access to the
-original wire octets or a pre-allocation 65,536-byte guarantee. A later Cloud
-workflow may be activated only after a version- and tenant-specific runtime
-proof establishes actual binary data before decoding; otherwise ADR 0019 must
-be reconsidered. It must also use a reproducibly generated standalone boundary
-artifact with automated integrity, parity, and mutation checks, never a
-manually copied contract. n8n revalidation remains defense-in-depth after
+As of 2026-08-17, the official n8n Code-node documentation does not provide
+arbitrary external npm-module imports for n8n Cloud; the separate module-
+allowlist configuration applies to self-hosted deployments. The Webhook node's
+`Raw Body` option does not document byte-identical access to the original wire
+octets or a pre-allocation 65,536-byte guarantee. A later Cloud workflow may be
+activated only after a version- and tenant-specific runtime proof establishes
+actual binary data before decoding; otherwise ADR 0019 must be reconsidered.
+The reproducibly generated standalone Boundary artifact with automated
+integrity, parity, and mutation checks is now present, but it is not a workflow
+or tenant-compatibility proof and never replaces the canonical `src/` modules.
+n8n revalidation remains defense-in-depth after
 possible provider allocation; the implemented local application buffer and
 decoder remain the exact upstream boundary available in this slice, within the
 resource limitations stated above.

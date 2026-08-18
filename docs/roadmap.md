@@ -4,11 +4,11 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – Local SyncGateway Raw-Wire and HTTP Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – Generated n8n Boundary Bundle Foundation` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; SyncContract, SyncService, SyncGateway Request Boundary sowie Local SyncGateway Raw-Wire and HTTP Foundations implementiert und verifiziert; Browser-, Cloud- und Agentenkomposition bleiben geplant |
-| Letzte Aktualisierung | 2026-08-16 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; SyncContract, SyncService, SyncGateway Request Boundary, Local SyncGateway Raw-Wire and HTTP und Generated n8n Boundary Bundle Foundations implementiert; Browser-, Cloud- und Agentenkomposition bleiben geplant |
+| Letzte Aktualisierung | 2026-08-17 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -27,9 +27,10 @@ nicht starre Kalendertermine.
   Mit ADR 0019 wurde als nächster Architekturschritt die lokale
   Sicherheitsgrenze vor n8n Cloud entschieden. Ihr separater Loopback-Server,
   HTTP-Handler sowie die Raw-Wire- und Decodergrenze sind inzwischen
-  implementiert und verifiziert. Da Browsertransport, Cloud-Upstream, Webhook
-  und Workflow weder implementiert noch komponiert sind, kommuniziert der
-  aktuelle Stand nicht extern.
+  implementiert und verifiziert. Das eigenständige Boundary-Derivat und sein
+  deterministisches SHA-256-Integritätsgate sind ebenfalls implementiert. Da
+  Browsertransport, Cloud-Upstream, Webhook und Workflow weder implementiert
+  noch komponiert sind, kommuniziert der aktuelle Stand nicht extern.
 - Weitere Unterversionen dürfen ergänzt werden, wenn neue, klar abgegrenzte
   Arbeitspakete entstehen.
 - Version 1 bleibt auf `SyncAgent`, `DataAgent` und `TestAgent` begrenzt.
@@ -58,7 +59,7 @@ nicht starre Kalendertermine.
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.3.0` | SyncAgent and Webhook Foundation | In Arbeit: SyncContract, SyncService, SyncGateway Request Boundary und lokaler Raw-Wire-/HTTP-Hop implementiert und verifiziert; Browser-, Cloud- und Agentenkomposition folgen | 🟡 |
+| `v0.3.0` | SyncAgent and Webhook Foundation | In Arbeit: SyncContract, SyncService, SyncGateway Request Boundary, lokaler Raw-Wire-/HTTP-Hop und Generated n8n Boundary Bundle implementiert; Browser-, Cloud- und Agentenkomposition folgen | 🟡 |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
 | `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
@@ -606,14 +607,17 @@ eine spätere Phase geplant.
 
 ### Aktueller Stand
 
-`v0.3.0` ist **in Arbeit – Local SyncGateway Raw-Wire and HTTP Foundation**.
+`v0.3.0` ist **in Arbeit – Generated n8n Boundary Bundle Foundation**.
 Die SyncContract Foundation für Version `1.0`, die Aktion `syncTest` und den
 Handler `SyncAgent`, die asynchrone SyncService Foundation sowie die synchrone,
 transportneutrale SyncGateway Request Boundary für einen bereits
 materialisierten Raw-Body-String sind implementiert. ADR 0019 ist als
 Architektur- und Sicherheitsentscheidung angenommen. Der darin entschiedene
-separate lokale Loopback-Prozess auf GD-WS01 ist jetzt als Raw-Wire-/HTTP-
-Foundation implementiert und verifiziert.
+separate lokale Loopback-Prozess auf GD-WS01 ist als Raw-Wire-/HTTP-Foundation
+implementiert und verifiziert. ADR 0021 ergänzt daraus das reproduzierbar
+generierte eigenständige Boundary-Derivat, sein deterministisches SHA-256-
+Manifest und die lokalen Generator-, Integritäts-, Paritäts- und
+Mutationsprüfungen.
 
 Der Request-Payload ist exakt leer; erfolgreiche Responses sind auf
 `dataOrigin: "synthetic"` begrenzt. Dieser Wert ist nur eine
@@ -628,8 +632,8 @@ HTTP-Fehler verwenden einen getrennten statischen Envelope. Ein akzeptierter
 Request endet mit lokalem HTTP `503`, weil kein Upstream implementiert ist.
 
 Nicht implementiert oder komponiert sind Browser-SyncTransport, ausgehender
-Cloudtransport, n8n-Webhook oder -Workflow, generiertes Cloudartefakt,
-Authentisierungsheader, Secret, operativer `SyncAgent`, normale SyncResponse,
+Cloudtransport, n8n-Webhook oder -Workflow, Authentisierungsheader, Secret,
+operativer `SyncAgent`, normale SyncResponse,
 Rate Limits, Retries, Replay-, Idempotenz- oder Deduplizierungsschicht, Hub-UI,
 Persistenz, Requestlogs, Telemetrie und `src/main.js`-Komposition. Es entsteht
 kein externer Datenfluss; Paketversion, Tag und Release bleiben `0.2.2`/
@@ -898,6 +902,69 @@ implementiert und verifiziert:
   Fehlschläge, 0 Skips und 0 Todos. Der Produktions-Build ist erfolgreich und
   transformiert weiterhin exakt 46 Browsermodule.
 
+### Abgeschlossener Slice: Generated n8n Boundary Bundle Foundation
+
+- ✅ ADR 0021 als Implementierungsentscheidung angenommen, ohne ADR 0016 bis
+  ADR 0020 rückwirkend zu verändern.
+- ✅ `src/contracts/syncContract.js` und
+  `src/gateways/syncGatewayRequestBoundary.js` bleiben unverändert die einzigen
+  fachlich kanonischen Quellen. Der Entry ist eine kleine explizit gepflegte,
+  manifestierte nichtfachliche Glue- und Quelldatei; der Generator ist
+  gepflegtes Repository-Tooling. Ausschließlich Bundle und Manifest sind
+  reproduzierbar generierte Derivate.
+- ✅ Den minimalen Entry `scripts/n8n/syncGatewayBoundaryBundleEntry.js` und den
+  deterministischen Generator
+  `scripts/n8n/generateSyncGatewayBoundaryBundle.js` ergänzt. Die vorhandene
+  lockfile-gebundene Vite-`8.1.4`-/Rolldown-Toolchain wird ohne neue Dependency
+  verwendet.
+- ✅ `npm run bundle:n8n:generate` zum Aktualisieren und
+  `npm run bundle:n8n:check` als schreibfreien Driftcheck bereitgestellt.
+- ✅ Ein eigenständiges Artefakt aus statischem Header und direkt bindbarem
+  Expression-IIFE ohne Top-Level-`var` oder Globalmutation erzeugt.
+  `"use strict";` ist dessen erster IIFE-Body-Prolog und kein
+  Top-Level-Statement; nach dem Ausdruck folgt kein separates
+  Semikolon-Statement. Die unveränderten Artefaktbytes sind direkt hinter
+  `const boundaryBundle =` bindbar und ihre Auswertung liefert exakt die
+  eingefrorene API `{ createSyncGatewayRequestBoundary }`. Die
+  Factory-API bleibt exakt `{ processSyncRawBody }`; das Laden verarbeitet
+  keinen Request und mutiert keinen globalen Namespace.
+- ✅ Laufzeitimports, Source Map, Netzwerk-, Dateisystem-, Prozess-,
+  Environment-, Credential-, Secret-, Log-, Telemetrie- und n8n-Inputpfade aus
+  dem Artefakt ausgeschlossen.
+- ✅ Ein deterministisches Manifest mit fester Schema- und Propertyreihenfolge,
+  SHA-256 über die exakten Artefaktbytes und die geordneten Contract-,
+  Boundary- und Entrybytes ergänzt. Zeit, Locale, Host und absolute Pfade gehen
+  nicht in Artefakt- oder Manifestbytes ein.
+- ✅ Contract, Boundary und Entry jeweils exakt einmal über sichere FileHandles
+  gelesen; SHA-256 und Vite-Virtualmodule aus demselben danach unveränderlichen
+  In-Memory-Snapshot erzeugt und die ABA-Grenze automatisiert geprüft.
+- ✅ Kanonischen Repository-Root, Zielordner und feste Outputpfade vor Writes
+  auf Containment, von Node erkannte symbolische Links und Junctions sowie
+  `realpath`-Abweichungen geprüft; unvorhersagbar benannte exklusive
+  Tempdateien im verifizierten Zielordner, Identitäts- und Byteprüfung,
+  Artefakt-Replace vor Manifest-Replace, abschließende Paarprüfung und
+  identitätsgebundenes Tempcleanup umgesetzt. Weder atomare Paarupdates noch
+  Power-Loss-/Single-Writer-Sicherheit, vollständige Erkennung aller
+  Windows-Reparse-Tags oder Schutz gegen bösartige gleichzeitige
+  Reparse-Rennen werden behauptet.
+- ✅ Reproduzierbarkeit, eingecheckte Integrität und anforderungsbezogene,
+  strukturgenaue Boundary-Parität einschließlich Prototypen, Freeze, Identitäten,
+  Dependencygrenzen, Redaction und Console-Stille automatisiert abgedeckt.
+- ✅ Temporäre Mutationstests für Artefaktbyte, Quelldrift, semantische
+  Abweichung und entfernte API-/Freeze-Garantie ergänzt, ohne kanonische Dateien
+  zu verändern.
+- ✅ Kein Workflow, Webhook, Credential, Secret, Authentisierungsheader,
+  Browser- oder Cloudtransport, Cloudaufruf, operativer `SyncAgent`, normaler
+  Upstream, UI oder externer Datenfluss eingeführt. Der versions- und
+  tenantgebundene n8n-Raw-Body-Nachweis bleibt Voraussetzung jeder Aktivierung.
+- ✅ Die gezielte Bundle-Suite besteht mit 61/61 Tests; Bundle zusammen mit der
+  SyncGateway Request Boundary besteht mit 115/115 Tests.
+- ✅ SyncContract, SyncService, Boundary, Local SyncGateway und Bundle bestehen
+  kombiniert mit 253/253 Tests; die vollständige serielle Suite besteht mit
+  1186/1186 Tests. Alle Läufe besitzen 0 Fehlschläge, 0 Skips und 0 Todos. Der
+  Produktions-Build transformiert weiterhin exakt 46 Browsermodule; der
+  Bundle-Check meldet keinen Drift.
+
 ### Verbindliche Slice-Reihenfolge innerhalb von v0.3.0
 
 1. ✅ **ADR 0019 entschieden:** lokales SyncGateway als Sicherheitsgrenze vor
@@ -908,10 +975,10 @@ implementiert und verifiziert:
    erhaltener U+FEFF-BOM und exakt einem Boundary-Aufruf implementiert und mit
    50/50 gezielten, 192/192 kombinierten sowie 1125/1125 vollständigen Tests
    und einem Build mit 46 Browsermodulen verifiziert.
-3. ⬜ **Generiertes n8n-Boundary-Bundle:** aus den kanonischen lokalen Quellen
-   ein reproduzierbares selbstständiges Cloudartefakt erzeugen und dessen
-   Integrität, Parität und Mutationshärte automatisiert prüfen; keine manuelle
-   Contractkopie.
+3. ✅ **Generiertes n8n-Boundary-Bundle:** aus den kanonischen lokalen Quellen
+   ein reproduzierbares selbstständiges Expression-IIFE mit deterministischem
+   SHA-256-Manifest erzeugt und dessen Integrität, Parität und Mutationshärte
+   automatisiert geprüft; keine manuelle Contractkopie.
 4. ⬜ **Bereinigter Webhook und minimales SyncAgent-Gerüst:** n8n Header
    Authentication, Raw Body und ausschließlich den synthetischen `syncTest`
    komponieren. Eine Byte-/Decoder-/Boundary-Prüfung vor Decodierung darf erst
@@ -1330,7 +1397,8 @@ Modulen geprüft. Die Paketversion ist `0.2.2`; der annotierte Tag `v0.2.2` und
 das zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht. `v0.2.2`
 ist das neueste veröffentlichte Release. In `v0.3.0` sind SyncContract,
 SyncService, SyncGateway Request Boundary und die lokale Raw-Wire-/HTTP-
-Foundation implementiert. ADR 0019 bleibt die Architektur- und
+Foundation sowie das Generated n8n Boundary Bundle mit seinem deterministischen
+SHA-256-Manifest implementiert. ADR 0019 bleibt die Architektur- und
 Sicherheitsentscheidung für das lokale SyncGateway auf GD-WS01 vor n8n Cloud.
 Der veröffentlichte `v0.2.2`-Umfang bleibt vollständig lokal. Auch der neue
 separate Listener besitzt keinen Browser- oder Cloudtransport und ist nicht in
@@ -1341,6 +1409,9 @@ Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein allgemeines Fachbackend,
 Benutzerkonten und Agentenlogik bleiben offen beziehungsweise beginnen erst in
 den dafür vorgesehenen späteren Slices und Versionen. Der nächste konkrete
-Schritt ist das **generierte n8n-Boundary-Bundle** aus Schritt 3 der
-verbindlichen v0.3.0-Slice-Reihenfolge. Danach folgen bereinigter Cloudwebhook,
-konkreter Browser-SyncTransport und der End-to-End-`syncTest`.
+Schritt ist der **bereinigte n8n-Cloud-Webhook und das minimale
+SyncAgent-Gerüst** aus Schritt 4 der verbindlichen v0.3.0-Slice-Reihenfolge.
+Vor jeder Aktivierung bleibt der versions- und tenantgebundene Nachweis
+tatsächlicher Binärdaten vor Decodierung zwingend; andernfalls ist ADR 0019 neu
+zu bewerten. Danach folgen konkreter Browser-SyncTransport und der
+End-to-End-`syncTest`.

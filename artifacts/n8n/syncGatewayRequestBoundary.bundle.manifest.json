@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "artifact": {
+    "path": "artifacts/n8n/syncGatewayRequestBoundary.bundle.js",
+    "sha256": "15b84126852a597d429304d66d723a356b18537ba3910db9dd9443b3b787114f"
+  },
+  "sources": [
+    {
+      "path": "src/contracts/syncContract.js",
+      "sha256": "96ad2c52fb4545d6e587d9b3fd86d76a4a735e8cb33e9b572a3d7d5f4e5a6aeb"
+    },
+    {
+      "path": "src/gateways/syncGatewayRequestBoundary.js",
+      "sha256": "b1e55f03283bfdd1d35562951503471b4a812ac61868af0b927a05623e597b79"
+    },
+    {
+      "path": "scripts/n8n/syncGatewayBoundaryBundleEntry.js",
+      "sha256": "ce5506fe56b81dcadc894372a9f7812a754811ffa6a737537d3a6979aab9c50a"
+    }
+  ]
+}

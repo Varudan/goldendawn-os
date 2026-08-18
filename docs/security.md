@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – Local SyncGateway Raw-Wire and HTTP Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – Generated n8n Boundary Bundle Foundation` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; transportneutrale Sync-Foundations und separat startbare Local SyncGateway Raw-Wire and HTTP Foundation implementiert und verifiziert; kein Browser- oder Cloudtransport |
-| Letzte Aktualisierung | 2026-08-16 |
+| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; transportneutrale Sync-Foundations, separat startbare Local SyncGateway Raw-Wire and HTTP Foundation und Generated n8n Boundary Bundle Foundation implementiert; kein Browser- oder Cloudtransport |
+| Letzte Aktualisierung | 2026-08-17 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -87,11 +87,13 @@ Validierungsgrundlage. Die asynchrone transportneutrale SyncService Foundation
 ist ebenfalls implementiert. Die synchrone transportneutrale Request Boundary
 für einen bereits materialisierten Raw-Body-Wert ist ebenfalls implementiert.
 Der vorherige Dokumentationsslice hat mit ADR 0019 die lokale Netzwerkgrenze
-im Diagramm entschieden. Der aktuelle Slice setzt davon den separat
-startbaren Loopback-HTTP-Handler mit früher Header-, Methoden-, Pfad-, Host-,
-Origin-, CORS-, Content-Type-, Content-Encoding-, Wire-Byte-, UTF-8- und
-Boundary-Policy um. Es gibt weiterhin keinen Browser-, Fetch-, Cloud- oder
-n8n-Transport, Webhook, operativen `SyncAgent`, keine Authentisierung,
+im Diagramm entschieden; ADR 0020 setzt den separat startbaren Loopback-HTTP-
+Handler mit früher Header-, Methoden-, Pfad-, Host-, Origin-, CORS-, Content-
+Type-, Content-Encoding-, Wire-Byte-, UTF-8- und Boundary-Policy um. Der
+aktuelle Slice erzeugt ausschließlich das selbstständige Boundary-Derivat und
+sein deterministisches SHA-256-Integritätsgate aus den unveränderten
+kanonischen Quellen. Es gibt weiterhin keinen Browser-, Fetch-, Cloud- oder
+n8n-Transport, Webhook, Workflow, operativen `SyncAgent`, keine Authentisierung,
 Autorisierung, Signaturprüfung, Secrets, Rate-Limit-Durchsetzung, Logs,
 Telemetrie, Persistenz, UI oder `src/main.js`-Komposition.
 
@@ -271,9 +273,10 @@ deshalb entsteht weiterhin kein externer Datenfluss.
 ### Durch ADR 0019 entschiedene lokale und Cloud-Vertrauensgrenzen
 
 ADR 0019 ist angenommen. Die lokale Raw-Wire-, HTTP-, Origin-, Decoder- und
-Boundary-Komposition ist implementiert. Browsertransport, Credential,
-Cloudtransport, Webhook und die übrigen Cloud- und Betriebsmechanismen bleiben
-geplant und sind nicht implementiert.
+Boundary-Komposition sowie das generierte Boundary-Derivat mit lokalem
+Integritäts- und Paritätsgate sind implementiert. Browsertransport, Credential,
+Cloudtransport, Webhook, Workflow und die übrigen Cloud- und
+Betriebsmechanismen bleiben geplant und sind nicht implementiert.
 
 | Zone | Inhalt | Sicherheitsgrenze |
 | --- | --- | --- |
@@ -478,13 +481,53 @@ neu entschieden.
 
 #### n8n-Cloud- und kanonische Boundary-Grenze
 
-Nach dem datierten offiziellen Plattformbefund vom 2026-08-15 erlaubt n8n
-Cloud im Code Node keinen Import beliebiger externer npm-Module; `crypto` und
-`moment` werden offiziell bereitgestellt. `src/contracts/syncContract.js` und
+Nach dem auf den 2026-08-17 datierten offiziellen Plattformbefund stellt die
+n8n-Code-Node-Dokumentation beliebige externe npm-Module nur für selbst
+gehostete Instanzen dar. Die getrennte Self-Hosted-Anleitung erlaubt Module
+über Environment-Allowlists; sie ist keine n8n-Cloud-Garantie.
+`src/contracts/syncContract.js` und
 `src/gateways/syncGatewayRequestBoundary.js` bleiben deshalb die kanonischen
-Quellen. Ein späterer Cloudworkflow verwendet nur ein reproduzierbar generiertes
-selbstständiges Artefakt mit automatisierten Integritäts-, Paritäts- und
-Mutationsprüfungen, niemals eine manuell gepflegte Contractkopie.
+Quellen.
+
+ADR 0021 implementiert das daraus reproduzierbar erzeugte eigenständige
+Boundary-Derivat. Contract und Boundary bleiben die einzigen fachlich
+kanonischen Quellen. Der manifestierte Entry ist eine kleine explizit gepflegte
+nichtfachliche Glue- und Quelldatei, der Generator gepflegtes
+Repository-Tooling; ausschließlich Bundle und Manifest sind generierte
+Derivate. Nach dem statischen Header sind die vollständigen Artefaktbytes genau
+ein direkt bindbares Ausdrucks-IIFE ohne Top-Level-`var` oder Globalmutation.
+`"use strict";` ist der erste IIFE-Body-Prolog und kein Top-Level-Statement;
+nach dem Ausdruck folgt kein separates Semikolon-Statement. Das Artefakt ist
+unverändert hinter `const boundaryBundle =` bindbar. Seine Auswertung liefert
+ausschließlich die eingefrorene API
+`{ createSyncGatewayRequestBoundary }`; die Factory liefert ausschließlich
+`{ processSyncRawBody }`. Es enthält keine Laufzeitimports, n8n-Inputannahmen,
+Netzwerk-, Datei-, Prozess-, Environment-, Credential-, Secret-, Log- oder
+Telemetriepfade.
+
+Das deterministische Manifest verwendet SHA-256 über die exakten Artefaktbytes
+und die feste Quellenfolge Contract, Boundary und Entry. Generator-, Check-,
+Snapshot-/ABA-, Outputpfad-, Paritäts- und Mutationstests erkennen Drift des
+Artefakts, Manifests und der manifestierten Quellen. Sie sind keine signierte
+Herkunfts- oder Deploymentattestierung. Ein späterer
+Cloudworkflow darf nur dieses generierte Derivat verwenden, niemals eine
+manuell gepflegte Contractkopie.
+
+Jede manifestierte Quelle wird exakt einmal über einen sicheren FileHandle
+gelesen. Hashing und Vite-Virtualmodule stammen aus demselben danach
+unveränderlichen In-Memory-Snapshot; der Build besitzt keinen zweiten
+Live-Datei-Read, und ein ABA-Test sichert diese Grenze. Vor Generate-Writes
+werden kanonischer Repository-Root, Zielordner und feste Outputpfade auf
+Containment, von Node erkannte symbolische Links und Junctions sowie
+`realpath`-Abweichungen geprüft. Unvorhersagbar benannte exklusive Tempdateien
+entstehen nur im verifizierten Zielordner; ihre Identität und Bytes werden
+geprüft. Artefakt und Manifest werden einzeln in dieser Reihenfolge ersetzt,
+weiterhin identitätsgleich zuordenbare Tempdateien bereinigt und das Paar
+abschließend erneut geprüft. Ein kontrolliert unterbrochenes Mischpaar bleibt
+fail-closed, weil der Checkmodus es ablehnt. Das ist keine atomare
+Paartransaktion und keine Power-Loss- oder Single-Writer-Garantie. Die portable
+Node-API attestiert nicht jeden Windows-Reparse-Tag; Schutz gegen ein
+bösartiges gleichzeitiges Reparse-Rennen wird nicht behauptet.
 
 Der Webhook muss später `Raw Body` verwenden, und Header Authentication soll
 vor Workflowausführung greifen. Die dokumentierte Raw-Body-Option beweist aber
@@ -496,8 +539,8 @@ erfolgreichem Nachweis darf der Cloudpfad aktiviert werden; andernfalls ist n8n
 Cloud für diese Boundary-Komposition ungeeignet und ADR 0019 neu zu bewerten.
 Nach erfolgreichem Nachweis wird vor Decodierung die tatsächliche Bytezahl
 erneut geprüft; danach folgen genau eine kontrollierte UTF-8-Decodierung und
-genau ein Aufruf des generierten kanonischen Boundary-Artefakts für diesen neuen
-Cloud-Raw-Body.
+genau ein Aufruf des generierten Boundary-Derivats der kanonischen Quellen für
+diesen neuen Cloud-Raw-Body.
 
 Die Webhook-Seite dokumentiert 16 MB. Nur die verlinkte self-hosted
 Konfiguration nennt einen Default von 16 MiB und eine dortige
@@ -605,9 +648,10 @@ möglicher Speicherung technischer Ausführungsdaten. Speicherung, Aufbewahrung
 und Redaction werden vor Aktivierung tenant-, plan- und versionsgebunden
 geprüft.
 
-Dieser Slice implementiert Server, lokales Gateway, Empfangstimeouts und lokale
-HTTP-, Wire-, Decoder-, CORS- und Boundary-Policy. Er implementiert weder
-Browser- oder Cloudtransport, Webhook, Credential, Bundle, Workflow,
+Dieser Slice implementiert zusätzlich zum unveränderten lokalen Gateway das
+generierte Boundary-Derivat und dessen lokale Integritäts-, Paritäts- und
+Mutationsprüfungen. Er implementiert weder Browser- oder Cloudtransport,
+Webhook, Credential, Workflow,
 Authentisierung, Autorisierung, Rate Limit, Replay, Idempotenz, Logging,
 Telemetrie, Monitoring noch externen Datenfluss. Die Anwendung einzelner
 Prinzipien ist kein vollständiger DSGVO-, AI-Act-, Zero-Trust-,
@@ -630,7 +674,7 @@ Idempotenzschutz bleibt geplant.
 | gestohlenes Cloud-Secret | Zone B → C | serverseitige Ablage, dedizierte Verwendung, Rotation und Widerruf | Nutzung bis Widerruf; kein Body-Binding | geplant; Architektur durch ADR 0019 entschieden |
 | Replay eines gültigen Requests | Zone B → C | keine automatischen Retries; spätere Replay-/Idempotenzregeln | kein Replay-Nachweis im ersten Flow | Schutzprüfung und Härtung geplant |
 | Provider- oder n8n-Ausführungsdaten | Zone C | Retention-/Redaction-Review vor Aktivierung | externe Metadatenverarbeitung | Aktivierungsgate entschieden; Prüfung geplant |
-| Contractdrift | Repository → Cloudworkflow | generiertes Artefakt, Integritäts-, Paritäts- und Mutationstests | Toolchain-/Deploymentdrift | geplant; Architektur durch ADR 0019 entschieden |
+| Contractdrift | Repository → Cloudworkflow | generiertes Artefakt, Integritäts-, Paritäts- und Mutationstests | Toolchain-/Deploymentdrift | Repositoryartefakt und lokale Gates implementiert; Workflow-/Deploymentgate geplant |
 | manipulierte Same-Realm-Dependencies | lokale und Cloud-Laufzeit | kleine Composition, defensive Projektion, Tests, keine Sandboxbehauptung | Seiteneffekte nicht rückgängig | Härtung geplant |
 | Cloudausfall oder Timeout | Zone B → C | endlicher Timeout, keine automatischen Retries, redigierter Fehler | zeitweise Nichtverfügbarkeit | geplant; Architektur durch ADR 0019 entschieden |
 | unbeabsichtigte Workflowaktivierung | n8n Deployment | Bundle-/Paritätsgate, bereinigter Export, Abschaltweg | menschliche oder Plattformfehlkonfiguration | Aktivierungsgate entschieden; Umsetzung geplant |
@@ -1215,7 +1259,9 @@ n8n-Cloud-Webhook. Die transportneutralen SyncContract-, SyncService- und
 SyncGateway-Request-Boundary-Foundations stellen für sich keinen konkreten
 HTTP-Transport oder Webhook bereit. Erst der getrennte Prozess unter `server/`
 komponiert die lokale Raw-Wire- und HTTP-Grenze; er besitzt noch keinen
-Cloudtransport.
+Cloudtransport. Das generierte Boundary-Bundle ist ausschließlich ein lokal
+geprüftes Standalone-Derivat für eine spätere Code-Node-Komposition und weder
+Webhook noch Workflow, Transport oder Aktivierungsnachweis.
 
 ### Entwicklungsmodus
 
@@ -1521,7 +1567,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
 | `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; vollständig geprüft und veröffentlicht |
 | `v0.2.2` | privater allowlist-basierter View-, Controller-, Service- und Storage-Pfad sowie strikt getrennter synthetischer In-Memory-Demo-Stack mit fester Herkunft, Safe DOM, Closure-/Map-isolierten Entry-IDs, defensiver UI-Projektion, flüchtiger Suche/Filterung, DOM-Unmount-Grenze, statisch redigierten Fehlern, ohne Browser-Key oder Fallback; keine Base64-Bilder in `localStorage`, keine externe Übertragung; vollständig geprüft und veröffentlicht |
-| `v0.3.0` | In Arbeit: SyncContract, SyncService, transportneutrale SyncGateway Request Boundary sowie separat startbare Loopback-, Raw-Wire-, UTF-8-, Origin-, CORS-, HTTP-Response- und endliche Serverressourcengrenze implementiert und verifiziert. Browser- und Cloudtransport, Webhook, Bundle, Secret, Authentisierung, Autorisierung, Rate Limits, Replay- und Idempotenzschutz bleiben geplant |
+| `v0.3.0` | In Arbeit: SyncContract, SyncService, transportneutrale SyncGateway Request Boundary, separat startbare Loopback-/Raw-Wire-/HTTP-Grenze und generiertes Standalone-Boundary-Derivat mit SHA-256-, Paritäts- und Mutationsgate implementiert. Browser- und Cloudtransport, Webhook, Workflow, Secret, Authentisierung, Autorisierung, Rate Limits, Replay- und Idempotenzschutz bleiben geplant |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
 | `v0.5.0` | Prompt-Injection-Schutz, strukturierter TestAgent-Output, keine Direktzugriffe |
 | `v0.6.0` | End-to-End-Sicherheitsreview und vollständige Demo-Trennung |
@@ -1533,6 +1579,17 @@ geprüft. Alle Läufe hatten 0 Fehlschläge, 0 Skips und 0 Todos. Die Tests
 verwendeten ausschließlich synthetische Werte und lokale
 Loopback-Kommunikation; der Produktions-Build blieb bei exakt 46
 Browsermodulen.
+
+Das zusätzliche Bundle-Sicherheitsgate umfasst Syntax-, Reproduzierbarkeits-,
+Integritäts-, Snapshot-/ABA-, Outputpfad-, Paritäts-, Mutation-, Redaction- und
+Console-Stille-Prüfungen sowie den schreibfreien `bundle:n8n:check`-Modus. Die
+gezielte Bundle-Suite besteht mit 61/61 Tests; Bundle zusammen mit der
+SyncGateway Request Boundary besteht mit 115/115 Tests. Die kombinierte Suite
+aus SyncContract, SyncService, Boundary, Local SyncGateway und Bundle besteht
+mit 253/253 Tests; die vollständige serielle Suite besteht mit 1186/1186 Tests.
+Alle Läufe besitzen 0 Fehlschläge, 0 Skips und 0 Todos. Der Produktions-Build
+transformiert weiterhin exakt 46 Browsermodule; der Bundle-Check meldet keinen
+Drift.
 
 ## Incident-Response
 
@@ -1586,7 +1643,8 @@ fertig, wenn:
 ## Referenzen
 
 - [Vite: Env Variables and Modes](https://vite.dev/guide/env-and-mode)
-- [n8n: Using the Code node](https://docs.n8n.io/build/code-in-n8n/using-the-code-node/)
+- [n8n: Code node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/)
+- [n8n: Enable modules in Code node](https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/configuration-examples/enable-modules-in-code-node/)
 - [n8n: Webhook node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/)
 - [n8n: Webhook credentials](https://docs.n8n.io/integrations/builtin/credentials/webhook/)
 - [n8n: Endpoint environment variables](https://docs.n8n.io/deploy/host-n8n/configure-n8n/basic-configuration/use-environment-variables/endpoints/)

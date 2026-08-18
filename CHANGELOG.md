@@ -8,6 +8,113 @@ Release.
 
 ## Unveröffentlicht – v0.3.0 in Arbeit
 
+### Generated n8n Boundary Bundle Foundation / ADR 0021
+
+- ADR 0021 als angenommene Implementierungsentscheidung ergänzt. Die
+  unveränderten Module `src/contracts/syncContract.js` und
+  `src/gateways/syncGatewayRequestBoundary.js` bleiben die einzigen fachlich
+  kanonischen Quellen. Der Entry ist eine kleine explizit gepflegte,
+  manifestierte nichtfachliche Glue- und Quelldatei, der Generator gepflegtes
+  Repository-Tooling. Ausschließlich Bundle und Manifest sind reproduzierbar
+  generierte Derivate und keine manuell gepflegte zweite fachliche
+  Implementierung.
+- Den kleinen expliziten Entry
+  `scripts/n8n/syncGatewayBoundaryBundleEntry.js` sowie den deterministischen
+  Generator `scripts/n8n/generateSyncGatewayBoundaryBundle.js` ergänzt. Die
+  bereits im Lockfile gebundene Vite-`8.1.4`-/Rolldown-Toolchain wird ohne neue
+  Dependency oder Lockfile-Erweiterung verwendet.
+- `npm run bundle:n8n:generate` als expliziten Erzeugen-/Aktualisieren-Modus und
+  `npm run bundle:n8n:check` als schreibfreien Driftcheck ergänzt. Der
+  Checkmodus vergleicht die erwarteten Bytes ausschließlich im Speicher und
+  endet bei abweichendem Artefakt, Manifest oder kanonischer Quelle mit einem
+  Fehlercode.
+- Das eingecheckte, menschenprüfbare
+  `artifacts/n8n/syncGatewayRequestBoundary.bundle.js` als eigenständiges,
+  seiteneffektfreies Artefakt aus statischem Header und direkt bindbarem
+  Expression-IIFE ohne Top-Level-`var` oder Globalmutation ergänzt.
+  `"use strict";` ist der erste IIFE-Body-Prolog und kein Top-Level-Statement;
+  nach dem Ausdruck folgt kein separates Semikolon-Statement. Die vollständigen
+  Artefaktbytes sind unverändert hinter `const boundaryBundle =` bindbar. Ihre
+  Auswertung liefert exakt die eingefrorene API
+  `{ createSyncGatewayRequestBoundary }`; die Factory behält die bestehende
+  Clock- und Gateway-ID-Injektion und liefert exakt die eingefrorene API
+  `{ processSyncRawBody }`. Beim Laden wird kein Request verarbeitet und kein
+  globaler Namespace mutiert.
+- Die Vite-/Rolldown-Ausgabe mit `strict: true` und
+  `attachDebugInfo: "none"` erzeugt, sodass keine potenziell pfadabhängigen
+  `//#region …`-/`//#endregion`-Direktiven ausgegeben werden. Der Generator
+  akzeptiert nur den exakten Modulgraphen und die vollständige erwartete
+  Wrapperform, entfernt fail-closed ausschließlich den bekannten deklarativen
+  Wrapper und bearbeitet fachlichen Code nicht textuell. Abweichende Quellen,
+  Modulgraphen oder Ausgabeformen werden nicht heuristisch umgeschrieben.
+- Contract, Boundary und Entry jeweils exakt einmal über sichere FileHandles
+  gelesen. SHA-256 und Vite-Virtualmodule verwenden denselben danach
+  unveränderlichen In-Memory-Snapshot; ein ABA-Wechsel der Live-Datei kann
+  nicht unbemerkt andere Bundler- als Manifestbytes erzeugen.
+- Den kanonischen Repository-Root, Zielordner und beide festen Outputpfade vor
+  jedem Generate-Write auf Containment, von Node erkannte symbolische Links und
+  Junctions sowie `realpath`-Abweichungen geprüft. Der Generator legt
+  unvorhersagbar benannte Tempdateien exklusiv im verifizierten Zielordner an,
+  prüft Identität und Bytes, ersetzt Artefakt vor Manifest und bereinigt ihm
+  weiterhin identitätsgleich zuordenbare Tempdateien. Ein kontrolliert
+  unterbrochenes Mischpaar wird vom Checkmodus abgelehnt. Die individuellen
+  Replaces bilden keine atomare Paartransaktion und garantieren weder
+  Power-Loss- noch Single-Writer-Sicherheit. Die portable Node-API attestiert
+  nicht jeden Windows-Reparse-Tag; Schutz vor einem bösartigen gleichzeitigen
+  Reparse-Austausch wird nicht behauptet.
+- Das Bundle benötigt zur Laufzeit weder ESM- noch CommonJS-Imports und enthält
+  kein `import`, `export`, `require()`, `eval()` oder `new Function()`. Es
+  besitzt keine Netzwerk-, Dateisystem-, Prozess-, Environment-, Credential-
+  oder Secretzugriffe, erzeugt keine Logs oder Telemetrie und erfindet keine
+  Webhook-, `$json`-, `$input`-, `items`- oder andere n8n-Inputstruktur.
+- Das deterministische Manifest
+  `artifacts/n8n/syncGatewayRequestBoundary.bundle.manifest.json` ergänzt. Es
+  enthält eine feste Schema-Version, den relativen Artefaktpfad und SHA-256
+  über dessen exakte Bytes sowie die feste geordnete Folge aus Contract,
+  Boundary und Entry mit ihren SHA-256-Hashes. Zeit, absolute oder temporäre
+  Pfade, Hostname, Locale und zufällige Buildwerte sind ausgeschlossen.
+- Reproduzierbarkeit auf byteidentische Artefakt- und Manifestbytes bei
+  wiederholter Generierung und unterschiedlichen absoluten Arbeitsverzeichnissen
+  begrenzt. Beide Dateien verwenden UTF-8 ohne BOM, ausschließlich LF, einen
+  finalen Zeilenumbruch und keine Source Map.
+- `tests/n8nSyncGatewayBoundaryBundle.test.js` für Generator-,
+  Reproduzierbarkeits-, Integritäts-, Snapshot-/ABA-, Outputpfad-, Paritäts-
+  und Mutationseigenschaften ergänzt. Die kanonische lokale Boundary bleibt
+  das Referenzorakel; verglichen werden auch eigene Felder, Reihenfolge,
+  Prototypen, Freeze-Zustand, Identitäten, Entkopplung, Redaction,
+  Console-Stille und Dependency-Aufrufgrenzen.
+- Temporäre Mutationen erkennen Bundle-Byteänderungen, Quelldrift ohne
+  Regeneration, semantische Abweichungen sowie entfernte API-/Freeze-Garantien.
+  Ein künstlicher privater Marker wird weder in kontrollierten Resultaten noch
+  in Consoleausgaben offengelegt. Kanonische Dateien werden dafür nicht
+  verändert.
+- Den offiziellen n8n-Plattformstand auf den `2026-08-17` datiert: n8n Cloud
+  erhält keine beliebigen externen npm-Imports durch die getrennte
+  Self-Hosted-Modul-Allowlist; die Webhook-Option `Raw Body` belegt weiterhin
+  weder ursprüngliche byteidentische Wire-Oktette noch eine Prüfung vor
+  Provider-Allokation. Das versions- und tenantgebundene Laufzeitgate aus ADR
+  0019 bleibt unverändert.
+- Kein n8n-Workflow, Webhook, Credential, Secret, Authentisierungsheader,
+  Cloudaufruf, Browser- oder Cloudtransport, operativer `SyncAgent`, normaler
+  SyncResponse-Upstream, Retry, Rate Limit, Persistenz, Logging, Telemetrie, UI
+  oder `src/main.js`-Komposition ergänzt. Das Local-SyncGateway-HTTP-Verhalten
+  bleibt unverändert; es existiert weiterhin kein externer Datenfluss.
+- Die abschließende Syntax-, gezielte Bundle-, kombinierte Sync-, vollständige
+  serielle, Build-, Checkmodus- und Dateihygiene-Verifikation wurde mit den
+  tatsächlich ausgeführten Ergebnissen beziffert. Die gezielte Bundle-Suite
+  bestand mit 61/61 Tests; Bundle zusammen mit der SyncGateway Request Boundary
+  bestand mit 115/115 Tests. SyncContract, SyncService, Boundary, Local
+  SyncGateway und Bundle bestanden kombiniert mit 253/253 Tests; die
+  vollständige serielle Gesamtsuite bestand mit 1186/1186 Tests. Alle Läufe
+  hatten 0 Fehlschläge, 0 Skips und 0 Todos. Der Produktions-Build war
+  erfolgreich und transformierte weiterhin exakt 46 Browsermodule; der
+  Bundle-Check meldete keinen Drift. Das aktuelle Artefakt besitzt SHA-256
+  `15b84126852a597d429304d66d723a356b18537ba3910db9dd9443b3b787114f`;
+  die exakten Manifestdateibytes besitzen SHA-256
+  `87c4fa153d2af2753aaaf4d74fd515b3edae5268b9935d63faef24d10bcf593f`.
+  Paketversion `0.2.2`, Tag `v0.2.2` und neuestes veröffentlichtes Release
+  `v0.2.2` bleiben unverändert.
+
 ### Local SyncGateway Raw-Wire and HTTP Foundation / ADR 0020
 
 - ADR 0020 als angenommene Implementierungsentscheidung ergänzt. Die lokale
