@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "vite",
     "gateway:local": "node server/startLocalSyncGateway.js",
+    "bundle:n8n:generate": "node scripts/n8n/generateSyncGatewayBoundaryBundle.js --write",
+    "bundle:n8n:check": "node scripts/n8n/generateSyncGatewayBoundaryBundle.js --check",
     "test": "node --test",
     "build": "vite build",
     "preview": "vite preview"

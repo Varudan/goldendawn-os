@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – Local SyncGateway Raw-Wire and HTTP Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – Generated n8n Boundary Bundle Foundation` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; transportneutrale Sync-Foundations und separat startbare Local SyncGateway Raw-Wire and HTTP Foundation implementiert und verifiziert; kein Browser- oder Cloudtransport |
-| Letzte Aktualisierung | 2026-08-16 |
+| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; transportneutrale Sync-Foundations, separat startbare Local SyncGateway Raw-Wire and HTTP Foundation und Generated n8n Boundary Bundle Foundation implementiert; kein Browser- oder Cloudtransport |
+| Letzte Aktualisierung | 2026-08-17 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -104,15 +104,18 @@ Diese Regel verhindert:
 
 ### Aktueller v0.3.0-Slice
 
-Der vorherige, ausschließlich dokumentationsbasierte Slice
-`Local SyncGateway before n8n Cloud Decision` hat mit ADR 0019 die
-Zieltopologie um einen lokalen Transport- und Sicherheits-Hop auf GD-WS01 vor
-n8n Cloud ergänzt. Der aktuelle Slice `Local SyncGateway Raw-Wire and HTTP
-Foundation` setzt davon ausschließlich den separat startbaren lokalen
-Node-HTTP-Prozess um. Lokaler Browser-SyncTransport, authentisierter
-n8n-Cloud-Webhook, generiertes Cloud-Boundary-Artefakt und operativer
-`SyncAgent` bleiben geplant und nicht implementiert. ADR 0002, ADR 0005 sowie
-ADR 0016 bis ADR 0019 werden nicht ersetzt oder rückwirkend verändert.
+Der historische Dokumentationsslice `Local SyncGateway before n8n Cloud
+Decision` hat mit ADR 0019 die Zieltopologie um einen lokalen Transport- und
+Sicherheits-Hop auf GD-WS01 vor n8n Cloud ergänzt. ADR 0020 setzt davon den
+separat startbaren lokalen Node-HTTP-Prozess um. Der aktuelle Slice `Generated
+n8n Boundary Bundle Foundation` erzeugt aus einem einmalig erfassten
+unveränderlichen Snapshot der kanonischen Contract- und Boundary-Quellen sowie
+des gepflegten nichtfachlichen Entry ein direkt bindbares Expression-IIFE, ein
+deterministisches SHA-256-Manifest und die dazugehörigen Integritäts-, Paritäts-
+und Mutationstests. Lokaler Browser-SyncTransport, authentisierter
+n8n-Cloud-Webhook, Cloudworkflow und operativer `SyncAgent` bleiben geplant und
+nicht implementiert. ADR 0002, ADR 0005 sowie ADR 0016 bis ADR 0020 werden
+nicht ersetzt oder rückwirkend verändert.
 
 Die implementierte **SyncContract Foundation** bleibt der reine,
 transportneutrale Vertragskern für `syncTest`. Darauf baut die ebenfalls
@@ -725,13 +728,15 @@ keinen n8n-RBAC-Principal. Header Authentication ist keine Bodysignatur; TLS
 ist kein Replay- oder Idempotenzschutz. Der erste synthetische Flow besitzt
 bewusst kein HMAC- oder JWT-Body-Binding und keinen Replay-Nachweis.
 
-Weil n8n Cloud nach dem datierten offiziellen Plattformbefund vom 2026-08-15
-keine beliebigen externen npm-Module im Code Node importiert, bleiben
+Weil n8n Cloud nach dem datierten offiziellen Plattformbefund vom 2026-08-17
+keine beliebigen externen npm-Module im Code Node importiert und die dokumentierte
+Modul-Allowlist nur eine Self-Hosted-Konfiguration ist, bleiben
 `src/contracts/syncContract.js` und
 `src/gateways/syncGatewayRequestBoundary.js` die kanonischen Quellen. Der
-Cloudworkflow darf später nur ein reproduzierbar generiertes selbstständiges
-Artefakt mit automatisierten Integritäts-, Paritäts- und Mutationsprüfungen
-verwenden, keine manuell gepflegte Contractkopie. Die n8n-Option `Raw Body`
+dafür vorbereitete Generator erzeugt nun ein selbstständiges Expression-IIFE
+mit automatisierten Integritäts-, Paritäts- und Mutationsprüfungen. Ein späterer
+Cloudworkflow darf ausschließlich dieses generierte Derivat verwenden, keine
+manuell gepflegte Contractkopie. Die n8n-Option `Raw Body`
 beweist weder byteidentische ursprüngliche Wire-Oktette noch die GoldenDawn-
 Grenze vor Provider-Allokation. Vor Aktivierung muss ein versions- und
 tenantgebundener Laufzeitnachweis tatsächliche Binärdaten vor Decodierung
@@ -740,6 +745,75 @@ ADR 0019 neu zu bewerten. Erst nach erfolgreichem Nachweis bleibt die erneute
 Cloudprüfung Defense-in-Depth; die exakte vorgelagerte Wire-Grenze liegt nun im
 separat gestarteten lokalen Prozess.
 
+#### Generated n8n Boundary Bundle Foundation
+
+Die generierte Cloud-Boundary-Vorbereitung besitzt exakt diese
+Repositorygrenze:
+
+```text
+src/contracts/syncContract.js                         fachlich kanonisch
+src/gateways/syncGatewayRequestBoundary.js           fachlich kanonisch
+scripts/n8n/syncGatewayBoundaryBundleEntry.js        gepflegte manifestierte Glue-Quelle
+scripts/n8n/generateSyncGatewayBoundaryBundle.js     gepflegtes Repository-Tooling
+        ↓
+artifacts/n8n/syncGatewayRequestBoundary.bundle.js
+artifacts/n8n/syncGatewayRequestBoundary.bundle.manifest.json
+```
+
+Nur Bundle und Manifest sind reproduzierbar generierte Derivate. Contract und
+Boundary bleiben die einzigen fachlich kanonischen Quellen; Entry und Generator
+sind kleine explizit gepflegte Teile der Buildgrenze und keine fachliche
+Zweitimplementierung.
+
+Nach seinem statischen Header besteht das Bundle vollständig aus einem
+seiteneffektfreien, direkt bindbaren Expression-IIFE ohne Top-Level-`var`,
+Globalmutation oder Laufzeitimports. `"use strict";` ist der erste Prolog im
+IIFE-Body, kein Top-Level-Statement; nach dem Ausdruck folgt kein separates
+Semikolon-Statement. Die unveränderten Artefaktbytes können unmittelbar hinter
+`const boundaryBundle =` stehen. Ihre Auswertung liefert ausschließlich die
+eingefrorene gewöhnliche API `{ createSyncGatewayRequestBoundary }`. Die
+Factory behält die bestehende Clock- und Gateway-ID-Injektion und liefert
+ausschließlich die eingefrorene gewöhnliche API `{ processSyncRawBody }`. Das
+Auswerten allein verarbeitet keinen Request, erzeugt keine n8n-Inputstruktur
+und greift weder auf Netzwerk, Dateisystem, Prozess, Environment, Credentials
+noch Secrets zu.
+
+`npm run bundle:n8n:generate` aktualisiert Artefakt und Manifest;
+`npm run bundle:n8n:check` berechnet die erwarteten Bytes im Speicher und
+schreibt keine Projektdatei. Das Manifest verwendet SHA-256 über die exakten
+Artefaktbytes und die feste geordnete Quellenfolge Contract, Boundary und
+Entry. Beide Ausgaben sind unabhängig von Zeit, Locale und absolutem
+Arbeitsverzeichnis. Sie sind abgeleitete Prüfartefakte, keine neue kanonische
+Quelle. Die lockfile-gebundene Vite-/Rolldown-Generierung verwendet
+`strict: true` und `attachDebugInfo: "none"`; dadurch entstehen keine
+potenziell pfadabhängigen `//#region …`-/`//#endregion`-Direktiven. Der
+Generator validiert den exakten Modulgraphen und die vollständige bekannte
+Wrapperform, entfernt fail-closed nur den deklarativen Wrapper und bearbeitet
+keinen fachlichen Code textuell. Contract, Boundary und Entry werden jeweils
+exakt einmal über sichere FileHandles gelesen. Ihre Hashes und die
+Vite-Virtualmodule entstehen aus demselben danach unveränderlichen
+In-Memory-Snapshot; der Build liest die Live-Quellen nicht erneut. Ein
+ABA-Wechsel kann deshalb nicht verschiedene Build- und Manifestbytes
+unbemerkt miteinander verbinden.
+
+Der Generate-Modus prüft kanonischen Repository-Root, Zielordner und beide
+festen Outputpfade vor jedem Write auf Containment, von Node erkannte
+symbolische Links und Junctions sowie `realpath`-Abweichungen. Er erzeugt
+unvorhersagbar benannte exklusive Tempdateien im verifizierten Zielordner,
+prüft Identität und Bytes, ersetzt zuerst das Artefakt und zuletzt das Manifest
+und bereinigt weiterhin identitätsgleich zuordenbare Tempdateien. Ein
+kontrollierter Abbruch zwischen den individuellen Replaces hinterlässt ein vom
+Checkmodus abgelehntes Mischpaar. Das ist keine atomare Paartransaktion und
+keine Power-Loss- oder Single-Writer-Garantie. Die portable Node-API attestiert
+nicht jeden Windows-Reparse-Tag; ebenso wird kein Schutz gegen einen
+bösartigen gleichzeitigen Reparse-Austausch behauptet.
+
+Diese Foundation beginnt ausschließlich an der bereits materialisierten
+Stringgrenze der Boundary. Sie enthält weder Wire-Byte-Zählung noch UTF-8-
+Decoder oder Webhookadapter. Ein konkreter n8n-Workflow darf sie erst nach dem
+weiterhin offenen versions- und tenantgebundenen Raw-Body-Laufzeitnachweis
+komponieren.
+
 Der SyncService akzeptiert unverändert nur normale, vollständig korrelierte
 SyncResponses. HTTP-, Authentisierungs-, Timeout-, frühe `gateway_`-, lokale
 Gateway- und ungeeignete Cloudresponse-Fehler werden nicht zu normalen
@@ -747,10 +821,11 @@ SyncAgent-Responses umgeschrieben. Die lokale HTTP-Fehler-API ist oben
 festgelegt; das spätere Browsertransport-Fehler-API bleibt getrennt zu
 entscheiden.
 
-Dieser Slice implementiert Prozess, lokale HTTP-, Wire-, Decoder-, CORS-,
-Timeout- und Boundary-Komposition. Er implementiert weiterhin keine
+Dieser Slice implementiert Generator, Entry, Bundle, Manifest und deren lokale
+Prüfgrenzen. Er verändert weder Prozess noch lokale HTTP-, Wire-, Decoder-,
+CORS-, Timeout- oder Boundary-Komposition. Er implementiert weiterhin keine
 Authentisierung, Autorisierung, Rate Limits, Replay- oder Idempotenzschicht,
-keinen Browsertransport, Cloudworkflow, Bundle, Credential, operativen
+keinen Browsertransport, Cloudworkflow, Webhook, Credential, operativen
 Agenten, Logging, Monitoring oder externen Datenfluss.
 
 ## Agentenverantwortung
@@ -825,10 +900,11 @@ erste `v0.3.0`-Slice führt den transportneutralen Vertrag ein, der zweite den
 transportneutralen SyncService-Port. Der dritte Slice ergänzt die synchrone
 Request Boundary für einen bereits materialisierten Raw-Body-Wert. Der vierte,
 historische Dokumentationsslice entscheidet mit ADR 0019 den zusätzlichen
-lokalen Sicherheits-Hop vor n8n Cloud. Der aktuelle fünfte Slice implementiert
-dessen separat startbare Raw-Wire- und HTTP-Foundation, komponiert sie aber
-weder mit Browser noch Cloud. Externe Kommunikation beginnt erst in einem
-späteren Slice dieses Meilensteins.
+lokalen Sicherheits-Hop vor n8n Cloud. Der fünfte Slice implementiert dessen
+separat startbare Raw-Wire- und HTTP-Foundation. Der aktuelle sechste Slice
+ergänzt das generierte eigenständige Boundary-Artefakt und dessen
+Integritätsgate, komponiert aber weiterhin weder Browser noch Cloud. Externe
+Kommunikation beginnt erst in einem späteren Slice dieses Meilensteins.
 
 #### LearningHub Local MVP in v0.2.1
 
@@ -1791,9 +1867,10 @@ Grundregeln:
 - Die SyncGateway Request Boundary validiert den unveränderten Parsed-Wert vor
   jeder Projektion, anschließend die neue Projektion vor und nach Deep Freeze.
   Der lokale HTTP-Prozess begrenzt Bytes und dekodiert strikt davor. Eine frühe
-  Ablehnung oder lokale `503`-Response behauptet keine SyncAgent-Verarbeitung. Eine spätere
-  n8n-Cloud-Grenze validiert über das generierte kanonische Boundary-Artefakt
-  erneut, bevor der `SyncAgent`
+  Ablehnung oder lokale `503`-Response behauptet keine SyncAgent-Verarbeitung.
+  Das generierte Boundary-Artefakt ist nur ein geprüftes Derivat der
+  kanonischen Quellen. Eine spätere n8n-Cloud-Grenze darf es erst nach dem
+  Raw-Body-Laufzeitnachweis verwenden und validiert damit erneut, bevor der `SyncAgent`
   verarbeitet.
 - Header Authentication ist keine Bodysignatur, und TLS ist kein Replay- oder
   Idempotenzschutz. Diese Mechanismen bleiben vor privaten oder schreibenden
@@ -1859,6 +1936,16 @@ server/
 ├── localSyncGatewayHttpServer.js
 └── startLocalSyncGateway.js
 
+scripts/
+└── n8n/
+    ├── generateSyncGatewayBoundaryBundle.js
+    └── syncGatewayBoundaryBundleEntry.js
+
+artifacts/
+└── n8n/
+    ├── syncGatewayRequestBoundary.bundle.js
+    └── syncGatewayRequestBoundary.bundle.manifest.json
+
 automation/
 └── n8n/
     └── workflows/
@@ -1885,7 +1972,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
 | `v0.2.2` | Vollständig geprüft und veröffentlicht; keine externe Kommunikation |
-| `v0.3.0` | In Arbeit: drei transportneutrale Foundations sowie separat startbare Local SyncGateway Raw-Wire and HTTP Foundation implementiert und verifiziert; Cloudworkflow, Browsertransport und operativer SyncAgent folgen |
+| `v0.3.0` | In Arbeit: drei transportneutrale Foundations, separat startbare Local SyncGateway Raw-Wire and HTTP Foundation und Generated n8n Boundary Bundle Foundation implementiert; Cloudworkflow, Browsertransport und operativer SyncAgent folgen |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
 | `v0.6.0` | Integrierter Drei-Agenten-Fluss |
@@ -1901,6 +1988,17 @@ kombinierten Sync-Tests und 1125/1125 Tests der vollständigen seriellen Suite
 verifiziert; alle Läufe hatten 0 Fehlschläge, 0 Skips und 0 Todos. Der
 Produktions-Build blieb erfolgreich bei exakt 46 transformierten
 Browsermodulen.
+
+Die Generated n8n Boundary Bundle Foundation wird zusätzlich mit Syntax-,
+Generator-, Reproduzierbarkeits-, Integritäts-, Paritäts-, Snapshot-/ABA-,
+Outputpfad- und Mutationstests, dem schreibfreien `bundle:n8n:check` sowie den
+bestehenden Sync-Suites geprüft. Die erneute gezielte Bundle-Suite besteht mit
+61/61 Tests; Bundle zusammen mit der SyncGateway Request Boundary besteht mit
+115/115 Tests. Die kombinierte Suite aus SyncContract, SyncService, Boundary,
+Local SyncGateway und Bundle besteht mit 253/253 Tests; die vollständige
+serielle Suite besteht mit 1186/1186 Tests. Alle vier Läufe besitzen 0
+Fehlschläge, 0 Skips und 0 Todos. Der Produktions-Build transformiert weiterhin
+exakt 46 Browsermodule; der Bundle-Check meldet keinen Drift.
 
 ## Architekturentscheidungen
 
@@ -1929,6 +2027,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0018](decisions/0018-transport-neutral-sync-gateway-request-boundary-foundation.md) | Transportneutrale SyncGateway Request Boundary für materialisierte Raw Bodies | Angenommen |
 | [0019](decisions/0019-local-sync-gateway-before-n8n-cloud.md) | Lokales SyncGateway als Sicherheitsgrenze vor n8n Cloud | Angenommen |
 | [0020](decisions/0020-local-sync-gateway-raw-wire-http-foundation.md) | Lokale SyncGateway Raw-Wire and HTTP Foundation | Angenommen |
+| [0021](decisions/0021-generated-n8n-boundary-bundle-foundation.md) | Reproduzierbares eigenständiges n8n-Boundary-Bundle aus den kanonischen Quellen | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).
