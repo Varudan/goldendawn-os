@@ -9,6 +9,7 @@
     "gateway:local": "node server/startLocalSyncGateway.js",
     "bundle:n8n:generate": "node scripts/n8n/generateSyncGatewayBoundaryBundle.js --write",
     "bundle:n8n:check": "node scripts/n8n/generateSyncGatewayBoundaryBundle.js --check",
+    "probe:n8n:cloud:test": "node scripts/n8n/n8nCloudIngressProbe.js --run",
     "test": "node --test",
     "build": "vite build",
     "preview": "vite preview"

@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – Generated n8n Boundary Bundle Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – n8n Cloud Ingress & Runtime Evidence Gate Foundation` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; transportneutrale Sync-Foundations, separat startbare Local SyncGateway Raw-Wire and HTTP Foundation und Generated n8n Boundary Bundle Foundation implementiert; kein Browser- oder Cloudtransport |
-| Letzte Aktualisierung | 2026-08-17 |
+| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; transportneutrale Sync-Foundations, separat startbare Local SyncGateway Raw-Wire and HTTP Foundation, Generated n8n Boundary Bundle Foundation und lokal netzwerkinaktive n8n Cloud Ingress & Runtime Evidence Gate Foundation implementiert; öffentliche stabile OSS-Kompatibilität `FAIL`, Tenantmessung `UNPROVEN`, Aktivierung geschlossen; kein Browser- oder Produkt-Cloudtransport |
+| Letzte Aktualisierung | 2026-08-19 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
@@ -107,15 +107,33 @@ Diese Regel verhindert:
 Der historische Dokumentationsslice `Local SyncGateway before n8n Cloud
 Decision` hat mit ADR 0019 die Zieltopologie um einen lokalen Transport- und
 Sicherheits-Hop auf GD-WS01 vor n8n Cloud ergänzt. ADR 0020 setzt davon den
-separat startbaren lokalen Node-HTTP-Prozess um. Der aktuelle Slice `Generated
-n8n Boundary Bundle Foundation` erzeugt aus einem einmalig erfassten
+separat startbaren lokalen Node-HTTP-Prozess um. ADR 0021 erzeugt aus einem
 unveränderlichen Snapshot der kanonischen Contract- und Boundary-Quellen sowie
 des gepflegten nichtfachlichen Entry ein direkt bindbares Expression-IIFE, ein
 deterministisches SHA-256-Manifest und die dazugehörigen Integritäts-, Paritäts-
-und Mutationstests. Lokaler Browser-SyncTransport, authentisierter
-n8n-Cloud-Webhook, Cloudworkflow und operativer `SyncAgent` bleiben geplant und
-nicht implementiert. ADR 0002, ADR 0005 sowie ADR 0016 bis ADR 0020 werden
-nicht ersetzt oder rückwirkend verändert.
+und Mutationstests.
+
+Der aktuelle Slice `n8n Cloud Ingress & Runtime Evidence Gate Foundation`
+ergänzt nach ADR 0022 ausschließlich ein lokal verifiziertes, importseitig und
+standardmäßig netzwerkinaktives Messwerkzeug, einen menschenprüfbaren
+Code-Node-Observer und eine geschlossene sanitierte Evidenzvorlage. Er trennt
+dokumentierte Plattformgarantien, commitgebundene Beobachtungen im offiziellen
+öffentlichen n8n-Quellcode, spätere Messungen in einem konkret gebundenen
+Cloud-Tenant und workflowseitig nicht beobachtbare Provider-/Ingress-
+Eigenschaften. Dieser Slice hat weder einen n8n-Tenant kontaktiert noch einen
+Workflow oder ein Credential angelegt.
+
+Der auf [`n8n@2.35.4`](https://github.com/n8n-io/n8n/releases/tag/n8n%402.35.4)
+und Commit
+`d2ce3c084c228622c2ffe7c245d25870430e18a9` gebundene öffentliche
+Quellcodebefund ist mit den notwendigen GoldenDawn-Eigenschaften nicht
+kompatibel und erhält deshalb `FAIL`. Der getrennte konkrete Tenantnachweis
+bleibt mangels Cloudmessung `UNPROVEN`. Beide Ergebnisse halten die
+Produktaktivierung geschlossen; das lokale Gateway endet weiterhin mit `503`.
+Lokaler Browser-SyncTransport, authentisierter n8n-Cloud-Webhook,
+Cloudworkflow und operativer `SyncAgent` bleiben geplant und nicht
+implementiert. ADR 0002, ADR 0005 sowie ADR 0016 bis ADR 0021 werden nicht
+ersetzt oder rückwirkend verändert.
 
 Die implementierte **SyncContract Foundation** bleibt der reine,
 transportneutrale Vertragskern für `syncTest`. Darauf baut die ebenfalls
@@ -718,15 +736,20 @@ Netzwerkplanung können den tatsächlichen Schließzeitpunkt über die konfiguri
 Erkennungstoleranz hinaus verzögern; diese Grenze ist keine
 laufzeitunabhängige Wall-Clock-Garantie.
 
-Das lokale Gateway authentisiert sich später ausschließlich über HTTPS und n8n
-Header Authentication mit einem dedizierten hochentropischen gemeinsamen
-Bearer-Secret am einzigen `syncTest`-Webhook. Das Secret liegt nur im
+Der vor ADR 0022 vorgesehene Cloudpfad des lokalen Gateways ist beim aktuellen
+`FAIL`/`UNPROVEN`-Stand gesperrt und zuerst über ADR 0019 neu zu bewerten. Nur
+ein neuer ADR auf Basis dieser Neubewertung und eine neue Evidenz-Schemaversion
+könnten den Pfad später beibehalten und die Webhook-/Credential-Spezifikation
+separat autorisieren. Erst dann dürfte der Zielpfad ausschließlich HTTPS und
+n8n Header Authentication mit einem dedizierten hochentropischen gemeinsamen
+Bearer-Secret am einzigen `syncTest`-Webhook vorsehen. Das Secret läge dann nur im
 n8n-Credential-Store und in vertrauenswürdiger serverseitiger Gateway-
 Laufzeitkonfiguration und wird nicht mit anderen Workflows geteilt. Sein
 Besitznachweis belegt keine starke Geräte-, Prozess- oder Benutzeridentität und
 keinen n8n-RBAC-Principal. Header Authentication ist keine Bodysignatur; TLS
-ist kein Replay- oder Idempotenzschutz. Der erste synthetische Flow besitzt
-bewusst kein HMAC- oder JWT-Body-Binding und keinen Replay-Nachweis.
+ist kein Replay- oder Idempotenzschutz. Ein dann freigegebener erster
+synthetischer Flow besäße bewusst kein HMAC- oder JWT-Body-Binding und keinen
+Replay-Nachweis.
 
 Weil n8n Cloud nach dem datierten offiziellen Plattformbefund vom 2026-08-17
 keine beliebigen externen npm-Module im Code Node importiert und die dokumentierte
@@ -734,16 +757,20 @@ Modul-Allowlist nur eine Self-Hosted-Konfiguration ist, bleiben
 `src/contracts/syncContract.js` und
 `src/gateways/syncGatewayRequestBoundary.js` die kanonischen Quellen. Der
 dafür vorbereitete Generator erzeugt nun ein selbstständiges Expression-IIFE
-mit automatisierten Integritäts-, Paritäts- und Mutationsprüfungen. Ein späterer
-Cloudworkflow darf ausschließlich dieses generierte Derivat verwenden, keine
+mit automatisierten Integritäts-, Paritäts- und Mutationsprüfungen. Erst ein
+neuer ADR nach der ADR-0019-Neubewertung, eine neue Evidenz-Schemaversion und
+gesonderte Freigaben der darauffolgenden Spezifikations- und
+Kompositionsslices könnten einen späteren Cloudworkflow autorisieren. Dieser
+dürfte ausschließlich das generierte Derivat verwenden, keine
 manuell gepflegte Contractkopie. Die n8n-Option `Raw Body`
 beweist weder byteidentische ursprüngliche Wire-Oktette noch die GoldenDawn-
 Grenze vor Provider-Allokation. Vor Aktivierung muss ein versions- und
 tenantgebundener Laufzeitnachweis tatsächliche Binärdaten vor Decodierung
-belegen; andernfalls ist n8n Cloud für diese Boundary-Komposition ungeeignet und
-ADR 0019 neu zu bewerten. Erst nach erfolgreichem Nachweis bleibt die erneute
-Cloudprüfung Defense-in-Depth; die exakte vorgelagerte Wire-Grenze liegt nun im
-separat gestarteten lokalen Prozess.
+belegen. Der aktuelle Stable-OSS-Befund widerspricht dieser Voraussetzung
+bereits; die Tenantmessung ist zusätzlich `UNPROVEN`, weshalb ADR 0019 jetzt
+neu zu bewerten ist. Auch ein späterer Test-URL-Tenantmessstatus `PASS` ändert
+die Schema-1-`activationDecision: FAIL` nicht; die exakte vorgelagerte
+Wire-Grenze läge in dem separat gestarteten lokalen Prozess.
 
 #### Generated n8n Boundary Bundle Foundation
 
@@ -827,6 +854,201 @@ CORS-, Timeout- oder Boundary-Komposition. Er implementiert weiterhin keine
 Authentisierung, Autorisierung, Rate Limits, Replay- oder Idempotenzschicht,
 keinen Browsertransport, Cloudworkflow, Webhook, Credential, operativen
 Agenten, Logging, Monitoring oder externen Datenfluss.
+
+#### n8n Cloud Ingress & Runtime Evidence Gate Foundation
+
+Die neue Foundation ist ein ausdrücklich nichtproduktiver manueller One-shot-
+Messpfad und kein Teil des GoldenDawn-Produktflusses:
+
+```text
+manuelle erneute Registrierung/Listening des temporären Test-Webhooks
+  → explizites lokales Probe-CLI mit genau einer allowlist-validierten probeId
+  → genau ein HTTPS-Request an /webhook-test/
+  → temporärer Webhook mit Header Authentication und Raw Body
+  → menschenprüfbarer Code-Node-Observer
+  → geschlossene allowlist-basierte Beobachtungsresponse
+  → Stopp ohne Retry oder zweiten Versuch
+```
+
+Nur die lokale Vorbereitung dieses Pfads ist implementiert. Die realen Dateien
+sind:
+
+| Datei | Verantwortung |
+| --- | --- |
+| `scripts/n8n/n8nCloudIngressProbe.js` | deterministische 32-Vektor-Registry, Test-URL-One-shot-Konfiguration, injizierbarer Transport, defensive Responseprojektion, Gate-Aggregation und Evidence-Validierung |
+| `scripts/n8n/n8nCloudIngressProbeObserver.js` | direkt bindbares Expression-IIFE für den späteren Code Node; exakter Byte- und strikter UTF-8-Vergleich |
+| `tests/n8nCloudIngressProbe.test.js` | lokale deterministische Transport-, Redaction-, Schema-, Observer- und Netzwerkinaktivitätsprüfungen |
+| `docs/evidence/n8n-cloud-ingress-runtime-evidence.template.json` | geschlossene, sanitierte Schema-1-Vorlage mit getrennten Statusfeldern, Test-URL-/Providerstatus `UNPROVEN` und unveränderlicher `activationDecision: "FAIL"` |
+| `docs/decisions/0022-n8n-cloud-ingress-runtime-evidence-gate.md` | verbindliche Evidence- und Aktivierungsentscheidung |
+
+`n8nCloudIngressProbe.js` exportiert exakt die Konstanten
+`N8N_CLOUD_INGRESS_PROBE_ENV`, `N8N_CLOUD_INGRESS_PROBE_LIMITS`,
+`N8N_CLOUD_INGRESS_PROBE_GATES`,
+`N8N_CLOUD_INGRESS_PROBE_STRICT_UTF8_OUTCOMES`,
+`N8N_CLOUD_INGRESS_PROBE_AUTHORIZATION_HEADER_PRESENCES`,
+`N8N_CLOUD_INGRESS_PROBE_CONTENT_ENCODING_OUTCOMES` und
+`N8N_CLOUD_INGRESS_PROBE_VECTOR_IDS` sowie die Funktionen
+`getN8nCloudIngressProbeVectors`,
+`readN8nCloudIngressProbeRuntimeConfig`,
+`aggregateN8nCloudIngressProbeGates`,
+`createN8nCloudIngressEvidenceTemplate`, `createN8nCloudIngressProbe`,
+`validateN8nCloudIngressEvidence` und `runN8nCloudIngressProbeCli`. Die
+Factory erhält ausschließlich einen explizit injizierten Transport und darf
+keinen Real-HTTPS-Fallback besitzen. Nur der CLI-Adapter bindet Real-HTTPS,
+nachdem Argumentform, Runtimekonfiguration und ausgewählte Vektor-ID
+vollständig validiert wurden. Ein One-shot-Result trägt nur die sanitierte
+Beobachtung des ausgewählten Vektors bei und ist kein Tenantgesamtstatus.
+
+Der Observer wird später unverändert als Expression-IIFE gebunden und mit
+`return await observeProbe.call(this, $input)` aufgerufen. Er verwendet nur die
+offizielle n8n-Buffer-API, ruft weder Contract noch Boundary oder Bundle auf
+und gibt ausschließlich die geschlossene Projektion aus `probeId`,
+`exactMatch`, `receivedByteLength`, `strictUtf8Outcome`,
+`authorizationHeaderPresence` und `contentEncodingOutcome` aus. Die
+geschlossenen UTF-8-Outcomes sind
+`validExact`, `invalidRejected`, `validMismatch`, `invalidAccepted` und
+`unavailable`; Headerpräsenz ist `absent | present | unavailable`, und das
+Encoding-Outcome ist `match | mismatch | unavailable`.
+
+Der kanonische und vorgesehene Operator-Laufweg für einen One-shot ist
+`npm run probe:n8n:cloud:test -- --vector <probeId>`; das Paket-Script bindet
+`node scripts/n8n/n8nCloudIngressProbe.js --run`. Import, bloße Factory-
+Erzeugung, Tests, Dev-Server, Produktions-Build und Bundle-Check binden keinen
+Real-HTTPS-Transport.
+Endpoint und Wegwerfsecret werden ausschließlich aus
+`GOLDENDAWN_N8N_CLOUD_PROBE_ENDPOINT` und
+`GOLDENDAWN_N8N_CLOUD_PROBE_SECRET` gelesen. Das Tool erlaubt nur HTTPS ohne
+Userinfo, Query oder Fragment und ausschließlich kanonische Test-URL-Pfade der
+Form `/webhook-test/<segment>[/<segment>…]`. Jedes nicht leere Suffixsegment
+besteht nur aus ASCII-Buchstaben, Ziffern, Bindestrich oder Unterstrich.
+Prozentkodierungen, rohe oder kodierte Backslashes, Steuerzeichen, leere
+Segmente sowie `.` und `..` werden vor der Transportauflösung abgelehnt. Das
+Tool folgt keinen Redirects und wiederholt keinen Request. Es validiert genau
+eine allowlist-basierte Vektor-ID, sendet genau einen Request, verwendet
+5.000 ms Deadline, begrenzt eine Response auf 16.384 Bytes und stoppt danach.
+Vor jedem weiteren Vektor muss der Operator den Test-Webhook manuell neu
+registrieren beziehungsweise in Listening versetzen. Sweep, Autoregister und
+ein Production-URL-Runner oder -Messpfad existieren nicht.
+
+Der alte Vektor `auth-duplicate-conflicting` entfällt. Die 32er-Registry
+enthält stattdessen beide ordergebundenen IDs
+`auth-duplicate-conflicting-correct-first-wrong-last` und
+`auth-duplicate-conflicting-wrong-first-correct-last`. Alle Auth-Bodies sind
+identisch; absent/identity und `Content-Length`/Chunked teilen jeweils exakt
+denselben Body; die Größenfixtures sind A-Präfix-kompatibel; und die
+`gzip`-/`deflate`-/`br`-Encoding-Payloads besitzen denselben dekomprimierten
+Sentinel; der Expansionsvektor bleibt die getrennte 65.537-Byte-Grenzprobe.
+
+Jedes Vektorgate und jeder variable Messstatus verwendet ausschließlich
+`PASS`, `FAIL` oder `UNPROVEN`: mindestens ein `FAIL` ergibt für den
+zugehörigen Messstatus `FAIL`; ausschließlich vollständige `PASS`-Evidenz
+ergibt `PASS`; jedes übrige Bild ergibt `UNPROVEN`. Ein vollständiger
+`testUrlTenantMeasurementStatus: PASS` erfordert alle 32 getrennt manuell
+registrierten One-shots sowie die vollständige Bindung an nicht ableitbaren
+Tenant-Alias, Zeitpunkt und Zeitzone, Plan und Region soweit veröffentlichbar,
+n8n-Build, Webhook-Node-`typeVersion` und SHA-256 des secretfreien Workflows. Ein
+einzelnes Vektor-`PASS` kann diesen Gesamtstatus nie setzen.
+`executionDataSettings` besitzt exakt `saveDataErrorExecution`,
+`saveDataSuccessExecution`, `saveManualExecutions`, `executionDataPruning` und
+`readTimeRedaction`. Ein vollständiger `providerExecutionEvidenceStatus: PASS`
+verlangt effektiv `none`/`none`/`false`/`enabled`/`enabled`, auf jedem
+erfolgreichen eindeutig zugeordneten Observerpfad einen abwesenden
+Authorization-Header, den gebundenen `auth-correct`-Pfad zusätzlich mit Counts
+`1`/`1` und eindeutiger Attribution, passende Providerattestierung,
+bestätigten Cleanup sowie
+nicht-nullische `tenantAlias`, `observedAt`, `timezone`, `n8nBuild`,
+`webhookNodeTypeVersion` und `secretFreeWorkflowSha256`. `plan` und `region`
+dürfen `null` bleiben. Fehlt eine der sechs Pflichtbindungen, ist der
+Providerstatus ohne bekannten Widerspruch `UNPROVEN`; ein bekannter unsicherer
+Setting-, Header-, Count- oder Attributionswert bleibt mit `FAIL` vorrangig.
+`readTimeRedaction: enabled` beweist ausdrücklich nicht, dass keine Daten
+gespeichert wurden.
+
+Schema 1 besitzt exakt die Top-Level-Felder `schemaVersion`, `endpointKind`,
+`tenantAlias`, `observedAt`, `timezone`, `plan`, `region`, `n8nBuild`,
+`webhookNodeTypeVersion`, `secretFreeWorkflowSha256`,
+`executionDataSettings`, `vectors`, `testUrlTenantMeasurementStatus`,
+`stableOssCompatibility`, `providerExecutionEvidenceStatus`,
+`productionUrlMeasurementStatus`, `activationDecision`,
+`redactedProviderReference` und `cleanupConfirmed`. `endpointKind` ist exakt
+`test`; `stableOssCompatibility: FAIL`,
+`productionUrlMeasurementStatus: UNPROVEN` und `activationDecision: FAIL` sind
+unveränderlich. Ein Feld `overallGate` existiert nicht, und
+`activationDecision: PASS` wird in Schema 1 immer abgelehnt. Ohne Messlauf sind
+Test-URL-Tenant- und Providerstatus `UNPROVEN`. Jede Änderung der festen Werte
+benötigt einen neuen ADR und eine neue Evidenz-Schemaversion.
+
+Jedes der 32 Vektorergebnisse besitzt exakt `probeId`,
+`expectedByteLength`, `observedByteLength`, `expectedSha256`, `httpStatus`,
+`observerCallCount`, `workflowExecutionCount`, `uniqueVectorAttribution`,
+`exactMatch`, `strictUtf8Outcome`, `authorizationHeaderPresence`,
+`contentEncodingOutcome` und `gate`. Counts und Beobachtungswerte sind nullable
+und werden niemals aus HTTP-Antworten erfunden. Bei einer übernommenen
+geschlossenen erfolgreichen `2xx`-Observerresponse muss jeder nicht-nullische
+Count exakt `1` sein; bekannte `0` oder Werte größer als `1` sind `FAIL`.
+`null` bleibt bei normalen und komprimierten Erfolgswegen als „noch nicht
+separat gebunden“ zulässig. Frühe Auth-Ablehnungen mit `400`, `401` oder `403`
+und Encoding-Ablehnungen mit `400` oder `415` dürfen bei eindeutiger Bindung
+unverändert 0/0 verwenden. Auf jedem übernommenen erfolgreichen und eindeutig
+zugeordneten `2xx`-Observerpfad kann nur `authorizationHeaderPresence: absent`
+das Header-Teilgate bestehen lassen; `present` ist `FAIL`, `null` oder
+`unavailable` ist mindestens `UNPROVEN`. Der korrekte Auth-Vektor verlangt
+zusätzlich unverändert Counts 1/1. Ein exakter Body allein genügt nie.
+
+Der separate Quellcodebefund für das stabile
+[`n8n@2.35.4`](https://github.com/n8n-io/n8n/releases/tag/n8n%402.35.4) am Commit
+`d2ce3c084c228622c2ffe7c245d25870430e18a9` zeigt:
+
+- [`body-parser.ts`](https://github.com/n8n-io/n8n/blob/d2ce3c084c228622c2ffe7c245d25870430e18a9/packages/cli/src/middlewares/body-parser.ts)
+  schaltet für `gzip` und `deflate` Dekompressionsstreams vor die
+  `rawBody`-Materialisierung;
+- [`webhook-helpers.ts`](https://github.com/n8n-io/n8n/blob/d2ce3c084c228622c2ffe7c245d25870430e18a9/packages/cli/src/webhooks/webhook-helpers.ts)
+  ruft `parseRequestBody` vor dem Webhook-Node auf; für Node-Versionen größer
+  als 1 liegt `application/octet-stream` außerhalb der dort vorgeparsten
+  JSON-, Text-, Form- und XML-Typen;
+- der [`Webhook`-Node](https://github.com/n8n-io/n8n/blob/d2ce3c084c228622c2ffe7c245d25870430e18a9/packages/nodes-base/nodes/Webhook/Webhook.node.ts)
+  validiert in diesem Octet-Stream-Pfad zuerst die Authentisierung, liest dann
+  bei aktivem Raw Body den Buffer und gibt zugleich `req.headers` sowie den
+  binären Raw Body in den Workflowoutput;
+- die [Header-Auth-Prüfung](https://github.com/n8n-io/n8n/blob/d2ce3c084c228622c2ffe7c245d25870430e18a9/packages/nodes-base/nodes/Webhook/utils.ts)
+  vergleicht den konsumierten Headerwert, entfernt ihn aber nicht aus den
+  später ausgegebenen Requestheadern;
+- die [Execution-Redaction](https://github.com/n8n-io/n8n/blob/d2ce3c084c228622c2ffe7c245d25870430e18a9/packages/cli/src/modules/redaction/executions/execution-redaction.service.ts)
+  arbeitet bei `keepOriginal` auf einer Darstellungskopie. Redaction beim
+  Lesen belegt daher keine Löschung bereits gespeicherter Datenbankwerte.
+- [`test-webhooks.ts`](https://github.com/n8n-io/n8n/blob/d2ce3c084c228622c2ffe7c245d25870430e18a9/packages/cli/src/webhooks/test-webhooks.ts)
+  ist der commitgebundene Quellanker für den getrennten Test-Webhook-
+  Lifecycle. Daraus werden keine nicht dokumentierten Symbol-, Zeilen- oder
+  Tenantgarantien erfunden.
+
+Das sind commitgebundene Beobachtungen im öffentlichen offiziellen Quellcode,
+keine dokumentierten Plattformgarantien und keine Messung in GoldenDawns
+Cloud-Tenant. Wegen Dekomprimierung und möglicher Credential-/Execution-Data-
+Exposition steht die öffentliche stabile OSS-Kompatibilität auf `FAIL`.
+Mangels Cloudzugriff steht die konkrete Tenantmessung unabhängig davon auf
+`UNPROVEN`. Workflowseitig nicht sichtbare Providerallokation, Edge-Buffering
+und Providerlogs können auch ein späterer Probe nicht beweisen. Die Aktivierung
+bleibt geschlossen; ein `FAIL` oder `UNPROVEN` verlangt Cleanup und
+Neubewertung von ADR 0019. Nach Build-, Tenant-, Plan-, Regions-, Node-,
+Workflow-, Execution-Settings- oder relevanter Plattformänderung ist eine
+vollständige Revalidierung Pflicht.
+Vor jeder Cloudmessung gilt ein gesonderter Freigabestopp für temporären
+Workflow, Wegwerfcredential, synthetischen Test-URL-Verkehr und Supportkontakt.
+Supportfragen einschließlich der Frage nach Test-/Production-URL-Unterschieden
+sind nur vorbereitet und wurden nicht gesendet; sie autorisieren keinen
+Productionlauf. Vor jedem Vektor ist die manuelle erneute Test-Webhook-
+Registrierung Pflicht. Nach einem später freigegebenen Lauf werden Workflow
+und Credential entfernt beziehungsweise widerrufen, Ausführungsdaten soweit
+möglich gelöscht, Test-URL-Nichtausführbarkeit geprüft und erst dann
+`cleanupConfirmed` gesetzt.
+
+Die gezielte Evidence-Suite besteht mit 26/26 Tests. Bundle und Boundary
+bestehen unverändert mit 115/115 Tests; die kombinierte Sync-Suite
+einschließlich der Evidence-Foundation besteht mit 279/279 Tests und die
+vollständige serielle Gesamtsuite mit 1212/1212 Tests. Alle vier Läufe besitzen
+0 Fehlschläge, 0 Skips und 0 Todos. Beide neuen Skripte bestehen die
+Syntaxprüfung, der Produktions-Build transformiert weiterhin exakt 46
+Browsermodule und der schreibfreie Bundle-Check meldet keinen Drift.
 
 ## Agentenverantwortung
 
@@ -1684,6 +1906,11 @@ darf nicht automatisch oder vollständig weitergegeben werden.
 Der noch nicht implementierte verbundene Modus wird die lokale Anwendung um
 kontrollierte externe Verarbeitung ergänzen. Der lokale Gateway-Prozess ist
 bereits vorhanden, wird aber noch von keinem Browsertransport verwendet.
+Die Evidence-Foundation ist davon getrennt. Ihr öffentlicher stabiler
+OSS-Kompatibilitätsbefund `FAIL` und der konkrete Tenantstatus `UNPROVEN`
+halten den verbundenen Modus geschlossen; vor einem späteren Cloudpfad sind
+eine Neubewertung von ADR 0019 und eine vollständig gebundene Revalidierung
+erforderlich.
 
 ```text
 UI → Service → SyncService → künftiger lokaler SyncTransport
@@ -1832,6 +2059,9 @@ Fehler werden an der Schicht behandelt, die genügend Kontext dafür besitzt:
 | Startfehler | lokales SyncGateway verwirft den gebundenen Port, schließt den Listener best effort, zerstört Sockets und liefert ausschließlich den bestehenden statischen `startFailed`-Result; dies gilt auch für gemeldete Ports außerhalb `1` bis `65535` oder einen nicht exakt passenden Produktionsport |
 | Serverfehler nach erfolgreichem Start | lokales SyncGateway verwirft den gebundenen Port, schließt den Listener best effort, zerstört Sockets, sperrt Request-, Decoder- und Boundary-Verarbeitung irreversibel und signalisiert den Prozess payloadlos höchstens einmal |
 | Von der Boundary akzeptierter Request ohne Upstream | lokales SyncGateway als statischer `503 upstreamUnavailable`-Transportfehler; keine normale SyncResponse |
+| Ungültige Probe-Konfiguration oder interner lokaler Probe-Fehler | Evidence-Tooling mit ausschließlich `invalidRuntimeConfig` beziehungsweise `probeFailed` und statisch redigierter Meldung |
+| Timeout, unbekannte Runtimeantwort oder unvollständige Cloudbeobachtung | betroffenes Evidence-Gate `UNPROVEN`; keine Teilannahme und keine Aktivierung |
+| Beobachtete Byteveränderung, automatische Dekomprimierung, unsichere Auth- oder Execution-Data-Semantik | betroffenes Evidence-Gate `FAIL`; Cleanup und Neubewertung von ADR 0019 |
 | Cloud-Authentisierungsfehler, Netzwerkfehler oder Timeout | späterer konkreter lokaler Cloudtransport; der aktuelle Service implementiert keinen Timeout |
 | Frühe `gateway_`- oder ungeeignete Cloudresponse | späterer Clienttransport als statisch redigierter lokaler Fehler; keine normale SyncResponse erfinden |
 | Ungültiger Request-Vertrag | aktuell SyncService und SyncGateway Request Boundary mit SyncContract-Validator; später defense-in-depth erneut an der n8n-Cloud-Grenze |
@@ -1861,6 +2091,10 @@ Grundregeln:
   Laufzeitkonfiguration und wird nur für den `syncTest`-Webhook verwendet. Es
   darf nie in Browser, Repository, Vault, Workflow-Export oder Logs gelangen;
   dies wird vor Aktivierung auch für n8n-Ausführungsdaten nachgewiesen.
+- Das getrennte Evidence-CLI verwendet ausschließlich ein Wegwerfsecret aus
+  `GOLDENDAWN_N8N_CLOUD_PROBE_SECRET` und einen HTTPS-Endpoint aus
+  `GOLDENDAWN_N8N_CLOUD_PROBE_ENDPOINT`. Beide Werte bleiben aus Argumenten,
+  Ausgaben, Evidenz, Workflowexport und Repository ausgeschlossen.
 - Die SyncService Foundation validiert jeden kontrolliert aufgebauten Request
   vor dem Aufruf der Portmethode und jede defensive normale Response-Projektion
   gegen ihre unveränderte Korrelation.
@@ -1869,9 +2103,11 @@ Grundregeln:
   Der lokale HTTP-Prozess begrenzt Bytes und dekodiert strikt davor. Eine frühe
   Ablehnung oder lokale `503`-Response behauptet keine SyncAgent-Verarbeitung.
   Das generierte Boundary-Artefakt ist nur ein geprüftes Derivat der
-  kanonischen Quellen. Eine spätere n8n-Cloud-Grenze darf es erst nach dem
-  Raw-Body-Laufzeitnachweis verwenden und validiert damit erneut, bevor der `SyncAgent`
-  verarbeitet.
+  kanonischen Quellen. Eine spätere n8n-Cloud-Grenze dürfte es erst nach
+  einem neuen ADR auf Basis der ADR-0019-Neubewertung, neuer Evidenz-
+  Schemaversion und separat freigegebenen Spezifikations- und
+  Kompositionsslices verwenden und damit erneut validieren, bevor der
+  `SyncAgent` verarbeitet. ADR 0022 ersetzt ADR 0019 nicht.
 - Header Authentication ist keine Bodysignatur, und TLS ist kein Replay- oder
   Idempotenzschutz. Diese Mechanismen bleiben vor privaten oder schreibenden
   Aktionen neu zu entscheiden.
@@ -1939,6 +2175,8 @@ server/
 scripts/
 └── n8n/
     ├── generateSyncGatewayBoundaryBundle.js
+    ├── n8nCloudIngressProbe.js
+    ├── n8nCloudIngressProbeObserver.js
     └── syncGatewayBoundaryBundleEntry.js
 
 artifacts/
@@ -1958,7 +2196,13 @@ docs/
 ├── roadmap.md
 ├── security.md
 ├── data-contracts.md
+├── evidence/
+│   └── n8n-cloud-ingress-runtime-evidence.template.json
 └── decisions/
+    └── 0022-n8n-cloud-ingress-runtime-evidence-gate.md
+
+tests/
+└── n8nCloudIngressProbe.test.js
 ```
 
 Die Struktur wird nur angelegt, wenn die zugehörigen Dateien tatsächlich
@@ -1972,7 +2216,7 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
 | `v0.2.2` | Vollständig geprüft und veröffentlicht; keine externe Kommunikation |
-| `v0.3.0` | In Arbeit: drei transportneutrale Foundations, separat startbare Local SyncGateway Raw-Wire and HTTP Foundation und Generated n8n Boundary Bundle Foundation implementiert; Cloudworkflow, Browsertransport und operativer SyncAgent folgen |
+| `v0.3.0` | In Arbeit: drei transportneutrale Foundations, separat startbare Local SyncGateway Raw-Wire and HTTP Foundation, Generated n8n Boundary Bundle Foundation und lokal netzwerkinaktive n8n Cloud Ingress & Runtime Evidence Gate Foundation implementiert; öffentliche stabile OSS-Kompatibilität `FAIL`, Tenantmessung `UNPROVEN`, Aktivierung geschlossen; Cloudworkflow, Browsertransport und operativer SyncAgent folgen nicht vor Neubewertung |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
 | `v0.6.0` | Integrierter Drei-Agenten-Fluss |
@@ -2028,6 +2272,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0019](decisions/0019-local-sync-gateway-before-n8n-cloud.md) | Lokales SyncGateway als Sicherheitsgrenze vor n8n Cloud | Angenommen |
 | [0020](decisions/0020-local-sync-gateway-raw-wire-http-foundation.md) | Lokale SyncGateway Raw-Wire and HTTP Foundation | Angenommen |
 | [0021](decisions/0021-generated-n8n-boundary-bundle-foundation.md) | Reproduzierbares eigenständiges n8n-Boundary-Bundle aus den kanonischen Quellen | Angenommen |
+| [0022](decisions/0022-n8n-cloud-ingress-runtime-evidence-gate.md) | Tenant- und versionsgebundenes n8n Cloud Ingress & Runtime Evidence Gate | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).
