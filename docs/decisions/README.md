@@ -9,7 +9,7 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 | ADR | Entscheidung | Status |
 | --- | --- | --- |
 | [0001](0001-vite-vanilla-js.md) | Vite und Vanilla JavaScript als Frontend-Grundlage | Angenommen |
-| [0002](0002-syncagent-gateway.md) | SyncAgent als einziges externes Gateway des Dashboards | Angenommen |
+| [0002](0002-syncagent-gateway.md) | SyncAgent als einziges externes Gateway des Dashboards | Ersetzt |
 | [0003](0003-dataagent-airtable-boundary.md) | DataAgent als einzige Airtable-Schnittstelle | Angenommen |
 | [0004](0004-private-demo-separation.md) | Strikte Trennung privater Daten und Demo-Daten | Angenommen |
 | [0005](0005-v1-three-agent-scope.md) | Version 1 bleibt auf drei Agenten begrenzt | Angenommen |
@@ -26,10 +26,11 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 | [0016](0016-transport-neutral-sync-contract-foundation.md) | Transportneutraler Sync-v1-Kern und künftige Transport- und Hub-Grenze | Angenommen |
 | [0017](0017-transport-neutral-sync-service-foundation.md) | Transportneutrale SyncService Foundation mit kontrollierter Korrelation | Angenommen |
 | [0018](0018-transport-neutral-sync-gateway-request-boundary-foundation.md) | Transportneutrale SyncGateway Request Boundary für materialisierte Raw Bodies | Angenommen |
-| [0019](0019-local-sync-gateway-before-n8n-cloud.md) | Lokales SyncGateway als Sicherheitsgrenze vor n8n Cloud | Angenommen |
+| [0019](0019-local-sync-gateway-before-n8n-cloud.md) | Lokales SyncGateway als Sicherheitsgrenze vor n8n Cloud | Ersetzt |
 | [0020](0020-local-sync-gateway-raw-wire-http-foundation.md) | Lokale SyncGateway Raw-Wire- und HTTP-Foundation | Angenommen |
 | [0021](0021-generated-n8n-boundary-bundle-foundation.md) | Direkt bindbares, snapshotbasiertes n8n-Boundary-Bundle aus kanonischen Quellen und gepflegter Buildgrenze | Angenommen |
 | [0022](0022-n8n-cloud-ingress-runtime-evidence-gate.md) | Tenant- und versionsgebundenes n8n Cloud Ingress & Runtime Evidence Gate | Angenommen |
+| [0023](0023-local-syncagent-before-optional-external-providers.md) | Lokaler SyncAgent vor optionalen externen Providern | Angenommen |
 
 ## ADR-Regeln
 

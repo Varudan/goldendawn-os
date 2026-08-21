@@ -2,7 +2,7 @@
 
 ## Status
 
-Angenommen – 2026-07-11
+Ersetzt durch [ADR 0023](0023-local-syncagent-before-optional-external-providers.md) – 2026-08-21
 
 ## Kontext
 

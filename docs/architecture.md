@@ -4,15 +4,15 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – n8n Cloud Ingress & Runtime Evidence Gate Foundation` |
+| Projektphase | `v0.3.0 – in Arbeit – ADR 0023 Local SyncAgent before Optional Providers Decision` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | Verbindliche Zielarchitektur; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; transportneutrale Sync-Foundations, separat startbare Local SyncGateway Raw-Wire and HTTP Foundation, Generated n8n Boundary Bundle Foundation und lokal netzwerkinaktive n8n Cloud Ingress & Runtime Evidence Gate Foundation implementiert; öffentliche stabile OSS-Kompatibilität `FAIL`, Tenantmessung `UNPROVEN`, Aktivierung geschlossen; kein Browser- oder Produkt-Cloudtransport |
-| Letzte Aktualisierung | 2026-08-19 |
+| Status | Verbindliche Zielarchitektur nach ADR 0023; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; transportneutrale Sync-Foundations, separat startbare Local SyncGateway Raw-Wire and HTTP Foundation, Generated n8n Boundary Bundle Foundation und lokal netzwerkinaktive n8n Cloud Ingress & Runtime Evidence Gate Foundation implementiert; öffentliche stabile OSS-Kompatibilität `FAIL`, Tenantmessung `UNPROVEN`, Aktivierung geschlossen; lokaler SyncAgent, Browsertransport und Provideradapter nicht implementiert |
+| Letzte Aktualisierung | 2026-08-21 |
 
 Dieses Dokument beschreibt die verbindliche Zielarchitektur für Version 1 von
 GoldenDawn OS. Es konkretisiert die Regeln aus `AGENTS.md` und dient als
-Referenz für Frontend, n8n-Workflows, Airtable-Struktur und spätere
-Implementierungsentscheidungen.
+Referenz für Frontend, lokale Agentenkomposition, optionale Provider,
+Airtable-Struktur und spätere Implementierungsentscheidungen.
 
 ## Architekturziele
 
@@ -33,7 +33,7 @@ Version 1 verwendet ausschließlich drei Agentenrollen:
 
 | Agent | Verantwortung | Darf nicht |
 | --- | --- | --- |
-| `SyncAgent` | Requests validieren, klassifizieren und routen | Fachlogik oder Airtable-Zugriffe übernehmen |
+| `SyncAgent` | Lokal Policy durchsetzen, Requests defense-in-depth validieren, klassifizieren und routen sowie normale Responses erzeugen und validieren | Test-/DataAgent-Fachlogik oder Airtable-Zugriffe übernehmen |
 | `TestAgent` | Lerntests erstellen, Antworten bewerten und Feedback liefern | Ergebnisse direkt speichern oder Airtable aufrufen |
 | `DataAgent` | Strukturierte Daten lesen, schreiben und in Airtable verwalten | Prüfungslogik oder UI-Aufgaben übernehmen |
 
@@ -45,8 +45,11 @@ Auswertung dieser Architektur geplant.
 Folgende Punkte werden bewusst nicht umgesetzt:
 
 - zusätzliche Agentenrollen;
-- ein allgemeines Fachbackend neben n8n; das in ADR 0019 geplante lokale
-  SyncGateway bleibt eine schmale Transport- und Sicherheitsgrenze;
+- ein allgemeines Fachbackend oder eine Microservice-Topologie; das lokale
+  SyncGateway bleibt eine schmale Transport- und Sicherheitsgrenze, der lokale
+  SyncAgent eine davon logisch getrennte injizierte serverseitige Komponente;
+- ein zweiter Listener, eine neue IPC-Grenze oder ein zusätzlicher lokaler
+  Netzwerkdienst für den ersten SyncAgent-Slice;
 - direkte Airtable- oder OpenAI-Aufrufe aus dem Frontend;
 - Authentifizierung und Mehrbenutzerverwaltung;
 - autonome GitHub-Commits oder Releases durch Coding-Agenten;
@@ -63,8 +66,13 @@ flowchart TD
     UI --> Sync["SyncService"]
     Sync --> Transport["Künftiger lokaler SyncTransport"]
     Transport --> Gateway["Separat startbares lokales SyncGateway auf GD-WS01"]
-    Gateway --> Cloud["Künftiger authentisierter n8n-Cloud-Webhook"]
-    Cloud --> Router["SyncAgent"]
+    Gateway --> Router["Lokaler SyncAgent"]
+    Router --> SyncTest["Lokaler deterministischer syncTest-Handler"]
+    Router -.->|später optional| Model["Capability-spezifischer ModelProvider"]
+    Model -.-> OpenAI["OpenAI-Adapter"]
+    Model -.-> LocalModel["Lokaler Modelladapter"]
+    Router -.->|später optional| Workflow["Capability-spezifischer WorkflowProvider"]
+    Workflow -.-> N8n["n8n-Adapter"]
     Router --> Test["TestAgent"]
     Router --> Data["DataAgent"]
     Test --> Router
@@ -76,11 +84,24 @@ zunächst an die zentrale Orchestrierung zurückgegeben werden. Wenn sie
 gespeichert werden sollen, erstellt der `SyncAgent` daraus einen strukturierten
 Auftrag für den `DataAgent`.
 
+Die Zielarchitektur trennt vier Vertrauenszonen:
+
+| Zone | Inhalt | Verbindliche Grenze |
+| --- | --- | --- |
+| A | GoldenDawn-Browser und SyncService | unvertrauenswürdig, ohne Secrets; erzeugt nur den geschlossenen `syncTest` und wählt weder Provider, Modell, Workflow, Endpoint noch Umgebung |
+| B | lokales SyncGateway auf GD-WS01 | autoritative Raw-Wire-, HTTP-, UTF-8- und Boundary-Grenze ohne Agenten-, Modell- oder Fachlogik; gibt ausschließlich die validierte defensive Projektion weiter |
+| C | lokaler SyncAgent | autoritative lokale Policy-, Defense-in-depth-Validierungs-, Routing- und Responsegrenze mit fester Aktions-Allowlist |
+| D | optionale externe oder lokale Provider | standardmäßig deaktiviert, nicht Bestandteil des aktuellen `syncTest`, ausschließlich über capability-spezifische Adapter erreichbar |
+
+Provider sind keine zusätzlichen Agentenrollen. Version 1 bleibt unverändert
+auf `SyncAgent`, `TestAgent` und `DataAgent` begrenzt.
+
 ## Zentrale Architekturregel
 
 Das Dashboard kommuniziert langfristig ausschließlich über den Sync-Service
-mit dem Agentensystem. Innerhalb des Agentensystems ist der `SyncAgent` der
-zentrale Einstiegspunkt. Airtable wird ausschließlich durch den `DataAgent`
+mit dem Agentensystem. Innerhalb des Agentensystems ist der lokale `SyncAgent`
+der zentrale Einstiegspunkt sowie die verbindliche Policy-, Validierungs-,
+Routing- und Responsegrenze. Airtable wird ausschließlich durch den `DataAgent`
 angesprochen.
 
 ```text
@@ -88,10 +109,12 @@ Dashboard
   → SyncService
   → künftiger lokaler SyncTransport
   → implementiertes lokales SyncGateway auf GD-WS01
-  → authentisierter n8n-Cloud-Webhook
-  → SyncAgent
-  → TestAgent oder DataAgent
-  → Airtable ausschließlich über DataAgent
+  → lokaler SyncAgent
+      ├→ zunächst lokaler deterministischer syncTest-Handler
+      ├→ später optional capability-spezifischer ModelProvider
+      ├→ später optional capability-spezifischer WorkflowProvider
+      └→ später TestAgent oder DataAgent
+          → Airtable ausschließlich über DataAgent
 ```
 
 Diese Regel verhindert:
@@ -100,20 +123,28 @@ Diese Regel verhindert:
 - Secrets in UI-Komponenten;
 - doppelte Validierungs- und Routinglogik;
 - direkte Abhängigkeiten zwischen Benutzeroberfläche und Airtable-Schema;
+- vom Browser oder Modelloutput bestimmte Provider, Modelle, Workflows,
+  Endpoints, Umgebungen, Berechtigungen oder Tools;
 - vermischte Verantwortlichkeiten der Agenten.
 
 ### Aktueller v0.3.0-Slice
 
 Der historische Dokumentationsslice `Local SyncGateway before n8n Cloud
-Decision` hat mit ADR 0019 die Zieltopologie um einen lokalen Transport- und
-Sicherheits-Hop auf GD-WS01 vor n8n Cloud ergänzt. ADR 0020 setzt davon den
-separat startbaren lokalen Node-HTTP-Prozess um. ADR 0021 erzeugt aus einem
-unveränderlichen Snapshot der kanonischen Contract- und Boundary-Quellen sowie
-des gepflegten nichtfachlichen Entry ein direkt bindbares Expression-IIFE, ein
+Decision` hatte mit ADR 0019 die damalige Zieltopologie um einen lokalen
+Transport- und Sicherheits-Hop auf GD-WS01 vor n8n Cloud ergänzt. ADR 0023
+ersetzt ADR 0002 und ADR 0019 nun formal und entscheidet stattdessen den lokalen
+`SyncAgent` vor optionalen Providern. Der weiterhin gültige Kern bleibt
+erhalten: `SyncService` ist die einzige Browser-Kommunikationsschicht, der
+`SyncAgent` der einzige Einstieg und Router des Agentensystems, UI und Browser
+wählen weder Fachagent noch Provider direkt und Version 1 bleibt auf drei
+Agenten begrenzt. ADR 0020 setzt unverändert den separat startbaren lokalen
+Node-HTTP-Prozess um. ADR 0021 erzeugt unverändert aus einem unveränderlichen
+Snapshot der kanonischen Contract- und Boundary-Quellen sowie des gepflegten
+nichtfachlichen Entry ein direkt bindbares Expression-IIFE, ein
 deterministisches SHA-256-Manifest und die dazugehörigen Integritäts-, Paritäts-
 und Mutationstests.
 
-Der aktuelle Slice `n8n Cloud Ingress & Runtime Evidence Gate Foundation`
+Der abgeschlossene Slice `n8n Cloud Ingress & Runtime Evidence Gate Foundation`
 ergänzt nach ADR 0022 ausschließlich ein lokal verifiziertes, importseitig und
 standardmäßig netzwerkinaktives Messwerkzeug, einen menschenprüfbaren
 Code-Node-Observer und eine geschlossene sanitierte Evidenzvorlage. Er trennt
@@ -130,10 +161,12 @@ Quellcodebefund ist mit den notwendigen GoldenDawn-Eigenschaften nicht
 kompatibel und erhält deshalb `FAIL`. Der getrennte konkrete Tenantnachweis
 bleibt mangels Cloudmessung `UNPROVEN`. Beide Ergebnisse halten die
 Produktaktivierung geschlossen; das lokale Gateway endet weiterhin mit `503`.
-Lokaler Browser-SyncTransport, authentisierter n8n-Cloud-Webhook,
-Cloudworkflow und operativer `SyncAgent` bleiben geplant und nicht
-implementiert. ADR 0002, ADR 0005 sowie ADR 0016 bis ADR 0021 werden nicht
-ersetzt oder rückwirkend verändert.
+Lokaler Browser-SyncTransport, lokaler SyncAgent-Kern, kontrollierte
+Gateway-/SyncAgent-Komposition und normale SyncResponse bleiben geplant und
+nicht implementiert. OpenAI-, lokaler Modell- und n8n-Adapter sind weder
+autorisiert noch implementiert. ADR 0020, ADR 0021 und ADR 0022 bleiben
+angenommen und inhaltlich unverändert; deren historische Evidenz wird nicht
+rückwirkend verändert.
 
 Die implementierte **SyncContract Foundation** bleibt der reine,
 transportneutrale Vertragskern für `syncTest`. Darauf baut die ebenfalls
@@ -272,24 +305,26 @@ Rate Limits, Persistenz, Logs, Telemetrie oder Hub-UI. Der Prozess sendet
 nichts an einen externen Port; daher besitzt auch dieser Slice keinen externen
 Datenfluss.
 
-Der erste reale Fluss bleibt browserinitiiert und ist noch nicht implementiert:
+Der erste reale Fluss bleibt browserinitiiert, vollständig lokal und ist noch
+nicht implementiert:
 
 ```text
 GoldenDawn-Browser
   → SyncService
   → künftiger lokaler SyncTransport
   → implementiertes lokales SyncGateway auf GD-WS01
-  → authentisierter n8n-Cloud-Webhook
-  → SyncAgent
+  → lokaler SyncAgent
   → validierte normale SyncResponse
 ```
 
 Das Vite-Browserfrontend ist dabei der spätere Client. Es terminiert keinen
 eingehenden öffentlichen Webhook und verwendet den lokalen Prozess noch nicht.
 Die Loopback-, Raw-Wire-, Decodierungs-, Origin- und frühe HTTP-Policygrenze
-ist umgesetzt; die n8n-Header-Authentication- und Cloudgrenze bleibt geplant.
-Body-Binding, Replay, Idempotenz und private oder schreibende Aktionen
-benötigen vor ihrer Freigabe eine neue Entscheidung.
+ist umgesetzt; der lokale SyncAgent und seine kontrollierte Komposition fehlen
+noch. Der aktuelle `syncTest` wird später ohne Provider lokal beantwortet. Ein
+n8n-Adapter bleibt als optionaler `WorkflowProvider` durch ADR 0022 gesperrt.
+Body-Binding, Replay, Idempotenz und private oder schreibende Aktionen benötigen
+vor ihrer Freigabe eine neue Entscheidung.
 
 ### Spätere Hub-Verantwortung
 
@@ -380,7 +415,7 @@ saveLichtwaldLog(lichtwaldLog)
 ### Sync-Service
 
 Die implementierte SyncService Foundation ist die transportneutrale
-Anwendungsgrenze vor einem späteren konkreten externen Transport. Ihre
+Anwendungsgrenze vor einem späteren konkreten lokalen Browsertransport. Ihre
 öffentliche Factory lautet:
 
 ```js
@@ -408,9 +443,11 @@ Die eingefrorene API besitzt exakt `runSyncTest`. Der Service:
 
 Der aktuelle Service kennt keinen Endpoint, Client-Modus, konkreten HTTP- oder
 n8n-Transport, Timeout, Retry, Backoff, Idempotenzspeicher, Storage oder
-Telemetrie. Er enthält keine Prüfungs- oder Airtable-Fachlogik. Ein späterer
-Transportadapter bleibt die einzige Stelle, an der konkrete externe
-Kommunikation technisch angebunden wird.
+Telemetrie. Er enthält keine Prüfungs- oder Airtable-Fachlogik. Der spätere
+lokale SyncTransport bleibt die einzige Browser-Kommunikationsschicht zum
+lokalen Gateway. Externe oder lokale Providerkommunikation darf ausschließlich
+über capability-spezifische Adapter hinter dem lokalen `SyncAgent` erfolgen und
+ist keine Aufgabe dieses Browsertransports.
 
 ### SyncGateway Request Boundary
 
@@ -438,21 +475,26 @@ empfangenen Bytes vor Stringmaterialisierung und kontrollierter Decodierung;
 in diesem Slice leitet er auch einen akzeptierten defensiven Boundary-Snapshot
 noch nicht weiter.
 
-### Implementiertes lokales SyncGateway vor n8n Cloud
+### Implementiertes lokales SyncGateway vor dem lokalen SyncAgent
 
-ADR 0019 trennt drei Vertrauenszonen:
+ADR 0023 trennt vier Vertrauenszonen:
 
 | Zone | Inhalt | Vertrauensannahme |
 | --- | --- | --- |
-| A | GoldenDawn-Browser und SyncService | kein Secret-Speicher; Caller am Gateway nicht authentisiert und nicht vertrauenswürdig |
-| B | separat startbarer lokaler Node-Prozess auf GD-WS01 | Loopback-only, aber Browser-, Origin- und Prozesseigentümerwerte beweisen keine Identität |
-| C | n8n Cloud mit authentisiertem Webhook und späterem SyncAgent-Gerüst | externer Dienst; eingehende Daten und Providergrenzen erneut prüfen |
+| A | GoldenDawn-Browser und SyncService | kein Secret-Speicher; Caller am Gateway nicht authentisiert und nicht vertrauenswürdig; keine Wahl von Provider, Modell, Workflow, Endpoint oder Umgebung |
+| B | separat startbarer lokaler Node-Prozess auf GD-WS01 | Loopback-only; autoritative Wire-, HTTP-, UTF-8- und Boundary-Grenze; Browser-, Origin- und Prozesseigentümerwerte beweisen keine Identität |
+| C | lokaler SyncAgent | autoritative lokale Policy-, Defense-in-depth-Validierungs-, Routing- und Responsegrenze; feste Aktions-Allowlist |
+| D | optionale externe oder lokale Provider | standardmäßig deaktiviert; nur über capability-spezifische Adapter hinter dem SyncAgent; Output bleibt unvertrauenswürdig |
 
 Das lokale SyncGateway ist kein Agent, keine Fachlogik, kein allgemeines
 Backend, kein Storage, kein Ersatz für den `SyncAgent` und keine
 UI-Komponente. Der `SyncAgent` bleibt der einzige Einstieg in das
 Agentensystem; Version 1 bleibt auf `SyncAgent`, `DataAgent` und `TestAgent`
-begrenzt. Die Produktionsdateien sind:
+begrenzt. Provider sind keine Agentenrollen. Der erste lokale SyncAgent-Slice
+darf als logisch getrennte injizierte serverseitige Komponente im bestehenden
+Prozess komponiert werden; ADR 0023 autorisiert keinen zweiten Listener, keine
+IPC-Grenze und keinen zusätzlichen lokalen Netzwerkdienst. Die
+Produktionsdateien des bereits implementierten Gateways sind:
 
 - `server/localSyncGatewayRuntimeConfig.js` für die serverseitige
   Runtime-Konfiguration;
@@ -736,20 +778,64 @@ Netzwerkplanung können den tatsächlichen Schließzeitpunkt über die konfiguri
 Erkennungstoleranz hinaus verzögern; diese Grenze ist keine
 laufzeitunabhängige Wall-Clock-Garantie.
 
-Der vor ADR 0022 vorgesehene Cloudpfad des lokalen Gateways ist beim aktuellen
-`FAIL`/`UNPROVEN`-Stand gesperrt und zuerst über ADR 0019 neu zu bewerten. Nur
-ein neuer ADR auf Basis dieser Neubewertung und eine neue Evidenz-Schemaversion
-könnten den Pfad später beibehalten und die Webhook-/Credential-Spezifikation
-separat autorisieren. Erst dann dürfte der Zielpfad ausschließlich HTTPS und
-n8n Header Authentication mit einem dedizierten hochentropischen gemeinsamen
-Bearer-Secret am einzigen `syncTest`-Webhook vorsehen. Das Secret läge dann nur im
-n8n-Credential-Store und in vertrauenswürdiger serverseitiger Gateway-
-Laufzeitkonfiguration und wird nicht mit anderen Workflows geteilt. Sein
-Besitznachweis belegt keine starke Geräte-, Prozess- oder Benutzeridentität und
-keinen n8n-RBAC-Principal. Header Authentication ist keine Bodysignatur; TLS
-ist kein Replay- oder Idempotenzschutz. Ein dann freigegebener erster
-synthetischer Flow besäße bewusst kein HMAC- oder JWT-Body-Binding und keinen
-Replay-Nachweis.
+ADR 0023 nimmt die durch ADR 0022 verlangte Neubewertung vor und behält den von
+ADR 0019 vorgesehenen direkten Cloudpfad des lokalen Gateways nicht als
+Zieltopologie bei. Das Gateway darf ausschließlich die validierte defensive
+Requestprojektion an den lokalen `SyncAgent` geben. Browser-Raw-Body,
+Browserheader, URL, Query und ursprüngliche Serialisierung werden niemals an
+einen Provider weitergeleitet.
+
+Hinter dem lokalen `SyncAgent` sind nur zwei konzeptionelle Klassen späterer
+capability-spezifischer Ports vorgesehen: `ModelProvider` und
+`WorkflowProvider`. ADR 0023 definiert dafür keine JavaScript-Signaturen,
+Methoden, Schemas oder Dateien. Ein gemeinsamer generischer Port wie `execute`,
+frei wählbare Endpoints oder Requestpfade für beliebige Modelle, Prompts,
+Workflows, Tools oder Agenten sind ausgeschlossen. Provider, Modell, Workflow,
+Endpoint und Umgebung stammen ausschließlich aus vertrauenswürdiger lokaler
+Composition, niemals aus Browserwerten, Requestfeldern oder Modelloutput.
+Die GoldenDawn-seitige Kopie späteren Credentialmaterials liegt ausschließlich
+in der vertrauenswürdigen Laufzeitkonfiguration oder Secretverwaltung des
+konkreten serverseitigen Adapters auf GD-WS01 und ist kein SyncRequest-,
+SyncResponse- oder Agentenresultat-Bestandteil. Benötigt eine später gesondert
+entschiedene Authentisierung providerseitiges Prüf- oder Credentialmaterial,
+liegt dieses ausschließlich im Credential-/Secret-Store des Providers. Lokale
+Adapterkopie und providerseitiges Prüfmaterial sind getrennte Vertrauens- und
+Betriebsgrenzen. Eine Providerablage beweist weder Redaction noch Retention
+oder Nichtweitergabe. Same-Realm-Komposition ist keine Sandbox und keine
+technische Secret-Isolation.
+
+Der erste lokale `syncTest`-Handler bleibt vollständig deterministisch,
+synthetisch, nebenwirkungsfrei, modellfrei und providerfrei. Er ruft keinen
+`ModelProvider`, `WorkflowProvider`, n8n-, OpenAI- oder sonstigen externen
+Adapter auf und setzt keinen davon als Dependency voraus. Provideroutputs
+bleiben unvertrauenswürdig und werden lokal begrenzt, defensiv projiziert,
+validiert und mit der ursprünglichen Anfrage korreliert. Modelloutput darf nie
+Berechtigungen, Routing, Providerwahl oder Toolausführung bestimmen.
+
+Ein OpenAI-Adapter verlangt vor Aktivierung einen eigenen Adapter- und
+Datenschutzslice, eine dedizierte GoldenDawn-seitige Credentialkopie in seiner
+vertrauenswürdigen Laufzeitkonfiguration oder Secretverwaltung auf GD-WS01,
+feste Modell- und Endpoint-Allowlists, explizite Datenminimierung, einen endlichen
+Timeout sowie Request-, Response- und Kostenlimits. Redirects, automatische
+Retries, Tools und autonome Aktionen bleiben im ersten Modellslice aus; Output,
+externe Verarbeitung und Retention werden lokal beziehungsweise ausdrücklich
+geprüft. Ein lokaler Modelladapter verlangt eine kontrollierte Modellquelle und
+Integritätsbindung, keine automatischen Downloads oder Telemetrie, Ressourcen-,
+Zeit- und Antwortgrenzen sowie dieselbe lokale Outputvalidierung. Keiner dieser
+Adapter ist durch ADR 0023 autorisiert.
+
+Ein n8n-Adapter bleibt ebenfalls gesperrt. Er wäre ausschließlich ein späterer
+`WorkflowProvider` und dürfte nur einen vom lokalen `SyncAgent` neu erzeugten,
+sanitisierten und minimierten Request erhalten. Eine GoldenDawn-seitige
+Credentialkopie dürfte nur in der vertrauenswürdigen Laufzeitkonfiguration oder
+Secretverwaltung dieses konkreten Adapters auf GD-WS01 liegen. Falls die später
+gesondert entschiedene n8n-Authentisierung providerseitiges Prüfmaterial
+benötigt, verbliebe dieses ausschließlich im n8n-Credential-/Secret-Store.
+Beide Seiten sind getrennte Material-, Vertrauens- und Betriebsgrenzen. n8n
+verwahrt nicht transitiv Credentials für OpenAI, Airtable oder ein lokales
+Modell. Ein
+erfolgreicher Besitznachweis wäre keine starke Geräte-, Prozess- oder
+Benutzeridentität und kein n8n-RBAC-Principal.
 
 Weil n8n Cloud nach dem datierten offiziellen Plattformbefund vom 2026-08-17
 keine beliebigen externen npm-Module im Code Node importiert und die dokumentierte
@@ -757,20 +843,37 @@ Modul-Allowlist nur eine Self-Hosted-Konfiguration ist, bleiben
 `src/contracts/syncContract.js` und
 `src/gateways/syncGatewayRequestBoundary.js` die kanonischen Quellen. Der
 dafür vorbereitete Generator erzeugt nun ein selbstständiges Expression-IIFE
-mit automatisierten Integritäts-, Paritäts- und Mutationsprüfungen. Erst ein
-neuer ADR nach der ADR-0019-Neubewertung, eine neue Evidenz-Schemaversion und
-gesonderte Freigaben der darauffolgenden Spezifikations- und
-Kompositionsslices könnten einen späteren Cloudworkflow autorisieren. Dieser
-dürfte ausschließlich das generierte Derivat verwenden, keine
-manuell gepflegte Contractkopie. Die n8n-Option `Raw Body`
-beweist weder byteidentische ursprüngliche Wire-Oktette noch die GoldenDawn-
-Grenze vor Provider-Allokation. Vor Aktivierung muss ein versions- und
-tenantgebundener Laufzeitnachweis tatsächliche Binärdaten vor Decodierung
-belegen. Der aktuelle Stable-OSS-Befund widerspricht dieser Voraussetzung
-bereits; die Tenantmessung ist zusätzlich `UNPROVEN`, weshalb ADR 0019 jetzt
-neu zu bewerten ist. Auch ein späterer Test-URL-Tenantmessstatus `PASS` ändert
-die Schema-1-`activationDecision: FAIL` nicht; die exakte vorgelagerte
-Wire-Grenze läge in dem separat gestarteten lokalen Prozess.
+mit automatisierten Integritäts-, Paritäts- und Mutationsprüfungen. Bundle und
+Manifest bleiben korrekte, aber derzeit nicht komponierte und nicht aktivierte
+n8n-Derivate. `Raw Body` ist in der neuen Topologie kein erforderlicher Beweis
+für ursprüngliche Browserbytes und darf nicht nachträglich als solcher
+dargestellt werden. Der bekannte Header-Authentication-/Execution-Data-Befund
+aus ADR 0022 bleibt dennoch ein Blocker für jeden späteren n8n-Adapter, wählt
+aber keine Authentisierungslösung. ADR 0023 entscheidet weder Header
+Authentication, Bearer-Secret, konkreten Headernamen, JWT, HMAC,
+asymmetrisches Verfahren, Credentialformat noch Rotationsmechanismus. Ein
+langlebiges wiederverwendbares Header-Secret darf ohne neue positive
+Authentisierungs- und Execution-Data-Entscheidung nicht aktiviert werden.
+
+ADR 0023 autorisiert weder Cloudzugriff noch Tenantmessung. Vor jeglicher
+Vorbereitung oder Ausführung einer neuen n8n-Tenantmessung müssen ein neuer
+n8n-Adapter-ADR angenommen und eine neue adapterbezogene Evidenz-Schemaversion
+festgelegt sein. Erst danach benötigen die Anlage eines temporären Workflows,
+ein Wegwerfcredential, jeder einzelne synthetische Test-URL-One-shot sowie der
+vorab definierte Cleanup und die Entfernung der Cloudartefakte jeweils eine
+eigene ausdrückliche Freigabe. Jede Supportanfrage ist unabhängig davon separat
+freizugeben; sie darf eine spätere Entscheidung vorbereiten, autorisiert aber
+weder Workflow, Credential, Tenantvorbereitung oder -ausführung,
+Adapteraktivierung noch Productionlauf. Ohne angenommenen neuen ADR und
+festgelegte neue Schemaversion gibt es keinen Workflow, kein Credential und
+keinen Test-URL-Verkehr. Ein Production-URL-Runner oder -Messpfad existiert
+nicht. Test- oder Production-Webhook, Credential, Workflow und Tenantmessung
+bleiben außerhalb dieses Slices. Auch ein späterer Test-URL-
+Tenantmessstatus `PASS` ändert Evidence-Schema 1 nicht:
+`stableOssCompatibility: FAIL`,
+`productionUrlMeasurementStatus: UNPROVEN`, `activationDecision: FAIL` und das
+Fehlen eines `overallGate` bleiben unverändert. Die exakte vorgelagerte Wire-
+Grenze bleibt im separat gestarteten lokalen Prozess.
 
 #### Generated n8n Boundary Bundle Foundation
 
@@ -837,13 +940,14 @@ bösartigen gleichzeitigen Reparse-Austausch behauptet.
 
 Diese Foundation beginnt ausschließlich an der bereits materialisierten
 Stringgrenze der Boundary. Sie enthält weder Wire-Byte-Zählung noch UTF-8-
-Decoder oder Webhookadapter. Ein konkreter n8n-Workflow darf sie erst nach dem
-weiterhin offenen versions- und tenantgebundenen Raw-Body-Laufzeitnachweis
-komponieren.
+Decoder oder Webhookadapter. Sie bleibt ein korrektes, aber nicht komponiertes
+oder aktiviertes n8n-Derivat. Eine spätere Verwendung in einem nachgelagerten
+n8n-Adapter erfordert einen neuen ADR und eine neue adapterbezogene Evidenz-
+Schemaversion; sie würde keinen Erhalt ursprünglicher Browserbytes beweisen.
 
 Der SyncService akzeptiert unverändert nur normale, vollständig korrelierte
 SyncResponses. HTTP-, Authentisierungs-, Timeout-, frühe `gateway_`-, lokale
-Gateway- und ungeeignete Cloudresponse-Fehler werden nicht zu normalen
+Gateway- und ungeeignete Providerresponse-Fehler werden nicht zu normalen
 SyncAgent-Responses umgeschrieben. Die lokale HTTP-Fehler-API ist oben
 festgelegt; das spätere Browsertransport-Fehler-API bleibt getrennt zu
 entscheiden.
@@ -857,8 +961,11 @@ Agenten, Logging, Monitoring oder externen Datenfluss.
 
 #### n8n Cloud Ingress & Runtime Evidence Gate Foundation
 
-Die neue Foundation ist ein ausdrücklich nichtproduktiver manueller One-shot-
-Messpfad und kein Teil des GoldenDawn-Produktflusses:
+Die neue Foundation ist ein ausdrücklich nichtproduktiver, standardmäßig
+netzwerkinaktiver manueller One-shot-Messpfad und kein Teil des GoldenDawn-
+Produktflusses. Das folgende Diagramm beschreibt nur die technische Mechanik
+hinter dem vollständigen ADR-/Schema- und Einzelfreigabegate; es erteilt keine
+Ausführungsfreigabe:
 
 ```text
 manuelle erneute Registrierung/Listening des temporären Test-Webhooks
@@ -910,11 +1017,13 @@ geschlossenen UTF-8-Outcomes sind
 `unavailable`; Headerpräsenz ist `absent | present | unavailable`, und das
 Encoding-Outcome ist `match | mismatch | unavailable`.
 
-Der kanonische und vorgesehene Operator-Laufweg für einen One-shot ist
+Der kanonische und vorgesehene technische Operator-Laufweg für einen One-shot ist
 `npm run probe:n8n:cloud:test -- --vector <probeId>`; das Paket-Script bindet
 `node scripts/n8n/n8nCloudIngressProbe.js --run`. Import, bloße Factory-
 Erzeugung, Tests, Dev-Server, Produktions-Build und Bundle-Check binden keinen
-Real-HTTPS-Transport.
+Real-HTTPS-Transport. Das Vorhandensein dieses Kommandos autorisiert keinen
+Lauf; es darf erst nach dem vollständigen Vorabgate und der eigenen Freigabe
+genau dieses einzelnen One-shots verwendet werden.
 Endpoint und Wegwerfsecret werden ausschließlich aus
 `GOLDENDAWN_N8N_CLOUD_PROBE_ENDPOINT` und
 `GOLDENDAWN_N8N_CLOUD_PROBE_SECRET` gelesen. Das Tool erlaubt nur HTTPS ohne
@@ -1028,18 +1137,29 @@ Exposition steht die öffentliche stabile OSS-Kompatibilität auf `FAIL`.
 Mangels Cloudzugriff steht die konkrete Tenantmessung unabhängig davon auf
 `UNPROVEN`. Workflowseitig nicht sichtbare Providerallokation, Edge-Buffering
 und Providerlogs können auch ein späterer Probe nicht beweisen. Die Aktivierung
-bleibt geschlossen; ein `FAIL` oder `UNPROVEN` verlangt Cleanup und
-Neubewertung von ADR 0019. Nach Build-, Tenant-, Plan-, Regions-, Node-,
+bleibt geschlossen. ADR 0023 hat die verlangte Neubewertung vorgenommen und
+den ursprünglichen n8n-Ingress nicht als Zielpfad beibehalten; ein `FAIL` oder
+`UNPROVEN` verlangt weiterhin Cleanup und verhindert jede n8n-Aktivierung. Nach
+Build-, Tenant-, Plan-, Regions-, Node-,
 Workflow-, Execution-Settings- oder relevanter Plattformänderung ist eine
 vollständige Revalidierung Pflicht.
-Vor jeder Cloudmessung gilt ein gesonderter Freigabestopp für temporären
-Workflow, Wegwerfcredential, synthetischen Test-URL-Verkehr und Supportkontakt.
-Supportfragen einschließlich der Frage nach Test-/Production-URL-Unterschieden
-sind nur vorbereitet und wurden nicht gesendet; sie autorisieren keinen
-Productionlauf. Vor jedem Vektor ist die manuelle erneute Test-Webhook-
-Registrierung Pflicht. Nach einem später freigegebenen Lauf werden Workflow
-und Credential entfernt beziehungsweise widerrufen, Ausführungsdaten soweit
-möglich gelöscht, Test-URL-Nichtausführbarkeit geprüft und erst dann
+ADR 0023 autorisiert keine Cloud- oder Tenantmessung. Vor jeglicher Vorbereitung
+oder Ausführung einer neuen n8n-Tenantmessung müssen ein neuer n8n-Adapter-ADR
+angenommen und eine neue adapterbezogene Evidenz-Schemaversion festgelegt sein.
+Erst danach benötigen die Anlage des temporären Workflows, das
+Wegwerfcredential, jeder einzelne synthetische Test-URL-One-shot sowie der
+vorab definierte Cleanup und die Entfernung der Cloudartefakte jeweils eine
+eigene ausdrückliche Freigabe. Ohne angenommenen ADR und festgelegte
+Schemaversion gibt es keinen Workflow, kein Credential und keinen Test-URL-
+Verkehr. Vor jedem einzeln freigegebenen Vektor ist die manuelle erneute Test-
+Webhook-Registrierung Pflicht. Ein Production-URL-Runner oder -Messpfad
+existiert nicht. Jede Supportanfrage ist unabhängig davon separat freizugeben;
+die vorbereiteten Fragen einschließlich der Frage nach Test-/Production-URL-
+Unterschieden dürfen nur eine spätere Entscheidung vorbereiten und autorisieren
+weder Workflow, Credential, Tenantvorbereitung oder -ausführung,
+Adapteraktivierung noch Productionlauf. Nach eigener Cleanup-Freigabe werden
+Workflow und Credential entfernt beziehungsweise widerrufen, Ausführungsdaten
+soweit möglich gelöscht, Test-URL-Nichtausführbarkeit geprüft und erst dann
 `cleanupConfirmed` gesetzt.
 
 Die gezielte Evidence-Suite besteht mit 26/26 Tests. Bundle und Boundary
@@ -1054,20 +1174,33 @@ Browsermodule und der schreibfreie Bundle-Check meldet keinen Drift.
 
 ### SyncAgent
 
-Der noch nicht operative `SyncAgent` ist hinter dem authentisierten
-n8n-Cloud-Webhook beziehungsweise der Cloudgrenze als Orchestrator vorgesehen.
-Er:
+Der noch nicht operative lokale `SyncAgent` ist direkt hinter dem lokalen
+SyncGateway als logisch getrennte, injizierte serverseitige Komponente
+vorgesehen. Er ist die autoritative lokale Policy-, Validierungs-, Routing- und
+Responsegrenze. Er:
 
-1. nimmt einen erneut validierten Request von der n8n-Cloud-Grenze entgegen;
-2. prüft Version, Aktion, Quelle, Zeitstempel und Payload;
+1. nimmt ausschließlich die begrenzte und validierte defensive Projektion des
+   lokalen SyncGateways entgegen;
+2. prüft Version, Aktion, Quelle, Zeitstempel und Payload defense-in-depth
+   erneut;
 3. übernimmt die verpflichtende, zuvor von GoldenDawn erzeugte `requestId`;
-4. klassifiziert die Anfrage;
-5. routet sie an `TestAgent` oder `DataAgent`;
-6. normalisiert das Ergebnis;
-7. gibt eine standardisierte Antwort an das Dashboard zurück.
+4. klassifiziert die Anfrage gegen eine feste Aktions-Allowlist;
+5. beantwortet den aktuellen `syncTest` vollständig lokal, deterministisch,
+   synthetisch, nebenwirkungsfrei, modellfrei und providerfrei;
+6. routet spätere getrennt autorisierte Aktionen an `TestAgent`, `DataAgent`
+   oder eine lokal komponierte capability-spezifische Providergrenze;
+7. begrenzt, projiziert und validiert Provideroutput als unvertrauenswürdige
+   Eingabe;
+8. erzeugt und validiert eine normale, mit dem Request korrelierte SyncResponse
+   und gibt sie standardisiert an das Dashboard zurück.
 
 Der spätere `SyncAgent` darf keine Airtable-Credentials verwenden und keine
-fachspezifische Prüfungsbewertung durchführen.
+fachspezifische Prüfungsbewertung durchführen. Der erste `syncTest`-Slice setzt
+keinen ModelProvider, WorkflowProvider oder Adapter als Dependency voraus.
+Modelloutput darf niemals Berechtigungen, Routing, Providerwahl oder
+Toolausführung bestimmen. Die Same-Realm-Komposition ist keine Sandbox. ADR
+0023 autorisiert für den Agent keine eigene Listener-, IPC- oder
+Netzwerkdienstgrenze.
 
 ### TestAgent
 
@@ -1094,7 +1227,11 @@ Der `DataAgent` ist Bibliothekar und Datenverwalter. Er:
 - verhindert, dass Airtable-interne Feldnamen in die UI durchsickern;
 - liefert verständliche Fehler an den `SyncAgent` zurück.
 
-Nur der `DataAgent` besitzt in Version 1 Zugriff auf Airtable-Credentials.
+In Version 1 besitzt ausschließlich der `DataAgent` die fachliche Zuständigkeit
+für Airtable-Zugriffe; er hält selbst kein Airtable-Credential. Die
+GoldenDawn-seitige Credentialkopie liegt nur in der vertrauenswürdigen
+Laufzeitkonfiguration oder Secretverwaltung des konkreten Airtable-Adapters auf
+GD-WS01, providerseitiges Prüfmaterial nur bei Airtable.
 
 ## Betriebsmodi
 
@@ -1121,12 +1258,16 @@ Alle Datenzugriffe bleiben hinter Modulservices und Storage-Adaptern. Der
 erste `v0.3.0`-Slice führt den transportneutralen Vertrag ein, der zweite den
 transportneutralen SyncService-Port. Der dritte Slice ergänzt die synchrone
 Request Boundary für einen bereits materialisierten Raw-Body-Wert. Der vierte,
-historische Dokumentationsslice entscheidet mit ADR 0019 den zusätzlichen
+historische Dokumentationsslice entschied mit ADR 0019 den zusätzlichen
 lokalen Sicherheits-Hop vor n8n Cloud. Der fünfte Slice implementiert dessen
-separat startbare Raw-Wire- und HTTP-Foundation. Der aktuelle sechste Slice
-ergänzt das generierte eigenständige Boundary-Artefakt und dessen
-Integritätsgate, komponiert aber weiterhin weder Browser noch Cloud. Externe
-Kommunikation beginnt erst in einem späteren Slice dieses Meilensteins.
+separat startbare Raw-Wire- und HTTP-Foundation; ADR 0020 bleibt dafür die
+verbindliche Grundlage. Der sechste Slice ergänzt das generierte eigenständige
+Boundary-Artefakt und dessen Integritätsgate. Der siebte Slice ergänzt die
+lokal netzwerkinaktive n8n-Evidence-Foundation aus ADR 0022. ADR 0023 bildet
+nun den achten dokumentarischen Entscheidungsslice und ersetzt die damalige
+Zieltopologie durch den lokalen SyncAgent vor optionalen Providern. Browser,
+lokaler Agent und Provider sind weiterhin nicht komponiert; die technische
+Umsetzung beginnt mit dem vollständig lokalen modellfreien SyncAgent-Kern.
 
 #### LearningHub Local MVP in v0.2.1
 
@@ -1551,10 +1692,11 @@ umgesetzt; Herkunft und Reload-Verhalten bleiben auch bei der Präsentation des
 besonderen Moments sichtbar. Der geplante Implementierungsumfang ist damit
 vollständig abgeschlossen und geprüft. Der annotierte Tag `v0.2.2` und das
 zugehörige GitHub Release wurden am `2026-08-02` veröffentlicht; `v0.2.2` ist
-das neueste veröffentlichte Release. `v0.3.0` ist mit der angenommenen Local-
-SyncGateway-before-n8n-Cloud-Entscheidung auf Basis der drei implementierten
-transportneutralen Foundations in Arbeit. ADR 0013, ADR 0014 und ADR 0015
-dokumentieren Contract, private Persistenz und Demo-Trennung.
+das neueste veröffentlichte Release. `v0.3.0` ist nach ADR 0023 mit dem lokalen
+SyncAgent vor optionalen Providern auf Basis der drei implementierten
+transportneutralen Foundations und der lokalen Gateway-Foundation in Arbeit.
+ADR 0013, ADR 0014 und ADR 0015 dokumentieren Contract, private Persistenz und
+Demo-Trennung.
 
 Der spätere Zielpfad bleibt:
 
@@ -1563,15 +1705,15 @@ LearningTestService
   → SyncService
   → künftiger lokaler SyncTransport
   → implementiertes lokales SyncGateway auf GD-WS01
-  → authentisierter n8n-Cloud-Webhook
-  → SyncAgent
+  → lokaler SyncAgent
   → TestAgent
 ```
 
 Semantische Freitextbewertung und echte `TestAgent`-Logik beginnen erst in
-`v0.5.0`. ADR 0019 autorisiert diese private und fachlich weitergehende
-Capability nicht; sie benötigt vor der Implementierung eine neue Contract-,
-Identitäts-, Berechtigungs-, Replay-, Idempotenz- und Datenschutzentscheidung.
+`v0.5.0`. ADR 0023 autorisiert diese private und fachlich weitergehende
+Capability ebenso wenig wie einen Model- oder WorkflowProvider dafür. Sie
+benötigt vor der Implementierung eine neue Contract-, Identitäts-,
+Berechtigungs-, Replay-, Idempotenz- und Datenschutzentscheidung.
 
 #### LichtwaldLog Local MVP in v0.2.2
 
@@ -1904,23 +2046,26 @@ darf nicht automatisch oder vollständig weitergegeben werden.
 ### Verbundener Modus
 
 Der noch nicht implementierte verbundene Modus wird die lokale Anwendung um
-kontrollierte externe Verarbeitung ergänzen. Der lokale Gateway-Prozess ist
-bereits vorhanden, wird aber noch von keinem Browsertransport verwendet.
-Die Evidence-Foundation ist davon getrennt. Ihr öffentlicher stabiler
-OSS-Kompatibilitätsbefund `FAIL` und der konkrete Tenantstatus `UNPROVEN`
-halten den verbundenen Modus geschlossen; vor einem späteren Cloudpfad sind
-eine Neubewertung von ADR 0019 und eine vollständig gebundene Revalidierung
-erforderlich.
+zunächst vollständig lokale kontrollierte Agentenverarbeitung ergänzen. Der
+lokale Gateway-Prozess ist bereits vorhanden, wird aber noch von keinem
+Browsertransport verwendet und ist noch nicht mit einem lokalen `SyncAgent`
+komponiert. Die Evidence-Foundation ist davon getrennt. Ihr öffentlicher
+stabiler OSS-Kompatibilitätsbefund `FAIL`, der konkrete Tenantstatus
+`UNPROVEN` und `activationDecision: FAIL` halten ausschließlich eine spätere
+n8n-Adapteraktivierung geschlossen; sie blockieren nicht die zuerst
+umzusetzende providerfreie lokale Agentenroute.
 
 ```text
 UI → Service → SyncService → künftiger lokaler SyncTransport
   → implementiertes lokales SyncGateway auf GD-WS01
-  → authentisierter n8n-Cloud-Webhook → SyncAgent
+  → lokaler SyncAgent
   → validierte normale SyncResponse
 ```
 
 Ein Modul entscheidet nicht selbst, welcher Fachagent angesprochen wird. Diese
-Entscheidung liegt beim `SyncAgent`.
+Entscheidung liegt beim lokalen `SyncAgent`. Derselbe Grundsatz gilt für
+Provider, Modell, Workflow, Endpoint und Umgebung. Der aktuelle `syncTest`
+verwendet keinen Provider.
 
 ## Sync-Vertrag
 
@@ -2011,8 +2156,7 @@ sequenceDiagram
     participant Service as SyncService
     participant Transport as lokaler SyncTransport
     participant Gateway as lokales SyncGateway auf GD-WS01
-    participant Cloud as n8n-Cloud-Webhook
-    participant Sync as SyncAgent
+    participant Sync as lokaler SyncAgent
     participant Test as TestAgent
     participant Data as DataAgent
     participant DB as Airtable
@@ -2021,16 +2165,14 @@ sequenceDiagram
     UI->>Service: Validierter Request
     Service->>Transport: Browserinitiierter Request
     Transport->>Gateway: Lokaler HTTP-Request
-    Gateway->>Cloud: Authentisierter defensiver Vertragsrequest
-    Cloud->>Sync: Erneut validierter Vertragsrequest
+    Gateway->>Sync: Defensive validierte Requestprojektion
     Sync->>Test: Prüfungsauftrag
     Test-->>Sync: Test oder Bewertung
     Sync->>Data: Ergebnis speichern
     Data->>DB: Strukturierter Schreibauftrag
     DB-->>Data: Gespeicherter Datensatz
     Data-->>Sync: Normalisiertes Ergebnis
-    Sync-->>Cloud: Normalisierte Antwort
-    Cloud-->>Gateway: Cloudresponse
+    Sync-->>Gateway: Lokal validierte korrelierte SyncResponse
     Gateway-->>Transport: Validierte normale SyncResponse
     Transport-->>Service: Transportresponse
     Service-->>UI: Standardisierte Antwort
@@ -2061,10 +2203,11 @@ Fehler werden an der Schicht behandelt, die genügend Kontext dafür besitzt:
 | Von der Boundary akzeptierter Request ohne Upstream | lokales SyncGateway als statischer `503 upstreamUnavailable`-Transportfehler; keine normale SyncResponse |
 | Ungültige Probe-Konfiguration oder interner lokaler Probe-Fehler | Evidence-Tooling mit ausschließlich `invalidRuntimeConfig` beziehungsweise `probeFailed` und statisch redigierter Meldung |
 | Timeout, unbekannte Runtimeantwort oder unvollständige Cloudbeobachtung | betroffenes Evidence-Gate `UNPROVEN`; keine Teilannahme und keine Aktivierung |
-| Beobachtete Byteveränderung, automatische Dekomprimierung, unsichere Auth- oder Execution-Data-Semantik | betroffenes Evidence-Gate `FAIL`; Cleanup und Neubewertung von ADR 0019 |
-| Cloud-Authentisierungsfehler, Netzwerkfehler oder Timeout | späterer konkreter lokaler Cloudtransport; der aktuelle Service implementiert keinen Timeout |
-| Frühe `gateway_`- oder ungeeignete Cloudresponse | späterer Clienttransport als statisch redigierter lokaler Fehler; keine normale SyncResponse erfinden |
-| Ungültiger Request-Vertrag | aktuell SyncService und SyncGateway Request Boundary mit SyncContract-Validator; später defense-in-depth erneut an der n8n-Cloud-Grenze |
+| Beobachtete Byteveränderung, automatische Dekomprimierung, unsichere Auth- oder Execution-Data-Semantik | betroffenes Evidence-Gate `FAIL`; Cleanup und keine n8n-Adapteraktivierung |
+| Provider-Authentisierungsfehler, Netzwerkfehler oder Timeout | späterer capability-spezifischer serverseitiger Provideradapter; der aktuelle `syncTest` verwendet keinen Provider |
+| Frühe `gateway_`- oder ungeeignete Providerresponse | früher Fehler im lokalen Transport beziehungsweise statisch redigierter lokaler SyncAgent-Fehler; keine normale SyncResponse erfinden |
+| Ungültiger Request-Vertrag | aktuell SyncService und SyncGateway Request Boundary mit SyncContract-Validator; später defense-in-depth erneut am lokalen SyncAgent |
+| Unbegrenzter oder ungeeigneter Provideroutput | lokaler SyncAgent begrenzt, projiziert, validiert und korreliert ihn als unvertrauenswürdige Eingabe; keine direkte Antwort an Browser oder SyncService |
 | Fehlerhafte Prüfungsantwort | TestAgent |
 | Airtable- oder Mappingfehler | DataAgent |
 
@@ -2079,18 +2222,26 @@ Grundregeln:
 
 ## Sicherheit
 
-- Airtable- und Modell-Credentials liegen ausschließlich in n8n oder einer
-  späteren serverseitigen Umgebung.
+- GoldenDawn-seitige Airtable- und Provider-Credentialkopien liegen
+  ausschließlich in der vertrauenswürdigen Laufzeitkonfiguration oder
+  Secretverwaltung des jeweiligen konkreten serverseitigen Adapters auf
+  GD-WS01. Providerseitiges Prüf- oder Credentialmaterial liegt ausschließlich
+  im Credential-/Secret-Store des Providers. Beide Seiten sind getrennte
+  Vertrauens- und Betriebsgrenzen; Providerablage beweist weder Redaction,
+  Retention noch Nichtweitergabe. Credentialmaterial wird niemals zu
+  SyncRequest, SyncResponse, Agentenresultat oder Browserkonfiguration.
 - `VITE_*`-Variablen gelten als öffentlich und dürfen keine Secrets enthalten.
 - Eine Webhook-URL wird nicht als alleiniger Schutzmechanismus betrachtet.
 - Das implementierte lokale SyncGateway bindet nur an `127.0.0.1`, behandelt den lokalen
   Caller aber weiterhin als nicht authentisiert und unvertrauenswürdig. CORS,
   Origin und Loopback sind keine Identitätsnachweise.
-- Das geplante Bearer-Secret für n8n Header Authentication liegt ausschließlich
-  im n8n-Credential-Store und vertrauenswürdiger serverseitiger Gateway-
-  Laufzeitkonfiguration und wird nur für den `syncTest`-Webhook verwendet. Es
-  darf nie in Browser, Repository, Vault, Workflow-Export oder Logs gelangen;
-  dies wird vor Aktivierung auch für n8n-Ausführungsdaten nachgewiesen.
+- Für einen späteren n8n-`WorkflowProvider` ist kein Authentisierungsverfahren
+  entschieden. Header Authentication, Bearer-Secret, konkreter Headername,
+  JWT, HMAC, asymmetrisches Verfahren, Credentialformat und
+  Rotationsmechanismus bleiben offen. Eine spätere GoldenDawn-seitige Kopie und
+  etwaiges providerseitiges Prüfmaterial unterliegen den getrennten Ablagen
+  oben. Der bekannte Header-Authentication-/Execution-Data-Befund hält diesen
+  Adapter aktuell gesperrt und ist keine gewählte Lösung.
 - Das getrennte Evidence-CLI verwendet ausschließlich ein Wegwerfsecret aus
   `GOLDENDAWN_N8N_CLOUD_PROBE_SECRET` und einen HTTPS-Endpoint aus
   `GOLDENDAWN_N8N_CLOUD_PROBE_ENDPOINT`. Beide Werte bleiben aus Argumenten,
@@ -2102,19 +2253,28 @@ Grundregeln:
   jeder Projektion, anschließend die neue Projektion vor und nach Deep Freeze.
   Der lokale HTTP-Prozess begrenzt Bytes und dekodiert strikt davor. Eine frühe
   Ablehnung oder lokale `503`-Response behauptet keine SyncAgent-Verarbeitung.
-  Das generierte Boundary-Artefakt ist nur ein geprüftes Derivat der
-  kanonischen Quellen. Eine spätere n8n-Cloud-Grenze dürfte es erst nach
-  einem neuen ADR auf Basis der ADR-0019-Neubewertung, neuer Evidenz-
-  Schemaversion und separat freigegebenen Spezifikations- und
-  Kompositionsslices verwenden und damit erneut validieren, bevor der
-  `SyncAgent` verarbeitet. ADR 0022 ersetzt ADR 0019 nicht.
-- Header Authentication ist keine Bodysignatur, und TLS ist kein Replay- oder
-  Idempotenzschutz. Diese Mechanismen bleiben vor privaten oder schreibenden
-  Aktionen neu zu entscheiden.
+  Nach späterer Komposition verarbeitet ausschließlich der lokale `SyncAgent`
+  die defensive Projektion und validiert sie defense-in-depth erneut.
+- Der aktuelle `syncTest` bleibt lokal, deterministisch, synthetisch,
+  nebenwirkungsfrei, modellfrei und providerfrei.
+- Provideroutput wird lokal begrenzt, defensiv projiziert, validiert und
+  korreliert. Modelloutput bestimmt weder Berechtigungen noch Routing,
+  Providerwahl oder Toolausführung.
+- Das generierte n8n-Boundary-Artefakt bleibt ein geprüftes Derivat der
+  kanonischen Quellen, aber nicht komponiert oder aktiviert. Ein späterer
+  n8n-Adapter erfordert einen neuen ADR, eine neue adapterbezogene Evidenz-
+  Schemaversion und separat freigegebene Spezifikations- und
+  Kompositionsslices. Die Statuswerte aus ADR 0022 bleiben unverändert.
+- ADR 0023 wählt weder Header Authentication noch einen anderen
+  Authentisierungsmechanismus. Falls Header Authentication später gesondert
+  entschieden würde, wäre sie keine Bodysignatur; TLS ist kein Replay- oder
+  Idempotenzschutz. Body-Binding und diese Schutzmechanismen bleiben vor
+  privaten oder schreibenden Aktionen neu zu entscheiden.
 - Payload-Größe, erlaubte Aktionen und Datentypen werden begrenzt.
-- Lokale und Cloudlogs dürfen keine Tokens oder unnötigen personenbezogenen
-  Daten enthalten; Retention und verfügbare Redaction werden vor Aktivierung
-  tenant-, plan- und versionsgebunden geprüft.
+- Lokale Anwendungslogs müssen frei von Tokens und unnötigen personenbezogenen
+  Daten bleiben. Provider-/Cloud-Logging, Redaction und Retention müssen vor
+  Aktivierung tenant-, plan- und versionsgebunden nachgewiesen werden;
+  andernfalls bleibt die Aktivierung geschlossen.
 - Private und öffentliche Daten verwenden getrennte Airtable-Bases,
   Konfigurationen und Deployments.
 - Die öffentliche Demo verwendet ausschließlich synthetische Daten.
@@ -2216,16 +2376,34 @@ benötigt werden. Leere Architekturordner werden vermieden.
 | `v0.2.0` | Local Dashboard MVP abgeschlossen |
 | `v0.2.1` | LearningHub Local MVP vollständig geprüft und veröffentlicht |
 | `v0.2.2` | Vollständig geprüft und veröffentlicht; keine externe Kommunikation |
-| `v0.3.0` | In Arbeit: drei transportneutrale Foundations, separat startbare Local SyncGateway Raw-Wire and HTTP Foundation, Generated n8n Boundary Bundle Foundation und lokal netzwerkinaktive n8n Cloud Ingress & Runtime Evidence Gate Foundation implementiert; öffentliche stabile OSS-Kompatibilität `FAIL`, Tenantmessung `UNPROVEN`, Aktivierung geschlossen; Cloudworkflow, Browsertransport und operativer SyncAgent folgen nicht vor Neubewertung |
+| `v0.3.0` | In Arbeit: drei transportneutrale Foundations, separat startbare Local SyncGateway Raw-Wire and HTTP Foundation, Generated n8n Boundary Bundle Foundation und lokal netzwerkinaktive n8n Cloud Ingress & Runtime Evidence Gate Foundation implementiert; ADR 0023 entscheidet den lokalen SyncAgent vor optionalen Providern; öffentliche stabile OSS-Kompatibilität `FAIL`, Tenantmessung `UNPROVEN`, n8n-Aktivierung geschlossen; lokaler SyncAgent-Kern, Gateway-Komposition und Browsertransport folgen lokal zuerst |
 | `v0.4.0` | DataAgent mit minimalem Airtable-Lese- und Schreibfluss |
 | `v0.5.0` | TestAgent für Erstellung und Bewertung von Lerntests |
 | `v0.6.0` | Integrierter Drei-Agenten-Fluss |
 | `v1.0.0` | Sichere Portfolio-Demo, getrennte Deployments und Dokumentation |
 
-Die technische Reihenfolge bleibt **Mock → Webhook → Airtable →
-Agentenlogik**. Jede Version muss überprüfbar und dokumentiert sein, bevor die
-nächste begonnen wird. Weitere Unterversionen dürfen für neue, klar
-abgegrenzte Arbeitspakete ergänzt werden.
+Die technische Reihenfolge lautet verbindlich:
+
+1. ADR 0023 entscheidet „lokaler SyncAgent, optionale Provider“;
+2. ein vollständig lokaler, modellfreier und importinaktiver SyncAgent-Kern
+   implementiert ausschließlich `syncTest`;
+3. lokales SyncGateway und lokaler SyncAgent werden getrennt und kontrolliert
+   komponiert;
+4. ein konkreter browserseitiger SyncTransport und der lokale End-to-End-
+   `syncTest` folgen;
+5. lokale Missbrauchs-, Parallelitäts-, Zeit- und Ressourcenbegrenzung wird
+   ergänzt;
+6. erst danach werden Provider gesondert entschieden;
+7. OpenAI-, lokaler Modell- und n8n-Adapter folgen jeweils als getrennte
+   Slices;
+8. private Daten, weitere Aktionen, Tools und Nebenwirkungen folgen nur nach
+   neuen Contract-, Identitäts-, Berechtigungs-, Replay-, Idempotenz- und
+   Datenschutzentscheidungen.
+
+Jede Stufe muss überprüfbar und dokumentiert sein, bevor die nächste begonnen
+wird. Weitere Unterversionen dürfen für neue, klar abgegrenzte Arbeitspakete
+ergänzt werden. Bis zur tatsächlichen Gateway-/SyncAgent-Komposition endet ein
+lokal akzeptierter Request weiterhin mit HTTP `503`.
 
 Die Local-SyncGateway-Foundation wurde mit 50/50 gezielten Tests, 192/192
 kombinierten Sync-Tests und 1125/1125 Tests der vollständigen seriellen Suite
@@ -2252,7 +2430,7 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | ADR | Entscheidung | Status |
 | --- | --- | --- |
 | [0001](decisions/0001-vite-vanilla-js.md) | Vite und Vanilla JavaScript als Frontend-Grundlage | Angenommen |
-| [0002](decisions/0002-syncagent-gateway.md) | SyncAgent als einziges Gateway des Dashboards | Angenommen |
+| [0002](decisions/0002-syncagent-gateway.md) | SyncAgent als einziges Gateway des Dashboards | Ersetzt durch ADR 0023 |
 | [0003](decisions/0003-dataagent-airtable-boundary.md) | DataAgent als einzige Airtable-Schnittstelle | Angenommen |
 | [0004](decisions/0004-private-demo-separation.md) | Trennung von privaten und öffentlichen Daten | Angenommen |
 | [0005](decisions/0005-v1-three-agent-scope.md) | Begrenzung von Version 1 auf drei Agenten | Angenommen |
@@ -2269,10 +2447,11 @@ Wesentliche Entscheidungen werden als Architecture Decision Records unter
 | [0016](decisions/0016-transport-neutral-sync-contract-foundation.md) | Transportneutraler Sync-v1-Kern und künftige Transport- und Hub-Grenze | Angenommen |
 | [0017](decisions/0017-transport-neutral-sync-service-foundation.md) | Transportneutrale SyncService Foundation mit kontrollierter Korrelation | Angenommen |
 | [0018](decisions/0018-transport-neutral-sync-gateway-request-boundary-foundation.md) | Transportneutrale SyncGateway Request Boundary für materialisierte Raw Bodies | Angenommen |
-| [0019](decisions/0019-local-sync-gateway-before-n8n-cloud.md) | Lokales SyncGateway als Sicherheitsgrenze vor n8n Cloud | Angenommen |
+| [0019](decisions/0019-local-sync-gateway-before-n8n-cloud.md) | Lokales SyncGateway als Sicherheitsgrenze vor n8n Cloud | Ersetzt durch ADR 0023 |
 | [0020](decisions/0020-local-sync-gateway-raw-wire-http-foundation.md) | Lokale SyncGateway Raw-Wire and HTTP Foundation | Angenommen |
 | [0021](decisions/0021-generated-n8n-boundary-bundle-foundation.md) | Reproduzierbares eigenständiges n8n-Boundary-Bundle aus den kanonischen Quellen | Angenommen |
 | [0022](decisions/0022-n8n-cloud-ingress-runtime-evidence-gate.md) | Tenant- und versionsgebundenes n8n Cloud Ingress & Runtime Evidence Gate | Angenommen |
+| [0023](decisions/0023-local-syncagent-before-optional-external-providers.md) | Lokaler SyncAgent vor optionalen externen Providern | Angenommen |
 
 Der vollständige Index und die Regeln für neue Entscheidungen stehen in
 [`docs/decisions/README.md`](decisions/README.md).
