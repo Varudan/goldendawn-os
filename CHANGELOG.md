@@ -6,7 +6,66 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – n8n Cloud Ingress & Runtime Evidence Gate Foundation
+## Unveröffentlicht – v0.3.0 in Arbeit – Lokaler SyncAgent vor optionalen externen Providern
+
+### Lokaler SyncAgent vor optionalen externen Providern / ADR 0023
+
+- ADR 0023 am `2026-08-21` als dokumentarische Architektur- und
+  Sicherheitsentscheidung angenommen und ADR 0002 sowie ADR 0019 formal
+  ersetzt. Der weiterhin gültige Kern bleibt erhalten: `SyncService` ist die
+  einzige Kommunikationsschicht des Browsers, der `SyncAgent` der einzige
+  Einstieg und Router des Agentensystems, UI und Browser wählen keinen
+  Fachagenten oder Provider direkt, Version 1 bleibt auf `SyncAgent`,
+  `DataAgent` und `TestAgent` begrenzt, und das lokale SyncGateway ist kein
+  vierter Agent.
+- Die neue Zieltopologie als `GoldenDawn-Browser → SyncService → späterer
+  lokaler SyncTransport → lokales SyncGateway auf GD-WS01 → lokaler SyncAgent
+  → lokal validierte und korrelierte SyncResponse` entschieden. Der lokale
+  SyncAgent wird die autoritative Policy-, Validierungs-, Routing- und
+  Antwortgrenze des Agentensystems.
+- Den ersten SyncAgent-Kern ausschließlich für den bestehenden leeren,
+  synthetischen und nebenwirkungsfreien `syncTest` als vollständig lokal,
+  deterministisch, modellfrei und providerfrei festgelegt. Er setzt keinen
+  ModelProvider, WorkflowProvider, n8n-, OpenAI- oder lokalen Modelladapter als
+  Dependency voraus.
+- `ModelProvider` und `WorkflowProvider` nur als getrennte konzeptionelle
+  spätere Portklassen festgelegt, ohne Signaturen, Methoden, Schemas oder
+  Dateien zu definieren. Provider, Modell, Workflow, Endpoint und Umgebung
+  dürfen ausschließlich aus vertrauenswürdiger lokaler Composition stammen,
+  niemals aus Browserwerten, Requestfeldern oder Modelloutput.
+- n8n Cloud, self-hosted n8n, OpenAI und lokale Modelle ausschließlich als
+  standardmäßig deaktivierte, optionale spätere Provider eingeordnet. Kein
+  Adapter ist durch ADR 0023 autorisiert. Provider erhalten später höchstens
+  eine explizite minimierte neue Projektion; ursprüngliche Browserbytes,
+  Browserheader, URL, Query und Serialisierung werden nicht weitergegeben.
+- Die lokalen Gateway-Invarianten aus ADR 0020 unverändert übernommen. ADR 0021
+  bleibt angenommen; Bundle und Manifest bleiben korrekte, nicht komponierte
+  und nicht aktivierte n8n-Derivate. ADR 0022 bleibt vollständig unverändert
+  und dokumentiert den gescheiterten beziehungsweise unbewiesenen ursprünglichen
+  n8n-Ingresspfad: Schema 1 besitzt kein `overallGate`, die festen Werte
+  `stableOssCompatibility: FAIL`,
+  `productionUrlMeasurementStatus: UNPROVEN` und
+  `activationDecision: FAIL` bleiben bestehen.
+- Für einen optionalen späteren n8n-Adapter einen neuen ADR, eine neue
+  adapterbezogene Evidenz-Schemaversion und eine getrennte Webhook-/Credential-
+  Entscheidung verlangt. Der bekannte Header-Auth-/Execution-Data-Befund
+  bleibt ein Blocker; `Raw Body` ist kein erforderlicher Beweis ursprünglicher
+  Browserbytes und darf nicht als solcher dargestellt werden.
+- Die verbindliche weitere Reihenfolge auf lokalen SyncAgent-Kern, getrennte
+  Gateway-/SyncAgent-Komposition, Browser-SyncTransport und lokalen End-to-End-
+  `syncTest`, lokale Missbrauchs-, Parallelitäts-, Zeit- und Ressourcenlimits
+  und erst danach getrennte Providerentscheidungen festgelegt. Der nächste
+  Schritt ist ein separater Implementierungsplan für den vollständig lokalen,
+  modellfreien und importinaktiven `syncTest`-SyncAgent-Kern.
+- Keinen Produkt-, Test- oder Servercode, keinen Transport, Provideradapter,
+  externen Datenfluss, Workflow, Webhook, Credential oder Secret ergänzt.
+  Contractfelder, Validatorregeln, Evidence-Schema und feste Evidence-Werte
+  bleiben unverändert. Bis zur späteren Gateway-/SyncAgent-Komposition enden
+  lokal akzeptierte Requests weiterhin statisch mit HTTP `503`.
+- Den unveränderten technischen Stand lokal erneut verifiziert: vollständige
+  serielle Suite mit 1212/1212 Tests, 0 Fehlschlägen, 0 Skips und 0 Todos;
+  erfolgreicher Produktions-Build mit exakt 46 transformierten Modulen;
+  Bundle-Check driftfrei und `git diff --check` erfolgreich.
 
 ### n8n Cloud Ingress & Runtime Evidence Gate Foundation / ADR 0022
 
