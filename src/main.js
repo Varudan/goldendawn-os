@@ -189,8 +189,8 @@ appRoot.innerHTML = `
       </nav>
 
       <footer class="sidebar-footer">
-        <span>LichtwaldLog Local MVP</span>
-        <strong>– v0.2.2</strong>
+        <span>Release v0.2.2</span>
+        <strong>· v0.3.0 in Entwicklung</strong>
       </footer>
     </aside>
 
@@ -293,15 +293,19 @@ function renderCommandCenter() {
     <section class="focus-panel" aria-labelledby="focus-title">
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
-        <h2 id="focus-title">v0.2.2 – LichtwaldLog Local MVP veröffentlicht</h2>
-        <p>Das vollständig umgesetzte, geprüfte und als v0.2.2 veröffentlichte LichtwaldLog umfasst den privaten lokalen Pfad und die strikt getrennte synthetische In-Memory-Demo mit CRUD, expliziter Fokusverwaltung, Suche und Filtern – weiterhin ohne externe Kommunikation.</p>
+        <h2 id="focus-title">v0.3.0 – Local SyncAgent and Transport Foundation</h2>
+        <p>ADR 0023 und die lokalen Sync-Foundations sind umgesetzt. Der lokale SyncAgent-Kern ist noch nicht implementiert; es gibt keinen externen Produktdatenfluss. Optionale Provider folgen erst nach dem vollständig lokalen Pfad.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
-          <span>Veröffentlicht</span>
-          <strong>LichtwaldLog Local MVP vollständig geprüft</strong>
+          <span>Status</span>
+          <strong>In Entwicklung</strong>
         </div>
-        <small>Private Einträge liegen unverschlüsselt und browserlokal im localStorage des aktuellen Browserprofils. Es gibt keine Cloud-Sicherung, geräteübergreifende Synchronisierung oder externe Kommunikation.</small>
+        <div class="progress-meta">
+          <span>Veröffentlicht</span>
+          <strong>v0.2.2 – LichtwaldLog Local MVP</strong>
+        </div>
+        <small>Private Einträge liegen unverschlüsselt und browserlokal im localStorage des aktuellen Browserprofils. Es gibt keine Cloud-Sicherung oder geräteübergreifende Synchronisierung; diese lokalen Daten liegen nicht in einem externen Syncpfad.</small>
       </div>
     </section>
 
@@ -309,10 +313,10 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Projektschritt</span>
-        <h2 id="milestone-title">v0.3.0 – SyncAgent and Webhook Foundation</h2>
-        <p>v0.3.0 ist geplant und noch nicht begonnen. Die erste kontrollierte externe Kommunikationsschicht mit SyncAgent und Webhook bleibt zukünftige Arbeit.</p>
+        <h2 id="milestone-title">Lokaler modell- und providerfreier syncTest-SyncAgent-Kern</h2>
+        <p>Der nächste Slice bleibt strikt lokal, deterministisch und importinaktiv; er verwendet weder Modelle noch Provider.</p>
       </div>
-      <span class="status status--planned">Geplant</span>
+      <span class="status status--next">Als Nächstes</span>
     </aside>
 
     <section class="modules-section" aria-labelledby="modules-title">

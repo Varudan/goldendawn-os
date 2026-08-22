@@ -394,18 +394,52 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   )
   assert.match(
     mainSource,
-    /v0\.2\.2 – LichtwaldLog Local MVP veröffentlicht/u
+    /v0\.3\.0 – Local SyncAgent and Transport Foundation/u
   )
-  assert.match(mainSource, /Veröffentlicht/u)
-  assert.match(mainSource, /LichtwaldLog Local MVP vollständig geprüft/u)
   assert.match(
     mainSource,
-    /v0\.3\.0 – SyncAgent and Webhook Foundation/u
+    /<span>Status<\/span>\s*<strong>In Entwicklung<\/strong>/u
   )
-  assert.match(mainSource, /v0\.3\.0 ist geplant und noch nicht begonnen/u)
-  assert.match(mainSource, /status status--planned">Geplant/u)
-  assert.match(mainSource, /<span>LichtwaldLog Local MVP<\/span>/u)
-  assert.match(mainSource, /<strong>– v0\.2\.2<\/strong>/u)
+  assert.match(
+    mainSource,
+    /<span>Veröffentlicht<\/span>\s*<strong>v0\.2\.2 – LichtwaldLog Local MVP<\/strong>/u
+  )
+  assert.match(
+    mainSource,
+    /ADR 0023 und die lokalen Sync-Foundations sind umgesetzt/u
+  )
+  assert.match(
+    mainSource,
+    /Der lokale SyncAgent-Kern ist noch nicht implementiert/u
+  )
+  assert.match(mainSource, /keinen externen Produktdatenfluss/u)
+  assert.match(
+    mainSource,
+    /Optionale Provider folgen erst nach dem vollständig lokalen Pfad/u
+  )
+  assert.match(
+    mainSource,
+    /Lokaler modell- und providerfreier syncTest-SyncAgent-Kern/u
+  )
+  assert.match(mainSource, /status status--next">Als Nächstes/u)
+  assert.match(mainSource, /<span>Release v0\.2\.2<\/span>/u)
+  assert.match(
+    mainSource,
+    /<strong>· v0\.3\.0 in Entwicklung<\/strong>/u
+  )
+  assert.doesNotMatch(mainSource, /\bWebhook Foundation\b/iu)
+  assert.doesNotMatch(
+    mainSource,
+    /v0\.3\.0[\s\S]{0,80}\bnoch nicht begonnen\b/iu
+  )
+  assert.doesNotMatch(
+    mainSource,
+    /\b(?:operativer|aktiver) SyncAgent\b/iu
+  )
+  assert.doesNotMatch(
+    mainSource,
+    /\bexterner Produktdatenfluss (?:ist|wurde) (?:aktiv|operativ|umgesetzt)\b/iu
+  )
   assert.deepEqual(
     {
       version: packageMetadata.version,
