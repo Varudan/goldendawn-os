@@ -4,11 +4,11 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – Lokaler SyncAgent vor optionalen externen Providern / ADR 0023` |
+| Projektphase | `v0.3.0 – in Arbeit – Local Model-free SyncAgent Core Foundation / ADR 0024` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR 0023 angenommen und ADR 0002/0019 ersetzt; lokaler SyncAgent als künftige Agenten- und Providergrenze entschieden, aber nicht implementiert; n8n/OpenAI/lokales Modell nicht autorisiert; kein Cloudaufruf; Tenantmessung `UNPROVEN`; ursprüngliches n8n-Aktivierungsgate `FAIL` und geschlossen; lokale Annahme endet weiter mit HTTP `503` |
-| Letzte Aktualisierung | 2026-08-21 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR 0023 angenommen und ADR 0002/0019 ersetzt; isolierter synchroner modellfreier SyncAgent-Kern nach ADR 0024 implementiert, aber nicht mit Gateway oder Browser komponiert; n8n/OpenAI/lokales Modell nicht autorisiert; kein Cloudaufruf; Tenantmessung `UNPROVEN`; ursprüngliches n8n-Aktivierungsgate `FAIL` und geschlossen; lokale HTTP-Annahme endet weiter mit `503` |
+| Letzte Aktualisierung | 2026-08-22 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -19,8 +19,8 @@ nicht starre Kalendertermine.
 - Jede Version liefert ein sichtbares und lokal überprüfbares Ergebnis.
 - Eine neue Phase beginnt erst, wenn die Abnahmekriterien der vorherigen Phase
   erfüllt sind.
-- Die aktuelle Implementierungsreihenfolge lautet: **lokaler modellfreier
-  SyncAgent → lokale Gateway-/SyncAgent-Komposition → Browser-End-to-End-
+- Die aktuelle Implementierungsreihenfolge lautet: **lokale Gateway-/SyncAgent-
+  Komposition → Browser-End-to-End-
   `syncTest` → lokale Missbrauchs-, Parallelitäts-, Zeit- und Ressourcenlimits
   → getrennte Providerentscheidungen**.
 - Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
@@ -66,7 +66,7 @@ nicht starre Kalendertermine.
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.3.0` | Local SyncAgent and Transport Foundation | In Arbeit: lokale Foundations und ADR 0023 umgesetzt; nächster Slice ist der lokale modellfreie `syncTest`-SyncAgent-Kern; Provideradapter bleiben unautorisiert, ursprüngliches n8n-Gate `FAIL`/`UNPROVEN` und geschlossen | 🟡 |
+| `v0.3.0` | Local SyncAgent and Transport Foundation | In Arbeit: lokale Foundations, ADR 0023, ADR 0024 und der isolierte modellfreie `syncTest`-SyncAgent-Kern sind umgesetzt; nächster Slice ist ausschließlich die kontrollierte lokale Gateway-/SyncAgent-Komposition; Browsertransport und Provideradapter folgen später, das ursprüngliche n8n-Gate bleibt `FAIL`/`UNPROVEN` und geschlossen | 🟡 |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
 | `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
@@ -613,8 +613,8 @@ eine spätere Phase geplant.
 
 ### Aktueller Stand
 
-`v0.3.0` ist **in Arbeit – Lokaler SyncAgent vor optionalen externen Providern
-/ ADR 0023**.
+`v0.3.0` ist **in Arbeit – Local Model-free SyncAgent Core Foundation / ADR
+0024**.
 Die SyncContract Foundation für Version `1.0`, die Aktion
 `syncTest` und den Handler `SyncAgent`, die asynchrone SyncService Foundation,
 die synchrone transportneutrale SyncGateway Request Boundary, der separate
@@ -625,14 +625,18 @@ Foundation; sie hat keinen n8n-Cloud-Aufruf ausgeführt und keinen Tenant
 verändert.
 
 ADR 0023 ist als reine Dokumentationsentscheidung angenommen und ersetzt ADR
-0002 sowie ADR 0019. Der lokale SyncAgent wird die verbindliche Policy-,
+0002 sowie ADR 0019. ADR 0024 ergänzt diese Topologie um den implementierten,
+vollständig lokalen, synchronen, importinaktiven und modellfreien
+`syncTest`-SyncAgent-Kern. Der lokale SyncAgent ist die verbindliche Policy-,
 Validierungs-, Routing- und Antwortgrenze des Agentensystems hinter dem lokalen
 SyncGateway. Der für den ersten Agentenslice entschiedene `syncTest` wird
-vollständig lokal, deterministisch, modellfrei, providerfrei und
-nebenwirkungsfrei beantwortet. n8n Cloud, self-hosted n8n, OpenAI und lokale
-Modelle sind ausschließlich optionale spätere Provider; keiner ihrer Adapter
-ist autorisiert oder implementiert. Browser und SyncRequest wählen weder
-Provider, Modell, Workflow, Endpoint noch Umgebung.
+vollständig lokal, deterministisch, modellfrei und providerfrei ohne eigene
+fachliche, Provider- oder Persistenzwirkung beantwortet. n8n Cloud,
+self-hosted n8n, OpenAI und lokale Modelle sind ausschließlich optionale
+spätere Provider; keiner ihrer Adapter ist autorisiert oder implementiert.
+Browser und SyncRequest wählen weder
+Provider, Modell, Workflow, Endpoint noch Umgebung. Der Kern ist weder mit dem
+lokalen SyncGateway noch mit dem Browserpfad komponiert.
 
 Der Request-Payload ist exakt leer; erfolgreiche Responses sind auf
 `dataOrigin: "synthetic"` begrenzt. Dieser Wert ist nur eine
@@ -666,8 +670,9 @@ Beide commitgebundenen Teilgates und damit das aktuelle Aktivierungsgate sind
 `UNPROVEN` halten das Gate gleichermaßen geschlossen.
 
 Nicht implementiert oder komponiert sind Browser-SyncTransport, lokale
-Gateway-/SyncAgent-Komposition, operativer `SyncAgent`, normale SyncResponse,
-ModelProvider- oder WorkflowProvider-Adapter, produktiver oder komponierter
+Gateway-/SyncAgent-Komposition, operativ erreichbarer `SyncAgent`, eine über
+HTTP oder Browser erreichbare normale SyncResponse, ModelProvider- oder
+WorkflowProvider-Adapter, produktiver oder komponierter
 Cloudtransport, n8n-Webhook oder -Workflow, produktives Credential oder Secret,
 Boundary-Bundle-Komposition, Rate Limits, Retries, Replay-, Idempotenz- oder
 Deduplizierungsschicht, Hub-UI, Persistenz, Requestlogs, Telemetrie und
@@ -1152,14 +1157,75 @@ ADR 0022 bleibt unverändert angenommen und dokumentiert den gescheiterten
 beziehungsweise unbewiesenen ursprünglichen n8n-Ingresspfad. Seine Evidenz ist
 keine Freigabe eines optionalen WorkflowProvider-Adapters.
 
+### Abgeschlossene Grundlage: Local Model-free SyncAgent Core / ADR 0024
+
+- ✅ `src/agents/syncAgent.js` exportiert ausschließlich
+  `createSyncAgent({ getCurrentTimestamp = defaultUtcClock } = {})`; die
+  frische eingefrorene API enthält exakt die synchrone Einargumentmethode
+  `processSyncRequest`.
+- ✅ Jeder beherrschte Aufruf liefert einen frischen tief eingefrorenen
+  Vier-Felder-Result.
+  Erfolg verwendet `syncResponseCreated`; `invalidInvocation`,
+  `syncRequestRejected` und `agentFailed` bleiben getrennte statische lokale
+  Profile ohne Request-ID-, Validator- oder Exceptionleak.
+- ✅ Die Clock wird auf jedem zulässigen Einargumentpfad exakt einmal als
+  primitiver String erfasst. Eine ungültige Referenzzeit besitzt Vorrang;
+  `durationMs: 0` ist statisch und ungemessen.
+- ✅ Der unveränderte Input wird zuerst validiert. Danach entsteht eine frische
+  descriptorbasierte Sechs-Felder-Projektion mit neuem leerem Payload, die vor
+  und nach ihrem Deep Freeze erneut validiert wird. Calleridentitäten werden
+  weder übernommen noch eingefroren.
+- ✅ Die private Allowlist enthält ausschließlich `syncTest`. Die neue
+  korrelierte synthetische Erfolgsresponse wird vor und nach ihrem Deep Freeze
+  gegen denselben internen Request validiert und enthält exakt
+  `handledBy: "SyncAgent"`, `warnings: []`, `dataOrigin: "synthetic"`,
+  `durationMs: 0` und `processedBy: ["SyncAgent"]`.
+- ✅ Bei erfolgreicher Modulevaluation erfasste private Referenzen auf
+  `Object.freeze`, `Object.isFrozen`, `Object.getPrototypeOf`,
+  `Object.getOwnPropertyDescriptor`, `Object.hasOwn` und `Reflect.ownKeys` sowie
+  die `Object.prototype`-Identität sichern den terminalen Verifier für Factory-
+  API, Errorrecords, Failure- und Success-Results sowie sämtliche tatsächlichen
+  Frozen-Prüfungen ab. Interne Request-/Response-Reflection und
+  `Object.freeze` bleiben live; ein beobachteter Reflection-/Freeze-Throw,
+  No-op, eine Mutation oder Inkonsistenz endet redigiert mit `agentFailed`.
+- ✅ Der Modulimport startet nichts. Die Factory ruft die aufgelöste
+  Clockfunktion nicht auf und startet selbst kein I/O, keinen Timer und keinen
+  Providerpfad. Ihre Parameterdestrukturierung löst jedoch die
+  vertrauenswürdige Composition-Property `getCurrentTimestamp` auf; ein
+  Accessor oder Proxy im Container kann deshalb während der Factory-Erzeugung
+  ausgeführt werden oder werfen, außerhalb des Methoden-Resultvertrags. Erst
+  `processSyncRequest` mit exakt einem Argument ruft die aufgelöste
+  Clockfunktion genau einmal auf. Es gibt keine `src/main.js`- oder Gateway-
+  Komposition.
+- ✅ Bereits vor der Modulevaluation kompromittierte Primordials, veränderter
+  Modulcode oder lexikalische Bindungen, eine kompromittierte JavaScript-
+  Engine, OOM oder Prozessabbruch sowie beliebig koordinierte Manipulation
+  sämtlicher Reflection-Intrinsics bleiben ausdrücklich außerhalb der
+  Garantie. Same-Realm-Ausführung und Deep Freeze sind keine Sandbox.
+- ✅ Die gezielte neue Suite besteht mit 103/103 Tests, die vier kombinierten
+  Sync-Suites mit 245/245 Tests und die vollständige serielle Suite mit
+  1315/1315 Tests, jeweils bei 0 Fehlschlägen, 0 Skips und 0 Todos. Der
+  Produktions-Build transformiert weiterhin exakt 46 Module; der schreibfreie
+  n8n-Bundle-Driftcheck besteht.
+
+### Portfolio-Nachweis des isolierten SyncAgent-Kerns
+
+- synchroner modell- und providerfreier `syncTest`-Kern mit klarer öffentlicher
+  API und statischen lokalen Resultprofilen;
+- mutationswirksame Nachweise für Arity, Clock, Originalvalidierung,
+  Projektion, Korrelation, Freeze, Revalidierung, Redaction und disjunkte
+  Objektgraphen;
+- kein externer Datenfluss und keine operative Erreichbarkeit: Der HTTP-Pfad
+  bleibt bis zur nächsten getrennten Komposition bei `503`.
+
 ### Verbindliche Slice-Reihenfolge innerhalb von v0.3.0
 
 1. ✅ **ADR 0023 – lokaler SyncAgent, optionale Provider:** neue Zieltopologie,
    Vertrauenszonen, Providerrolle und Reihenfolge entschieden; ADR 0002 und ADR
    0019 formal ersetzt.
-2. ⬜ **Vollständig lokaler SyncAgent-Kern:** einen logisch getrennten,
-   importinaktiven, deterministischen und modellfreien Kern ausschließlich für
-   den leeren synthetischen `syncTest` implementieren. ModelProvider,
+2. ✅ **Vollständig lokaler SyncAgent-Kern:** logisch getrennten,
+   importinaktiven, synchronen und modellfreien Kern ausschließlich für den
+   leeren synthetischen `syncTest` nach ADR 0024 implementiert. ModelProvider,
    WorkflowProvider oder externe Adapter sind keine Dependencies dieses Kerns.
 3. ⬜ **Getrennte lokale Komposition:** lokales SyncGateway und lokalen
    SyncAgent kontrolliert komponieren, ohne einen zweiten Listener, eine neue
@@ -1595,25 +1661,26 @@ das Generated n8n Boundary Bundle und die lokale, standardmäßig
 netzwerkinaktive n8n Cloud Ingress & Runtime Evidence Gate Foundation
 implementiert. ADR 0023 ist angenommen, ersetzt ADR 0002 sowie ADR 0019 und
 entscheidet den lokalen SyncAgent hinter dem lokalen SyncGateway als
-verbindliche Agenten- und Providergrenze. Der erste `syncTest` wird dort später
-vollständig lokal, deterministisch, modellfrei, providerfrei und
-nebenwirkungsfrei beantwortet. Der veröffentlichte `v0.2.2`-Umfang bleibt
+verbindliche Agenten- und Providergrenze. ADR 0024 implementiert den isolierten
+synchronen, modell- und providerfreien `syncTest`-Kern; er ist noch nicht mit
+Gateway oder Browser komponiert. Der veröffentlichte `v0.2.2`-Umfang bleibt
 vollständig lokal. Es wurde kein Cloudrequest ausgeführt; weder Listener noch
 Evidence-Tool besitzen einen Browser-, Produkt- oder komponierten
 Cloudtransport oder eine `src/main.js`-Komposition. Das Evidence-Tool enthält
 ausschließlich den standardmäßig inaktiven, synthetischen und manuell
 freizugebenden Test-URL-Probeadapter. Daher bestehen weiterhin kein
-Produktdatenfluss, kein operativer `SyncAgent`, kein Provideradapter und keine
+Produktdatenfluss, kein operativ erreichbarer `SyncAgent`, kein Provideradapter und keine
 Airtable-Anbindung. Lokal akzeptierte Requests enden bis zur tatsächlichen
 Gateway-/SyncAgent-Komposition weiterhin mit HTTP `503`.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein allgemeines Fachbackend,
-Benutzerkonten und Agentenlogik bleiben offen beziehungsweise beginnen erst in
+Benutzerkonten und weitere Agentenlogik bleiben offen beziehungsweise beginnen erst in
 den dafür vorgesehenen späteren Slices und Versionen. Der nächste konkrete
-Schritt ist ein **separater Implementierungsplan für den vollständig lokalen,
-modellfreien und importinaktiven `syncTest`-SyncAgent-Kern**. Danach folgen die
-getrennte Gateway-/SyncAgent-Komposition, der Browser-SyncTransport und lokale
+Schritt ist ausschließlich die **kontrollierte lokale Gateway-/SyncAgent-
+Komposition**. Sie verbindet nur das vorhandene Gateway mit dem isolierten
+Kern; Browser-SyncTransport und Provider bleiben außerhalb. Danach folgen der
+Browser-SyncTransport und lokale
 End-to-End-`syncTest`, lokale Missbrauchs-, Parallelitäts-, Zeit- und
 Ressourcenlimits und erst anschließend getrennte Providerentscheidungen.
 

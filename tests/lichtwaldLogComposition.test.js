@@ -406,12 +406,13 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   )
   assert.match(
     mainSource,
-    /ADR 0023 und die lokalen Sync-Foundations sind umgesetzt/u
+    /ADR 0023, die lokalen Sync-Foundations und der isolierte modellfreie SyncAgent-Kern sind umgesetzt/u
   )
   assert.match(
     mainSource,
-    /Der lokale SyncAgent-Kern ist noch nicht implementiert/u
+    /Der Kern ist noch nicht mit dem lokalen Gateway komponiert/u
   )
+  assert.match(mainSource, /ein Browsertransport fehlt/u)
   assert.match(mainSource, /keinen externen Produktdatenfluss/u)
   assert.match(
     mainSource,
@@ -419,8 +420,17 @@ test('komponiert LichtwaldLog in main über den gemeinsamen Adapter und schützt
   )
   assert.match(
     mainSource,
-    /Lokaler modell- und providerfreier syncTest-SyncAgent-Kern/u
+    /Kontrollierte lokale Gateway-\/SyncAgent-Komposition/u
   )
+  assert.match(
+    mainSource,
+    /verbindet ausschließlich das lokale Gateway mit dem isolierten SyncAgent-Kern/u
+  )
+  assert.match(
+    mainSource,
+    /Browsertransport und optionale Provider bleiben außerhalb/u
+  )
+  assert.doesNotMatch(mainSource, /\bcreateSyncAgent\b/u)
   assert.match(mainSource, /status status--next">Als Nächstes/u)
   assert.match(mainSource, /<span>Release v0\.2\.2<\/span>/u)
   assert.match(
