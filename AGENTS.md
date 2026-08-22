@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – in Arbeit – ADR 0023 Local SyncAgent before Optional Providers Decision`
+Aktueller Stand: `v0.3.0 – in Arbeit – ADR 0024 Local Model-free SyncAgent Core Foundation`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -117,8 +117,8 @@ Dieser Wert ist nur eine Vertragsklassifikation und kein Herkunfts- oder
 Datenschutzbeweis. `v0.2.2` bleibt vollständig lokal. Die Boundary selbst
 besitzt weiterhin keinen HTTP-Handler und ist nicht in `src/main.js` komponiert.
 Aktuell ist
-`v0.3.0 – in Arbeit – ADR 0023 Local SyncAgent before Optional Providers
-Decision`. ADR 0023 ersetzt ADR 0002 und ADR 0019 und übernimmt deren weiterhin
+`v0.3.0 – in Arbeit – ADR 0024 Local Model-free SyncAgent Core Foundation`.
+ADR 0023 ersetzt ADR 0002 und ADR 0019 und übernimmt deren weiterhin
 gültigen Kern: Der `SyncService` bleibt die einzige Kommunikationsschicht des
 Browsers, der lokale `SyncAgent` der einzige Einstieg und Router des
 Agentensystems, UI und Browser wählen weder Fachagent noch Provider direkt und
@@ -131,6 +131,16 @@ Boundary-Quellen sowie des gepflegten nichtfachlichen Entry ein deterministisch
 erzeugtes, direkt bindbares Expression-IIFE mit der exakt eingefrorenen API
 `{ createSyncGatewayRequestBoundary }`, ein SHA-256-Integritätsmanifest sowie
 Generator-, Check-, Snapshot-/ABA-, Outputpfad-, Paritäts- und Mutationstests.
+
+ADR 0024 ergänzt ADR 0023 und implementiert den vollständig lokalen,
+synchronen, modell- und providerfreien `syncTest`-SyncAgent-Kern in
+`src/agents/syncAgent.js`. Der Kern ist importinaktiv, besitzt keine Provider-
+oder Transportdependency und ist weder mit dem lokalen SyncGateway noch mit
+dem Browserpfad komponiert. Seine gezielte Suite besteht mit 103/103 Tests, die
+vier kombinierten Sync-Suites mit 245/245 Tests und die vollständige serielle
+Suite mit 1315/1315 Tests, jeweils ohne Fehlschlag, Skip oder Todo. Der
+Produktions-Build transformiert weiterhin exakt 46 Module und der schreibfreie
+n8n-Bundle-Driftcheck besteht.
 
 ADR 0022 ergänzt nun die lokale, importseitig und standardmäßig
 netzwerkinaktive n8n Cloud Ingress & Runtime Evidence Gate Foundation. Es wurde
@@ -145,11 +155,13 @@ aktuelle Aktivierungsgate sind `FAIL`; sie sind keine Tenantbehauptung.
 
 Das Boundary-Artefakt bleibt ein korrektes, aber derzeit nicht komponiertes und
 nicht aktiviertes n8n-Derivat; das Evidence-Tool komponiert es ausdrücklich
-nicht. Lokaler Browser-SyncTransport, lokaler `SyncAgent`-Kern, kontrollierte
-Gateway-/SyncAgent-Komposition und normale Erfolgsresponse sind weiterhin nicht
-implementiert. OpenAI-, lokaler Modell- und n8n-Adapter sind weder autorisiert
-noch implementiert. Lokal akzeptierte Requests enden bis zur tatsächlichen
-Gateway-/SyncAgent-Komposition weiterhin mit dem statischen HTTP-Status `503`.
+nicht. Lokaler Browser-SyncTransport und kontrollierte Gateway-/SyncAgent-
+Komposition sind weiterhin nicht implementiert. Der isolierte Kern kann eine
+normale Erfolgsresponse erzeugen, sie ist über den HTTP- oder Browserpfad aber
+nicht erreichbar. OpenAI-, lokaler Modell- und n8n-Adapter sind weder
+autorisiert noch implementiert. Lokal akzeptierte Requests enden bis zur
+tatsächlichen Gateway-/SyncAgent-Komposition weiterhin mit dem statischen
+HTTP-Status `503`.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -203,6 +215,11 @@ Innerhalb dieses Pfads gilt verbindlich folgende Implementierungsreihenfolge:
 8. private Daten, weitere Aktionen, Tools und Nebenwirkungen folgen nur nach
    neuen Contract-, Identitäts-, Berechtigungs-, Replay-, Idempotenz- und
    Datenschutzentscheidungen.
+
+Die Schritte 1 und 2 sind mit ADR 0023 beziehungsweise ADR 0024 abgeschlossen.
+Der nächste Slice ist ausschließlich Schritt 3, die kontrollierte lokale
+Gateway-/SyncAgent-Komposition; Browsertransport und Provider bleiben dabei
+außerhalb.
 
 Implementiere keine spätere Phase vorzeitig, sofern die Aufgabe dies nicht
 ausdrücklich verlangt und die dafür notwendige Architekturentscheidung nicht
@@ -293,6 +310,73 @@ Defaultpfad ist ausschließlich `gateway_ + crypto.randomUUID()` ohne
 schwächeren Fallback. Beobachtbare Exceptions werden redigiert, bereits
 ausgelöste Seiteneffekte können aber nicht verhindert oder rückgängig gemacht
 werden. Deep Freeze ist keine Sandbox.
+
+Der implementierte isolierte **Local Model-free SyncAgent Core** stellt
+`createSyncAgent({ getCurrentTimestamp = defaultUtcClock } = {})` bereit. Die
+Factory liefert eine frische gewöhnliche und eingefrorene API mit exakt
+`{ processSyncRequest }`. Die synchrone Methode besitzt genau einen formalen
+Parameter, akzeptiert exakt ein Argument und liefert bei jedem beherrschten
+Aufruf einen frischen, tief eingefrorenen Vier-Felder-Result
+`{ ok, status, syncResponse, error }`.
+Lokale Fehler verwenden ausschließlich die statischen Profile
+`invalidInvocation`, `syncRequestRejected` und `agentFailed`; sie sind keine
+SyncContract-Responses und enthalten weder Request-ID noch Validator-,
+Dependency- oder Exceptiondetails.
+
+Unmittelbar nach den Imports erfasst das Modul bei erfolgreicher Evaluation
+private Referenzen auf `Object.freeze`, `Object.isFrozen`,
+`Object.getPrototypeOf`, `Object.getOwnPropertyDescriptor`, `Object.hasOwn` und
+`Reflect.ownKeys` sowie die gewöhnliche `Object.prototype`-Identität. Die
+erfassten Reflection-Referenzen verwendet ausschließlich der terminale
+Verifier für Factory-API, Errorrecords sowie Failure- und Success-Results; die
+Freeze-Referenz friert diese Records ein und die Frozen-Referenz prüft sämtliche
+tatsächlichen Frozen-Zustände. Der terminale Verifier verwendet weder live
+aufgelöste `Object.*`-/`Reflect.*`-Methoden noch Array-Prototypmethoden oder
+Iteratoren. Er bestätigt descriptor-basiert gewöhnlichen Prototyp, exakte Own
+Keys, ausschließlich aufzählbare Dateneigenschaften, feste Werte,
+erforderliche Identitäten und den tatsächlichen Freeze-Zustand. Eine nach dem
+Import ersetzte globale terminale Reflection-, Freeze- oder Frozen-Funktion
+kann deshalb keine mutable oder korrumpierte terminale API, keinen solchen
+Errorrecord und keinen solchen Result erzeugen.
+
+Bei genau einem Argument wird die Clock exakt einmal als primitiver String
+erfasst. Eine ungültige Referenzzeit hat `agentFailed`-Vorrang. Der unveränderte
+Callerwert wird zuerst validiert. Erst danach entsteht descriptor-basiert ein
+gewöhnlicher Sechs-Felder-Request mit frischem exakt leerem Payload; er wird
+validiert, tief eingefroren und final erneut mit derselben Referenzzeit
+validiert. Die private Allowlist enthält ausschließlich `syncTest`. Die daraus
+neu erzeugte Erfolgsresponse verwendet `handledBy: "SyncAgent"`,
+`dataOrigin: "synthetic"`, leere `warnings`, statisches ungemessenes
+`durationMs: 0` und `processedBy: ["SyncAgent"]`; sie wird gegen den stabilen
+internen Request validiert, tief eingefroren und final erneut validiert. Der
+Kern übernimmt keine Caller-Record- oder Arrayidentität und verändert oder
+friert den Callergraphen nicht.
+
+Die internen Request- und Response-Prüfungen lösen ihre Reflection weiterhin
+live auf; auch ihre Freezes lösen `Object.freeze` live auf. Ihren tatsächlichen
+Freeze-Zustand prüft ausschließlich die beim Import erfasste
+`Object.isFrozen`-Referenz. Jeder beobachtete interne Reflection- oder Freeze-
+Throw, Freeze-No-op, jede Mutation oder andere Inkonsistenz führt statisch
+redigiert zu `agentFailed`.
+
+Der Modulimport startet keine Verarbeitung. Die Factory ruft die aufgelöste
+Clockfunktion nicht auf und startet selbst weder I/O, Timer, Netzwerk,
+Listener, IPC noch einen Providerpfad. Ihre Parameterdestrukturierung löst
+jedoch die vertrauenswürdige Composition-Property `getCurrentTimestamp` auf;
+ein Accessor oder Proxy im übergebenen Container kann deshalb während der
+Factory-Erzeugung ausgeführt werden oder werfen. Das liegt außerhalb des
+Methoden-Resultvertrags. Erst `processSyncRequest` mit exakt einem Argument
+ruft die aufgelöste Clockfunktion genau einmal auf. Der Kern liest PromptVault,
+LearningHub, LichtwaldLog und GoldenDawn-Vault nicht, protokolliert nichts und
+besitzt keine Provider-, Modell-, Workflow-, Persistenz- oder Toolwirkung.
+
+Nicht garantiert werden bereits vor der Modulevaluation kompromittierte
+Primordials, veränderter Modulcode oder lexikalische Bindungen, eine
+kompromittierte JavaScript-Engine, OOM oder Prozessabbruch sowie beliebig
+koordinierte Manipulation sämtlicher Reflection-Intrinsics. Same-Realm-
+Ausführung und Deep Freeze sind keine Sandbox; beobachtete Proxy-, Projektions-,
+Freeze- oder Revalidierungsinkonsistenzen stoppen statisch redigiert
+fail-closed.
 
 `validateSyncRawBodySize` begrenzt weiterhin nur die berechnete UTF-8-Länge
 eines bereits allozierten JavaScript-Strings. ADR 0020 ergänzt davor die

@@ -8,6 +8,79 @@ Release.
 
 ## Unveröffentlicht – v0.3.0 in Arbeit – Lokaler SyncAgent vor optionalen externen Providern
 
+### Local Model-free SyncAgent Core Foundation / ADR 0024
+
+- ADR 0024 am `2026-08-22` angenommen. Die Entscheidung ergänzt ADR 0023,
+  ersetzt keinen bestehenden ADR und friert ausschließlich Modulort,
+  JavaScript-API, Synchronität, lokalen Resultvertrag, Clock- und
+  `durationMs`-Semantik, Revalidierungsfolge, erfolgreiche lokale
+  `syncTest`-Response sowie Importinaktivität und fehlende Komposition ein.
+- `src/agents/syncAgent.js` als vollständig lokalen, modell- und providerfreien
+  Kern ergänzt. Das Modul exportiert exakt `createSyncAgent`; die Factory
+  `createSyncAgent({ getCurrentTimestamp = defaultUtcClock } = {})` liefert
+  eine frische gewöhnliche und eingefrorene API exakt mit
+  `processSyncRequest`.
+- `processSyncRequest(syncRequest)` synchron mit genau einem formalen Parameter
+  und exakt einem zulässigen Argument umgesetzt. Die Methode liefert niemals
+  ein Promise oder Thenable. Jeder Aufruf erzeugt einen frischen, gewöhnlichen
+  und tief eingefrorenen Vier-Felder-Result aus exakt `ok`, `status`,
+  `syncResponse` und `error`; `syncResponseCreated`, `invalidInvocation`,
+  `syncRequestRejected` und `agentFailed` bleiben statisch getrennt.
+- Auf jedem zulässigen Einargumentpfad die Clock exakt einmal ausgewertet. Nur
+  ein primitiver String wird unverändert als Referenzzeit und Response-
+  `timestamp` übernommen; Clock-, Referenzzeit- und unerwartete interne Fehler
+  werden statisch redigiert. `durationMs: 0` bleibt ausdrücklich ein statischer,
+  ungemessener Wert ohne zweite Clock oder Timer.
+- Den unveränderten Caller-Request vor jeder Projektion vollständig validiert.
+  Erst danach entsteht descriptor-basiert eine frische Sechs-Felder-Projektion
+  mit neuem exakt leerem Payload; sie wird validiert, tief eingefroren und final
+  erneut validiert. Die neue normale Erfolgsresponse wird gegen denselben
+  stabilen internen Request validiert, tief eingefroren und final erneut
+  validiert. Fremde Record- oder Arrayidentitäten werden nicht übernommen.
+- Bei erfolgreicher Modulevaluation private Referenzen auf `Object.freeze`,
+  `Object.isFrozen`, `Object.getPrototypeOf`,
+  `Object.getOwnPropertyDescriptor`, `Object.hasOwn` und `Reflect.ownKeys` sowie
+  die gewöhnliche `Object.prototype`-Identität erfasst. Ausschließlich der
+  terminale Verifier für Factory-API, Errorrecords sowie Failure- und Success-
+  Results verwendet die erfassten Reflection-Referenzen und prüft ohne live
+  Array-Prototypmethoden oder Iteratoren exakte Datenfelder, feste Werte,
+  Identitäten und tatsächlichen Freeze-Zustand. Interne Request-/Response-
+  Reflection und `Object.freeze` bleiben live; beobachtete Reflection- oder
+  Freeze-Throws, No-ops, Mutationen oder Inkonsistenzen führen redigiert zu
+  `agentFailed`. Nach dem Import ersetzte globale terminale Reflection-,
+  Freeze- oder Frozen-Funktionen können keine mutable oder korrumpierte
+  terminale Ausgabe erzeugen.
+- Ausschließlich die erfolgreiche, korrelierte und synthetische `syncTest`-
+  Response mit `handledBy: "SyncAgent"`, `processedBy: ["SyncAgent"]`, leeren
+  `warnings`, `error: null` und `durationMs: 0` erzeugt. Lokale Ablehnungen und
+  interne Fehler bleiben statische lokale Results und werden nicht in normale
+  Contract-Fehlerresponses umgeschrieben.
+- Der Modulimport startet nichts. Die Factory ruft die aufgelöste Clockfunktion
+  nicht auf und startet selbst kein I/O, keinen Timer und keinen Providerpfad;
+  ihre Parameterdestrukturierung löst jedoch die vertrauenswürdige
+  Composition-Property `getCurrentTimestamp` auf. Ein Accessor oder Proxy im
+  Container kann deshalb während der Factory-Erzeugung ausgeführt werden oder
+  werfen; dies liegt außerhalb des Methoden-Resultvertrags. Erst
+  `processSyncRequest` mit exakt einem Argument ruft die aufgelöste
+  Clockfunktion genau einmal auf. Der Kern besitzt keinen Transport-, Provider-,
+  Modell-, Workflow-, Storage-, Logging- oder privaten Modulpfad und ist weder
+  mit dem lokalen SyncGateway noch mit dem Browser komponiert. Lokal akzeptierte
+  HTTP-Requests enden weiterhin statisch mit `503`; es existiert kein externer
+  Produktdatenfluss.
+- Ausdrücklich nicht garantiert sind vor der Modulevaluation kompromittierte
+  Primordials, veränderter Modulcode oder lexikalische Bindungen, eine
+  kompromittierte JavaScript-Engine, OOM oder Prozessabbruch und beliebig
+  koordinierte Manipulation sämtlicher Reflection-Intrinsics. Same-Realm-
+  Ausführung und Deep Freeze bleiben keine Sandbox.
+- Die Command-Center-Copy auf den implementierten isolierten Kern aktualisiert.
+  Nächster Slice ist ausschließlich die kontrollierte lokale Gateway-/SyncAgent-
+  Komposition; Browsertransport und optionale Provider bleiben außerhalb.
+- Die gezielte SyncAgent-Suite besteht mit 103/103 Tests, die vier kombinierten
+  Sync-Suites mit 245/245 Tests und die vollständige serielle Suite mit
+  1315/1315 Tests, jeweils bei 0 Fehlschlägen, 0 Skips und 0 Todos. Der
+  Produktions-Build transformiert weiterhin exakt 46 Module; der schreibfreie
+  n8n-Bundle-Driftcheck besteht.
+
 ### Lokaler SyncAgent vor optionalen externen Providern / ADR 0023
 
 - ADR 0023 am `2026-08-21` als dokumentarische Architektur- und

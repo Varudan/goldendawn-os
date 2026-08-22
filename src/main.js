@@ -294,7 +294,7 @@ function renderCommandCenter() {
       <div>
         <span class="eyebrow">Aktueller Fokus</span>
         <h2 id="focus-title">v0.3.0 – Local SyncAgent and Transport Foundation</h2>
-        <p>ADR 0023 und die lokalen Sync-Foundations sind umgesetzt. Der lokale SyncAgent-Kern ist noch nicht implementiert; es gibt keinen externen Produktdatenfluss. Optionale Provider folgen erst nach dem vollständig lokalen Pfad.</p>
+        <p>ADR 0023, die lokalen Sync-Foundations und der isolierte modellfreie SyncAgent-Kern sind umgesetzt. Der Kern ist noch nicht mit dem lokalen Gateway komponiert, und ein Browsertransport fehlt; es gibt keinen externen Produktdatenfluss. Optionale Provider folgen erst nach dem vollständig lokalen Pfad.</p>
       </div>
       <div class="phase-progress">
         <div class="progress-meta">
@@ -313,8 +313,8 @@ function renderCommandCenter() {
       <span class="milestone-icon" aria-hidden="true">→</span>
       <div>
         <span class="eyebrow">Nächster Projektschritt</span>
-        <h2 id="milestone-title">Lokaler modell- und providerfreier syncTest-SyncAgent-Kern</h2>
-        <p>Der nächste Slice bleibt strikt lokal, deterministisch und importinaktiv; er verwendet weder Modelle noch Provider.</p>
+        <h2 id="milestone-title">Kontrollierte lokale Gateway-/SyncAgent-Komposition</h2>
+        <p>Der nächste Slice verbindet ausschließlich das lokale Gateway mit dem isolierten SyncAgent-Kern; Browsertransport und optionale Provider bleiben außerhalb.</p>
       </div>
       <span class="status status--next">Als Nächstes</span>
     </aside>

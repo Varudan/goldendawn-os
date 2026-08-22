@@ -21,8 +21,8 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; SyncContract, SyncService, SyncGateway Request Boundary, Local SyncGateway, Generated n8n Boundary Bundle sowie netzwerkinaktive n8n Evidence Foundation implementiert; ADR 0023 entscheidet den künftigen lokalen SyncAgent vor optionalen Providern, ohne Vertragsfelder oder Schemawerte zu ändern; n8n Stable OSS `FAIL`, Tenantmessung `UNPROVEN`, Aktivierung geschlossen; Browsertransport, lokaler SyncAgent und Provideradapter weiterhin geplant |
-| Letzte Aktualisierung | 2026-08-21 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; SyncContract, SyncService, SyncGateway Request Boundary, Local SyncGateway, Generated n8n Boundary Bundle, netzwerkinaktive n8n Evidence Foundation sowie der isolierte lokale modellfreie `syncTest`-SyncAgent-Kern implementiert; ADR 0023 entscheidet den lokalen SyncAgent vor optionalen Providern, ADR 0024 konkretisiert ausschließlich dessen isolierten Kern; n8n Stable OSS `FAIL`, Tenantmessung `UNPROVEN`, Aktivierung geschlossen; Browsertransport, Gateway-/SyncAgent-Komposition und Provideradapter weiterhin geplant |
+| Letzte Aktualisierung | 2026-08-22 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
@@ -36,14 +36,14 @@ lokale Such- und Filterableitung und deren Anwendungskomposition in
 transportneutrale SyncGateway Request Boundary für bereits materialisierte
 Raw-Body-Werte, die implementierte lokale Raw-Wire-/HTTP-Foundation auf
 GD-WS01 und das daraus reproduzierbar generierte eigenständige Boundary-
-Artefakt mit seinem SHA-256-Manifest und die lokal netzwerkinaktive Evidence-
-Gate-Foundation aus ADR 0022. ADR 0023 ersetzt den ursprünglich von ADR 0019
-vorgesehenen verpflichtenden n8n-Cloud-Hop durch den künftigen lokalen
+Artefakt mit seinem SHA-256-Manifest, die lokal netzwerkinaktive Evidence-
+Gate-Foundation aus ADR 0022 und den isolierten lokalen modellfreien
+`syncTest`-SyncAgent-Kern aus ADR 0024. ADR 0023 ersetzt den ursprünglich von ADR 0019
+vorgesehenen verpflichtenden n8n-Cloud-Hop durch den lokalen
 SyncAgent vor optionalen capability-spezifischen Providern. Die n8n-Evidenz
 bleibt mit Stable-OSS-`FAIL`, Tenant-`UNPROVEN` und geschlossener Aktivierung
-unverändert. Die
-maschinenlesbare Sprache zwischen GoldenDawn OS, `SyncAgent`, `DataAgent` und
-`TestAgent` bleiben ausdrücklich geplant. Das Dokument konkretisiert die
+unverändert. Weitere maschinenlesbare Aktionen zwischen GoldenDawn OS,
+`SyncAgent`, `DataAgent` und `TestAgent` bleiben ausdrücklich geplant. Das Dokument konkretisiert die
 Grenzen aus `AGENTS.md`, `docs/architecture.md` und `docs/security.md`.
 
 Der lokale PromptVault-Vertrag gilt für den abgeschlossenen Stand von `v0.2.0`.
@@ -77,13 +77,16 @@ Local SyncGateway Raw-Wire and HTTP Foundation auf: Ein explizit gestarteter
 Node-Prozess bindet ausschließlich an `127.0.0.1`, setzt die lokale HTTP- und
 Streamingpolicy durch, dekodiert bestandene Bytes exakt einmal streng als
 UTF-8 und ruft die vorhandene Boundary exakt einmal auf. Ein akzeptierter
-Request endet bewusst mit lokalem HTTP `503`, weil kein Upstream implementiert
+Request endet bewusst mit lokalem HTTP `503`, weil kein Upstream komponiert
 ist. Die Generated n8n Boundary Bundle Foundation ergänzt ausschließlich das
 direkt bindbare Expression-IIFE und dessen Reproduzierbarkeits-, Integritäts-,
 Snapshot-/ABA-, Outputpfad-, Paritäts- und Mutationsprüfungen.
-Browser-SyncTransport, lokaler `SyncAgent`, Gateway-/SyncAgent-Komposition,
-Normalresponse und optionale OpenAI-, lokale Modell- oder n8n-Adapter bleiben
-geplant; es gibt weiterhin keinen externen Datenfluss. Alle LearningTest-, DataAgent- und sonstigen
+Der isolierte lokale modellfreie `syncTest`-SyncAgent-Kern erzeugt inzwischen
+aus einem gültigen Request eine neue validierte und korrelierte synthetische
+Normalresponse. Browser-SyncTransport, Gateway-/SyncAgent-Komposition und
+optionale OpenAI-, lokale Modell- oder n8n-Adapter bleiben geplant; der Kern
+ist operativ nicht erreichbar und es gibt weiterhin keinen externen
+Datenfluss. Alle LearningTest-, DataAgent- und sonstigen
 externen Agentenverträge bleiben Zielzustand späterer Slices beziehungsweise
 Versionen.
 
@@ -2543,24 +2546,24 @@ Der Vertrag soll:
 ### Externe Aktionen des Dashboards
 
 Nur `syncTest` ist als transportneutraler Validatorvertrag, kontrollierter
-argumentloser SyncService-Aufruf und synchrone Request Boundary für einen
-bereits materialisierten Raw-Body-Wert implementiert. Zusätzlich ist der
-lokale Raw-Wire-/HTTP-Handler als separater Loopback-Prozess implementiert,
-aber weder an den Browser noch an einen lokalen SyncAgent komponiert. Deshalb
-gibt es weiterhin keinen externen Aufruf. ADR 0023 ändert den SyncContract
-nicht. Es entscheidet für dieselbe nebenwirkungsfreie synthetische Capability
-den Gesamtpfad `Browser → SyncService → lokaler SyncTransport → lokales
-SyncGateway auf GD-WS01 → lokaler SyncAgent → lokal validierte und korrelierte
-SyncResponse`. Der erste lokale SyncAgent beantwortet `syncTest` vollständig
-lokal und providerfrei; OpenAI, lokale Modelle und n8n sind nur optionale
-spätere Adapter hinter ihm. Aktuell ist ausschließlich die lokale Gateway-
-Grenze bis zur Boundary umgesetzt. Alle LearningTest- und
+argumentloser SyncService-Aufruf, synchrone Request Boundary für einen bereits
+materialisierten Raw-Body-Wert und isolierter synchroner modellfreier
+SyncAgent-Kern implementiert. Zusätzlich ist der lokale Raw-Wire-/HTTP-Handler
+als separater Loopback-Prozess implementiert, aber weder an den Browser noch
+an den SyncAgent-Kern komponiert. Deshalb gibt es weiterhin keinen externen
+Aufruf. ADR 0023 ändert den SyncContract nicht. Es entscheidet für dieselbe
+nebenwirkungsfreie synthetische Capability den Gesamtpfad `Browser →
+SyncService → lokaler SyncTransport → lokales SyncGateway auf GD-WS01 →
+lokaler SyncAgent → lokal validierte und korrelierte SyncResponse`. ADR 0024
+konkretisiert den isolierten Kern, der `syncTest` bereits vollständig lokal
+und providerfrei beantwortet, operativ aber noch nicht erreichbar ist. OpenAI,
+lokale Modelle und n8n sind nur optionale spätere Adapter hinter ihm. Alle LearningTest- und
 DataAgent-Aktionen in diesem Dokument bleiben ausdrücklich geplante
 Zielverträge und werden vom aktuellen SyncContract-Modul nicht akzeptiert.
 
 | Aktion | Zweck | Primärer Handler | Status |
 | --- | --- | --- | --- |
-| `syncTest` | geschlossenes `syncTest`-Vertragsformat kontrolliert bauen, Raw-Wire-Bytes lokal begrenzen, streng einmalig dekodieren, den materialisierten String einmalig parsen und defensiv projizieren sowie künftig lokal durch den SyncAgent beantworten und normal korrelieren | lokaler SyncAgent | Vertragsvalidator, transportneutraler SyncService, SyncGateway Request Boundary und lokaler Loopback-HTTP-Handler implementiert; Browser-SyncTransport, Gateway-/SyncAgent-Komposition, Normalresponse, operativer Agent und Provideradapter sind nicht implementiert |
+| `syncTest` | geschlossenes `syncTest`-Vertragsformat kontrolliert bauen, Raw-Wire-Bytes lokal begrenzen, streng einmalig dekodieren, den materialisierten String einmalig parsen und defensiv projizieren sowie lokal durch den SyncAgent beantworten und normal korrelieren | lokaler SyncAgent | Vertragsvalidator, transportneutraler SyncService, SyncGateway Request Boundary, lokaler Loopback-HTTP-Handler und isolierter modellfreier SyncAgent-Kern mit Normalresponse implementiert; Browser-SyncTransport, Gateway-/SyncAgent-Komposition und Provideradapter sind nicht implementiert |
 | `learningTest.create` | Lerntest erzeugen und Definition sicher speichern | TestAgent | geplant für eine spätere Version |
 | `learningTest.evaluate` | Antworten bewerten und Ergebnis speichern | TestAgent | geplant für eine spätere Version |
 | `learningTest.result.get` | Gespeichertes Testergebnis abrufen | DataAgent | geplant für eine spätere Version |
@@ -2597,13 +2600,14 @@ autonom durch Agenten ausgeführt.
 
 ### Lokaler SyncAgent und optionale Providergrenzen
 
-Der lokale SyncAgent wird die verbindliche Policy-, Validierungs-, Routing-
-und Responsegrenze des Agentensystems. Er akzeptiert ausschließlich die vom
-lokalen Gateway begrenzte und defensiv projizierte Requestform, validiert sie
-defense-in-depth erneut, wendet eine feste Aktions-Allowlist an und erzeugt die
-lokal validierte, mit Version, Aktion und `requestId` korrelierte normale
-SyncResponse. Diese Zuständigkeitsentscheidung ändert keine Felder,
-Validatorregeln oder Fehlerprofile des bestehenden SyncContract.
+Der implementierte isolierte SyncAgent-Kern ist für `syncTest` die lokale
+Validierungs- und Responsegrenze. Er validiert einen übergebenen Request
+defense-in-depth erneut, wendet die feste Aktions-Allowlist mit ausschließlich
+`syncTest` an und erzeugt die lokal validierte, mit Version, Aktion und
+`requestId` korrelierte normale SyncResponse. Die spätere Routerrolle für
+weitere Agenten oder Provider ist nicht Bestandteil dieses Kerns. Diese
+Zuständigkeitsentscheidung ändert keine Felder, Validatorregeln oder
+Fehlerprofile des bestehenden SyncContract.
 
 `ModelProvider` und `WorkflowProvider` bezeichnen nur zwei konzeptionelle
 Klassen späterer capability-spezifischer Ports. Es werden hier keine
@@ -3336,9 +3340,9 @@ vorheriger Body-Allokation, keine DoS-Garantie und keine produktive
 Webhook-Durchsetzung.
 
 ADR 0019 konkretisierte die damals vorgesehene reale Reihenfolge getrennt pro
-Hop. Der lokale Gateway-Hop ist inzwischen als isolierte Server-Foundation
-implementiert; Browserkomposition und lokale Gateway-/SyncAgent-Komposition
-bleiben geplant:
+Hop. Der lokale Gateway-Hop und der modellfreie SyncAgent-Kern sind inzwischen
+jeweils isoliert implementiert; Browserkomposition und lokale
+Gateway-/SyncAgent-Komposition bleiben geplant:
 
 ```text
 HTTP-Request am lokalen Gateway:
@@ -3347,10 +3351,12 @@ Methode, festen Pfad, Content-Type-, Content-Encoding- und Origin/CORS-Regeln pr
 → kontrolliert genau einmal als UTF-8 dekodieren
 → ausschließlich diese Boundary einmal parsen, validieren und projizieren lassen
 → ausschließlich die validierte defensive Projektion für den lokalen SyncAgent bereitstellen
-→ ohne implementierten Upstream kontrolliert mit lokalem HTTP 503 enden
+→ ohne komponierten Upstream kontrolliert mit lokalem HTTP 503 enden
 
-geplant: lokales Gateway → lokaler SyncAgent:
+nächster Slice: lokales Gateway → isolierter lokaler SyncAgent-Kern:
 defensive Projektion kontrolliert an den logisch getrennten lokalen SyncAgent übergeben
+
+im isolierten Kern bereits implementiert:
 → Request defense-in-depth erneut validieren und feste Aktions-Allowlist anwenden
 → syncTest vollständig lokal, deterministisch, synthetisch und providerfrei beantworten
 → normale SyncResponse lokal erzeugen, vollständig validieren und korrelieren
@@ -3420,6 +3426,208 @@ die neu erzeugten gewöhnlichen Snapshots und ist keine Sandbox. Eine
 universelle Proxy-/Thenable-Erkennung und die Behauptung, die Boundary könne
 niemals werfen, blockieren oder beliebigen Dependency-/Runtime-Code
 kontrollieren, werden nicht eingeführt.
+
+## Öffentliche API des Local Model-free SyncAgent Core
+
+`src/agents/syncAgent.js` exportiert ausschließlich die Factory:
+
+```js
+createSyncAgent({
+  getCurrentTimestamp = defaultUtcClock,
+} = {})
+```
+
+Jede erfolgreich abgeschlossene Factory-Erzeugung liefert einen frischen
+gewöhnlichen und eingefrorenen API-Record mit exakt:
+
+```js
+{
+  processSyncRequest
+}
+```
+
+`processSyncRequest(syncRequest)` ist synchron, besitzt genau einen formalen
+Parameter und akzeptiert exakt ein Argument. Der Result liegt unmittelbar vor
+und ist weder Promise noch Thenable. Es gibt keinen generischen `execute`-Pfad
+und kein separates Aktions-, Handler-, Provider-, Modell-, Workflow-,
+Endpoint- oder Payloadargument. Die Clock ist die einzige Dependency.
+
+Bei erfolgreicher Modulevaluation werden unmittelbar nach den Imports private
+Referenzen auf `Object.freeze`, `Object.isFrozen`, `Object.getPrototypeOf`,
+`Object.getOwnPropertyDescriptor`, `Object.hasOwn` und `Reflect.ownKeys` sowie
+die gewöhnliche `Object.prototype`-Identität erfasst. Die erfassten Reflection-
+Referenzen verwendet ausschließlich der terminale Verifier für Factory-API,
+lokale Errorrecords sowie Failure- und Success-Results; er verwendet keine live
+Array-Prototypmethoden oder Iteratoren. Die erfasste Freeze-Referenz friert
+diese Records ein. Die erfasste Frozen-Referenz prüft sämtliche tatsächlichen
+Freeze-Zustände, einschließlich der internen Request- und Response-Snapshots.
+
+### Exakter lokaler SyncAgent-Result
+
+Jeder beherrschte Aufruf liefert einen frischen gewöhnlichen und tief
+eingefrorenen Record mit exakt vier eigenen aufzählbaren Dateneigenschaften:
+
+```js
+{
+  ok,
+  status,
+  syncResponse,
+  error
+}
+```
+
+Ein erfolgreicher Aufruf liefert ausschließlich:
+
+```js
+{
+  ok: true,
+  status: "syncResponseCreated",
+  syncResponse: {
+    version: internalRequest.version,
+    success: true,
+    requestId: internalRequest.requestId,
+    action: internalRequest.action,
+    handledBy: "SyncAgent",
+    timestamp: capturedTimestamp,
+    data: {
+      status: "ok",
+      dataOrigin: "synthetic"
+    },
+    error: null,
+    warnings: [],
+    meta: {
+      durationMs: 0,
+      processedBy: ["SyncAgent"]
+    }
+  },
+  error: null
+}
+```
+
+`durationMs: 0` ist ein statischer ungemessener Foundation-Wert. Der Kern
+liest dafür weder die Clock ein zweites Mal noch einen Timer oder
+`performance` aus.
+
+Lokale Fehler verwenden ausschließlich diese drei Profile:
+
+| Status | Code | Exakte Meldung |
+| --- | --- | --- |
+| `invalidInvocation` | `invalidSyncAgentInvocation` | `Der lokale SyncAgent erwartet genau einen SyncRequest.` |
+| `syncRequestRejected` | `syncAgentRequestRejected` | `Die Sync-Anfrage wurde vom lokalen SyncAgent abgelehnt.` |
+| `agentFailed` | `syncAgentFailed` | `Die Sync-Anfrage konnte vom lokalen SyncAgent nicht sicher verarbeitet werden.` |
+
+Bei jedem Fehler sind `ok: false` und `syncResponse: null`; `error` enthält
+exakt `code` und `message`. Result- und Error-Records werden nicht zwischen
+Aufrufen geteilt. Sie enthalten keine Request-ID, Rohwerte, Validatorfehler,
+Exception-, Stack-, Cause- oder Dependencymeldungen, Gateway-Fehlerprofile,
+`handledBy` oder `processedBy`. Lokale Fehler sind keine SyncContract-
+Responses und behaupten keine Verarbeitung durch `SyncAgent`.
+
+Vor der Ausgabe wird jeder terminale Record descriptor-basiert geprüft. Ein
+Success-Result muss einen gewöhnlichen Objektprototyp und exakt die vier eigenen
+aufzählbaren Dateneigenschaften `ok`, `status`, `syncResponse` und `error`
+besitzen. Dabei gelten exakt `ok: true`, `status: "syncResponseCreated"`, die
+Identität der final validierten und eingefrorenen Response sowie `error: null`;
+der Result muss mit der erfassten Frozen-Referenz tatsächlich eingefroren sein.
+
+Ein lokaler Errorrecord muss einen gewöhnlichen Objektprototyp, exakt die
+eigenen aufzählbaren Dateneigenschaften `code` und `message`, ausschließlich
+die statischen Werte des ausgewählten Profils und einen bestätigten
+Freeze-Zustand besitzen. Zusatz-, Symbol-, Accessor-, Stack-, Cause- oder
+Rohfehlerfelder sind ausgeschlossen. Der zugehörige Failure-Result bestätigt
+entsprechend den gewöhnlichen Prototyp, exakt `ok`, `status`, `syncResponse` und
+`error`, `ok: false`, den exakten Profilstatus, `syncResponse: null`, die
+Identität des zuvor geprüften frischen Errorrecords und seinen eigenen
+Freeze-Zustand. Eine nach erfolgreichem Import ersetzte globale terminale
+Reflection-, `Object.freeze`- oder `Object.isFrozen`-Funktion kann deshalb keine
+mutable oder korrumpierte terminale API, keinen Errorrecord und keinen Result
+erzeugen.
+
+### Clock-, Projektions- und Validierungsreihenfolge
+
+Die verbindliche synchrone Reihenfolge lautet:
+
+```text
+exakt ein Argument prüfen
+→ Clock exakt einmal als primitiven String erfassen
+→ unveränderten Caller-Request validieren
+→ descriptor-basiert einen frischen Sechs-Felder-Request projizieren
+→ Projektion mit derselben Referenzzeit validieren
+→ Projektion tief einfrieren
+→ gefrorene Projektion mit derselben Referenzzeit final validieren
+→ feste lokale Erfolgsresponse erzeugen
+→ Response gegen den internen Request validieren
+→ Response tief einfrieren
+→ gefrorene Response final gegen denselben internen Request validieren
+→ tief eingefrorenen Success-Result ausgeben
+```
+
+Bei falscher Argumentanzahl werden weder Argumente inspiziert noch Clock oder
+andere Laufzeitwerte ausgewertet. Bei exakt einem Argument wird die Clock
+genau einmal aufgerufen. Throw, Nichtfunktionalität oder ein anderer Wert als
+ein primitiver String führen zu `agentFailed`; es gibt keine Konvertierung,
+Promise-/Thenable-Auflösung oder Reparatur. Eine nichtkanonische Referenzzeit
+beziehungsweise `invalidReferenceTimestamp` hat auch in einem gemischten
+Requestfehlerbild Vorrang und führt zu `agentFailed`, nicht zu
+`syncRequestRejected`.
+
+Die drei Requestvalidierungen betreffen in dieser Reihenfolge den
+unveränderten Caller-Request, die frische Projektion vor Freeze und dieselbe
+Projektion nach Freeze. Erst nach bestandener Originalvalidierung werden die
+sechs Pflichtfelder aus eigenen aufzählbaren Dateneigenschaften anhand ihrer
+Deskriptoren übernommen. Der interne Request ist ein neuer gewöhnlicher Record
+mit einem neuen exakt leeren `payload`; Caller-Records werden weder behalten,
+verändert noch eingefroren. Es gibt kein Trimmen, Merge, Spread aus dem
+Caller-Record, `Object.assign`, Stringify-/Parse-Roundtrip oder generisches
+Cloning. Gewöhnliche und vom Contract unterstützte Null-Prototyp-Requests sind
+zulässig.
+
+Nach der finalen Requestvalidierung prüft die private Aktions-Allowlist
+ausschließlich `syncTest`. Die Erfolgsresponse wird nur aus dem stabilen
+internen Request, den festen privaten Policywerten `syncTest`, `SyncAgent` und
+`synthetic` sowie der einmal erfassten Clock erzeugt. Diese Werte werden nicht
+positionsabhängig aus Contractlisten abgeleitet. Die Response wird vor und nach
+ihrem vollständigen Deep Freeze jeweils gegen denselben internen Request
+validiert. Die internen Request- und Response-Prüfungen lösen ihre Reflection
+absichtlich live auf; auch ihre Freezes lösen `Object.freeze` live auf. Ihr
+tatsächlicher Freeze-Zustand wird ausschließlich mit der beim Import erfassten
+`Object.isFrozen`-Referenz geprüft. Ein beobachteter Reflection- oder Freeze-
+Throw, Freeze-No-op, eine Freeze-Mutation oder jede andere unsichere Validator-,
+ABA-, Proxy-, Descriptor-, Projektions-, Revalidierungs- oder
+Korrelationsinkonsistenz führt statisch redigiert zu `agentFailed`; eine
+Teilresponse wird nie ausgegeben. Dieser Kern erzeugt keine normale Contract-
+Fehlerresponse.
+
+### Isolation und fehlende Komposition
+
+Der Modulimport startet keine Verarbeitung. Die Factory ruft die aufgelöste
+Clockfunktion nicht auf und startet selbst keine Timer-, Listener-, Netzwerk-,
+HTTP-, DNS-, IPC-, Datei-, Storage-, Log-, Telemetrie- oder Provideraktivität.
+Ihre Parameterdestrukturierung löst jedoch die vertrauenswürdige
+Composition-Property `getCurrentTimestamp` auf. Ein Accessor oder Proxy im
+übergebenen Composition-Container kann deshalb bei der Factory-Erzeugung
+ausgeführt werden oder werfen; dieser Vorgang liegt außerhalb des Methoden-
+Resultvertrags. Erst ein Aufruf von `processSyncRequest` mit exakt einem
+Argument ruft die aufgelöste Clockfunktion genau einmal auf. Der Kern liest
+keine Bestände aus PromptVault, LearningHub, LichtwaldLog oder GoldenDawn-Vault
+und lädt keinen Provider, kein Modell und keinen Workflow. Er ist weder in
+`src/main.js` noch in den lokalen HTTP-Server komponiert.
+
+Der vorhandene lokale Gatewaypfad übergibt seine akzeptierte defensive
+Projektion deshalb weiterhin nicht an den Kern und endet unverändert mit dem
+statischen lokalen HTTP-Status `503`. Der nächste Slice verbindet
+ausschließlich lokales Gateway und isolierten SyncAgent-Kern kontrolliert.
+Browser-SyncTransport, Provider, externe Datenflüsse und weitere Aktionen
+bleiben außerhalb dieses nächsten Slices.
+
+Same-Realm-Reflection und Deep Freeze sind keine Sandbox. Proxy-Traps oder
+manipulierte Intrinsics können vor einer beobachtbaren Ablehnung bereits
+Seiteneffekte auslösen; der Kern kann diese weder verhindern noch rückgängig
+machen, stoppt die weitere Verarbeitung aber fail-closed und redigiert
+beobachtbare Fehler. Nicht garantiert werden bereits vor der Modulevaluation
+kompromittierte Primordials, veränderter Modulcode oder lexikalische Bindungen,
+eine kompromittierte JavaScript-Engine, OOM oder Prozessabbruch sowie beliebig
+koordinierte Manipulation sämtlicher Reflection-Intrinsics.
 
 ## Öffentliche API der Local SyncGateway Raw-Wire and HTTP Foundation
 
@@ -3754,13 +3962,14 @@ Damit bleiben drei Ebenen ausdrücklich getrennt:
    Agentenverarbeitung;
 2. frühe `gateway_`-Fehler sind vollständig gültige, aber nicht normal
    korrelierte SyncContract-Responses;
-3. normale `req_`-korrelierte SyncResponses entstehen erst in der noch
-   fehlenden lokalen Gateway-/SyncAgent-Komposition.
+3. normale `req_`-korrelierte SyncResponses entstehen im isolierten
+   SyncAgent-Kern, erreichen den HTTP-Pfad aber erst nach der noch fehlenden
+   lokalen Gateway-/SyncAgent-Komposition.
 
 Die Foundation implementiert keinen Browser-SyncTransport, keinen ausgehenden
 HTTPS-Request, Cloud-Endpunkt, n8n-Workflow, Authentisierungsheader, Secret,
-operativen `SyncAgent`, normale SyncResponse, Persistenz, Requestlogs,
-Telemetrie, Rate Limit oder `src/main.js`-Komposition. PromptVault,
+keine SyncAgent-Komposition oder Ausgabe einer normalen SyncResponse,
+Persistenz, Requestlogs, Telemetrie, Rate Limit oder `src/main.js`-Komposition. PromptVault,
 LearningHub, LichtwaldLog und GoldenDawn-Vault werden weder gelesen noch
 exportiert. Der Loopback-Listener ist ein lokaler Sicherheits-Hop, kein
 allgemeines Backend und noch kein externer Datenfluss.
@@ -4427,7 +4636,8 @@ SyncContract, SyncGateway Request Boundary oder SyncAgent ein. Sie
 implementiert keinen produktiven Webhook und aktiviert keinen Cloudtransport.
 Das lokale SyncGateway bleibt unverändert: Ein dort akzeptierter SyncRequest
 endet weiterhin ausschließlich mit dem statischen lokalen HTTP-Status `503`;
-lokale Gateway-/SyncAgent-Komposition und normale SyncResponse fehlen.
+die lokale Gateway-/SyncAgent-Komposition fehlt, und die isoliert erzeugbare
+normale SyncResponse erreicht diesen Pfad nicht.
 
 ## Implementierter Request-Umschlag der SyncContract Foundation
 
@@ -4938,7 +5148,7 @@ aus keinem dieser Pfade ein Agenten- oder Provideraufruf.
   "error": null,
   "warnings": [],
   "meta": {
-    "durationMs": 105,
+    "durationMs": 0,
     "processedBy": ["SyncAgent"]
   }
 }
@@ -5489,7 +5699,7 @@ Eine neue fachliche Prüfung ist kein technischer Retry. Sie erhält:
 - ein neues `resultId`;
 - weiterhin dieselbe `testId`, wenn derselbe Test erneut beantwortet wird.
 
-## Implementierte Request-, Wire- und geplante lokale Agentenreihenfolge
+## Implementierte Request-, Wire- und lokale Agentenkernreihenfolge
 
 Die transportneutrale SyncGateway Request Boundary implementiert für einen
 bereits vollständig materialisierten JavaScript-Wert:
@@ -5547,21 +5757,26 @@ implementiert:
     sondern bis zur Implementierung des Upstreams kontrolliert mit lokalem HTTP
     `503` beantworten.
 
-ADR 0023 legt hinter dieser unveränderten Grenze die folgende spätere lokale
-Reihenfolge fest:
+ADR 0023 legt hinter dieser unveränderten Grenze die lokale Reihenfolge fest;
+ADR 0024 implementiert davon den isolierten SyncAgent-Kern:
 
-1. ausschließlich die validierte defensive Projektion an den logisch
-   getrennten lokalen SyncAgent übergeben;
-2. Request dort defense-in-depth erneut validieren und gegen eine feste
-   Aktions-Allowlist prüfen;
-3. `syncTest` vollständig lokal, deterministisch, synthetisch und ohne
+1. im nächsten getrennten Slice ausschließlich die validierte defensive
+   Projektion an den logisch getrennten lokalen SyncAgent übergeben;
+2. im implementierten Kern den Request defense-in-depth erneut validieren und
+   gegen die feste Aktions-Allowlist `syncTest` prüfen;
+3. `syncTest` dort vollständig lokal, deterministisch, synthetisch und ohne
    ModelProvider oder WorkflowProvider behandeln;
-4. die normale SyncResponse lokal erzeugen, vollständig validieren und mit
-   Version, Aktion und `requestId` korrelieren;
+4. die normale SyncResponse dort lokal erzeugen, vollständig validieren und
+   mit Version, Aktion und `requestId` korrelieren;
 5. erst in separat entschiedenen späteren Capabilities eine neu erzeugte,
    minimierte Projektion an einen capability-spezifischen Provideradapter
    übergeben und dessen unvertrauenswürdigen Output lokal begrenzen,
    projizieren, validieren und korrelieren.
+
+Die Schritte 2 bis 4 sind isoliert implementiert. Schritt 1, die kontrollierte
+Gateway-/SyncAgent-Komposition, bleibt ausschließlich der nächste Slice; er
+führt weder einen Browsertransport noch einen Provider- oder externen Fluss
+ein.
 
 Der Browsercaller ist am lokalen Gateway nicht authentisiert und nicht
 vertrauenswürdig. Lokale Konfiguration bestimmt Listener, Route, Origin und
@@ -5600,7 +5815,9 @@ eingeführt. `source` wird auch nach erfolgreicher Strukturvalidierung nicht
 zum Herkunfts-, Identitäts- oder Berechtigungsnachweis.
 
 `src/contracts/syncContract.js` und
-`src/gateways/syncGatewayRequestBoundary.js` bleiben die kanonischen Quellen.
+`src/gateways/syncGatewayRequestBoundary.js` bleiben die kanonischen Quellen
+für Contract und Request Boundary. `src/agents/syncAgent.js` ist die
+kanonische Quelle des isolierten lokalen SyncAgent-Kerns.
 
 Die historische n8n-Evidenz- und Artefaktgrenze bleibt erhalten. n8n Cloud
 importiert nach dem datierten Plattformbefund vom 2026-08-17 keine beliebigen
@@ -5775,10 +5992,22 @@ tests/
 ```
 
 Die Paket-Scripts `bundle:n8n:generate` und `bundle:n8n:check` erzeugen
-beziehungsweise prüfen ausschließlich diese generierten Derivate. Es gibt
-weiterhin keinen Browser-Transportadapter, lokalen SyncAgent, Provideradapter,
-n8n-Workflow, Webhook oder externen Transport. Bundle und Manifest bleiben
-unkomponiert und inaktiv. Die Paketversion bleibt `0.2.2`.
+beziehungsweise prüfen ausschließlich diese generierten Derivate. ADR 0024
+ergänzt davon getrennt den lokalen Kern:
+
+```text
+src/agents/
+└── syncAgent.js
+
+tests/
+└── syncAgent.test.js
+```
+
+Es gibt weiterhin keinen Browser-Transportadapter, keine
+Gateway-/SyncAgent-Komposition, keinen Provideradapter, n8n-Workflow, Webhook
+oder externen Transport. Der SyncAgent-Kern bleibt unkomponiert und
+importseitig inaktiv; Bundle und Manifest bleiben unkomponiert und inaktiv.
+Die Paketversion bleibt `0.2.2`.
 
 ## SyncContract-Testmatrix
 
@@ -5841,6 +6070,23 @@ unkomponiert und inaktiv. Die Paketversion bleibt `0.2.2`.
 | doppelte JSON-Membernamen | native Last-Key-Wins-Semantik; kein zweiter Parser oder Duplicate-Key-Scanner |
 | mehrere Aufrufe | keine geteilten Request-, Payload-, Response-, Error-, Meta- oder Arrayidentitäten; auch zweimal dasselbe `INVALID_JSON`-Profil bleibt vollständig disjunkt |
 | redigierte Sentinels und Console | keine Raw-, Parser-, Validator- oder Dependencywerte in eigenen Datenfeldern oder Console-Ausgaben; auch ein gültiger Sentinel-Request bleibt auf allen sechs Console-Methoden still |
+
+## Local Model-free SyncAgent Core-Testmatrix
+
+| Fall | Erwartung |
+| --- | --- |
+| Modulimport und Factory | Modulimport startet nichts; Factory-Destrukturierung löst `getCurrentTimestamp` auf, sodass ein Composition-Accessor oder -Proxy außerhalb des Methoden-Resultvertrags laufen oder werfen kann; die aufgelöste Clockfunktion wird nicht aufgerufen und die frische gewöhnliche API bleibt exakt und eingefroren mit `processSyncRequest` |
+| Methodenvertrag | `processSyncRequest.length === 1`; exakt ein Argument; immer synchron und weder Promise noch Thenable |
+| fehlendes oder zusätzliches Argument | exaktes `invalidInvocation`-Profil; keine Argumentinspektion und kein Clockzugriff |
+| Clock und Fehlerpriorität | bei exakt einem Argument genau ein Clockaufruf vor Requestinspektion; ungültige Referenzzeit oder Clock-Throw ergibt redigiert `agentFailed`, auch bei zugleich ungültigem Request |
+| Requestvalidierung | unveränderter Eingabewert, frische descriptorbasierte Sechs-Felder-Projektion und tatsächlich tief eingefrorener Snapshot werden mit derselben Referenzzeit in dieser Reihenfolge dreimal vollständig validiert |
+| Accessor, Proxy und beobachtbare Mutation | Zusatzfelder, Accessoren und werfende Reflection-Traps werden fail-closed behandelt; eine zwischen Validierungsschritten driftende Struktur oder Arity-/Accessor-Umgehung erreicht keinen Erfolg |
+| Aktionsgrenze | ausschließlich `syncTest`; jede beherrschte Vertrags- oder Allowlist-Ablehnung ergibt das exakte `syncRequestRejected`-Profil |
+| Erfolgsresponse | exakt die dokumentierte synthetische, normal korrelierte Response mit `handledBy: "SyncAgent"`, `processedBy: ["SyncAgent"]` und statischem `durationMs: 0` |
+| interne Request-/Response-Reflection und -Freezes | Reflection und `Object.freeze` werden live aufgelöst, der tatsächliche Freeze-Zustand mit der importseitig erfassten `Object.isFrozen`-Referenz geprüft; Reflection-/Freeze-Throw, Freeze-No-op, Mutation oder Inkonsistenz ergibt redigiert `agentFailed` |
+| terminale API-, Error- und Resultgrenze | importseitig erfasste Reflection-/Freeze-/Frozen-Referenzen und `Object.prototype`-Identität; descriptor-genaue gewöhnliche API, Success-, Failure- und Errorrecords mit exakten Werten und Identitäten; keine live Array-Prototypmethode oder kein Iterator; post-import ersetzte globale terminale Reflection-/Freeze-/Frozen-Funktionen erzeugen keine mutable oder korrumpierte terminale Ausgabe |
+| Frische, Isolation und Redaction | mehrere Aufrufe teilen keine Result-, Request-, Payload-, Response-, Data-, Warnings-, Meta- oder Arrayidentität; Eingaben, Dependency- und Exceptiondetails werden weder übernommen noch geloggt |
+| globale Instrumentierung | instrumentierte Clock-, Reflection-, Freeze-/Frozen-, Promise-/Thenable-, Console-, Netzwerk-, Storage- und private Modulpfade werden mit `concurrency: false` geprüft und im `finally` vollständig restauriert |
 
 ## Local SyncGateway Raw-Wire and HTTP-Testmatrix
 
@@ -6033,6 +6279,50 @@ Die transportneutrale Request Boundary Foundation gilt als implementiert, wenn:
 - kein HTTP-Handler, konkreter Transport, Webhook, n8n, operativer Agent,
   Storage, Logging, Telemetrie oder UI als Bestandteil dieser isolierten
   Boundary Foundation behauptet wird;
+- die relevanten Tests und der Produktions-Build real ausgeführt und erst
+  danach mit ihren tatsächlichen Zahlen dokumentiert sind.
+
+## Local Model-free SyncAgent Core Definition of Done
+
+Der isolierte SyncAgent-Kern gilt als implementiert, wenn:
+
+- die Factory exakt die eingefrorene API `{ processSyncRequest }` liefert und
+  die Methode bei formaler Arity `1` exakt ein Argument synchron verarbeitet;
+- die Factory-Destrukturierung die vertrauenswürdige Composition-Property
+  `getCurrentTimestamp` auflöst, ein dabei ausgeführter oder werfender Accessor
+  beziehungsweise Proxy außerhalb des Methoden-Resultvertrags liegt, die
+  Factory die aufgelöste Clockfunktion aber nicht aufruft und selbst weder I/O,
+  Timer noch einen Providerpfad startet;
+- falsche Argumentanzahlen ohne Argumentinspektion und Clockzugriff das exakte
+  `invalidInvocation`-Profil liefern;
+- die Clock bei exakt einem Argument zuerst und genau einmal erfasst wird und
+  ungültige Referenzzeiten gegenüber Requestablehnungen `agentFailed`
+  priorisieren;
+- unveränderter Request, frische descriptorbasierte Sechs-Felder-Projektion
+  mit frischem Payload und tatsächlich eingefrorener Snapshot in dieser
+  Reihenfolge dreimal vollständig validiert werden;
+- ausschließlich `syncTest` lokal und providerfrei die exakte synthetische
+  Normalresponse mit `durationMs: 0` erzeugt, vor und nach dem Deep Freeze
+  vollständig validiert und normal korreliert wird;
+- jeder Aufruf exakt einen frischen eingefrorenen Vier-Felder-Result und bei
+  Fehlern ausschließlich eines der drei dokumentierten statischen, redigierten
+  Profile liefert;
+- bei erfolgreicher Modulevaluation erfasste Reflection-/Freeze-/Frozen-
+  Referenzen und die `Object.prototype`-Identität die terminale Factory-API,
+  Errorrecords, Failure- und Success-Results sowie alle tatsächlichen Frozen-
+  Prüfungen absichern, während interne Request-/Response-Reflection und Freezes
+  live bleiben und jeder erkannte Reflection-/Freeze-Throw, No-op oder jede
+  Mutation redigiert zu `agentFailed` führt;
+- Modulimport keine Verarbeitung, privaten Modulzugriffe, Storage, Netzwerk,
+  Provider, Logging oder Telemetrie auslöst;
+- vor Modulevaluation kompromittierte Primordials, veränderter Modulcode oder
+  lexikalische Bindungen, Enginekompromittierung, OOM, Prozessabbruch und eine
+  vollständig koordinierte Manipulation aller Reflection-Intrinsics
+  ausdrücklich außerhalb der Garantie bleiben und Same-Realm-Ausführung sowie
+  Deep Freeze keine Sandbox bilden;
+- der Kern weder in `src/main.js` noch in den lokalen HTTP-Prozess komponiert
+  ist, dessen Annahmepfad bei HTTP `503` bleibt und als nächster Slice
+  ausschließlich die kontrollierte Gateway-/SyncAgent-Komposition folgt;
 - die relevanten Tests und der Produktions-Build real ausgeführt und erst
   danach mit ihren tatsächlichen Zahlen dokumentiert sind.
 
