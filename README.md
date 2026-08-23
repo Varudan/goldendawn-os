@@ -10,7 +10,7 @@
 
 **Current release:** `v0.2.2 — LichtwaldLog Local MVP complete, verified, and published`
 
-**Current development:** `v0.3.0 – in Arbeit – Local Model-free SyncAgent Core Foundation / ADR 0024`
+**Current development:** `v0.3.0 – in Arbeit – Local SyncGateway–SyncAgent Composition / ADR 0025 decision accepted; implementation pending`
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -156,6 +156,42 @@ combined Sync suites pass 245/245 tests, and the full serial suite passes
 1315/1315 tests, likewise without failures, skips, or todos. The production
 build still transforms exactly 46 modules, and the checked-in n8n boundary
 bundle passes its no-drift check.
+
+ADR 0025 is now accepted as a decision-only slice. It fixes the later
+in-process handoff from the existing local SyncGateway Boundary to exactly one
+injected local SyncAgent instance, defensive validation and reprojection of
+the untrusted agent result, and the Gateway's sole ownership of HTTP
+serialization, response, socket, and cleanup. The later Gateway module captures
+its terminal Object/Array prototypes, reflection and freeze functions,
+`Array.isArray`, and `JSON.stringify` at module evaluation. After the last
+untrusted reflection it must confirm through the captured frozen check that the
+complete graph remains actually frozen. Its captured `Object.getPrototypeOf`
+must then confirm exactly
+`capturedGetPrototypeOf(capturedArrayPrototype) === capturedObjectPrototype`
+and afterward
+`capturedGetPrototypeOf(capturedObjectPrototype) === null`. The only accepted
+chains are therefore
+`Response-Record → capturedObjectPrototype → null` and
+`Response-Array → capturedArrayPrototype → capturedObjectPrototype → null`;
+no broader or dynamically extended chain is accepted. Only after both identity
+checks may the captured Array prototype and then the captured Object prototype
+be checked for an own `toJSON` property, followed by exactly one captured
+success serialization. A chain deviation fails before response ownership with
+the pre-materialized static `500 gatewayFailed`, invokes the captured success
+serializer zero times, does not serialize the compromised graph, and exposes
+no foreign body, sentinel, exception text, or second response. A post-import
+replacement of a captured terminal serialization, reflection, freeze,
+frozen-state, or Array-identification global cannot change which captured
+function this boundary uses. The
+synchronous handoff performs no `await`, `Promise.resolve`, or Promise/thenable
+assimilation. A native Promise, a result with an own extra `then` field, or
+another malformed result fails the exact result shape, while inherited or
+Proxy-virtual `then` is not separately read and no universal thenable detection
+is claimed. No composition code, tests,
+factory signature, browser transport, provider adapter, or HTTP success path
+has been implemented yet. Accepted local requests therefore still end with the
+existing static HTTP `503`; implementation of the decided composition is the
+next and only slice.
 
 The **Generated n8n Boundary Bundle Foundation** is now implemented according
 to ADR 0021. SyncContract and SyncGateway Request Boundary remain the only
@@ -306,10 +342,11 @@ Successful contract responses remain limited to
 proof of actual provenance or privacy. The isolated SyncAgent core can create
 the validated normal success response only when invoked directly; neither it,
 the delivered service, nor the request boundary is composed in `src/main.js`.
-Neither a browser SyncTransport nor the local Gateway/SyncAgent composition
-exists. A request accepted by the boundary therefore still ends with a static
-local HTTP `503`, never with a normal SyncResponse or claimed `SyncAgent`
-processing. There is still no
+ADR 0025 has decided the local Gateway/SyncAgent composition contract, but
+neither its implementation nor a browser SyncTransport exists. A request
+accepted by the boundary therefore still ends with a static local HTTP `503`,
+never with a normal SyncResponse or claimed `SyncAgent` processing. There is
+still no
 n8n workflow or webhook, productive or composed Cloud transport, credential,
 authentication, operational agent, Boundary-bundle composition, rate limit,
 Hub UI, persistence, request logging, telemetry, or product data flow. The
@@ -385,9 +422,11 @@ and ADR 0021 implements the generated standalone Boundary derivative with its
 deterministic integrity manifest and parity checks. ADR 0023 formally replaces
 ADR 0002 and ADR 0019 and makes the local SyncAgent the policy, validation,
 routing, and response boundary. ADR 0024 now implements its synchronous,
-model-free `syncTest` core as an isolated import-inert module. The browser
-transport, Gateway/SyncAgent composition, operational HTTP path, and normal
-response through that path remain absent.
+model-free `syncTest` core as an isolated import-inert module. ADR 0025 decides
+the exact in-process Gateway/SyncAgent handoff, defensive response projection,
+HTTP mapping, response ownership, and lifecycle boundary. The composition
+code, browser transport, operational HTTP success path, and normal response
+through that path remain absent.
 n8n Cloud, self-hosted n8n, OpenAI, and local models are optional later
 providers whose adapters are neither authorized nor implemented. Any later
 provider receives only a fresh, explicit, minimized projection and responds
@@ -830,9 +869,10 @@ synchronization, agent logic, or Airtable integration. Weekly Review is later
 work and is not part of this milestone. The package remains at version
 `0.2.2`. The annotated `v0.2.2` tag and corresponding GitHub Release were
 published on 2026-08-02, and `v0.2.2` is the latest published release.
-`v0.3.0` is now in progress with the Local Model-free SyncAgent Core Foundation
-from ADR 0024 on top of the decision from ADR 0023 and the implemented
-SyncContract, SyncService, SyncGateway Request Boundary, verified Local
+`v0.3.0` is now in progress with the accepted Local SyncGateway–SyncAgent
+Composition decision from ADR 0025 on top of ADR 0023, ADR 0024, and the
+implemented SyncContract, SyncService, SyncGateway Request Boundary, verified
+Local
 SyncGateway Raw-Wire and HTTP, Generated n8n Boundary Bundle, and n8n Cloud
 Ingress & Runtime Evidence Gate Foundations. Stable OSS compatibility is
 `FAIL`, concrete tenant measurement is `UNPROVEN`, and the original n8n-ingress
@@ -857,26 +897,31 @@ deterministically, without a model or any provider. ADR 0020 implements only
 the separately started loopback HTTP/Wire hop. ADR 0021 derives the standalone
 expression-IIFE Boundary artifact and its
 SHA-256 manifest from the canonical sources without composing it. ADR 0022 and
-its fixed Schema-1 `FAIL`/`UNPROVEN` evidence remain unchanged. The slice does
-not alter any published `v0.2.2` local flow; without a browser transport or
-Gateway/SyncAgent composition, the isolated core is not operationally reachable
-and no normal response traverses the HTTP path. It establishes no external
-communication. n8n, OpenAI, and a local model remain
+its fixed Schema-1 `FAIL`/`UNPROVEN` evidence remain unchanged. ADR 0025
+decides the later in-process handoff, defensive response projection, HTTP
+mapping and sole Gateway response ownership, but changes no code or factory
+signature. The slice does not alter any published `v0.2.2` local flow; without
+a browser transport or implemented Gateway/SyncAgent composition, the
+isolated core is not operationally reachable and no normal response traverses
+the HTTP path. Accepted requests still end with HTTP `503`, and no external
+communication is established. n8n, OpenAI, and a local model remain
 unauthorized optional providers without implemented adapters.
 
 ## Development principles
 
 - Build in small, stable, and verifiable steps.
-- Follow the current sequence: **implemented isolated local model-free SyncAgent → local
-  Gateway/SyncAgent composition → browser end-to-end `syncTest` → local abuse,
-  concurrency, time, and resource limits → separately decided providers**.
+- Follow the current sequence: **accepted ADR 0025 composition contract →
+  implementation of the local Gateway/SyncAgent composition → browser
+  end-to-end `syncTest` → local abuse, concurrency, time, and resource limits →
+  separately decided providers**.
 - Keep every `v0.2.x` milestone local; `v0.3.0` prepares the external boundary
   through a strict contract, transport-neutral service, and materialized-string
   request boundary. ADR 0020 implements the separately started local HTTP and
   Raw-Wire Foundation, ADR 0021 adds the generated standalone Boundary
   derivative, ADR 0022 preserves the closed original n8n-ingress evidence, ADR
-  0023 places the local SyncAgent before every optional provider, and ADR 0024
-  implements its isolated model-free `syncTest` core.
+  0023 places the local SyncAgent before every optional provider, ADR 0024
+  implements its isolated model-free `syncTest` core, and ADR 0025 decides but
+  does not implement the local composition contract.
 - Keep UI components independent from concrete storage technologies.
 - Encapsulate local persistence behind storage adapters.
 - Route communication through services and the local SyncAgent; never let the
@@ -902,8 +947,8 @@ unauthorized optional providers without implemented adapters.
 
 ### Planned integrations
 
-- controlled local SyncGateway/SyncAgent composition, followed separately by
-  the browser SyncTransport
+- implementation of the ADR-0025 local SyncGateway/SyncAgent composition
+  contract, followed separately by the browser SyncTransport
 - optional capability-specific ModelProvider adapters for OpenAI or a local
   model, only after separate decisions
 - an optional capability-specific WorkflowProvider adapter for n8n, only after
@@ -928,7 +973,7 @@ non-binding; see the roadmap for details.
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
 | v0.2.2 | LichtwaldLog Local MVP | Complete, verified, and published |
-| v0.3.0 | Local SyncAgent and Transport Foundation | In progress: local foundations, ADR 0023, and the isolated model-free `syncTest` SyncAgent core from ADR 0024 are implemented; controlled local Gateway/SyncAgent composition is next; provider adapters remain unauthorized, and the original n8n activation remains `FAIL`/`UNPROVEN` and closed |
+| v0.3.0 | Local SyncAgent and Transport Foundation | In progress: local foundations and the isolated model-free `syncTest` core are implemented; ADR 0025 decides the local Gateway/SyncAgent composition contract, whose implementation is next; provider adapters remain unauthorized, and the original n8n activation remains `FAIL`/`UNPROVEN` and closed |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
 | v0.6.0 | Integration | Planned integration and verification of the previously introduced local and external components |
@@ -942,19 +987,21 @@ Boundary derivative and integrity gate, and ADR 0022 preserves the
 default-inactive evidence gate for the original n8n-ingress path. ADR 0023 now
 formally replaces ADR 0002 and ADR 0019 and places the local SyncAgent before
 all optional ModelProvider and WorkflowProvider adapters. ADR 0024 implements
-the isolated, synchronous, model-free `syncTest` core. No Cloud request has
-occurred. The next mandatory action is the controlled local composition of the
-existing SyncGateway with that isolated core. This slice connects only those
-two local components; browser transport, the local end-to-end flow, operational
-limits, and providers remain later ordered slices. n8n, OpenAI, and a local
+the isolated, synchronous, model-free `syncTest` core. ADR 0025 decides the
+exact local in-process composition contract without implementing it. No Cloud
+request has occurred. The next mandatory action is exclusively implementation
+of that contract between the existing SyncGateway and isolated core. Browser
+transport, the local end-to-end flow, operational limits, and providers remain
+later ordered slices. n8n, OpenAI, and a local
 model remain unauthorized. Before any preparation or execution of a new n8n tenant
 measurement, a new n8n-adapter ADR must be accepted and a new adapter-specific
 evidence-schema version decided. Schema-1 has no `overallGate`, and
 its fixed `activationDecision: "FAIL"` remains unchanged.
 Additional patch or minor versions may be inserted when needed without
 reordering these milestones. The current implementation sequence remains
-**implemented local model-free SyncAgent → local composition → browser end-to-end
-`syncTest` → local operational limits → separately decided providers**.
+**accepted local composition contract → composition implementation → browser
+end-to-end `syncTest` → local operational limits → separately decided
+providers**.
 
 ## Getting started
 
@@ -1104,8 +1151,10 @@ from controlled contract values. Its default request ID generator uses
 remain limited to `dataOrigin: "synthetic"`, which is only a contract
 classification and proves neither actual provenance nor privacy. The service
 does not read or export PromptVault, LearningHub, or LichtwaldLog data. The
-empty payload removes the designated content field but does not by itself prove
-that every metadata value is semantically private.
+empty payload removes the designated content field, but `source`, `requestId`,
+and `timestamp` remain metadata that can encode private meaning. The contract
+proves neither that these values are semantically non-private nor
+data-protection compliance.
 
 The injected service and boundary ID generators, service and agent clocks, and
 transport function are trusted executable application configuration. Their
@@ -1124,10 +1173,13 @@ contract roles or classifications. By themselves they prove neither the
 producer nor runtime provenance, deployment, Gateway/browser reachability, or
 external execution. Only tests of the direct return path establish the tested
 behavior of this concrete implementation. The separately started local
-SyncGateway HTTP foundation is shipped outside the browser composition, but
-neither a browser SyncTransport nor the local Gateway/SyncAgent composition
-exists. An accepted local request therefore ends in a static `503` response and
-the slice introduces no external data flow.
+SyncGateway HTTP foundation is shipped outside the browser composition. ADR
+0025 decides that only the defensive Boundary request may later reach one
+injected local SyncAgent synchronously and at most once, and that the Gateway
+must treat the agent result as untrusted, reproject the normal response, and
+retain sole HTTP and socket ownership. That composition is not implemented,
+and no browser SyncTransport exists. An accepted local request therefore still
+ends in a static `503` response and the slice introduces no external data flow.
 
 The contract core's pure raw-body helper measures an already allocated string
 against exactly 65,536 calculated UTF-8 bytes. The SyncService does not use

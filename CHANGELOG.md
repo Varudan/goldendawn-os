@@ -6,7 +6,87 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – Lokaler SyncAgent vor optionalen externen Providern
+## Unveröffentlicht – v0.3.0 in Arbeit – Local SyncGateway–SyncAgent Composition / ADR 0025
+
+### Local SyncGateway–SyncAgent Composition / ADR 0025
+
+- ADR 0025 am `2026-08-23` als reinen Dokumentations- und Entscheidungsslice
+  angenommen. Er ergänzt ADR 0023, erfüllt das von ADR 0024 verlangte
+  Entscheidungsgate und verändert weder ADR 0023/0024 noch die Grundlagen aus
+  ADR 0016, ADR 0017, ADR 0018 und ADR 0020.
+- Die spätere Komposition ausschließlich im bestehenden lokalen Gateway-
+  Prozess auf GD-WS01 entschieden. `server/startLocalSyncGateway.js` bleibt der
+  einzige Produktions-Kompositionsroot; ein zweiter Listener, Dienst, IPC-,
+  Worker-, Queue-, Browser- oder Providerpfad ist ausgeschlossen.
+- Die exakte Übergabe der defensiven Boundary-Requestidentität, höchstens einen
+  synchronen SyncAgent-Aufruf sowie die fail-closed Prüfung und frische
+  Zehn-Felder-Projektion der unvertrauenswürdigen Agentenresponse festgelegt.
+  Das Gateway bleibt alleiniger HTTP-Response-, Serialisierungs-, CORS-,
+  Socket- und Cleanup-Owner.
+- Die terminale Serialisierungsgrenze präzisiert: Das spätere Gateway-Modul
+  erfasst Object-/Array-Prototypen, Reflection-, Freeze-/Frozen-Funktionen,
+  `Array.isArray` und `JSON.stringify` bei Modulevaluation. Nach der letzten
+  untrusted Reflection werden exakte Prototypen, Own-Data-Properties, Freeze
+  sowie mit der erfassten `Object.getPrototypeOf`-Referenz exakt die Kette
+  `capturedArrayPrototype → capturedObjectPrototype → null` geprüft. Zulässig
+  sind ausschließlich `Response-Record → capturedObjectPrototype → null` und
+  `Response-Array → capturedArrayPrototype → capturedObjectPrototype → null`.
+  Erst danach werden der
+  erfasste Array- und anschließend der erfasste Object-Prototyp auf eine eigene
+  `toJSON`-Property geprüft; dann folgt genau ein Aufruf der erfassten
+  Erfolgsserialisierung. Eine Kettenabweichung ergibt vor Responsebesitz
+  statisch `500 gatewayFailed`, ruft die Erfolgsserialisierung nullmal auf und
+  serialisiert den kompromittierten Graphen nicht. Fremder Body, Sentinel und
+  Exceptiontext werden nicht ausgegeben; eine zweite Response entsteht nicht.
+- Für den späteren Implementierungsslice die mutationswirksame Regression mit
+  einem zwischen beide erfassten Prototypen eingeschobenen `toJSON`-Objekt und
+  privatem Test-Sentinel festgelegt. Die bisherigen direkten Prototyp- und Own-
+  `toJSON`-Prüfungen bestehen dabei, nur die neue Kettenprüfung lehnt vor der
+  Serialisierung ab. `concurrency: false`, vollständiger `finally`-Restore und
+  eine saubere Kontrollprobe der exakten Kette mit genau einem erfassten
+  Erfolgsserialisierungsaufruf bleiben verbindlich. Der Restore umfasst die
+  ursprüngliche Prototypkette, globalen Funktionen und Descriptoren; Code und
+  Tests fehlen.
+- Die synchrone Handoff-Grenze als ausdrückliche Nicht-Assimilation gefasst:
+  kein `await`, `Promise.resolve` oder Promise-/Thenable-Auflösen. Ein echter
+  Promise, ein Result mit zusätzlicher eigener `then`-Property oder ein
+  anderweitig malformed Result scheitert an der exakten Resultform; geerbtes
+  oder virtuell
+  angebotenes `then` wird nicht eigens gelesen und keine universelle
+  Proxy-/Thenable-Erkennung behauptet.
+- Für den späteren gültigen Erfolgsweg HTTP `200`, für Agenten-, Projektions-,
+  Freeze-, Revalidierungs- und Serialisierungsfehler statisch
+  `500 gatewayFailed` entschieden. Der aktuelle Implementierungsstand bleibt
+  unverändert: Akzeptierte Requests enden weiterhin mit HTTP `503`.
+- Den engen Phase-0-/EU-Tor-A-Nachweis ohne Compliance-Siegel dokumentiert:
+  kein Modell und keine modell-, lern- oder statistikbasierte Inferenz, kein
+  Training, Lernen oder Adaptieren, sondern feste Validierungs-, Projektions-,
+  Korrelations- und Mappingregeln mit deterministischem Output bei stabilem
+  Request und Clockwert. Das Inhalts-Payload ist bestimmungsgemäß exakt leer,
+  und es gibt keinen Zugriff auf PromptVault, LearningHub, LichtwaldLog oder
+  GoldenDawn-Vault und keine bestimmungsgemäße Verarbeitung oder Übertragung
+  privater Inhalte; Contractmetadaten können dennoch private Bedeutung codieren
+  und beweisen weder Nicht-Privatheit noch Datenschutz.
+  Die Einordnung bleibt eine vorläufige Arbeitshypothese, keine Rechtsberatung.
+- Das Register um die direkten lokalen ADR-0016-/0018-/0020-/0024-, Node.js-
+  und Lockfile-Abhängigkeiten sowie den noch unkomponierten SyncService aus ADR
+  0017 ergänzt. Jan bleibt Projektowner und erteilt Implementierungs- sowie
+  lokale Start-/Betriebsfreigaben ausdrücklich; ADR, Import oder Codex-Lauf
+  starten nichts. Nutzung durch andere, Hosting und externer Betrieb bleiben
+  unfreigegeben und neubewertungspflichtig.
+- ADR 0021, ADR 0022 und Evidence-Schema 1 bleiben unkomponiert und
+  unverändert: kein `overallGate`, `stableOssCompatibility: FAIL`, Tenant-,
+  Provider-/Execution- und Production-Evidenz `UNPROVEN` sowie
+  `activationDecision: FAIL`.
+- Keine Code-, Factory-, Contract-, Schema-, Paket-, Evidence- oder
+  `503`-Änderung vorgenommen. Nächster Slice ist ausschließlich die
+  Implementierung der durch ADR 0025 entschiedenen lokalen Komposition;
+  Browsertransport, lokaler End-to-End-Fluss, Betriebsgrenzen und Provider
+  folgen später getrennt.
+- Den unveränderten technischen Stand lokal verifiziert: serielle Gesamtsuite
+  mit 1315/1315 Tests, 0 Fehlern, 0 Skips und 0 Todos; Produktions-Build mit
+  exakt 46 transformierten Modulen; n8n-Bundle-Check ohne Drift; tracked und
+  neue untracked ADR ohne Whitespacefehler.
 
 ### Local Model-free SyncAgent Core Foundation / ADR 0024
 

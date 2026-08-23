@@ -4,11 +4,11 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – Local Model-free SyncAgent Core Foundation / ADR 0024` |
+| Projektphase | `v0.3.0 – in Arbeit – Local SyncGateway–SyncAgent Composition / ADR 0025` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR 0023 angenommen und ADR 0002/0019 ersetzt; isolierter synchroner modellfreier SyncAgent-Kern nach ADR 0024 implementiert, aber nicht mit Gateway oder Browser komponiert; n8n/OpenAI/lokales Modell nicht autorisiert; kein Cloudaufruf; Tenantmessung `UNPROVEN`; ursprüngliches n8n-Aktivierungsgate `FAIL` und geschlossen; lokale HTTP-Annahme endet weiter mit `503` |
-| Letzte Aktualisierung | 2026-08-22 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR 0025 als reiner Entscheidungsslice angenommen, lokaler Kompositionsvertrag entschieden und Code ausstehend; isolierter Kern weiterhin nicht über Gateway oder Browser erreichbar; n8n/OpenAI/lokales Modell nicht autorisiert; kein Cloudaufruf; Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; n8n Stable OSS und Aktivierung `FAIL`; lokale HTTP-Annahme endet weiter mit `503` |
+| Letzte Aktualisierung | 2026-08-23 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -19,8 +19,8 @@ nicht starre Kalendertermine.
 - Jede Version liefert ein sichtbares und lokal überprüfbares Ergebnis.
 - Eine neue Phase beginnt erst, wenn die Abnahmekriterien der vorherigen Phase
   erfüllt sind.
-- Die aktuelle Implementierungsreihenfolge lautet: **lokale Gateway-/SyncAgent-
-  Komposition → Browser-End-to-End-
+- Die aktuelle Implementierungsreihenfolge lautet: **Implementierung des durch
+  ADR 0025 entschiedenen lokalen Gateway-/SyncAgent-Kompositionsvertrags → Browser-End-to-End-
   `syncTest` → lokale Missbrauchs-, Parallelitäts-, Zeit- und Ressourcenlimits
   → getrennte Providerentscheidungen**.
 - Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
@@ -35,9 +35,10 @@ nicht starre Kalendertermine.
   Tenantmessung bleibt `UNPROVEN`, und das ursprüngliche Aktivierungsgate ist
   wegen negativer commitgebundener Stable-OSS-Befunde `FAIL`. ADR 0023 ersetzt
   ADR 0002 und ADR 0019 und setzt den lokalen SyncAgent als verbindliche
-  Agenten- und Providergrenze vor alle optionalen Provider. Browsertransport,
-  Gateway-/SyncAgent-Komposition, operativer Agent und Provideradapter sind
-  nicht implementiert; der aktuelle Stand kommuniziert nicht extern.
+  Agenten- und Providergrenze vor alle optionalen Provider. ADR 0025 entscheidet
+  die lokale Komposition, implementiert sie aber noch nicht. Browsertransport,
+  HTTP-Erfolgspfad, operativer Agent und Provideradapter fehlen; der aktuelle
+  Stand kommuniziert nicht extern.
 - Weitere Unterversionen dürfen ergänzt werden, wenn neue, klar abgegrenzte
   Arbeitspakete entstehen.
 - Version 1 bleibt auf `SyncAgent`, `DataAgent` und `TestAgent` begrenzt.
@@ -66,7 +67,7 @@ nicht starre Kalendertermine.
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.3.0` | Local SyncAgent and Transport Foundation | In Arbeit: lokale Foundations, ADR 0023, ADR 0024 und der isolierte modellfreie `syncTest`-SyncAgent-Kern sind umgesetzt; nächster Slice ist ausschließlich die kontrollierte lokale Gateway-/SyncAgent-Komposition; Browsertransport und Provideradapter folgen später, das ursprüngliche n8n-Gate bleibt `FAIL`/`UNPROVEN` und geschlossen | 🟡 |
+| `v0.3.0` | Local SyncAgent and Transport Foundation | In Arbeit: lokale Foundations und isolierter modellfreier `syncTest`-Kern implementiert; ADR 0025 entscheidet den lokalen Kompositionsvertrag, dessen Implementierung ausschließlich als nächster Slice folgt; Browsertransport und Provideradapter bleiben später, das ursprüngliche n8n-Gate `FAIL`/`UNPROVEN` und geschlossen | 🟡 |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
 | `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
@@ -613,8 +614,8 @@ eine spätere Phase geplant.
 
 ### Aktueller Stand
 
-`v0.3.0` ist **in Arbeit – Local Model-free SyncAgent Core Foundation / ADR
-0024**.
+`v0.3.0` ist **in Arbeit – Local SyncGateway–SyncAgent Composition / ADR 0025;
+Entscheidung angenommen, Implementierung ausstehend**.
 Die SyncContract Foundation für Version `1.0`, die Aktion
 `syncTest` und den Handler `SyncAgent`, die asynchrone SyncService Foundation,
 die synchrone transportneutrale SyncGateway Request Boundary, der separate
@@ -635,8 +636,10 @@ fachliche, Provider- oder Persistenzwirkung beantwortet. n8n Cloud,
 self-hosted n8n, OpenAI und lokale Modelle sind ausschließlich optionale
 spätere Provider; keiner ihrer Adapter ist autorisiert oder implementiert.
 Browser und SyncRequest wählen weder
-Provider, Modell, Workflow, Endpoint noch Umgebung. Der Kern ist weder mit dem
-lokalen SyncGateway noch mit dem Browserpfad komponiert.
+Provider, Modell, Workflow, Endpoint noch Umgebung. ADR 0025 entscheidet die
+lokale Gateway-/SyncAgent-Komposition, ohne Code, Factorysignatur oder den
+aktuellen HTTP-Pfad zu ändern. Der Kern ist weiterhin weder mit dem lokalen
+SyncGateway noch mit dem Browserpfad komponiert.
 
 Der Request-Payload ist exakt leer; erfolgreiche Responses sind auf
 `dataOrigin: "synthetic"` begrenzt. Dieser Wert ist nur eine
@@ -669,8 +672,9 @@ Beide commitgebundenen Teilgates und damit das aktuelle Aktivierungsgate sind
 `FAIL`; sie behaupten keinen konkreten Cloud-Tenant-Build. `FAIL` und
 `UNPROVEN` halten das Gate gleichermaßen geschlossen.
 
-Nicht implementiert oder komponiert sind Browser-SyncTransport, lokale
-Gateway-/SyncAgent-Komposition, operativ erreichbarer `SyncAgent`, eine über
+Nicht implementiert oder komponiert sind Browser-SyncTransport, der durch
+ADR 0025 entschiedene lokale Gateway-/SyncAgent-Kompositionscode, ein operativ
+erreichbarer `SyncAgent`, eine über
 HTTP oder Browser erreichbare normale SyncResponse, ModelProvider- oder
 WorkflowProvider-Adapter, produktiver oder komponierter
 Cloudtransport, n8n-Webhook oder -Workflow, produktives Credential oder Secret,
@@ -1218,6 +1222,95 @@ keine Freigabe eines optionalen WorkflowProvider-Adapters.
 - kein externer Datenfluss und keine operative Erreichbarkeit: Der HTTP-Pfad
   bleibt bis zur nächsten getrennten Komposition bei `503`.
 
+### Abgeschlossener Entscheidungsslice: Local SyncGateway–SyncAgent Composition / ADR 0025
+
+- ✅ ADR 0025 am `2026-08-23` angenommen. Er ergänzt ADR 0023, erfüllt das von
+  ADR 0024 verlangte Entscheidungsgate und lässt ADR 0016, ADR 0017, ADR 0018,
+  ADR 0020 sowie ADR 0023 und ADR 0024 unverändert.
+- ✅ Die spätere Komposition ausschließlich im bestehenden Gateway-Prozess auf
+  GD-WS01 entschieden. `server/startLocalSyncGateway.js` bleibt der einzige
+  Produktions-Kompositionsroot und injiziert später genau eine lokale
+  SyncAgent-Instanz pro HTTP-Server-Factory als erforderliche Dependency ohne
+  versteckten Agentendefault.
+- ✅ Ausschließlich die exakte defensive Boundary-Requestidentität darf den
+  Agenten synchron, mit einem Argument und pro akzeptiertem Pfad höchstens
+  einmal erreichen. Raw-/HTTP-/Socketmaterial, Secrets, private Modulwerte und
+  Fehlerresponses bleiben vor der Agentengrenze.
+- ✅ Das Agentenresultat als unvertrauenswürdig festgelegt. Nur der exakte
+  tief eingefrorene ADR-0024-Erfolg darf nach Originalvalidierung in einen
+  frischen disjunkten Zehn-Felder-Responsegraphen projiziert, revalidiert, tief
+  eingefroren, final revalidiert und genau einmal vorab serialisiert werden.
+- ✅ Die terminale Grenze auf bei Gateway-Modulevaluation erfasste Object-/
+  Array-Prototypen, Reflection-, Freeze-/Frozen-Funktionen, `Array.isArray` und
+  `JSON.stringify` begrenzt. Nach der letzten untrusted Reflection müssen
+  exakte Prototypen, Own-Data-Properties und Freeze sowie danach mit der
+  erfassten `Object.getPrototypeOf`-Referenz exakt
+  `capturedGetPrototypeOf(capturedArrayPrototype) === capturedObjectPrototype`
+  und anschließend
+  `capturedGetPrototypeOf(capturedObjectPrototype) === null` bestehen. Zulässig
+  sind ausschließlich `Response-Record → capturedObjectPrototype → null` und
+  `Response-Array → capturedArrayPrototype → capturedObjectPrototype → null`.
+  Erst danach werden der erfasste Array- und anschließend der
+  erfasste Object-Prototyp auf eine eigene `toJSON`-Property geprüft; dann darf
+  die erfasste Erfolgsserialisierung genau einmal laufen. Eine Kettenabweichung
+  ergibt vor Responsebesitz statisch `500 gatewayFailed`, null Aufrufe dieser
+  Serialisierung und keinen serialisierten kompromittierten Graphen. Fremder
+  Body, Sentinel und Exceptiontext werden nicht ausgegeben; eine zweite
+  Response entsteht nicht.
+- ✅ Den synchronen Handoff als Nicht-Assimilationsgrenze präzisiert: kein
+  `await`, `Promise.resolve` oder Promise-/Thenable-Auflösen. Echte Promises,
+  Results mit zusätzlicher eigener `then`-Property sowie anderweitig malformed
+  Results scheitern an der exakten Form; geerbtes oder virtuell angebotenes
+  `then` wird
+  nicht eigens gelesen und keine universelle Erkennung behauptet.
+- ✅ Das Gateway bleibt alleiniger HTTP-, CORS-, Response-, Socket- und
+  Cleanup-Owner. Ein späterer exakter Erfolg ergibt HTTP `200`; Agenten-,
+  Response-, Projektions-, terminale Shape-/Prototype-/Freeze-/`toJSON`-,
+  Revalidierungs- und Vorabserialisierungsfehler ergeben statisch
+  `500 gatewayFailed` und keine neue `400`-, `502`-, `503`- oder
+  `504`-Zuordnung.
+- ✅ Den engen Phase-0-/EU-Tor-A-Nachweis als vorläufige Nicht-KI-
+  Arbeitshypothese ausschließlich für diesen bei stabilem Request und Clockwert
+  deterministischen Slice dokumentiert: kein Modell, keine modell-, lern- oder
+  statistikbasierte Inferenz, kein Training, Lernen oder Adaptieren, sondern
+  feste Validierungs-, Projektions-, Korrelations- und Mappingregeln. Das
+  Inhalts-Payload ist bestimmungsgemäß exakt leer und der Pfad greift nicht auf
+  PromptVault, LearningHub, LichtwaldLog oder GoldenDawn-Vault zu und
+  verarbeitet oder überträgt bestimmungsgemäß keine privaten Inhalte;
+  Metadaten können dennoch private Bedeutung codieren, weshalb weder
+  Nicht-Privatheit noch Datenschutz bewiesen sind. Die Einordnung ist keine
+  Rechtsberatung,
+  Gesamtklassifikation oder ein Compliance-Siegel; Phase 1 bis Phase 3 und die
+  festgelegten Neubewertungstrigger bleiben offen.
+- ✅ Direkte spätere lokale Abhängigkeiten aus ADR 0016, ADR 0018, ADR 0020 und
+  ADR 0024, Node.js und der lockfilegebundenen Repository-Baseline vom
+  Referenzcommit dokumentiert; ADR 0017 bleibt die noch nicht browserseitig
+  komponierte Servicegrenze. Jan erteilt als Projektowner Implementierungs-
+  sowie lokale Start-/Betriebsfreigaben ausdrücklich; ADR, Import oder
+  Codex-Lauf starten nichts, und Nutzung durch andere, Hosting oder externer
+  Betrieb bleiben unfreigegeben.
+- ✅ Für den späteren Implementierungsslice mutationswirksame Regressionen zu
+  post-import ersetztem `JSON.stringify`, beiden Prototype-`toJSON`-Hooks,
+  Sentinelfreiheit und einem zwischen die erfassten Array-/Object-Prototypen
+  eingeschobenen `toJSON`-Objekt mit privatem Test-Sentinel vorgesehen. Die
+  bisherigen direkten Prototyp- und Own-`toJSON`-Prüfungen bestehen dabei; die
+  neue Kettenprüfung ergibt statisch `500` vor Erfolgsserialisierung und
+  Responsebesitz sowie null Aufrufe der erfassten Erfolgsserialisierung. Eine
+  saubere Kontrollprobe
+  bestätigt `Response-Array → capturedArrayPrototype`,
+  `capturedArrayPrototype → capturedObjectPrototype`,
+  `capturedObjectPrototype → null` und genau einen erfassten
+  Erfolgsserialisierungsaufruf. `concurrency: false` und vollständiger Restore
+  der ursprünglichen Prototypkette, globalen Funktionen und Descriptoren im
+  `finally` sind verbindlich. In diesem Korrekturslice werden weder Code noch
+  Tests implementiert.
+- ✅ Keinen Kompositionscode, keine Factory-, `503`-, Contract-, Schema-,
+  Paket- oder Evidence-Änderung umgesetzt. Ein lokaler HTTP-Erfolgspfad
+  existiert noch nicht; akzeptierte Requests enden weiterhin mit `503`.
+- ✅ ADR 0021, ADR 0022 und Evidence-Schema 1 bleiben unkomponiert und inaktiv:
+  `stableOssCompatibility: FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz
+  `UNPROVEN`, `activationDecision: FAIL` und kein `overallGate`.
+
 ### Verbindliche Slice-Reihenfolge innerhalb von v0.3.0
 
 1. ✅ **ADR 0023 – lokaler SyncAgent, optionale Provider:** neue Zieltopologie,
@@ -1227,10 +1320,15 @@ keine Freigabe eines optionalen WorkflowProvider-Adapters.
    importinaktiven, synchronen und modellfreien Kern ausschließlich für den
    leeren synthetischen `syncTest` nach ADR 0024 implementiert. ModelProvider,
    WorkflowProvider oder externe Adapter sind keine Dependencies dieses Kerns.
-3. ⬜ **Getrennte lokale Komposition:** lokales SyncGateway und lokalen
-   SyncAgent kontrolliert komponieren, ohne einen zweiten Listener, eine neue
-   IPC-Grenze oder einen zusätzlichen Netzwerkdienst einzuführen. Bis dahin
-   enden lokal akzeptierte Requests weiterhin statisch mit HTTP `503`.
+   Das zusätzliche Entscheidungsgate vor Schritt 3 ist mit ADR 0025 erfüllt:
+   In-Process-Kompositionsstelle, Boundary-Handoff, untrusted Agentresult,
+   defensive Responseprojektion, HTTP-Matrix, Responsebesitz, Lifecycle und
+   enges Phase-0-Tor sind entschieden, ohne Code oder `503`-Pfad zu ändern.
+3. ⬜ **Implementierung der getrennten lokalen Komposition:** den durch ADR 0025
+   entschiedenen Vertrag im bestehenden Gateway-Prozess umsetzen, ohne einen
+   zweiten Listener, eine neue IPC-Grenze oder einen zusätzlichen
+   Netzwerkdienst einzuführen. Bis dahin enden lokal akzeptierte Requests
+   weiterhin statisch mit HTTP `503`.
 4. ⬜ **Browser-SyncTransport und lokaler End-to-End-`syncTest`:** den
    konkreten lokalen Clienttransport hinter
    `syncTransport.sendSyncRequest(syncRequest)` anbinden und den vollständig
@@ -1662,8 +1760,10 @@ netzwerkinaktive n8n Cloud Ingress & Runtime Evidence Gate Foundation
 implementiert. ADR 0023 ist angenommen, ersetzt ADR 0002 sowie ADR 0019 und
 entscheidet den lokalen SyncAgent hinter dem lokalen SyncGateway als
 verbindliche Agenten- und Providergrenze. ADR 0024 implementiert den isolierten
-synchronen, modell- und providerfreien `syncTest`-Kern; er ist noch nicht mit
-Gateway oder Browser komponiert. Der veröffentlichte `v0.2.2`-Umfang bleibt
+synchronen, modell- und providerfreien `syncTest`-Kern. ADR 0025 entscheidet
+den lokalen Gateway-/SyncAgent-Kompositionsvertrag, implementiert ihn aber
+noch nicht; der Kern ist weiterhin nicht mit Gateway oder Browser komponiert.
+Der veröffentlichte `v0.2.2`-Umfang bleibt
 vollständig lokal. Es wurde kein Cloudrequest ausgeführt; weder Listener noch
 Evidence-Tool besitzen einen Browser-, Produkt- oder komponierten
 Cloudtransport oder eine `src/main.js`-Komposition. Das Evidence-Tool enthält
@@ -1677,9 +1777,11 @@ Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein allgemeines Fachbackend,
 Benutzerkonten und weitere Agentenlogik bleiben offen beziehungsweise beginnen erst in
 den dafür vorgesehenen späteren Slices und Versionen. Der nächste konkrete
-Schritt ist ausschließlich die **kontrollierte lokale Gateway-/SyncAgent-
-Komposition**. Sie verbindet nur das vorhandene Gateway mit dem isolierten
-Kern; Browser-SyncTransport und Provider bleiben außerhalb. Danach folgen der
+Schritt ist ausschließlich die **Implementierung der durch ADR 0025
+entschiedenen kontrollierten lokalen Gateway-/SyncAgent-Komposition**. Der
+aktuelle `503`-Pfad bleibt bis dahin aktiv. Die Implementierung verbindet nur
+das vorhandene Gateway mit dem isolierten Kern; Browser-SyncTransport und
+Provider bleiben außerhalb. Danach folgen der
 Browser-SyncTransport und lokale
 End-to-End-`syncTest`, lokale Missbrauchs-, Parallelitäts-, Zeit- und
 Ressourcenlimits und erst anschließend getrennte Providerentscheidungen.
