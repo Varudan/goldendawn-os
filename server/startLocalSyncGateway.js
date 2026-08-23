@@ -1,5 +1,6 @@
 import { pathToFileURL } from 'node:url'
 
+import { createSyncAgent } from '../src/agents/syncAgent.js'
 import {
   createLocalSyncGatewayHttpServer,
 } from './localSyncGatewayHttpServer.js'
@@ -58,9 +59,12 @@ async function startLocalSyncGatewayProcess() {
   }
 
   try {
+    const syncAgent = createSyncAgent()
+
     localSyncGateway = createLocalSyncGatewayHttpServer({
       ...runtimeConfiguration.config,
       onFatal,
+      syncAgent,
     })
   } catch {
     console.error(START_FAILURE_MESSAGE)

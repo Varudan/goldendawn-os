@@ -1,8 +1,15 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
+import {
+  mkdtemp,
+  readFile,
+  rm,
+  writeFile,
+} from 'node:fs/promises'
 import http from 'node:http'
 import net from 'node:net'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 import { pathToFileURL } from 'node:url'
@@ -10,7 +17,9 @@ import { pathToFileURL } from 'node:url'
 import {
   SYNC_CONTRACT_MAX_RAW_BODY_BYTES,
   validateSyncGatewayErrorResponse,
+  validateSyncResponse,
 } from '../src/contracts/syncContract.js'
+import { createSyncAgent } from '../src/agents/syncAgent.js'
 import {
   createSyncGatewayRequestBoundary,
 } from '../src/gateways/syncGatewayRequestBoundary.js'
@@ -21,7 +30,8 @@ import * as localSyncGatewayRuntimeConfigModule from
 
 const {
   LOCAL_SYNC_GATEWAY_HTTP_LIMITS,
-  createLocalSyncGatewayHttpServer,
+  createLocalSyncGatewayHttpServer:
+    createLocalSyncGatewayHttpServerImplementation,
 } = localSyncGatewayHttpServerModule
 const { readLocalSyncGatewayRuntimeConfig } =
   localSyncGatewayRuntimeConfigModule
@@ -103,12 +113,6 @@ const LOCAL_HTTP_PROFILES = Object.freeze({
     code: 'localSyncGatewayFailed',
     message:
       'Die lokale SyncGateway-Anfrage konnte nicht sicher verarbeitet werden.',
-  }),
-  upstreamUnavailable: Object.freeze({
-    httpStatus: 503,
-    status: 'upstreamUnavailable',
-    code: 'localSyncGatewayUpstreamUnavailable',
-    message: 'Der lokale SyncGateway-Upstream ist noch nicht implementiert.',
   }),
 })
 
@@ -246,6 +250,198 @@ function createRealBoundaryProbe() {
   })
 
   return { boundary, calls }
+}
+
+function createAgentSuccessResult(syncRequest, {
+  data = {},
+  meta = {},
+  response = {},
+  result = {},
+  warnings = [],
+} = {}) {
+  const processedBy = Object.hasOwn(meta, 'processedBy')
+    ? meta.processedBy
+    : ['SyncAgent']
+  const syncResponse = {
+    version: '1.0',
+    success: true,
+    requestId: syncRequest.requestId,
+    action: 'syncTest',
+    handledBy: 'SyncAgent',
+    timestamp: REFERENCE_TIMESTAMP,
+    data: {
+      status: 'ok',
+      dataOrigin: 'synthetic',
+      ...data,
+    },
+    error: null,
+    warnings,
+    meta: {
+      durationMs: 0,
+      ...meta,
+      processedBy,
+    },
+    ...response,
+  }
+
+  return deepFreezeFixture({
+    ok: true,
+    status: 'syncResponseCreated',
+    syncResponse,
+    error: null,
+    ...result,
+  })
+}
+
+function createAgentFailureResult(status) {
+  const failures = {
+    invalidInvocation: {
+      code: 'invalidSyncAgentInvocation',
+      message: 'Der lokale SyncAgent erwartet genau einen SyncRequest.',
+    },
+    syncRequestRejected: {
+      code: 'syncAgentRequestRejected',
+      message: 'Die Sync-Anfrage wurde vom lokalen SyncAgent abgelehnt.',
+    },
+    agentFailed: {
+      code: 'syncAgentFailed',
+      message:
+        'Die Sync-Anfrage konnte vom lokalen SyncAgent nicht sicher verarbeitet werden.',
+    },
+  }
+
+  return deepFreezeFixture({
+    ok: false,
+    status,
+    syncResponse: null,
+    error: failures[status],
+  })
+}
+
+function createSyncAgentProbe(implementation = ({ syncRequest }) => (
+  createAgentSuccessResult(syncRequest)
+)) {
+  const calls = []
+  const syncAgent = {
+    processSyncRequest(...args) {
+      const call = {
+        args,
+        receiver: this,
+        syncRequest: args[0],
+      }
+
+      calls.push(call)
+      return implementation({
+        args,
+        callNumber: calls.length,
+        receiver: this,
+        syncRequest: args[0],
+      })
+    },
+  }
+
+  return { calls, syncAgent }
+}
+
+function createLocalSyncGatewayHttpServer(options) {
+  if (
+    typeof options !== 'object' ||
+    options === null ||
+    Object.hasOwn(options, 'syncAgent')
+  ) {
+    return createLocalSyncGatewayHttpServerImplementation(options)
+  }
+
+  return createLocalSyncGatewayHttpServerImplementation({
+    ...options,
+    syncAgent: createSyncAgentProbe().syncAgent,
+  })
+}
+
+function replaceSourceExactlyOnce(source, search, replacement, label) {
+  let matchCount = 0
+  let searchOffset = 0
+
+  while (true) {
+    const matchIndex = source.indexOf(search, searchOffset)
+
+    if (matchIndex === -1) {
+      break
+    }
+
+    matchCount += 1
+    searchOffset = matchIndex + search.length
+  }
+
+  assert.equal(matchCount, 1, `${label} muss exakt einen Treffer besitzen`)
+  return source.replace(search, replacement)
+}
+
+async function withTemporaryLocalSyncGatewayHttpServer(
+  mutations,
+  callback
+) {
+  const temporaryRoot = await mkdtemp(
+    path.join(tmpdir(), 'goldendawn-local-gateway-regression-')
+  )
+
+  try {
+    let source = await readFile(
+      new URL('../server/localSyncGatewayHttpServer.js', import.meta.url),
+      'utf8'
+    )
+
+    source = source.replaceAll('\r\n', '\n')
+
+    for (const [relativeSpecifier, absolutePath] of [
+      [
+        '../src/contracts/syncContract.js',
+        path.resolve('src/contracts/syncContract.js'),
+      ],
+      [
+        '../src/gateways/syncGatewayRequestBoundary.js',
+        path.resolve('src/gateways/syncGatewayRequestBoundary.js'),
+      ],
+      [
+        './localSyncGatewayRuntimeConfig.js',
+        path.resolve('server/localSyncGatewayRuntimeConfig.js'),
+      ],
+    ]) {
+      source = source.replaceAll(
+        `'${relativeSpecifier}'`,
+        JSON.stringify(pathToFileURL(absolutePath).href)
+      )
+    }
+
+    for (const mutation of mutations) {
+      source = replaceSourceExactlyOnce(
+        source,
+        mutation.search,
+        mutation.replacement,
+        mutation.label
+      )
+    }
+
+    await writeFile(
+      path.join(temporaryRoot, 'package.json'),
+      '{"type":"module"}\n',
+      'utf8'
+    )
+    const serverPath = path.join(
+      temporaryRoot,
+      'localSyncGatewayHttpServer.js'
+    )
+
+    await writeFile(serverPath, source, 'utf8')
+
+    const importedModule = await import(
+      `${pathToFileURL(serverPath).href}?fixture=${Date.now()}`
+    )
+
+    await callback(importedModule)
+  } finally {
+    await rm(temporaryRoot, { recursive: true, force: true })
+  }
 }
 
 function createDecoderProbe({
@@ -919,6 +1115,75 @@ function assertLocalHttpResponse(response, profileName, { cors = true } = {}) {
   )
 }
 
+function assertSuccessfulSyncResponse(
+  response,
+  syncRequest = createSyncRequest(),
+  { timestamp = REFERENCE_TIMESTAMP } = {}
+) {
+  const parsedResponse = parseJsonBody(response)
+  const expectedResponse = {
+    version: '1.0',
+    success: true,
+    requestId: syncRequest.requestId,
+    action: 'syncTest',
+    handledBy: 'SyncAgent',
+    timestamp,
+    data: {
+      status: 'ok',
+      dataOrigin: 'synthetic',
+    },
+    error: null,
+    warnings: [],
+    meta: {
+      durationMs: 0,
+      processedBy: ['SyncAgent'],
+    },
+  }
+  const serializedResponse = Buffer.from(
+    JSON.stringify(expectedResponse),
+    'utf8'
+  )
+  const getHeader = (headerName) => (
+    response.headers instanceof Map
+      ? response.headers.get(headerName)?.[0]
+      : response.headers[headerName]
+  )
+
+  assert.equal(response.statusCode, 200)
+  assert.deepEqual(parsedResponse, expectedResponse)
+  assert.deepEqual(Reflect.ownKeys(parsedResponse), [
+    'version',
+    'success',
+    'requestId',
+    'action',
+    'handledBy',
+    'timestamp',
+    'data',
+    'error',
+    'warnings',
+    'meta',
+  ])
+  assert.equal(Object.hasOwn(parsedResponse, 'ok'), false)
+  assert.equal(Object.hasOwn(parsedResponse, 'status'), false)
+  assert.equal(Object.hasOwn(parsedResponse, 'syncResponse'), false)
+  assert.deepEqual(
+    validateSyncResponse(parsedResponse, syncRequest),
+    { ok: true, errors: [] }
+  )
+  assert.deepEqual(response.body, serializedResponse)
+  assert.equal(getHeader('content-length'), String(serializedResponse.length))
+  assert.equal(
+    getHeader('content-type'),
+    'application/json; charset=utf-8'
+  )
+  assert.equal(getHeader('cache-control'), 'no-store')
+  assert.equal(getHeader('x-content-type-options'), 'nosniff')
+  assert.equal(getHeader('access-control-allow-origin'), ALLOWED_ORIGIN)
+  assert.equal(getHeader('access-control-allow-credentials'), undefined)
+  assert.equal(getHeader('connection'), 'close')
+  assert.equal(getHeader('server'), undefined)
+}
+
 function assertSingleStaticInvalidHttpResponse(response) {
   const profile = LOCAL_HTTP_PROFILES.invalidHttpRequest
 
@@ -953,14 +1218,19 @@ function assertPayloadTooLargeOrControlledReset(response) {
 }
 
 async function withStartedGateway({
+  agentProbe = createSyncAgentProbe(),
   boundaryProbe = createBoundaryProbe(),
   createTextDecoder,
+  onFatal,
+  serverFactory = createLocalSyncGatewayHttpServerImplementation,
   useTestTimeoutPolicy = false,
 } = {}, run) {
-  const gateway = createLocalSyncGatewayHttpServer({
+  const gateway = serverFactory({
     allowedOrigin: ALLOWED_ORIGIN,
     createTextDecoder,
+    onFatal,
     port: 0,
+    syncAgent: agentProbe.syncAgent,
     syncGatewayRequestBoundary: boundaryProbe.boundary,
     useTestTimeoutPolicy,
   })
@@ -975,6 +1245,7 @@ async function withStartedGateway({
     assert.ok(startResult.port > 0)
 
     return await run({
+      agentProbe,
       boundaryProbe,
       gateway,
       port: startResult.port,
@@ -1219,6 +1490,319 @@ test('startet den Produktionseinstieg bei fehlender oder ungültiger Runtime-Kon
     )
     assert.equal(stderr.includes(listenMarker), false)
     assert.equal(stderr.includes(privateMarker), false)
+  }
+})
+
+test('ADR-0025-Produktionsroot injiziert den realen SyncAgent und beantwortet einen gültigen lokalen syncTest mit HTTP 200', { concurrency: false }, async () => {
+  const portAllocator = net.createServer()
+  let port
+
+  try {
+    portAllocator.listen({
+      exclusive: true,
+      host: LOOPBACK_HOST,
+      port: 0,
+    })
+    await once(portAllocator, 'listening')
+    port = portAllocator.address()?.port
+  } finally {
+    if (portAllocator.listening) {
+      await new Promise((resolveClose) => portAllocator.close(resolveClose))
+    }
+  }
+
+  assert.ok(Number.isSafeInteger(port))
+  assert.ok(port > 0)
+
+  const entryPath = path.resolve('server/startLocalSyncGateway.js')
+  const gracefulStopSource = [
+    "process.stdin.once('data', () => {",
+    "  process.emit('SIGTERM')",
+    '})',
+  ].join('\n')
+  const gracefulStopUrl = `data:text/javascript,${encodeURIComponent(
+    gracefulStopSource
+  )}`
+  const environment = { ...process.env }
+
+  for (const environmentName of Object.keys(environment)) {
+    const normalizedName = environmentName.toUpperCase()
+
+    if (
+      normalizedName === 'GOLDENDAWN_SYNC_GATEWAY_PORT' ||
+      normalizedName === 'GOLDENDAWN_SYNC_GATEWAY_ALLOWED_ORIGIN'
+    ) {
+      delete environment[environmentName]
+    }
+  }
+
+  Object.assign(environment, {
+    GOLDENDAWN_SYNC_GATEWAY_ALLOWED_ORIGIN: ALLOWED_ORIGIN,
+    GOLDENDAWN_SYNC_GATEWAY_PORT: String(port),
+  })
+
+  const child = spawn(
+    process.execPath,
+    ['--import', gracefulStopUrl, entryPath],
+    {
+      cwd: path.resolve('.'),
+      env: environment,
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,
+    }
+  )
+  const stdoutChunks = []
+  const stderrChunks = []
+  let startedOutput = ''
+  let resolveStarted
+  let rejectStarted
+  const started = new Promise((resolve, reject) => {
+    resolveStarted = resolve
+    rejectStarted = reject
+  })
+  const startupTimeout = setTimeout(() => {
+    rejectStarted(new Error('fixture-production-root-start-timeout'))
+  }, TEST_TIMEOUT_MS)
+
+  child.stdout.on('data', (chunk) => {
+    stdoutChunks.push(chunk)
+    startedOutput += chunk.toString('utf8')
+
+    if (
+      startedOutput.includes(
+        'Das lokale SyncGateway lauscht ausschließlich auf 127.0.0.1.\n'
+      )
+    ) {
+      resolveStarted()
+    }
+  })
+  child.stderr.on('data', (chunk) => stderrChunks.push(chunk))
+  child.once('error', rejectStarted)
+
+  let response
+  let request
+  let exitCode
+  let signal
+
+  try {
+    await started
+    clearTimeout(startupTimeout)
+    request = createSyncRequest({
+      requestId: 'req_production-root-local-sync-test',
+      timestamp: new Date().toISOString(),
+    })
+    const body = Buffer.from(JSON.stringify(request), 'utf8')
+
+    response = await sendHttpRequest({
+      bodyChunks: [body],
+      headers: buildRequestHeaders(port, body.length),
+      port,
+    })
+
+    child.stdin.end('stop\n')
+    const closeTimeout = setTimeout(() => child.kill(), TEST_TIMEOUT_MS)
+
+    try {
+      ;[exitCode, signal] = await once(child, 'close')
+    } finally {
+      clearTimeout(closeTimeout)
+    }
+  } finally {
+    clearTimeout(startupTimeout)
+
+    if (child.exitCode === null && child.signalCode === null) {
+      child.kill()
+      await once(child, 'close').catch(() => {})
+    }
+  }
+
+  const parsedResponse = parseJsonBody(response)
+
+  assert.equal(response.statusCode, 200)
+  assert.deepEqual(
+    validateSyncResponse(parsedResponse, request),
+    { ok: true, errors: [] }
+  )
+  assert.deepEqual(parsedResponse.data, {
+    status: 'ok',
+    dataOrigin: 'synthetic',
+  })
+  assert.equal(parsedResponse.requestId, request.requestId)
+  assert.equal(parsedResponse.handledBy, 'SyncAgent')
+  assert.deepEqual(parsedResponse.meta, {
+    durationMs: 0,
+    processedBy: ['SyncAgent'],
+  })
+  assert.equal(exitCode, 0)
+  assert.equal(signal, null)
+  assert.equal(
+    Buffer.concat(stdoutChunks).toString('utf8'),
+    'Das lokale SyncGateway lauscht ausschließlich auf 127.0.0.1.\n'
+  )
+  assert.equal(Buffer.concat(stderrChunks).toString('utf8'), '')
+})
+
+test('ADR-0025-Produktionsroot erzeugt erst nach gültiger Runtime-Konfiguration exakt einen Agenten und eine Serverfactory', { concurrency: false }, async () => {
+  const originalExitCode = process.exitCode
+  const fixtures = [
+    {
+      label: 'ungültige Runtime-Konfiguration',
+      runtimeResult: { ok: false },
+      expected: {
+        agentCalls: 0,
+        serverCalls: 0,
+        message:
+          'Das lokale SyncGateway wurde wegen ungültiger Runtime-Konfiguration nicht gestartet.',
+      },
+    },
+    {
+      label: 'gültige Runtime-Konfiguration',
+      runtimeResult: {
+        ok: true,
+        config: { allowedOrigin: ALLOWED_ORIGIN, port: 43123 },
+      },
+      expected: {
+        agentCalls: 1,
+        serverCalls: 1,
+        message: 'Das lokale SyncGateway konnte nicht gestartet werden.',
+      },
+    },
+    {
+      label: 'werfende Agentfactory',
+      runtimeResult: {
+        ok: true,
+        config: { allowedOrigin: ALLOWED_ORIGIN, port: 43123 },
+      },
+      agentThrows: true,
+      expected: {
+        agentCalls: 1,
+        serverCalls: 0,
+        message: 'Das lokale SyncGateway konnte nicht gestartet werden.',
+      },
+    },
+    {
+      label: 'werfende Serverfactory',
+      runtimeResult: {
+        ok: true,
+        config: { allowedOrigin: ALLOWED_ORIGIN, port: 43123 },
+      },
+      serverThrows: true,
+      expected: {
+        agentCalls: 1,
+        serverCalls: 1,
+        message: 'Das lokale SyncGateway konnte nicht gestartet werden.',
+      },
+    },
+  ]
+
+  try {
+    for (const fixture of fixtures) {
+      const temporaryRoot = await mkdtemp(
+        path.join(tmpdir(), 'goldendawn-local-gateway-root-regression-')
+      )
+      const agentIdentity = Object.freeze({
+        processSyncRequest() {
+          throw new Error('fixture-unreachable-agent-call')
+        },
+      })
+      let agentCalls = 0
+      let serverCalls = 0
+      let stopCalls = 0
+
+      globalThis.__goldenDawnFixtureCreateSyncAgent = () => {
+        agentCalls += 1
+
+        if (fixture.agentThrows) {
+          throw new Error('fixture-agent-factory-private-sentinel')
+        }
+
+        return agentIdentity
+      }
+      globalThis.__goldenDawnFixtureCreateServer = (options) => {
+        serverCalls += 1
+        assert.equal(options.syncAgent, agentIdentity)
+
+        if (fixture.serverThrows) {
+          throw new Error('fixture-server-factory-private-sentinel')
+        }
+
+        return {
+          async start() {
+            return { ok: false }
+          },
+          async stop() {
+            stopCalls += 1
+            return { ok: true }
+          },
+        }
+      }
+      globalThis.__goldenDawnFixtureReadConfig = () => fixture.runtimeResult
+
+      try {
+        let source = await readFile(
+          new URL('../server/startLocalSyncGateway.js', import.meta.url),
+          'utf8'
+        )
+
+        source = source.replaceAll('\r\n', '\n')
+        source = replaceSourceExactlyOnce(
+          source,
+          "import { createSyncAgent } from '../src/agents/syncAgent.js'",
+          'const createSyncAgent = globalThis.__goldenDawnFixtureCreateSyncAgent',
+          `${fixture.label}: Agentimport`
+        )
+        source = replaceSourceExactlyOnce(
+          source,
+          "import {\n  createLocalSyncGatewayHttpServer,\n} from './localSyncGatewayHttpServer.js'",
+          'const createLocalSyncGatewayHttpServer = globalThis.__goldenDawnFixtureCreateServer',
+          `${fixture.label}: Serverimport`
+        )
+        source = replaceSourceExactlyOnce(
+          source,
+          "import {\n  readLocalSyncGatewayRuntimeConfig,\n} from './localSyncGatewayRuntimeConfig.js'",
+          'const readLocalSyncGatewayRuntimeConfig = globalThis.__goldenDawnFixtureReadConfig',
+          `${fixture.label}: Runtimeimport`
+        )
+        source = replaceSourceExactlyOnce(
+          source,
+          'if (isMainModule()) {',
+          'if (true) {',
+          `${fixture.label}: Prozesseinstieg`
+        )
+        const entryPath = path.join(temporaryRoot, 'startLocalSyncGateway.js')
+
+        await writeFile(
+          path.join(temporaryRoot, 'package.json'),
+          '{"type":"module"}\n',
+          'utf8'
+        )
+        await writeFile(entryPath, source, 'utf8')
+
+        process.exitCode = undefined
+        const consoleCalls = await captureConsoleCalls(async () => {
+          await import(`${pathToFileURL(entryPath).href}?${Date.now()}`)
+          await new Promise((resolveTurn) => setImmediate(resolveTurn))
+          await new Promise((resolveTurn) => setImmediate(resolveTurn))
+        })
+
+        assert.equal(agentCalls, fixture.expected.agentCalls, fixture.label)
+        assert.equal(serverCalls, fixture.expected.serverCalls, fixture.label)
+        assert.deepEqual(
+          consoleCalls.map((call) => call.args),
+          [[fixture.expected.message]],
+          fixture.label
+        )
+        assert.ok(stopCalls <= 1, fixture.label)
+        assert.equal(process.exitCode, 1, fixture.label)
+      } finally {
+        delete globalThis.__goldenDawnFixtureCreateSyncAgent
+        delete globalThis.__goldenDawnFixtureCreateServer
+        delete globalThis.__goldenDawnFixtureReadConfig
+        await rm(temporaryRoot, { recursive: true, force: true })
+      }
+    }
+  } finally {
+    process.exitCode = originalExitCode
   }
 })
 
@@ -2279,6 +2863,1795 @@ test('weist ungültige Factory-Konfiguration vor jedem Listen-Versuch statisch u
   assert.equal(listenCalls, 0)
 })
 
+test('ADR-0025-Komposition verlangt den SyncAgent vor dem Listener und erfasst dessen Methode exakt einmal', { concurrency: false }, async () => {
+  const listenDescriptor = Object.getOwnPropertyDescriptor(
+    net.Server.prototype,
+    'listen'
+  )
+  const privateMarker = 'fixture-agent-composition-private-sentinel'
+  let listenCalls = 0
+
+  try {
+    Object.defineProperty(net.Server.prototype, 'listen', {
+      ...listenDescriptor,
+      value(...args) {
+        listenCalls += 1
+        return Reflect.apply(listenDescriptor.value, this, args)
+      },
+    })
+
+    for (const syncAgent of [
+      undefined,
+      null,
+      {},
+      { processSyncRequest: privateMarker },
+      Object.defineProperty({}, 'processSyncRequest', {
+        configurable: true,
+        get() {
+          throw new Error(privateMarker)
+        },
+      }),
+    ]) {
+      assert.throws(
+        () => createLocalSyncGatewayHttpServerImplementation({
+          allowedOrigin: ALLOWED_ORIGIN,
+          port: 0,
+          syncAgent,
+          syncGatewayRequestBoundary: createBoundaryProbe().boundary,
+        }),
+        (error) => (
+          error instanceof TypeError &&
+          error.message === 'Die lokale SyncGateway-Komposition ist ungültig.' &&
+          !error.message.includes(privateMarker)
+        )
+      )
+    }
+
+    assert.equal(listenCalls, 0)
+
+    let acceptedBoundaryResult = null
+    let boundaryMicrotaskRan = false
+    let boundaryMicrotaskRuns = 0
+    const boundaryProbe = createBoundaryProbe(() => {
+      acceptedBoundaryResult = createAcceptedBoundaryResult()
+      queueMicrotask(() => {
+        boundaryMicrotaskRan = true
+        boundaryMicrotaskRuns += 1
+      })
+      return acceptedBoundaryResult
+    })
+    const methodCalls = []
+    let getterCalls = 0
+    let replacementCalls = 0
+    const syncAgent = {}
+    const capturedMethod = function (...args) {
+      methodCalls.push({
+        args,
+        boundaryMicrotaskRan,
+        receiver: this,
+      })
+      return createAgentSuccessResult(args[0])
+    }
+
+    Object.defineProperty(syncAgent, 'processSyncRequest', {
+      configurable: true,
+      enumerable: true,
+      get() {
+        getterCalls += 1
+        return capturedMethod
+      },
+    })
+
+    const gateway = createLocalSyncGatewayHttpServerImplementation({
+      allowedOrigin: ALLOWED_ORIGIN,
+      port: 0,
+      syncAgent,
+      syncGatewayRequestBoundary: boundaryProbe.boundary,
+    })
+
+    assert.equal(getterCalls, 1)
+    assert.equal(methodCalls.length, 0)
+    Object.defineProperty(syncAgent, 'processSyncRequest', {
+      configurable: true,
+      enumerable: true,
+      value() {
+        replacementCalls += 1
+        throw new Error(privateMarker)
+      },
+      writable: true,
+    })
+
+    const started = await gateway.start()
+
+    try {
+      assert.equal(started.ok, true)
+      assert.equal(methodCalls.length, 0)
+      assert.equal(replacementCalls, 0)
+
+      const response = await sendHttpRequest({
+        headers: buildRequestHeaders(started.port, 0),
+        port: started.port,
+      })
+
+      assertSuccessfulSyncResponse(
+        response,
+        acceptedBoundaryResult.syncRequest
+      )
+      assert.equal(getterCalls, 1)
+      assert.equal(replacementCalls, 0)
+      assert.equal(boundaryProbe.calls.length, 1)
+      assert.equal(methodCalls.length, 1)
+      assert.equal(methodCalls[0].receiver, syncAgent)
+      assert.equal(methodCalls[0].args.length, 1)
+      assert.equal(methodCalls[0].boundaryMicrotaskRan, false)
+      assert.equal(
+        methodCalls[0].args[0],
+        acceptedBoundaryResult.syncRequest
+      )
+      assert.equal(boundaryMicrotaskRan, true)
+      assert.equal(boundaryMicrotaskRuns, 1)
+    } finally {
+      const stopped = await gateway.stop()
+
+      assert.equal(stopped.ok, true)
+    }
+
+    assert.equal(methodCalls.length, 1)
+  } finally {
+    Object.defineProperty(net.Server.prototype, 'listen', listenDescriptor)
+  }
+})
+
+test('ADR-0025-Komposition verbindet reale Boundary und realen modellfreien SyncAgent lokal zu HTTP 200', async () => {
+  const boundaryProbe = createRealBoundaryProbe()
+  const syncAgent = createSyncAgent({
+    getCurrentTimestamp: () => REFERENCE_TIMESTAMP,
+  })
+  const agentCalls = []
+  const processSyncRequest = syncAgent.processSyncRequest
+  const agentProbe = {
+    calls: agentCalls,
+    syncAgent: Object.freeze({
+      processSyncRequest(...args) {
+        agentCalls.push({ args, receiver: this })
+        return Reflect.apply(processSyncRequest, syncAgent, args)
+      },
+    }),
+  }
+  const rawBody = createRawSyncRequest()
+  const body = Buffer.from(rawBody, 'utf8')
+
+  await withStartedGateway({ agentProbe, boundaryProbe }, async ({ port }) => {
+    const response = await sendHttpRequest({
+      bodyChunks: [body],
+      headers: buildRequestHeaders(port, body.length),
+      port,
+    })
+
+    assertSuccessfulSyncResponse(response)
+  })
+
+  assert.equal(boundaryProbe.calls.length, 1)
+  assert.equal(agentCalls.length, 1)
+  assert.equal(agentCalls[0].args.length, 1)
+  assert.equal(
+    agentCalls[0].args[0],
+    boundaryProbe.calls[0].result.syncRequest
+  )
+})
+
+test('ADR-0025-Komposition ruft den Agenten auf frühen HTTP- und Boundary-Ablehnungen niemals auf', async () => {
+  const agentProbe = createSyncAgentProbe(() => {
+    throw new Error('fixture-unreachable-agent')
+  })
+  const boundaryProbe = createRealBoundaryProbe()
+
+  await withStartedGateway({ agentProbe, boundaryProbe }, async ({ port }) => {
+    const responses = [
+      await sendHttpRequest({
+        headers: buildRequestHeaders(port, 0),
+        port,
+        requestPath: '/api/other',
+      }),
+      await sendHttpRequest({
+        headers: buildRequestHeaders(port, 0, { Host: 'localhost' }),
+        port,
+      }),
+      await sendHttpRequest({
+        headers: buildRequestHeaders(port, 0),
+        method: 'GET',
+        port,
+      }),
+      await sendHttpRequest({
+        headers: buildRequestHeaders(port, 0, {
+          Origin: 'http://localhost:9999',
+        }),
+        port,
+      }),
+      await sendHttpRequest({
+        headers: {
+          Host: `${LOOPBACK_HOST}:${port}`,
+          Origin: ALLOWED_ORIGIN,
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'Content-Type',
+          'Content-Length': '0',
+          Connection: 'close',
+        },
+        method: 'OPTIONS',
+        port,
+      }),
+      await sendHttpRequest({
+        headers: buildRequestHeaders(port, 0, {
+          'Content-Type': 'text/plain',
+        }),
+        port,
+      }),
+      await sendHttpRequest({
+        headers: buildRequestHeaders(
+          port,
+          SYNC_CONTRACT_MAX_RAW_BODY_BYTES + 1
+        ),
+        port,
+      }),
+      await sendHttpRequest({
+        bodyChunks: [Buffer.from([0xc3, 0x28])],
+        headers: buildRequestHeaders(port, 2),
+        port,
+      }),
+      await sendHttpRequest({
+        headers: buildRequestHeaders(port, 0, {
+          Expect: '100-continue',
+        }),
+        port,
+      }),
+      await sendHttpRequest({
+        bodyChunks: [Buffer.from('{', 'utf8')],
+        headers: buildRequestHeaders(port, 1),
+        port,
+      }),
+    ]
+
+    assert.deepEqual(
+      responses.map((response) => response.statusCode),
+      [404, 400, 405, 403, 204, 415, 413, 400, 417, 400]
+    )
+  })
+
+  assert.equal(agentProbe.calls.length, 0)
+  assert.equal(boundaryProbe.calls.length, 1)
+  assert.equal(boundaryProbe.calls[0].result.status, 'syncRequestRejected')
+})
+
+test('ADR-0025-Agentresult weist Throws, Agentenfehler, Promises, eigene then-Felder und ungeeignete Shapes statisch zurück', async () => {
+  const privateMarker = 'fixture-agent-result-private-sentinel'
+  const isolatedTopLevelValues = [
+    {
+      label: 'isoliertes ok',
+      propertyName: 'ok',
+      privateValues: [],
+      value: false,
+    },
+    {
+      label: 'isolierter status',
+      propertyName: 'status',
+      privateValues: ['fixture-unexpected-agent-result-status'],
+      value: 'fixture-unexpected-agent-result-status',
+    },
+    {
+      label: 'isolierter error',
+      propertyName: 'error',
+      privateValues: [
+        'fixture-agent-result-error',
+        'fixture-agent-result-error-private-sentinel',
+      ],
+      value: deepFreezeFixture({
+        code: 'fixture-agent-result-error',
+        message: 'fixture-agent-result-error-private-sentinel',
+      }),
+    },
+  ]
+  const isolatedFixtures = isolatedTopLevelValues.map((fixture) => {
+    let observedResult
+
+    return {
+      label: fixture.label,
+      privateValues: fixture.privateValues,
+      implementation({ syncRequest }) {
+        observedResult = createAgentSuccessResult(syncRequest, {
+          result: { [fixture.propertyName]: fixture.value },
+        })
+        return observedResult
+      },
+      assertIsolatedResult(syncRequest) {
+        const expectedResult = createAgentSuccessResult(syncRequest)
+
+        assert.equal(Object.getPrototypeOf(observedResult), Object.prototype)
+        assertExactOwnKeys(observedResult, [
+          'ok',
+          'status',
+          'syncResponse',
+          'error',
+        ])
+        assertDeepFrozen(observedResult)
+        assert.deepEqual(
+          validateSyncResponse(observedResult.syncResponse, syncRequest),
+          { ok: true, errors: [] }
+        )
+
+        for (const propertyName of [
+          'ok',
+          'status',
+          'syncResponse',
+          'error',
+        ]) {
+          if (propertyName === fixture.propertyName) {
+            assert.notDeepEqual(
+              observedResult[propertyName],
+              expectedResult[propertyName],
+              fixture.label
+            )
+          } else {
+            assert.deepEqual(
+              observedResult[propertyName],
+              expectedResult[propertyName],
+              fixture.label
+            )
+          }
+        }
+      },
+    }
+  })
+  let ownThenCalls = 0
+  const fixtures = [
+    {
+      label: 'Throw',
+      implementation() {
+        throw new Error(privateMarker)
+      },
+    },
+    ...['invalidInvocation', 'syncRequestRejected', 'agentFailed'].map(
+      (status) => ({
+        label: status,
+        implementation: () => createAgentFailureResult(status),
+      })
+    ),
+    {
+      label: 'Promise',
+      implementation: ({ syncRequest }) => Promise.resolve(
+        createAgentSuccessResult(syncRequest)
+      ),
+    },
+    {
+      label: 'async result',
+      implementation: async ({ syncRequest }) => (
+        createAgentSuccessResult(syncRequest)
+      ),
+    },
+    {
+      label: 'own then',
+      implementation({ syncRequest }) {
+        const validResult = createAgentSuccessResult(syncRequest)
+
+        return deepFreezeFixture({
+          ok: validResult.ok,
+          status: validResult.status,
+          syncResponse: validResult.syncResponse,
+          error: validResult.error,
+          then() {
+            ownThenCalls += 1
+          },
+        })
+      },
+    },
+    ...isolatedFixtures,
+    { label: 'null', implementation: () => null },
+    { label: 'primitive', implementation: () => privateMarker },
+    { label: 'array', implementation: () => deepFreezeFixture([]) },
+    {
+      label: 'null prototype',
+      implementation({ syncRequest }) {
+        const validResult = createAgentSuccessResult(syncRequest)
+        return deepFreezeFixture(Object.assign(Object.create(null), {
+          ok: true,
+          status: 'syncResponseCreated',
+          syncResponse: validResult.syncResponse,
+          error: null,
+        }))
+      },
+    },
+    {
+      label: 'accessor',
+      implementation({ syncRequest }) {
+        const validResult = createAgentSuccessResult(syncRequest)
+        const accessorResult = {
+          ok: true,
+          syncResponse: validResult.syncResponse,
+          error: null,
+        }
+
+        Object.defineProperty(accessorResult, 'status', {
+          enumerable: true,
+          get() {
+            throw new Error(privateMarker)
+          },
+        })
+        return Object.freeze(accessorResult)
+      },
+    },
+    {
+      label: 'extra string key',
+      implementation: ({ syncRequest }) => createAgentSuccessResult(
+        syncRequest,
+        { result: { privateMarker } }
+      ),
+    },
+    {
+      label: 'symbol key',
+      implementation({ syncRequest }) {
+        const validResult = createAgentSuccessResult(syncRequest)
+        const result = {
+          ok: true,
+          status: 'syncResponseCreated',
+          syncResponse: validResult.syncResponse,
+          error: null,
+        }
+
+        result[Symbol('fixture-agent-result')] = privateMarker
+        return deepFreezeFixture(result)
+      },
+    },
+    {
+      label: 'mutable root',
+      implementation({ syncRequest }) {
+        const validResult = createAgentSuccessResult(syncRequest)
+        return {
+          ok: true,
+          status: 'syncResponseCreated',
+          syncResponse: validResult.syncResponse,
+          error: null,
+        }
+      },
+    },
+    {
+      label: 'shallow frozen',
+      implementation({ syncRequest }) {
+        const validResult = createAgentSuccessResult(syncRequest)
+        const mutableResponse = {
+          ...validResult.syncResponse,
+          data: { ...validResult.syncResponse.data },
+        }
+
+        return Object.freeze({
+          ok: true,
+          status: 'syncResponseCreated',
+          syncResponse: mutableResponse,
+          error: null,
+        })
+      },
+    },
+    {
+      label: 'driftende Reflection',
+      implementation({ syncRequest }) {
+        const target = createAgentSuccessResult(syncRequest)
+        let ownKeysCalls = 0
+
+        return new Proxy(target, {
+          ownKeys(targetValue) {
+            ownKeysCalls += 1
+
+            if (ownKeysCalls === 1) {
+              return Reflect.ownKeys(targetValue)
+            }
+
+            return [...Reflect.ownKeys(targetValue), privateMarker]
+          },
+        })
+      },
+    },
+  ]
+
+  const consoleCalls = await captureConsoleCalls(async () => {
+    for (const fixture of fixtures) {
+      let fatalCalls = 0
+      const agentProbe = createSyncAgentProbe(fixture.implementation)
+
+      await withStartedGateway({
+        agentProbe,
+        onFatal() {
+          fatalCalls += 1
+        },
+      }, async ({ port }) => {
+        const response = await sendHttpRequest({
+          headers: buildRequestHeaders(port, 0),
+          port,
+        })
+
+        assertLocalHttpResponse(response, 'gatewayFailed')
+        assert.notEqual(response.statusCode, 200, fixture.label)
+        const serializedResponse = response.body.toString('utf8')
+
+        assert.equal(
+          serializedResponse.includes(privateMarker),
+          false,
+          fixture.label
+        )
+        assert.equal(serializedResponse.includes('fixture-'), false, fixture.label)
+        assert.equal(serializedResponse.includes('Exception'), false, fixture.label)
+
+        for (const privateValue of fixture.privateValues ?? []) {
+          assert.equal(
+            serializedResponse.includes(privateValue),
+            false,
+            fixture.label
+          )
+        }
+      })
+
+      assert.equal(agentProbe.calls.length, 1, fixture.label)
+      assert.equal(agentProbe.calls[0].args.length, 1, fixture.label)
+      assert.equal(fatalCalls, 0, fixture.label)
+      fixture.assertIsolatedResult?.(agentProbe.calls[0].args[0])
+    }
+  })
+
+  assert.equal(ownThenCalls, 0)
+  assert.deepEqual(consoleCalls, [])
+})
+
+test('ADR-0025-Agentresult lehnt ungeeignete, unkorrelierte und abstrakt gültige Fehlerresponses vor Projektion ab', { concurrency: false }, async () => {
+  const privateMarker = 'fixture-agent-response-private-sentinel'
+  const fixtures = [
+    ['Version', { response: { version: '2.0' } }],
+    ['Aktion', { response: { action: 'fixtureAction' } }],
+    ['Korrelation', { response: { requestId: 'req_uncorrelated-fixture' } }],
+    ['Handler', { response: { handledBy: 'TestAgent' } }],
+    ['Datenstatus', { data: { status: 'fixture-status' } }],
+    ['Datenherkunft', { data: { dataOrigin: 'fixture-origin' } }],
+    ['Warnungen', { warnings: ['fixture-warning'] }],
+    ['Dauer', { meta: { durationMs: 1 } }],
+    ['Verarbeitungskette', { meta: { processedBy: [] } }],
+    ['Zusatzfeld vor Projektion', { response: { privateMarker } }],
+  ]
+
+  for (const [label, overrides] of fixtures) {
+    const agentProbe = createSyncAgentProbe(({ syncRequest }) => (
+      createAgentSuccessResult(syncRequest, overrides)
+    ))
+
+    await withStartedGateway({ agentProbe }, async ({ port }) => {
+      const response = await sendHttpRequest({
+        headers: buildRequestHeaders(port, 0),
+        port,
+      })
+
+      assertLocalHttpResponse(response, 'gatewayFailed')
+      assert.equal(
+        response.body.toString('utf8').includes(privateMarker),
+        false,
+        label
+      )
+    })
+
+    assert.equal(agentProbe.calls.length, 1, label)
+  }
+
+  const errorResponseProbe = createSyncAgentProbe(({ syncRequest }) => (
+    deepFreezeFixture({
+      ok: true,
+      status: 'syncResponseCreated',
+      syncResponse: {
+        version: '1.0',
+        success: false,
+        requestId: syncRequest.requestId,
+        action: 'syncTest',
+        handledBy: 'SyncAgent',
+        timestamp: REFERENCE_TIMESTAMP,
+        data: null,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Die Anfrage konnte nicht verarbeitet werden.',
+          retryable: false,
+          details: [],
+        },
+        warnings: [],
+        meta: {
+          durationMs: 0,
+          processedBy: ['SyncAgent'],
+        },
+      },
+      error: null,
+    })
+  ))
+
+  await withStartedGateway({
+    agentProbe: errorResponseProbe,
+  }, async ({ port }) => {
+    const response = await sendHttpRequest({
+      headers: buildRequestHeaders(port, 0),
+      port,
+    })
+
+    assertLocalHttpResponse(response, 'gatewayFailed')
+  })
+
+  assert.equal(errorResponseProbe.calls.length, 1)
+
+  const validationEvents = []
+  const validationPrivateMarker =
+    'fixture-original-validation-private-sentinel'
+  let validationFatalCalls = 0
+  let invalidResponse
+  let validResponse
+
+  globalThis.__goldenDawnOriginalValidationEvents = validationEvents
+
+  try {
+    const consoleCalls = await captureConsoleCalls(async () => {
+      await withTemporaryLocalSyncGatewayHttpServer(
+        [
+          {
+            search:
+              'function createDefensiveSuccessSyncResponse(syncRequest, timestamp) {\n',
+            replacement:
+              'function createDefensiveSuccessSyncResponse(syncRequest, timestamp) {\n' +
+              "  globalThis.__goldenDawnOriginalValidationEvents.push('projection')\n",
+            label: 'Projektionsereignis nach Originalvalidierung',
+          },
+          {
+            search:
+              'function freezeDefensiveSuccessSyncResponse(responseBuild) {\n',
+            replacement:
+              'function freezeDefensiveSuccessSyncResponse(responseBuild) {\n' +
+              "  globalThis.__goldenDawnOriginalValidationEvents.push('freeze')\n",
+            label: 'Freeze-Ereignis nach Originalvalidierung',
+          },
+          {
+            search: '    const serializedResponse = capturedReflectApply(\n',
+            replacement:
+              "    globalThis.__goldenDawnOriginalValidationEvents.push('serialize')\n\n" +
+              '    const serializedResponse = capturedReflectApply(\n',
+            label: 'Serialisierungsereignis nach Originalvalidierung',
+          },
+        ],
+        async (temporaryModule) => {
+          const onFatal = () => {
+            validationFatalCalls += 1
+          }
+          const invalidAgentProbe = createSyncAgentProbe(({ syncRequest }) => (
+            createAgentSuccessResult(syncRequest, {
+              response: { handledBy: validationPrivateMarker },
+            })
+          ))
+
+          await withStartedGateway({
+            agentProbe: invalidAgentProbe,
+            onFatal,
+            serverFactory: temporaryModule.createLocalSyncGatewayHttpServer,
+          }, async ({ port }) => {
+            invalidResponse = await sendHttpRequest({
+              headers: buildRequestHeaders(port, 0),
+              port,
+            })
+          })
+
+          assertLocalHttpResponse(invalidResponse, 'gatewayFailed')
+          assert.equal(invalidAgentProbe.calls.length, 1)
+          assert.equal(invalidAgentProbe.calls[0].args.length, 1)
+          assert.deepEqual(validationEvents, [])
+          assert.equal(
+            invalidResponse.body
+              .toString('utf8')
+              .includes(validationPrivateMarker),
+            false
+          )
+
+          const validAgentProbe = createSyncAgentProbe()
+
+          await withStartedGateway({
+            agentProbe: validAgentProbe,
+            onFatal,
+            serverFactory: temporaryModule.createLocalSyncGatewayHttpServer,
+          }, async ({ port }) => {
+            validResponse = await sendHttpRequest({
+              headers: buildRequestHeaders(port, 0),
+              port,
+            })
+          })
+
+          assertSuccessfulSyncResponse(validResponse)
+          assert.equal(validAgentProbe.calls.length, 1)
+          assert.equal(validAgentProbe.calls[0].args.length, 1)
+          assert.deepEqual(validationEvents, [
+            'projection',
+            'freeze',
+            'serialize',
+          ])
+          assert.equal(
+            validationEvents.filter((event) => event === 'serialize').length,
+            1
+          )
+          assert.equal(
+            validResponse.body.toString('utf8').includes(validationPrivateMarker),
+            false
+          )
+        }
+      )
+    })
+
+    assert.deepEqual(consoleCalls, [])
+  } finally {
+    delete globalThis.__goldenDawnOriginalValidationEvents
+  }
+
+  assert.equal(validationFatalCalls, 0)
+})
+
+test('ADR-0025-Agentresult assimiliert weder geerbte noch Proxy-virtuelle then-Properties', { concurrency: false }, async () => {
+  const objectThenDescriptor = Object.getOwnPropertyDescriptor(
+    Object.prototype,
+    'then'
+  )
+  const inheritedThenTargets = new WeakSet()
+  let inheritedThenGets = 0
+  let virtualThenGets = 0
+  const inheritedThenAgentProbe = createSyncAgentProbe(({ syncRequest }) => {
+    const result = createAgentSuccessResult(syncRequest)
+
+    inheritedThenTargets.add(result)
+    return result
+  })
+
+  try {
+    Object.defineProperty(Object.prototype, 'then', {
+      configurable: true,
+      get() {
+        if (inheritedThenTargets.has(this)) {
+          inheritedThenGets += 1
+          throw new Error('fixture-inherited-then-private-sentinel')
+        }
+
+        return undefined
+      },
+    })
+
+    await withStartedGateway({
+      agentProbe: inheritedThenAgentProbe,
+    }, async ({ port }) => {
+      const response = await sendHttpRequest({
+        headers: buildRequestHeaders(port, 0),
+        port,
+      })
+
+      assertSuccessfulSyncResponse(response)
+    })
+  } finally {
+    if (objectThenDescriptor === undefined) {
+      delete Object.prototype.then
+    } else {
+      Object.defineProperty(Object.prototype, 'then', objectThenDescriptor)
+    }
+  }
+
+  const proxyAgentProbe = createSyncAgentProbe(({ syncRequest }) => {
+    const target = createAgentSuccessResult(syncRequest)
+
+    return new Proxy(target, {
+      get(targetValue, propertyName, receiver) {
+        if (propertyName === 'then') {
+          virtualThenGets += 1
+          throw new Error('fixture-proxy-then-private-sentinel')
+        }
+
+        return Reflect.get(targetValue, propertyName, receiver)
+      },
+    })
+  })
+
+  await withStartedGateway({
+    agentProbe: proxyAgentProbe,
+  }, async ({ port }) => {
+    const response = await sendHttpRequest({
+      headers: buildRequestHeaders(port, 0),
+      port,
+    })
+
+    assertSuccessfulSyncResponse(response)
+  })
+
+  assert.equal(inheritedThenGets, 0)
+  assert.equal(virtualThenGets, 0)
+})
+
+test('ADR-0025-Agentresult bleibt nach einem requestbezogenen 500 für einen folgenden Erfolg nutzbar und ruft onFatal nie auf', async () => {
+  let fatalCalls = 0
+  const agentProbe = createSyncAgentProbe(({ callNumber, syncRequest }) => {
+    if (callNumber === 1) {
+      throw new Error('fixture-first-agent-call-private-sentinel')
+    }
+
+    return createAgentSuccessResult(syncRequest)
+  })
+
+  await withStartedGateway({
+    agentProbe,
+    onFatal() {
+      fatalCalls += 1
+    },
+  }, async ({ port }) => {
+    const firstResponse = await sendHttpRequest({
+      headers: buildRequestHeaders(port, 0),
+      port,
+    })
+    const secondResponse = await sendHttpRequest({
+      headers: buildRequestHeaders(port, 0),
+      port,
+    })
+
+    assertLocalHttpResponse(firstResponse, 'gatewayFailed')
+    assertSuccessfulSyncResponse(secondResponse)
+  })
+
+  assert.equal(agentProbe.calls.length, 2)
+  assert.equal(fatalCalls, 0)
+})
+
+test('ADR-0025-Terminalgrenze stoppt toJSON- und Prototypkettenmanipulationen vor Erfolgsserialisierung', { concurrency: false }, async () => {
+  const arrayToJsonDescriptor = Object.getOwnPropertyDescriptor(
+    Array.prototype,
+    'toJSON'
+  )
+  const objectToJsonDescriptor = Object.getOwnPropertyDescriptor(
+    Object.prototype,
+    'toJSON'
+  )
+  const originalArrayPrototypeParent = Object.getPrototypeOf(Array.prototype)
+  const privateMarker = 'fixture-terminal-prototype-private-sentinel'
+  const agentProbe = createSyncAgentProbe()
+  let fatalCalls = 0
+
+  await withStartedGateway({
+    agentProbe,
+    onFatal() {
+      fatalCalls += 1
+    },
+  }, async ({ port }) => {
+    try {
+      Object.defineProperty(Array.prototype, 'toJSON', {
+        configurable: true,
+        value() {
+          return privateMarker
+        },
+        writable: true,
+      })
+      const arrayToJsonResponse = await sendHttpRequest({
+        headers: buildRequestHeaders(port, 0),
+        port,
+      })
+
+      assertLocalHttpResponse(arrayToJsonResponse, 'gatewayFailed')
+      assert.equal(
+        arrayToJsonResponse.body.toString('utf8').includes(privateMarker),
+        false
+      )
+    } finally {
+      if (arrayToJsonDescriptor === undefined) {
+        delete Array.prototype.toJSON
+      } else {
+        Object.defineProperty(Array.prototype, 'toJSON', arrayToJsonDescriptor)
+      }
+    }
+
+    let objectToJsonResponse
+
+    try {
+      Object.defineProperty(Object.prototype, 'toJSON', {
+        configurable: true,
+        value() {
+          return privateMarker
+        },
+        writable: true,
+      })
+      objectToJsonResponse = await sendHttpRequest({
+        headers: buildRequestHeaders(port, 0),
+        port,
+      })
+    } finally {
+      if (objectToJsonDescriptor === undefined) {
+        delete Object.prototype.toJSON
+      } else {
+        Object.defineProperty(Object.prototype, 'toJSON', objectToJsonDescriptor)
+      }
+    }
+
+    assertLocalHttpResponse(objectToJsonResponse, 'gatewayFailed')
+    assert.equal(
+      objectToJsonResponse.body.toString('utf8').includes(privateMarker),
+      false
+    )
+
+    const insertedPrototype = Object.create(originalArrayPrototypeParent)
+
+    Object.defineProperty(insertedPrototype, 'toJSON', {
+      configurable: true,
+      value() {
+        return privateMarker
+      },
+      writable: true,
+    })
+
+    try {
+      Object.setPrototypeOf(Array.prototype, insertedPrototype)
+      const chainResponse = await sendHttpRequest({
+        headers: buildRequestHeaders(port, 0),
+        port,
+      })
+
+      assertLocalHttpResponse(chainResponse, 'gatewayFailed')
+      assert.equal(
+        chainResponse.body.toString('utf8').includes(privateMarker),
+        false
+      )
+    } finally {
+      Object.setPrototypeOf(Array.prototype, originalArrayPrototypeParent)
+    }
+
+    const cleanResponse = await sendHttpRequest({
+      headers: buildRequestHeaders(port, 0),
+      port,
+    })
+
+    assertSuccessfulSyncResponse(cleanResponse)
+  })
+
+  assert.equal(agentProbe.calls.length, 4)
+  assert.equal(fatalCalls, 0)
+})
+
+test('ADR-0025-Terminalgrenze serialisiert genau einmal einen frischen disjunkten tief gefrorenen Erfolgsgraphen', { concurrency: false }, async () => {
+  const stringifyDescriptor = Object.getOwnPropertyDescriptor(JSON, 'stringify')
+  const originalStringify = stringifyDescriptor.value
+  const serializedGraphs = []
+  let importedModule
+
+  try {
+    Object.defineProperty(JSON, 'stringify', {
+      ...stringifyDescriptor,
+      value(value, ...args) {
+        const handledByDescriptor = value && typeof value === 'object'
+          ? Object.getOwnPropertyDescriptor(value, 'handledBy')
+          : undefined
+
+        if (handledByDescriptor?.value === 'SyncAgent') {
+          serializedGraphs.push(value)
+        }
+
+        return Reflect.apply(originalStringify, this, [value, ...args])
+      },
+    })
+    importedModule = await import(
+      `${pathToFileURL(path.resolve('server/localSyncGatewayHttpServer.js')).href}?captured-stringify=${Date.now()}`
+    )
+  } finally {
+    Object.defineProperty(JSON, 'stringify', stringifyDescriptor)
+  }
+
+  let foreignResult
+  const agentProbe = createSyncAgentProbe(({ syncRequest }) => {
+    foreignResult = createAgentSuccessResult(syncRequest)
+    return foreignResult
+  })
+
+  await withStartedGateway({
+    agentProbe,
+    serverFactory: importedModule.createLocalSyncGatewayHttpServer,
+  }, async ({ port }) => {
+    const response = await sendHttpRequest({
+      headers: buildRequestHeaders(port, 0),
+      port,
+    })
+
+    assertSuccessfulSyncResponse(response)
+  })
+
+  assert.equal(serializedGraphs.length, 1)
+  const defensiveResponse = serializedGraphs[0]
+
+  assertDeepFrozen(defensiveResponse)
+  assert.equal(Object.getPrototypeOf(defensiveResponse), Object.prototype)
+  assert.equal(Object.getPrototypeOf(defensiveResponse.data), Object.prototype)
+  assert.equal(Object.getPrototypeOf(defensiveResponse.meta), Object.prototype)
+  assert.equal(Object.getPrototypeOf(defensiveResponse.warnings), Array.prototype)
+  assert.equal(
+    Object.getPrototypeOf(defensiveResponse.meta.processedBy),
+    Array.prototype
+  )
+  assert.equal(Object.getPrototypeOf(Array.prototype), Object.prototype)
+  assert.equal(Object.getPrototypeOf(Object.prototype), null)
+  assert.notEqual(defensiveResponse, foreignResult.syncResponse)
+  assert.notEqual(defensiveResponse.data, foreignResult.syncResponse.data)
+  assert.notEqual(defensiveResponse.warnings, foreignResult.syncResponse.warnings)
+  assert.notEqual(defensiveResponse.meta, foreignResult.syncResponse.meta)
+  assert.notEqual(
+    defensiveResponse.meta.processedBy,
+    foreignResult.syncResponse.meta.processedBy
+  )
+})
+
+test('ADR-0025-Terminalgrenze redigiert erfasste Freeze- und Serialisierungsfehler vor Responsebesitz', { concurrency: false }, async () => {
+  const freezeDescriptor = Object.getOwnPropertyDescriptor(Object, 'freeze')
+  const stringifyDescriptor = Object.getOwnPropertyDescriptor(JSON, 'stringify')
+  const originalFreeze = freezeDescriptor.value
+  const originalStringify = stringifyDescriptor.value
+  const privateMarker = 'fixture-captured-terminal-private-sentinel'
+  const fixtures = [
+    {
+      label: 'Freeze-Throw',
+      target: 'freeze',
+      behavior(value) {
+        throw new Error(privateMarker)
+      },
+    },
+    {
+      label: 'Freeze-No-op',
+      target: 'freeze',
+      behavior(value) {
+        return value
+      },
+    },
+    {
+      label: 'Freeze-Mutation',
+      target: 'freeze',
+      behavior(value) {
+        value.fixturePrivateField = privateMarker
+        return Reflect.apply(originalFreeze, Object, [value])
+      },
+    },
+    {
+      label: 'Stringify-Throw',
+      target: 'stringify',
+      behavior() {
+        throw new Error(privateMarker)
+      },
+    },
+    {
+      label: 'Stringify-Nichtstring',
+      target: 'stringify',
+      behavior() {
+        return { privateMarker }
+      },
+    },
+  ]
+
+  for (const fixture of fixtures) {
+    let targetCalls = 0
+    let importedModule
+
+    try {
+      if (fixture.target === 'freeze') {
+        Object.defineProperty(Object, 'freeze', {
+          ...freezeDescriptor,
+          value(value) {
+            const handledByDescriptor = value && typeof value === 'object'
+              ? Object.getOwnPropertyDescriptor(value, 'handledBy')
+              : undefined
+
+            if (handledByDescriptor?.value === 'SyncAgent') {
+              targetCalls += 1
+              return fixture.behavior(value)
+            }
+
+            return Reflect.apply(originalFreeze, this, [value])
+          },
+        })
+      } else {
+        Object.defineProperty(JSON, 'stringify', {
+          ...stringifyDescriptor,
+          value(value, ...args) {
+            const handledByDescriptor = value && typeof value === 'object'
+              ? Object.getOwnPropertyDescriptor(value, 'handledBy')
+              : undefined
+
+            if (handledByDescriptor?.value === 'SyncAgent') {
+              targetCalls += 1
+              return fixture.behavior(value)
+            }
+
+            return Reflect.apply(originalStringify, this, [value, ...args])
+          },
+        })
+      }
+
+      importedModule = await import(
+        `${pathToFileURL(path.resolve('server/localSyncGatewayHttpServer.js')).href}?captured-terminal=${fixture.label}-${Date.now()}`
+      )
+    } finally {
+      Object.defineProperty(Object, 'freeze', freezeDescriptor)
+      Object.defineProperty(JSON, 'stringify', stringifyDescriptor)
+    }
+
+    const agentProbe = createSyncAgentProbe()
+    const consoleCalls = await captureConsoleCalls(async () => {
+      await withStartedGateway({
+        agentProbe,
+        serverFactory: importedModule.createLocalSyncGatewayHttpServer,
+      }, async ({ port }) => {
+        const response = await sendHttpRequest({
+          headers: buildRequestHeaders(port, 0),
+          port,
+        })
+
+        assertLocalHttpResponse(response, 'gatewayFailed')
+        assert.equal(response.body.toString('utf8').includes(privateMarker), false)
+      })
+    })
+
+    assert.equal(targetCalls, 1, fixture.label)
+    assert.equal(agentProbe.calls.length, 1, fixture.label)
+    assert.deepEqual(consoleCalls, [], fixture.label)
+  }
+})
+
+test('ADR-0025-Terminalgrenze verwendet nach der finalen Revalidierung ausschließlich importseitig erfasste Primordials', { concurrency: false }, async () => {
+  const mutations = [
+    {
+      search:
+        '    const terminalInspection = inspectCapturedSuccessSyncResponse(\n',
+      replacement:
+        '    globalThis.__goldenDawnTerminalMutationHook(responseBuild)\n\n' +
+        '    const terminalInspection = inspectCapturedSuccessSyncResponse(\n',
+      label: 'terminaler Testhook',
+    },
+    {
+      search: "    return typeof serializedResponse === 'string'\n",
+      replacement:
+        '    globalThis.__goldenDawnTerminalMutationComplete()\n\n' +
+        "    return typeof serializedResponse === 'string'\n",
+      label: 'terminales Testfenster nach Serialisierung',
+    },
+  ]
+  const descriptors = {
+    apply: Object.getOwnPropertyDescriptor(Reflect, 'apply'),
+    arrayIsArray: Object.getOwnPropertyDescriptor(Array, 'isArray'),
+    create: Object.getOwnPropertyDescriptor(Object, 'create'),
+    freeze: Object.getOwnPropertyDescriptor(Object, 'freeze'),
+    getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor(
+      Object,
+      'getOwnPropertyDescriptor'
+    ),
+    getPrototypeOf: Object.getOwnPropertyDescriptor(Object, 'getPrototypeOf'),
+    hasOwn: Object.getOwnPropertyDescriptor(Object, 'hasOwn'),
+    isFrozen: Object.getOwnPropertyDescriptor(Object, 'isFrozen'),
+    ownKeys: Object.getOwnPropertyDescriptor(Reflect, 'ownKeys'),
+    stringify: Object.getOwnPropertyDescriptor(JSON, 'stringify'),
+  }
+  const originals = {
+    apply: descriptors.apply.value,
+    arrayIsArray: descriptors.arrayIsArray.value,
+    create: descriptors.create.value,
+    freeze: descriptors.freeze.value,
+    getOwnPropertyDescriptor: descriptors.getOwnPropertyDescriptor.value,
+    getPrototypeOf: descriptors.getPrototypeOf.value,
+    hasOwn: descriptors.hasOwn.value,
+    isFrozen: descriptors.isFrozen.value,
+    ownKeys: descriptors.ownKeys.value,
+    stringify: descriptors.stringify.value,
+  }
+  const privateMarker = 'fixture-post-validation-primordial-private-sentinel'
+  let liveApplyTargetCalls = 0
+  let liveObjectCreateTargetCalls = 0
+  let targetedCalls = 0
+  let terminalPrimordialWindow = false
+  let response
+  let consoleCalls
+
+  function restorePrimordials() {
+    Object.defineProperty(Reflect, 'apply', descriptors.apply)
+    Object.defineProperty(Array, 'isArray', descriptors.arrayIsArray)
+    Object.defineProperty(Object, 'create', descriptors.create)
+    Object.defineProperty(Object, 'freeze', descriptors.freeze)
+    Object.defineProperty(
+      Object,
+      'getOwnPropertyDescriptor',
+      descriptors.getOwnPropertyDescriptor
+    )
+    Object.defineProperty(Object, 'getPrototypeOf', descriptors.getPrototypeOf)
+    Object.defineProperty(Object, 'hasOwn', descriptors.hasOwn)
+    Object.defineProperty(Object, 'isFrozen', descriptors.isFrozen)
+    Object.defineProperty(Reflect, 'ownKeys', descriptors.ownKeys)
+    Object.defineProperty(JSON, 'stringify', descriptors.stringify)
+    delete globalThis.__goldenDawnTerminalMutationHook
+    delete globalThis.__goldenDawnTerminalMutationComplete
+  }
+
+  try {
+    globalThis.__goldenDawnTerminalMutationHook = (responseBuild) => {
+      terminalPrimordialWindow = true
+      const targets = new WeakSet([
+        responseBuild.syncResponse,
+        responseBuild.data,
+        responseBuild.warnings,
+        responseBuild.meta,
+        responseBuild.processedBy,
+      ])
+      const rejectTarget = (value) => {
+        if (targets.has(value)) {
+          terminalPrimordialWindow = false
+          targetedCalls += 1
+          throw new Error(privateMarker)
+        }
+      }
+
+      Object.defineProperty(Array, 'isArray', {
+        ...descriptors.arrayIsArray,
+        value(value) {
+          rejectTarget(value)
+          return originals.apply(originals.arrayIsArray, this, [value])
+        },
+      })
+      Object.defineProperty(Object, 'freeze', {
+        ...descriptors.freeze,
+        value(value) {
+          rejectTarget(value)
+          return originals.apply(originals.freeze, this, [value])
+        },
+      })
+      Object.defineProperty(Object, 'getOwnPropertyDescriptor', {
+        ...descriptors.getOwnPropertyDescriptor,
+        value(value, propertyName) {
+          rejectTarget(value)
+          return originals.apply(originals.getOwnPropertyDescriptor, this, [
+            value,
+            propertyName,
+          ])
+        },
+      })
+      Object.defineProperty(Object, 'getPrototypeOf', {
+        ...descriptors.getPrototypeOf,
+        value(value) {
+          if (
+            targets.has(value) ||
+            value === Array.prototype ||
+            value === Object.prototype
+          ) {
+            terminalPrimordialWindow = false
+            targetedCalls += 1
+            throw new Error(privateMarker)
+          }
+
+          return originals.apply(originals.getPrototypeOf, this, [value])
+        },
+      })
+      Object.defineProperty(Object, 'hasOwn', {
+        ...descriptors.hasOwn,
+        value(value, propertyName) {
+          if (
+            targets.has(value) ||
+            value === Array.prototype ||
+            value === Object.prototype
+          ) {
+            terminalPrimordialWindow = false
+            targetedCalls += 1
+            throw new Error(privateMarker)
+          }
+
+          return originals.apply(originals.hasOwn, this, [value, propertyName])
+        },
+      })
+      Object.defineProperty(Object, 'isFrozen', {
+        ...descriptors.isFrozen,
+        value(value) {
+          rejectTarget(value)
+          return originals.apply(originals.isFrozen, this, [value])
+        },
+      })
+      Object.defineProperty(Reflect, 'ownKeys', {
+        ...descriptors.ownKeys,
+        value(value) {
+          rejectTarget(value)
+          return originals.apply(originals.ownKeys, this, [value])
+        },
+      })
+      Object.defineProperty(JSON, 'stringify', {
+        ...descriptors.stringify,
+        value(value, ...args) {
+          rejectTarget(value)
+          return originals.apply(originals.stringify, this, [value, ...args])
+        },
+      })
+      Object.defineProperty(Object, 'create', {
+        ...descriptors.create,
+        value(prototype, ...args) {
+          if (
+            terminalPrimordialWindow &&
+            prototype === null &&
+            args.length === 0
+          ) {
+            terminalPrimordialWindow = false
+            liveObjectCreateTargetCalls += 1
+            throw new Error(privateMarker)
+          }
+
+          return originals.apply(originals.create, this, [prototype, ...args])
+        },
+      })
+      Object.defineProperty(Reflect, 'apply', {
+        ...descriptors.apply,
+        value(targetFunction, receiver, argumentsList) {
+          if (
+            terminalPrimordialWindow &&
+            (
+              targetFunction === originals.create ||
+              targetFunction === originals.stringify
+            )
+          ) {
+            terminalPrimordialWindow = false
+            liveApplyTargetCalls += 1
+            throw new Error(privateMarker)
+          }
+
+          return originals.apply(targetFunction, receiver, argumentsList)
+        },
+      })
+    }
+    globalThis.__goldenDawnTerminalMutationComplete = () => {
+      terminalPrimordialWindow = false
+    }
+
+    consoleCalls = await captureConsoleCalls(async () => {
+      await withTemporaryLocalSyncGatewayHttpServer(
+        mutations,
+        async (temporaryModule) => {
+          await withStartedGateway({
+            serverFactory: temporaryModule.createLocalSyncGatewayHttpServer,
+          }, async ({ port }) => {
+            response = await sendHttpRequest({
+              headers: buildRequestHeaders(port, 0),
+              port,
+            })
+          })
+        }
+      )
+    })
+  } finally {
+    terminalPrimordialWindow = false
+    restorePrimordials()
+  }
+
+  assertSuccessfulSyncResponse(response)
+  assert.equal(targetedCalls, 0)
+  assert.equal(liveApplyTargetCalls, 0)
+  assert.equal(liveObjectCreateTargetCalls, 0)
+  assert.deepEqual(consoleCalls, [])
+  assert.equal(response.body.toString('utf8').includes(privateMarker), false)
+  assert.deepEqual(
+    {
+      apply: Object.getOwnPropertyDescriptor(Reflect, 'apply'),
+      arrayIsArray: Object.getOwnPropertyDescriptor(Array, 'isArray'),
+      create: Object.getOwnPropertyDescriptor(Object, 'create'),
+      freeze: Object.getOwnPropertyDescriptor(Object, 'freeze'),
+      getOwnPropertyDescriptor: Object.getOwnPropertyDescriptor(
+        Object,
+        'getOwnPropertyDescriptor'
+      ),
+      getPrototypeOf: Object.getOwnPropertyDescriptor(Object, 'getPrototypeOf'),
+      hasOwn: Object.getOwnPropertyDescriptor(Object, 'hasOwn'),
+      isFrozen: Object.getOwnPropertyDescriptor(Object, 'isFrozen'),
+      ownKeys: Object.getOwnPropertyDescriptor(Reflect, 'ownKeys'),
+      stringify: Object.getOwnPropertyDescriptor(JSON, 'stringify'),
+    },
+    descriptors
+  )
+})
+
+test('ADR-0025-Terminalgrenze bindet den finalen Timestamp unverändert an die validierte Agentenresponse', { concurrency: false }, async () => {
+  const originalTimestamp = REFERENCE_TIMESTAMP
+  const mutatedTimestamp = '2031-04-05T10:20:31.000Z'
+  const privateMarker = 'fixture-terminal-timestamp-private-sentinel'
+  let successStringifyCalls = 0
+  let response
+
+  globalThis.__goldenDawnTimestampMutationStringify = (value) => {
+    successStringifyCalls += 1
+    return JSON.stringify(value)
+  }
+
+  try {
+    await withTemporaryLocalSyncGatewayHttpServer(
+      [
+        {
+          search: 'const capturedObjectFreeze = Object.freeze\n',
+          replacement: [
+            'const capturedObjectFreeze = (value) => {',
+            "  if (value !== null && typeof value === 'object' && value.handledBy === 'SyncAgent') {",
+            `    value.timestamp = '${mutatedTimestamp}'`,
+            '  }',
+            '',
+            '  return Object.freeze(value)',
+            '}',
+            '',
+          ].join('\n'),
+          label: 'gültige Timestamp-Mutation während des terminalen Root-Freezes',
+        },
+        {
+          search: 'const capturedJsonStringify = JSON.stringify\n',
+          replacement:
+            'const capturedJsonStringify = globalThis.__goldenDawnTimestampMutationStringify\n',
+          label: 'Erfolgsserialisierungszähler für Timestamp-Mutation',
+        },
+      ],
+      async (temporaryModule) => {
+        const agentProbe = createSyncAgentProbe(({ syncRequest }) => (
+          createAgentSuccessResult(syncRequest, {
+            response: { timestamp: originalTimestamp },
+          })
+        ))
+        const consoleCalls = await captureConsoleCalls(async () => {
+          await withStartedGateway({
+            agentProbe,
+            serverFactory: temporaryModule.createLocalSyncGatewayHttpServer,
+          }, async ({ port }) => {
+            response = await sendHttpRequest({
+              headers: buildRequestHeaders(port, 0),
+              port,
+            })
+          })
+        })
+
+        assert.equal(agentProbe.calls.length, 1)
+        assert.deepEqual(consoleCalls, [])
+      }
+    )
+  } finally {
+    delete globalThis.__goldenDawnTimestampMutationStringify
+  }
+
+  assertLocalHttpResponse(response, 'gatewayFailed')
+  assert.equal(successStringifyCalls, 0)
+  assert.equal(response.body.toString('utf8').includes(mutatedTimestamp), false)
+  assert.equal(response.body.toString('utf8').includes(privateMarker), false)
+})
+
+test('ADR-0025-Terminalverifier löst keine nachträglichen numerischen Array- oder Options-Prototypaccessors aus', { concurrency: false }, async () => {
+  const arrayIndexDescriptor = Object.getOwnPropertyDescriptor(
+    Array.prototype,
+    '9'
+  )
+  const frozenDescriptor = Object.getOwnPropertyDescriptor(
+    Object.prototype,
+    'frozen'
+  )
+  let numericAccessorCalls = 0
+  let frozenAccessorCalls = 0
+  let numericValue
+  let successStringifyCalls = 0
+  let response
+
+  function restorePrototypeAccessors() {
+    if (arrayIndexDescriptor === undefined) {
+      delete Array.prototype[9]
+    } else {
+      Object.defineProperty(Array.prototype, '9', arrayIndexDescriptor)
+    }
+
+    if (frozenDescriptor === undefined) {
+      delete Object.prototype.frozen
+    } else {
+      Object.defineProperty(Object.prototype, 'frozen', frozenDescriptor)
+    }
+  }
+
+  globalThis.__goldenDawnInstallTerminalPrototypeAccessors = () => {
+    Object.defineProperty(Array.prototype, '9', {
+      configurable: true,
+      enumerable: false,
+      get() {
+        numericAccessorCalls += 1
+        return numericValue
+      },
+      set(value) {
+        numericAccessorCalls += 1
+        numericValue = value
+      },
+    })
+    Object.defineProperty(Object.prototype, 'frozen', {
+      configurable: true,
+      enumerable: false,
+      get() {
+        frozenAccessorCalls += 1
+        return false
+      },
+    })
+  }
+  globalThis.__goldenDawnRestoreTerminalPrototypeAccessors =
+    restorePrototypeAccessors
+  globalThis.__goldenDawnPrototypeAccessorStringify = (value) => {
+    successStringifyCalls += 1
+    return JSON.stringify(value)
+  }
+
+  try {
+    await withTemporaryLocalSyncGatewayHttpServer(
+      [
+        {
+          search:
+            '    const terminalInspection = inspectCapturedSuccessSyncResponse(\n',
+          replacement:
+            '    globalThis.__goldenDawnInstallTerminalPrototypeAccessors()\n\n' +
+            '    const terminalInspection = inspectCapturedSuccessSyncResponse(\n',
+          label: 'numerische und Options-Prototypaccessors nach Revalidierung',
+        },
+        {
+          search: '    const serializedResponse = capturedReflectApply(\n',
+          replacement:
+            '    globalThis.__goldenDawnRestoreTerminalPrototypeAccessors()\n\n' +
+            '    const serializedResponse = capturedReflectApply(\n',
+          label: 'Prototypaccessor-Restaurierung vor Serialisierung',
+        },
+        {
+          search: 'const capturedJsonStringify = JSON.stringify\n',
+          replacement:
+            'const capturedJsonStringify = globalThis.__goldenDawnPrototypeAccessorStringify\n',
+          label: 'Erfolgsserialisierungszähler für Prototypaccessors',
+        },
+      ],
+      async (temporaryModule) => {
+        await withStartedGateway({
+          serverFactory: temporaryModule.createLocalSyncGatewayHttpServer,
+        }, async ({ port }) => {
+          response = await sendHttpRequest({
+            headers: buildRequestHeaders(port, 0),
+            port,
+          })
+        })
+      }
+    )
+  } finally {
+    restorePrototypeAccessors()
+    delete globalThis.__goldenDawnInstallTerminalPrototypeAccessors
+    delete globalThis.__goldenDawnRestoreTerminalPrototypeAccessors
+    delete globalThis.__goldenDawnPrototypeAccessorStringify
+  }
+
+  assertSuccessfulSyncResponse(response)
+  assert.equal(numericAccessorCalls, 0)
+  assert.equal(frozenAccessorCalls, 0)
+  assert.equal(successStringifyCalls, 1)
+})
+
+test('ADR-0025-Terminalgrenze stoppt späte Prototypketten- und toJSON-Mutationen vor Serialisierung und Responsebesitz', { concurrency: false }, async () => {
+  const privateMarker = 'fixture-post-validation-prototype-private-sentinel'
+  const fixtures = [
+    {
+      label: 'Array.prototype.toJSON',
+      install() {
+        const fixtureRecord = this
+
+        this.originalDescriptor = Object.getOwnPropertyDescriptor(
+          Array.prototype,
+          'toJSON'
+        )
+        Object.defineProperty(Array.prototype, 'toJSON', {
+          configurable: true,
+          enumerable: false,
+          value() {
+            fixtureRecord.toJSONCalls += 1
+            return privateMarker
+          },
+          writable: true,
+        })
+      },
+      restore() {
+        if (this.originalDescriptor === undefined) {
+          delete Array.prototype.toJSON
+        } else {
+          Object.defineProperty(
+            Array.prototype,
+            'toJSON',
+            this.originalDescriptor
+          )
+        }
+      },
+    },
+    {
+      label: 'Object.prototype.toJSON',
+      install() {
+        const fixtureRecord = this
+
+        this.originalDescriptor = Object.getOwnPropertyDescriptor(
+          Object.prototype,
+          'toJSON'
+        )
+        Object.defineProperty(Object.prototype, 'toJSON', {
+          configurable: true,
+          enumerable: false,
+          value() {
+            fixtureRecord.toJSONCalls += 1
+            return privateMarker
+          },
+          writable: true,
+        })
+      },
+      restore() {
+        if (this.originalDescriptor === undefined) {
+          delete Object.prototype.toJSON
+        } else {
+          Object.defineProperty(
+            Object.prototype,
+            'toJSON',
+            this.originalDescriptor
+          )
+        }
+      },
+    },
+    {
+      label: 'eingeschobene Array-Prototypkette',
+      install() {
+        const fixtureRecord = this
+
+        this.originalPrototype = Object.getPrototypeOf(Array.prototype)
+        this.insertedPrototype = {
+          toJSON() {
+            fixtureRecord.toJSONCalls += 1
+            return privateMarker
+          },
+        }
+        Object.setPrototypeOf(Array.prototype, this.insertedPrototype)
+      },
+      restore() {
+        Object.setPrototypeOf(Array.prototype, this.originalPrototype)
+      },
+    },
+  ]
+
+  for (const fixture of fixtures) {
+    let successStringifyCalls = 0
+    let response
+
+    fixture.toJSONCalls = 0
+    globalThis.__goldenDawnInstallLatePrototypeMutation = () => {
+      fixture.install()
+    }
+    globalThis.__goldenDawnLatePrototypeStringify = (value) => {
+      successStringifyCalls += 1
+      return JSON.stringify(value)
+    }
+
+    try {
+      await withTemporaryLocalSyncGatewayHttpServer(
+        [
+          {
+            search:
+              '    const terminalInspection = inspectCapturedSuccessSyncResponse(\n',
+            replacement:
+              '    globalThis.__goldenDawnInstallLatePrototypeMutation()\n\n' +
+              '    const terminalInspection = inspectCapturedSuccessSyncResponse(\n',
+            label: `${fixture.label}: Mutation nach finaler Revalidierung`,
+          },
+          {
+            search: 'const capturedJsonStringify = JSON.stringify\n',
+            replacement:
+              'const capturedJsonStringify = globalThis.__goldenDawnLatePrototypeStringify\n',
+            label: `${fixture.label}: Erfolgsserialisierungszähler`,
+          },
+        ],
+        async (temporaryModule) => {
+          const agentProbe = createSyncAgentProbe()
+          const consoleCalls = await captureConsoleCalls(async () => {
+            await withStartedGateway({
+              agentProbe,
+              serverFactory: temporaryModule.createLocalSyncGatewayHttpServer,
+            }, async ({ port }) => {
+              const body = Buffer.from(createRawSyncRequest(), 'utf8')
+
+              response = await sendRawSocketWrites(port, [
+                Buffer.concat([
+                  createRawHeaderBlock(`POST ${GATEWAY_PATH} HTTP/1.1`, [
+                    `Host: ${LOOPBACK_HOST}:${port}`,
+                    `Origin: ${ALLOWED_ORIGIN}`,
+                    'Content-Type: application/json',
+                    `Content-Length: ${body.length}`,
+                    'Connection: close',
+                  ]),
+                  body,
+                ]),
+              ])
+            })
+          })
+
+          assert.equal(agentProbe.calls.length, 1, fixture.label)
+          assert.deepEqual(consoleCalls, [], fixture.label)
+        }
+      )
+    } finally {
+      fixture.restore()
+      delete globalThis.__goldenDawnInstallLatePrototypeMutation
+      delete globalThis.__goldenDawnLatePrototypeStringify
+    }
+
+    const rawResponse = response.rawResponse.toString('utf8')
+
+    assertLocalHttpResponse(response, 'gatewayFailed')
+    assert.equal(response.statusLineCount, 1, fixture.label)
+    assert.equal(successStringifyCalls, 0, fixture.label)
+    assert.equal(fixture.toJSONCalls, 0, fixture.label)
+    assert.equal(rawResponse.includes(privateMarker), false, fixture.label)
+    assert.equal(rawResponse.includes('"success":true'), false, fixture.label)
+    assert.equal(rawResponse.includes('stack'), false, fixture.label)
+  }
+})
+
+test('ADR-0025-Responsebesitz erzeugt nach einem Writerfehler keine zweite Statuszeile oder nachgeschobene 500-Response', { concurrency: false }, async () => {
+  const responseWriterPrototype = Object.getPrototypeOf(
+    http.ServerResponse.prototype
+  )
+  const endDescriptor = Object.getOwnPropertyDescriptor(
+    responseWriterPrototype,
+    'end'
+  )
+  const originalEnd = endDescriptor.value
+  const privateMarker = 'fixture-success-writer-private-sentinel'
+  const agentProbe = createSyncAgentProbe()
+  let successEndCalls = 0
+  let response
+
+  try {
+    Object.defineProperty(responseWriterPrototype, 'end', {
+      ...endDescriptor,
+      value(...args) {
+        const result = Reflect.apply(originalEnd, this, args)
+
+        if (
+          typeof args[0] === 'string' &&
+          args[0].includes('"success":true')
+        ) {
+          successEndCalls += 1
+          throw new Error(privateMarker)
+        }
+
+        return result
+      },
+    })
+
+    const consoleCalls = await captureConsoleCalls(async () => {
+      await withStartedGateway({ agentProbe }, async ({ port }) => {
+        const body = Buffer.from(createRawSyncRequest(), 'utf8')
+
+        response = await sendHalfOpenRawSocket({
+          endAfterWrite: true,
+          initialWrite: Buffer.concat([
+            createRawHeaderBlock(`POST ${GATEWAY_PATH} HTTP/1.1`, [
+              `Host: ${LOOPBACK_HOST}:${port}`,
+              `Origin: ${ALLOWED_ORIGIN}`,
+              'Content-Type: application/json',
+              `Content-Length: ${body.length}`,
+              'Connection: close',
+            ]),
+            body,
+          ]),
+          port,
+        })
+      })
+    })
+
+    assert.deepEqual(consoleCalls, [])
+  } finally {
+    Object.defineProperty(responseWriterPrototype, 'end', endDescriptor)
+  }
+
+  const rawResponse = response.rawResponse.toString('utf8')
+
+  assert.equal(successEndCalls, 1)
+  assert.equal(agentProbe.calls.length, 1)
+  assert.ok(response.statusLineCount <= 1)
+  assert.equal(rawResponse.includes(privateMarker), false)
+  assert.equal(rawResponse.includes('localSyncGatewayFailed'), false)
+  assert.equal(rawResponse.includes('gatewayFailed'), false)
+
+  if (hasCompleteRawHttpResponse(response)) {
+    assertSuccessfulSyncResponse(response)
+  }
+})
+
 test('weist abweichende Pfade, Querystrings, absolute Targets, Hosts und Methoden vor der Boundary zurück', async () => {
   const boundaryProbe = createBoundaryProbe()
 
@@ -2424,7 +4797,7 @@ test('akzeptiert für logisch gebundenen Port 80 nur die beiden kanonischen Loop
         port: actualPort,
       })
 
-      assertLocalHttpResponse(response, 'upstreamUnavailable')
+      assertSuccessfulSyncResponse(response)
     }
 
     for (const host of [
@@ -2601,7 +4974,7 @@ test('akzeptiert nur application/json mit optional genau charset=utf-8', async (
         port,
       })
 
-      assertLocalHttpResponse(response, 'upstreamUnavailable')
+      assertSuccessfulSyncResponse(response)
     }
 
     for (const contentType of [
@@ -2653,7 +5026,7 @@ test('erlaubt nur fehlendes oder eindeutiges identity Content-Encoding ohne Deko
       }
 
       const response = await sendHttpRequest({ headers, port })
-      assertLocalHttpResponse(response, 'upstreamUnavailable')
+      assertSuccessfulSyncResponse(response)
     }
 
     for (const contentEncoding of ['gzip', 'br', 'identity, identity']) {
@@ -3021,7 +5394,7 @@ test('zerstört einen gedroppten zweiten Pipeline-Request synchron ohne Node-Zwe
       assert.equal(rawResponse.includes('\r\n\r\nService Unavailable'), false)
 
       if (hasCompleteRawHttpResponse(response)) {
-        assertLocalHttpResponse(response, 'upstreamUnavailable')
+        assertSuccessfulSyncResponse(response)
       }
 
       assert.ok(boundaryProbe.calls.length <= 1)
@@ -3273,7 +5646,7 @@ test('begrenzt mehrere HTTP/1.1-Requests auch ohne Nodes maxRequestsPerSocket an
         assert.equal(rawResponse.includes(privateMarker), false)
 
         if (hasCompleteRawHttpResponse(response)) {
-          assertLocalHttpResponse(response, 'upstreamUnavailable')
+          assertSuccessfulSyncResponse(response)
         }
 
         assert.equal(boundaryProbe.calls.length, 1)
@@ -3394,7 +5767,7 @@ test('akzeptiert exakt 65.536 tatsächliche Bytes und lehnt Byte 65.537 über me
       createChunkedWriteGroups(port, [exactBody])
     )
 
-    assertLocalHttpResponse(exactResponse, 'upstreamUnavailable')
+    assertSuccessfulSyncResponse(exactResponse)
     assert.equal(boundaryProbe.calls.length, 1)
     assert.equal(boundaryProbe.calls[0].rawBody.length, exactBody.length)
     assert.equal(decoderProbe.calls.create.length, 1)
@@ -3487,7 +5860,7 @@ test('erzeugt niemals eine übergroße Gesamtpufferkopie', { concurrency: false 
         createChunkedWriteGroups(port, [exactBody])
       )
 
-      assertLocalHttpResponse(exactResponse, 'upstreamUnavailable')
+      assertSuccessfulSyncResponse(exactResponse)
       oversizedAttemptStart = concatAttempts.length
 
       const oversizedResponse = await sendRawSocketWrites(
@@ -3551,7 +5924,7 @@ test('dekodiert leere und gültige Bodies jeweils exakt einmal als Gesamtpuffer 
         port,
       })
 
-      assertLocalHttpResponse(response, 'upstreamUnavailable')
+      assertSuccessfulSyncResponse(response)
     }
 
     assert.deepEqual(
@@ -3621,7 +5994,7 @@ test('bewahrt eine gültige Mehrbytefolge über Chunkgrenzen ohne Per-Chunk-Deco
       createChunkedWriteGroups(port, fragments)
     )
 
-    assertLocalHttpResponse(response, 'upstreamUnavailable')
+    assertSuccessfulSyncResponse(response)
   })
 
   assert.equal(decoderProbe.calls.decode.length, 1)
@@ -3742,27 +6115,32 @@ test('redigiert werfende Decoder-Getter und ungeeignete Decoderresultate vor Bou
   }
 })
 
-test('akzeptiert einen echten syncTest nur lokal und endet ohne SyncAgent-Behauptung statisch mit 503', async () => {
+test('beantwortet einen echten lokalen syncTest ausschließlich mit der defensiven korrelierten SyncResponse', async () => {
   const boundaryProbe = createRealBoundaryProbe()
   const privateRequestId =
     'req_fixture-accepted-http-private-sentinel'
+  const privateHeaderMarker = 'fixture-accepted-http-header-private-sentinel'
   const rawBody = createRawSyncRequest({ requestId: privateRequestId })
   const body = Buffer.from(rawBody, 'utf8')
 
   await withStartedGateway({ boundaryProbe }, async ({ port }) => {
     const response = await sendHttpRequest({
       bodyChunks: [body],
-      headers: buildRequestHeaders(port, body.byteLength),
+      headers: buildRequestHeaders(port, body.byteLength, {
+        'X-Private': privateHeaderMarker,
+      }),
       port,
     })
 
-    assertLocalHttpResponse(response, 'upstreamUnavailable')
+    assertSuccessfulSyncResponse(
+      response,
+      createSyncRequest({ requestId: privateRequestId })
+    )
     const serializedResponse = response.body.toString('utf8')
 
-    assert.equal(serializedResponse.includes(privateRequestId), false)
-    assert.equal(serializedResponse.includes('SyncAgent'), false)
-    assert.equal(serializedResponse.includes('handledBy'), false)
-    assert.equal(serializedResponse.includes('processedBy'), false)
+    assert.equal(serializedResponse.includes(privateRequestId), true)
+    assert.equal(serializedResponse.includes(privateHeaderMarker), false)
+    assert.equal(serializedResponse.includes('SyncAgent'), true)
     assert.equal(boundaryProbe.calls.length, 1)
     assert.equal(boundaryProbe.calls[0].result.ok, true)
   })
@@ -4084,7 +6462,7 @@ test('verwendet request.setEncoding niemals und bleibt auf normalen Pfaden Conso
 
       assert.deepEqual(
         responses.map((response) => response.statusCode),
-        [503, 403, 400]
+        [200, 403, 400]
       )
     })
   } finally {
