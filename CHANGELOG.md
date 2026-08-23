@@ -8,6 +8,54 @@ Release.
 
 ## Unveröffentlicht – v0.3.0 in Arbeit – Local SyncGateway–SyncAgent Composition / ADR 0025
 
+### Local SyncGateway–SyncAgent Composition – Implementierung
+
+- Den durch ADR 0025 entschiedenen lokalen In-Process-Pfad umgesetzt.
+  `server/startLocalSyncGateway.js` erzeugt nach gültiger Runtimekonfiguration
+  genau eine lokale SyncAgent-Instanz pro HTTP-Server-Factory und injiziert sie
+  als erforderliche Dependency; Import und ungültige Konfiguration starten
+  weiterhin weder Agent noch Listener.
+- Die HTTP-Factory ohne versteckten Agentendefault gehärtet. Sie löst
+  `syncAgent.processSyncRequest` vor dem Serveraufbau genau einmal sicher auf
+  und verwendet dieselbe Funktion mit demselben Receiver. Ausschließlich die
+  exakte defensive Boundary-Requestidentität erreicht den Agenten synchron, mit
+  exakt einem Argument und pro akzeptiertem Requestpfad höchstens einmal; es
+  gibt weder Await, Promise-/Thenable-Auflösung, Retry noch Fallback.
+- Das unvertrauenswürdige Agentenresultat gegen die exakte tief eingefrorene
+  ADR-0024-Erfolgsform und dessen normale Response gegen denselben Boundary-
+  Request geprüft. Nur daraus entsteht descriptor-basiert ein frischer,
+  erneut validierter und tief eingefrorener Zehn-Felder-Responsegraph ohne
+  übernommene fremde verschachtelte Identitäten.
+- Die terminale Erfolgsgrenze mit bei Modulevaluation erfassten Object-/Array-
+  Prototypen, Reflection-, Freeze-/Frozen-, Array- und JSON-Funktionen
+  umgesetzt. Exakte Own-Data-Properties, Frozen-Zustand, feste
+  Prototypketten bis `null`, eigene `toJSON`-Properties und die genau einmalige
+  Vorabserialisierung werden fail-closed geprüft.
+- Der exakt leere synthetische `syncTest` endet im explizit gestarteten lokalen
+  Gateway nun ausschließlich mit der defensiven normalen SyncResponse und HTTP
+  `200`. Kontrollierte Boundary-Ablehnungen bleiben HTTP `400`; Agenten-,
+  Projektions-, terminale Prüf- oder Vorabserialisierungsfehler ergeben
+  ausschließlich das statisch redigierte HTTP-`500 gatewayFailed`-Profil. Der
+  bisherige statische `503 upstreamUnavailable`-Pfad und seine nicht mehr
+  erreichbaren Fixtures wurden entfernt.
+- Den bestehenden Gateway-Lifecycle und seine alleinige HTTP-, Header-, CORS-,
+  Serialisierungs-, Socket- und Cleanup-Verantwortung unverändert beibehalten.
+  Weder ein Browser-SyncTransport noch ein Cloud-, n8n-, Modell-, Provider-,
+  Workflow-, Credential-, Persistenz-, Logging-, Telemetrie- oder privater
+  Datenpfad wurde ergänzt.
+- Der nächste Slice entscheidet und definiert ausschließlich den Browser-
+  SyncTransport-Vertrag. Seine Implementierung und der lokale Browser-End-to-
+  End-`syncTest` folgen getrennt; lokale Missbrauchs-, Parallelitäts-, Zeit-
+  und Ressourcenbegrenzung beginnt erst nach diesem End-to-End-Pfad.
+- Die enge vorläufige Phase-0-/Nicht-KI-Arbeitshypothese bleibt ausschließlich
+  auf diesen deterministischen modellfreien lokalen Slice begrenzt und ist kein
+  Compliance-Siegel. Die fokussierte Local-SyncGateway-Suite besteht mit 67/67
+  Tests, die kombinierte serielle Sync-Suite mit 312/312 Tests und die
+  vollständige serielle Gesamtsuite mit 1332/1332 Tests; alle drei Läufe haben
+  0 Fehlschläge, 0 Skips und 0 Todos. Der Produktions-Build transformiert
+  weiterhin exakt 46 Browsermodule; der schreibfreie Bundle-Check meldet keinen
+  Drift.
+
 ### Local SyncGateway–SyncAgent Composition / ADR 0025
 
 - ADR 0025 am `2026-08-23` als reinen Dokumentations- und Entscheidungsslice

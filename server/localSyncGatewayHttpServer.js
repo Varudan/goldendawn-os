@@ -5,6 +5,7 @@ import {
   SYNC_CONTRACT_MAX_RAW_BODY_BYTES,
   validateSyncGatewayErrorResponse,
   validateSyncRequest,
+  validateSyncResponse,
 } from '../src/contracts/syncContract.js'
 import {
   createSyncGatewayRequestBoundary,
@@ -12,6 +13,63 @@ import {
 import {
   readLocalSyncGatewayRuntimeConfig,
 } from './localSyncGatewayRuntimeConfig.js'
+
+const capturedObjectPrototype = Object.prototype
+const capturedArrayPrototype = Array.prototype
+const capturedObjectGetPrototypeOf = Object.getPrototypeOf
+const capturedObjectGetOwnPropertyDescriptor =
+  Object.getOwnPropertyDescriptor
+const capturedObjectHasOwn = Object.hasOwn
+const capturedObjectCreate = Object.create
+const capturedObjectFreeze = Object.freeze
+const capturedObjectIsFrozen = Object.isFrozen
+const capturedReflectOwnKeys = Reflect.ownKeys
+const capturedArrayIsArray = Array.isArray
+const capturedJsonStringify = JSON.stringify
+const capturedReflectApply = Reflect.apply
+
+const AGENT_RESULT_PROPERTY_NAMES = capturedObjectFreeze([
+  'ok',
+  'status',
+  'syncResponse',
+  'error',
+])
+const SYNC_REQUEST_PROPERTY_NAMES = capturedObjectFreeze([
+  'version',
+  'action',
+  'source',
+  'requestId',
+  'timestamp',
+  'payload',
+])
+const SYNC_RESPONSE_PROPERTY_NAMES = capturedObjectFreeze([
+  'version',
+  'success',
+  'requestId',
+  'action',
+  'handledBy',
+  'timestamp',
+  'data',
+  'error',
+  'warnings',
+  'meta',
+])
+const SUCCESS_DATA_PROPERTY_NAMES = capturedObjectFreeze([
+  'status',
+  'dataOrigin',
+])
+const META_PROPERTY_NAMES = capturedObjectFreeze([
+  'durationMs',
+  'processedBy',
+])
+const VALIDATION_RESULT_PROPERTY_NAMES = capturedObjectFreeze([
+  'ok',
+  'errors',
+])
+const EMPTY_ARRAY_VALUES = capturedObjectFreeze([])
+const SYNC_AGENT_ARRAY_VALUES = capturedObjectFreeze(['SyncAgent'])
+const EMPTY_ARRAY_PROPERTY_NAMES = capturedObjectFreeze(['length'])
+const ONE_VALUE_ARRAY_PROPERTY_NAMES = capturedObjectFreeze(['0', 'length'])
 
 const LOCAL_SYNC_GATEWAY_HOST = '127.0.0.1'
 const LOCAL_SYNC_GATEWAY_PATH = '/api/sync-test'
@@ -99,12 +157,6 @@ const LOCAL_HTTP_PROFILES = Object.freeze({
     message:
       'Die lokale SyncGateway-Anfrage konnte nicht sicher verarbeitet werden.',
   }),
-  upstreamUnavailable: Object.freeze({
-    httpStatus: 503,
-    status: 'upstreamUnavailable',
-    code: 'localSyncGatewayUpstreamUnavailable',
-    message: 'Der lokale SyncGateway-Upstream ist noch nicht implementiert.',
-  }),
 })
 
 const LIFECYCLE_FAILURES = Object.freeze({
@@ -164,6 +216,8 @@ const LOCAL_HTTP_RESPONSE_BODIES = new Map(
     return [profileName, JSON.stringify(envelope)]
   })
 )
+const LOCAL_GATEWAY_FAILED_RESPONSE_BODY =
+  LOCAL_HTTP_RESPONSE_BODIES.get('gatewayFailed')
 
 function defaultStrictUtf8TextDecoderFactory() {
   return new TextDecoder('utf-8', {
@@ -314,6 +368,408 @@ function isAcceptedSyncRequestProjection(syncRequest) {
     )
   } catch {
     return false
+  }
+}
+
+function capturedOwnKeysMatch(ownKeys, expectedPropertyNames) {
+  if (ownKeys.length !== expectedPropertyNames.length) {
+    return false
+  }
+
+  for (
+    let expectedIndex = 0;
+    expectedIndex < expectedPropertyNames.length;
+    expectedIndex += 1
+  ) {
+    const expectedPropertyName = expectedPropertyNames[expectedIndex]
+    let propertyFound = false
+
+    for (
+      let ownKeyIndex = 0;
+      ownKeyIndex < ownKeys.length;
+      ownKeyIndex += 1
+    ) {
+      if (ownKeys[ownKeyIndex] === expectedPropertyName) {
+        propertyFound = true
+        break
+      }
+    }
+
+    if (!propertyFound) {
+      return false
+    }
+  }
+
+  return true
+}
+
+function readCapturedOrdinaryDataRecord(value, expectedPropertyNames) {
+  try {
+    if (
+      typeof value !== 'object' ||
+      value === null ||
+      capturedArrayIsArray(value) ||
+      capturedObjectGetPrototypeOf(value) !== capturedObjectPrototype
+    ) {
+      return { ok: false }
+    }
+
+    const ownKeys = capturedReflectOwnKeys(value)
+
+    if (!capturedOwnKeysMatch(ownKeys, expectedPropertyNames)) {
+      return { ok: false }
+    }
+
+    const values = capturedReflectApply(
+      capturedObjectCreate,
+      capturedObjectPrototype,
+      [null]
+    )
+
+    for (
+      let propertyIndex = 0;
+      propertyIndex < expectedPropertyNames.length;
+      propertyIndex += 1
+    ) {
+      const descriptor = capturedObjectGetOwnPropertyDescriptor(
+        value,
+        expectedPropertyNames[propertyIndex]
+      )
+
+      if (
+        descriptor === undefined ||
+        descriptor.enumerable !== true ||
+        !capturedObjectHasOwn(descriptor, 'value')
+      ) {
+        return { ok: false }
+      }
+
+      values[propertyIndex] = descriptor.value
+    }
+
+    return { ok: true, values }
+  } catch {
+    return { ok: false }
+  }
+}
+
+function readCapturedDataArray(value, expectedValues) {
+  try {
+    if (
+      !capturedArrayIsArray(value) ||
+      capturedObjectGetPrototypeOf(value) !== capturedArrayPrototype
+    ) {
+      return { ok: false }
+    }
+
+    let expectedPropertyNames
+
+    if (expectedValues.length === 0) {
+      expectedPropertyNames = EMPTY_ARRAY_PROPERTY_NAMES
+    } else if (expectedValues.length === 1) {
+      expectedPropertyNames = ONE_VALUE_ARRAY_PROPERTY_NAMES
+    } else {
+      return { ok: false }
+    }
+
+    const ownKeys = capturedReflectOwnKeys(value)
+
+    if (!capturedOwnKeysMatch(ownKeys, expectedPropertyNames)) {
+      return { ok: false }
+    }
+
+    const lengthDescriptor = capturedObjectGetOwnPropertyDescriptor(
+      value,
+      'length'
+    )
+
+    if (
+      lengthDescriptor === undefined ||
+      lengthDescriptor.enumerable !== false ||
+      !capturedObjectHasOwn(lengthDescriptor, 'value') ||
+      lengthDescriptor.value !== expectedValues.length
+    ) {
+      return { ok: false }
+    }
+
+    if (expectedValues.length === 1) {
+      const valueDescriptor = capturedObjectGetOwnPropertyDescriptor(value, '0')
+
+      if (
+        valueDescriptor === undefined ||
+        valueDescriptor.enumerable !== true ||
+        !capturedObjectHasOwn(valueDescriptor, 'value') ||
+        valueDescriptor.value !== expectedValues[0]
+      ) {
+        return { ok: false }
+      }
+    }
+
+    return { ok: true }
+  } catch {
+    return { ok: false }
+  }
+}
+
+function isCapturedAcceptedValidationResult(validationResult) {
+  const inspectedResult = readCapturedOrdinaryDataRecord(
+    validationResult,
+    VALIDATION_RESULT_PROPERTY_NAMES
+  )
+
+  return (
+    inspectedResult.ok &&
+    inspectedResult.values[0] === true &&
+    readCapturedDataArray(
+      inspectedResult.values[1],
+      EMPTY_ARRAY_VALUES
+    ).ok
+  )
+}
+
+function validateNormalSyncResponse(syncResponse, syncRequest) {
+  try {
+    return isCapturedAcceptedValidationResult(
+      capturedReflectApply(
+        validateSyncResponse,
+        undefined,
+        [syncResponse, syncRequest]
+      )
+    )
+  } catch {
+    return false
+  }
+}
+
+function inspectCapturedSuccessSyncResponse(syncResponse, syncRequest) {
+  const request = readCapturedOrdinaryDataRecord(
+    syncRequest,
+    SYNC_REQUEST_PROPERTY_NAMES
+  )
+  const response = readCapturedOrdinaryDataRecord(
+    syncResponse,
+    SYNC_RESPONSE_PROPERTY_NAMES
+  )
+
+  if (!request.ok || !response.ok) {
+    return { ok: false }
+  }
+
+  const dataValue = response.values[6]
+  const warningsValue = response.values[8]
+  const metaValue = response.values[9]
+  const data = readCapturedOrdinaryDataRecord(
+    dataValue,
+    SUCCESS_DATA_PROPERTY_NAMES
+  )
+  const warnings = readCapturedDataArray(
+    warningsValue,
+    EMPTY_ARRAY_VALUES
+  )
+  const meta = readCapturedOrdinaryDataRecord(
+    metaValue,
+    META_PROPERTY_NAMES
+  )
+
+  if (!data.ok || !warnings.ok || !meta.ok) {
+    return { ok: false }
+  }
+
+  const processedByValue = meta.values[1]
+  const processedBy = readCapturedDataArray(
+    processedByValue,
+    SYNC_AGENT_ARRAY_VALUES
+  )
+
+  if (
+    !processedBy.ok ||
+    response.values[0] !== '1.0' ||
+    response.values[1] !== true ||
+    response.values[2] !== request.values[3] ||
+    response.values[3] !== 'syncTest' ||
+    response.values[4] !== 'SyncAgent' ||
+    typeof response.values[5] !== 'string' ||
+    data.values[0] !== 'ok' ||
+    data.values[1] !== 'synthetic' ||
+    response.values[7] !== null ||
+    meta.values[0] !== 0 ||
+    syncResponse === dataValue ||
+    syncResponse === warningsValue ||
+    syncResponse === metaValue ||
+    syncResponse === processedByValue ||
+    dataValue === metaValue ||
+    warningsValue === processedByValue
+  ) {
+    return { ok: false }
+  }
+
+  try {
+    if (
+      capturedObjectIsFrozen(syncResponse) !== true ||
+      capturedObjectIsFrozen(dataValue) !== true ||
+      capturedObjectIsFrozen(warningsValue) !== true ||
+      capturedObjectIsFrozen(metaValue) !== true ||
+      capturedObjectIsFrozen(processedByValue) !== true
+    ) {
+      return { ok: false }
+    }
+  } catch {
+    return { ok: false }
+  }
+
+  return {
+    ok: true,
+    timestamp: response.values[5],
+    identities: {
+      data: dataValue,
+      meta: metaValue,
+      processedBy: processedByValue,
+      syncResponse,
+      warnings: warningsValue,
+    },
+  }
+}
+
+function createDefensiveSuccessSyncResponse(syncRequest, timestamp) {
+  const request = readCapturedOrdinaryDataRecord(
+    syncRequest,
+    SYNC_REQUEST_PROPERTY_NAMES
+  )
+
+  if (!request.ok) {
+    return null
+  }
+
+  const data = {
+    status: 'ok',
+    dataOrigin: 'synthetic',
+  }
+  const warnings = []
+  const processedBy = ['SyncAgent']
+  const meta = {
+    durationMs: 0,
+    processedBy,
+  }
+  const syncResponse = {
+    version: '1.0',
+    success: true,
+    requestId: request.values[3],
+    action: 'syncTest',
+    handledBy: 'SyncAgent',
+    timestamp,
+    data,
+    error: null,
+    warnings,
+    meta,
+  }
+
+  return { data, meta, processedBy, syncResponse, warnings }
+}
+
+function freezeDefensiveSuccessSyncResponse(responseBuild) {
+  try {
+    capturedReflectApply(capturedObjectFreeze, undefined, [responseBuild.data])
+    capturedReflectApply(capturedObjectFreeze, undefined, [responseBuild.warnings])
+    capturedReflectApply(capturedObjectFreeze, undefined, [responseBuild.processedBy])
+    capturedReflectApply(capturedObjectFreeze, undefined, [responseBuild.meta])
+    capturedReflectApply(capturedObjectFreeze, undefined, [responseBuild.syncResponse])
+
+    return (
+      capturedObjectIsFrozen(responseBuild.data) === true &&
+      capturedObjectIsFrozen(responseBuild.warnings) === true &&
+      capturedObjectIsFrozen(responseBuild.processedBy) === true &&
+      capturedObjectIsFrozen(responseBuild.meta) === true &&
+      capturedObjectIsFrozen(responseBuild.syncResponse) === true
+    )
+  } catch {
+    return false
+  }
+}
+
+function serializeAgentSuccessResult(agentResult, syncRequest) {
+  try {
+    const result = readCapturedOrdinaryDataRecord(
+      agentResult,
+      AGENT_RESULT_PROPERTY_NAMES
+    )
+
+    if (
+      !result.ok ||
+      capturedObjectIsFrozen(agentResult) !== true ||
+      result.values[0] !== true ||
+      result.values[1] !== 'syncResponseCreated' ||
+      result.values[3] !== null
+    ) {
+      return null
+    }
+
+    const originalSyncResponse = result.values[2]
+
+    if (!validateNormalSyncResponse(originalSyncResponse, syncRequest)) {
+      return null
+    }
+
+    const originalInspection = inspectCapturedSuccessSyncResponse(
+      originalSyncResponse,
+      syncRequest
+    )
+
+    if (!originalInspection.ok) {
+      return null
+    }
+
+    const responseBuild = createDefensiveSuccessSyncResponse(
+      syncRequest,
+      originalInspection.timestamp
+    )
+
+    if (
+      responseBuild === null ||
+      !validateNormalSyncResponse(responseBuild.syncResponse, syncRequest) ||
+      !freezeDefensiveSuccessSyncResponse(responseBuild) ||
+      !validateNormalSyncResponse(responseBuild.syncResponse, syncRequest)
+    ) {
+      return null
+    }
+
+    const terminalInspection = inspectCapturedSuccessSyncResponse(
+      responseBuild.syncResponse,
+      syncRequest
+    )
+
+    if (
+      !terminalInspection.ok ||
+      terminalInspection.identities.syncResponse !== responseBuild.syncResponse ||
+      terminalInspection.identities.data !== responseBuild.data ||
+      terminalInspection.identities.warnings !== responseBuild.warnings ||
+      terminalInspection.identities.meta !== responseBuild.meta ||
+      terminalInspection.identities.processedBy !== responseBuild.processedBy ||
+      terminalInspection.timestamp !== originalInspection.timestamp ||
+      responseBuild.syncResponse === originalInspection.identities.syncResponse ||
+      responseBuild.data === originalInspection.identities.data ||
+      responseBuild.warnings === originalInspection.identities.warnings ||
+      responseBuild.meta === originalInspection.identities.meta ||
+      responseBuild.processedBy === originalInspection.identities.processedBy ||
+      capturedObjectGetPrototypeOf(capturedArrayPrototype) !==
+        capturedObjectPrototype ||
+      capturedObjectGetPrototypeOf(capturedObjectPrototype) !== null ||
+      capturedObjectHasOwn(capturedArrayPrototype, 'toJSON') ||
+      capturedObjectHasOwn(capturedObjectPrototype, 'toJSON')
+    ) {
+      return null
+    }
+
+    const serializedResponse = capturedReflectApply(
+      capturedJsonStringify,
+      undefined,
+      [responseBuild.syncResponse]
+    )
+
+    return typeof serializedResponse === 'string'
+      ? serializedResponse
+      : null
+  } catch {
+    return null
   }
 }
 
@@ -759,6 +1215,7 @@ function validatePostHeaders(rawHeaderResult) {
 export function createLocalSyncGatewayHttpServer({
   port,
   allowedOrigin,
+  syncAgent,
   syncGatewayRequestBoundary = createSyncGatewayRequestBoundary(),
   createTextDecoder = defaultStrictUtf8TextDecoderFactory,
   onFatal = () => {},
@@ -774,6 +1231,18 @@ export function createLocalSyncGatewayHttpServer({
       !(useTestTimeoutPolicy === true && port === 0)
     )
   ) {
+    throw new TypeError(LOCAL_SYNC_GATEWAY_COMPOSITION_ERROR)
+  }
+
+  let processSyncRequest
+
+  try {
+    processSyncRequest = syncAgent?.processSyncRequest
+  } catch {
+    throw new TypeError(LOCAL_SYNC_GATEWAY_COMPOSITION_ERROR)
+  }
+
+  if (typeof processSyncRequest !== 'function') {
     throw new TypeError(LOCAL_SYNC_GATEWAY_COMPOSITION_ERROR)
   }
 
@@ -918,6 +1387,17 @@ export function createLocalSyncGatewayHttpServer({
     )
   }
 
+  function sendGatewayFailedResponse(response, useCors) {
+    return writeSerializedJsonResponse(
+      response,
+      500,
+      LOCAL_GATEWAY_FAILED_RESPONSE_BODY,
+      allowedOrigin,
+      useCors,
+      claimSocketResponse
+    )
+  }
+
   function sendPreflightResponse(response, configuredOrigin) {
     return writePreflightResponse(
       response,
@@ -1042,9 +1522,43 @@ export function createLocalSyncGatewayHttpServer({
       result.gatewayErrorResponse === null &&
       result.error === null
     ) {
-      sendLocalHttpResponse(
+      let agentResult
+
+      try {
+        agentResult = capturedReflectApply(
+          processSyncRequest,
+          syncAgent,
+          [result.syncRequest]
+        )
+      } catch {
+        sendGatewayFailedResponse(response, useCors)
+        return
+      }
+
+      if (!isOperational()) {
+        abortRequestWithoutResponse(null, response)
+        return
+      }
+
+      const serializedSyncResponse = serializeAgentSuccessResult(
+        agentResult,
+        result.syncRequest
+      )
+
+      if (serializedSyncResponse === null) {
+        sendGatewayFailedResponse(response, useCors)
+        return
+      }
+
+      if (!isOperational()) {
+        abortRequestWithoutResponse(null, response)
+        return
+      }
+
+      sendSerializedJsonResponse(
         response,
-        'upstreamUnavailable',
+        200,
+        serializedSyncResponse,
         allowedOrigin,
         useCors
       )
