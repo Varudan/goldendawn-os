@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – in Arbeit – Local Model-free SyncAgent Core Foundation / ADR 0024` |
+| Projektphase | `v0.3.0 – in Arbeit – Local SyncGateway–SyncAgent Composition / ADR 0025` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR 0023 entscheidet den lokalen SyncAgent als Policy-, Validierungs-, Routing- und Responsegrenze vor optionalen Providern; ADR 0024 implementiert dessen isolierten synchronen modellfreien Kern; transportneutrale Sync-Foundations, Local SyncGateway, Generated n8n Boundary Bundle und netzwerkinaktive n8n Evidence Foundation bleiben implementiert; n8n Stable OSS `FAIL`, Tenantmessung `UNPROVEN`, Aktivierung geschlossen; kein Browsertransport, keine Gateway-/SyncAgent-Komposition und kein Provideradapter implementiert |
-| Letzte Aktualisierung | 2026-08-22 |
+| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR 0025 entscheidet ausschließlich die lokale Gateway-/SyncAgent-Handoff-, Response- und Ownergrenze, implementiert sie aber noch nicht; lokale Foundations und isolierter modellfreier Kern bleiben implementiert; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; kein HTTP-Erfolgspfad, Browsertransport oder Provideradapter implementiert, akzeptierte Requests bleiben bei `503` |
+| Letzte Aktualisierung | 2026-08-23 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -125,12 +125,13 @@ Ungültige oder werfende Ergebnisse werden statisch redigiert und führen nicht
 zum Aufruf der Portmethode. Nur die eigentliche Portmethode wird nach
 vollständiger Requestvalidierung höchstens einmal aufgerufen.
 
-Der leere Request-Payload entfernt das vorgesehene Inhaltsfeld, beweist aber
-nicht automatisch die semantische Privatheit aller Metadaten. Die rein
-syntaktische Prüfung von `requestId` sowie die strukturelle, kanonische und
-zeitliche Prüfung des Request-`timestamp` gegen die Referenzzeit beweisen weder
-deren semantische Herkunft noch Kollisionsarmut oder die Abwesenheit privater
-Fragmente.
+Der leere Request-Payload entfernt das vorgesehene Inhaltsfeld. `source`,
+`requestId` und `timestamp` bleiben Metadaten und können private Bedeutung
+codieren; Contract und leeres Payload beweisen weder ihre semantische
+Nicht-Privatheit noch Datenschutz. Die rein syntaktische Prüfung von
+`requestId` sowie die strukturelle, kanonische und zeitliche Prüfung des
+Request-`timestamp` gegen die Referenzzeit beweisen weder deren semantische
+Herkunft noch Kollisionsarmut oder die Abwesenheit privater Fragmente.
 
 Injizierte Generatoren und Clocks sind vertrauenswürdige
 Composition-Dependencies und dürfen keine Werte aus PromptVault, LearningHub,
@@ -279,13 +280,15 @@ rohe Bodybytes am Transport begrenzen
 gültig und beweisen keine Authentisierung, Herkunft, Identität, Berechtigung,
 Kollisionsfreiheit oder Replay-Sicherheit. Die Timestamp-Toleranz ist kein
 Idempotenz- oder Deduplizierungsschutz. Der exakt leere Payload entfernt das
-vorgesehene Inhaltsfeld, beweist aber nicht die semantische Privatheit anderer
-Metadaten. Die Boundary liest, persistiert oder exportiert keine Bestände aus
-PromptVault, LearningHub oder LichtwaldLog. Der neue HTTP-Handler besitzt
+vorgesehene Inhaltsfeld. `source`, `requestId` und `timestamp` bleiben
+Metadaten und können private Bedeutung codieren; Contract und leeres Payload
+beweisen weder ihre semantische Nicht-Privatheit noch Datenschutz. Die Boundary
+liest, persistiert oder exportiert keine Bestände aus PromptVault, LearningHub
+oder LichtwaldLog. Der neue HTTP-Handler besitzt
 keinen externen Upstream und ist weder mit Browser noch Cloud komponiert;
 deshalb entsteht weiterhin kein externer Datenfluss.
 
-### Durch ADR 0023 und ADR 0024 entschiedene lokale Agenten- und Providergrenze
+### Durch ADR 0023 bis ADR 0025 entschiedene lokale Agenten- und Providergrenze
 
 ADR 0023 ersetzt ADR 0002 und ADR 0019. Die durch ADR 0020 implementierte
 Raw-Wire-, HTTP-, Origin-, Decoder- und Boundary-Komposition bleibt ebenso
@@ -293,10 +296,11 @@ unverändert wie das generierte Boundary-Derivat und die n8n-Evidence-
 Foundation. Die neue Zielarchitektur führt nach dem lokalen Gateway zuerst
 zum lokalen `SyncAgent`; n8n Cloud, self-hosted n8n, OpenAI und
 lokale Modelle sind nur optionale, später separat zu entscheidende Provider
-hinter dieser lokalen Agentengrenze. Browsertransport, Gateway-/SyncAgent-
-Komposition, Provideradapter und die übrigen Betriebsmechanismen sind nicht
-implementiert. Der isolierte SyncAgent-Kern ist implementiert, aber nicht Teil
-dieser Komposition oder eines erreichbaren HTTP-Pfads.
+hinter dieser lokalen Agentengrenze. ADR 0025 entscheidet die Gateway-/
+SyncAgent-Komposition, implementiert sie aber noch nicht. Browsertransport,
+Kompositionscode, Provideradapter und die übrigen Betriebsmechanismen fehlen.
+Der isolierte SyncAgent-Kern ist implementiert, aber noch nicht Teil eines
+erreichbaren HTTP-Erfolgspfads.
 
 | Zone | Inhalt | Sicherheitsgrenze |
 | --- | --- | --- |
@@ -304,6 +308,109 @@ dieser Komposition oder eines erreichbaren HTTP-Pfads.
 | B | separat startbares lokales SyncGateway auf GD-WS01 | ausschließlich `127.0.0.1`; autoritative Wire-, HTTP-, UTF-8- und Boundary-Grenze; keine Agenten-, Modell- oder Fachlogik |
 | C | isolierter lokaler SyncAgent-Kern | autoritative lokale Policy-, Validierungs- und Responsegrenze mit fester `syncTest`-Allowlist; validiert den unveränderten Input, projiziert defensiv und revalidiert Request und Response vor und nach Deep Freeze; noch nicht mit Zone B komponiert |
 | D | optionale externe oder lokale Provider | standardmäßig deaktiviert; nur über capability-spezifische Adapter erreichbar; erhalten ausschließlich neu erzeugte minimierte Projektionen; Outputs bleiben unvertrauenswürdig und werden lokal begrenzt, projiziert, validiert und korreliert |
+
+ADR 0025 entscheidet die spätere Zone-B–Zone-C-Komposition ausschließlich im
+bestehenden Gateway-Prozess. Nur die exakte defensive Boundary-
+Requestidentität darf Zone C synchron, mit genau einem Argument und pro
+akzeptiertem Pfad höchstens einmal erreichen. Raw Bytes, Raw Body, Parsed-JSON-
+Original, Header, Origin, HTTP-/Socketobjekte, Secrets, private Modulwerte und
+Fehlerresponses enden in Zone B. Das Gateway verwendet weder `await` noch
+`Promise.resolve` und führt keine Promise-/Thenable-Assimilation durch. Ein
+echter Promise, ein Result mit zusätzlicher eigener `then`-Property oder ein
+anderweitig malformed Result scheitert an der exakten Resultform. Geerbtes oder
+nur
+per Proxy-`get` virtuell angebotenes `then` wird nicht eigens gelesen; eine
+universelle Erkennung wird nicht behauptet.
+
+Das Agentenresultat bleibt dort unvertrauenswürdig: Nur der exakte tief
+eingefrorene ADR-0024-Erfolg darf nach Originalvalidierung in einen frischen
+disjunkten normalen Responsegraphen projiziert, revalidiert, tief eingefroren
+und final revalidiert werden. Das spätere HTTP-Servermodul erfasst bei
+Modulevaluation die erforderlichen Object-/Array-Prototypen, Reflection-,
+Freeze-/Frozen-Funktionen, `Array.isArray` und `JSON.stringify`. Nach der
+letzten untrusted Reflection müssen exakte Prototypen, Own-Data-Properties,
+Freeze und danach mit der erfassten `Object.getPrototypeOf`-Referenz exakt
+`capturedGetPrototypeOf(capturedArrayPrototype) === capturedObjectPrototype`
+sowie anschließend
+`capturedGetPrototypeOf(capturedObjectPrototype) === null` bestehen. Damit sind
+ausschließlich `Response-Record → capturedObjectPrototype → null` und
+`Response-Array → capturedArrayPrototype → capturedObjectPrototype → null`
+zulässig; eine allgemeinere oder dynamisch erweiterbare Prototypkette wird
+nicht akzeptiert. Erst nach beiden Identitätsprüfungen werden der erfasste
+Array- und danach der erfasste Object-Prototyp auf eine eigene `toJSON`-
+Property geprüft; erst dann darf die erfasste Erfolgsserialisierung genau
+einmal und vor Responsebesitz laufen.
+
+Eine Kettenabweichung wird vor Responsebesitz erkannt, ruft diese
+Erfolgsserialisierung nullmal auf und serialisiert den kompromittierten Graphen
+nicht. Ausschließlich das bereits materialisierte statische
+`500 gatewayFailed`-Profil wird verwendet; fremder Body, Sentinel,
+Exceptiontext werden nicht ausgegeben, und eine zweite Response entsteht
+nicht. Terminale Inkonsistenz,
+Throw oder Nicht-String bleibt demselben statischen Profil zugeordnet.
+Post-import Ersetzungen der erfassten terminalen Serialisierungs-, Reflection-,
+Freeze-/Frozen- oder Array-Erkennungsfunktionen ändern nicht, welche erfasste
+Funktion die Grenze verwendet; vor
+Modulevaluation kompromittierte Primordials oder Modulcode,
+Enginekompromittierung, OOM und Prozessabbruch bleiben außerhalb der Garantie.
+Same-Realm und Deep Freeze sind keine Sandbox. Das Gateway bleibt alleiniger
+HTTP-, CORS-, Response-, Socket- und Cleanup-Owner. Requestbezogene
+Agentenfehler werden nicht als `400` offengelegt und sind keine fatalen
+Serverfehler.
+
+Der spätere Implementierungsslice muss post-import ersetztes globales
+`JSON.stringify`, eigene `Object.prototype.toJSON`- und
+`Array.prototype.toJSON`-Properties sowie ein zwischen beide erfassten
+Prototypen eingeschobenes Objekt mit `toJSON` und privatem Test-Sentinel
+mutationswirksam prüfen. Im Einschubfall bestehen die bisherigen direkten
+Prototyp- und Own-`toJSON`-Prüfungen; die neue Kettenprüfung muss vor
+Responsebesitz statisch `500 gatewayFailed`, null Aufrufe der
+Erfolgsserialisierung, vollständige Sentinelfreiheit und keine zweite Response
+ergeben. Die saubere Kontrollprobe bestätigt die exakte Array-Prototypkette bis
+`null` und genau einen erfassten Erfolgsserialisierungsaufruf. Globale
+Instrumentierungen laufen mit `concurrency: false` und vollständiger
+Wiederherstellung der ursprünglichen Prototypkette, globalen Funktionen und
+Descriptoren im `finally`. Dieser Korrekturslice implementiert weder
+Kompositionscode noch Tests.
+
+Der ADR-0025-Phase-0-Nachweis ist eine enge, vorläufige Nicht-KI-
+Arbeitshypothese ausschließlich für den bei demselben stabilen Request und
+Clockwert deterministischen `syncTest`-Slice. Es gibt kein Modell, keine
+modell-, lern- oder statistikbasierte Inferenz, kein Training, Lernen oder
+Adaptieren, sondern nur fest programmierte Validierungs-, Projektions-,
+Korrelations- und Mappingregeln. Bestimmungsgemäß ist das Inhalts-Payload exakt
+leer, der Pfad greift nicht auf PromptVault, LearningHub, LichtwaldLog oder
+GoldenDawn-Vault zu und verarbeitet oder überträgt bestimmungsgemäß keine
+privaten Inhalte.
+`source`, `requestId` und `timestamp` bleiben jedoch Metadaten, die private
+Bedeutung codieren können; der Contract beweist weder semantische
+Nicht-Privatheit noch Datenschutz.
+
+Direkte spätere lokale Abhängigkeiten sind Node.js, die Foundations aus ADR
+0016, ADR 0018, ADR 0020 und ADR 0024 sowie die lockfilegebundene Repository-
+Baseline am Referenzcommit
+`45dc7b9bb101b2dba445679a3237fb510ca6f33c`. ADR 0017 bleibt die noch nicht
+browserseitig komponierte Servicegrenze und ist keine direkte Runtime-
+Dependency der Gateway-/Agenten-Komposition; eine externe Runtime-, Modell-,
+Workflow- oder Providerdependency besteht für diesen Slice nicht.
+
+Jan ist Projektowner und erteilt Implementierungs- sowie lokale Start- und
+Betriebsfreigaben ausdrücklich. Weder ein ADR noch ein Repository- oder
+Modulimport noch ein Codex-Lauf dieses Dokumentationsslices startet den Gateway-
+Prozess; er bleibt bewusst über `start` und `stop` steuerbar. Nutzung durch
+andere, Hosting oder externer Betrieb sind nicht
+freigegeben und lösen ebenso wie jede Erweiterung über den lokalen
+synthetischen Zweck eine neue Tor-A-Prüfung aus. Damit wird keine allgemeine
+Organisations-, Anbieter- oder Betreiberrolle festgelegt.
+
+Die Arbeitshypothese ist keine Rechtsberatung, klassifiziert weder GoldenDawn
+OS insgesamt noch spätere Agenten oder Provider und ist kein Compliance-
+Siegel. `Agent`, Determinismus und `dataOrigin: "synthetic"` sind keine
+gesetzlichen Klassifikations-, Herkunfts- oder Transparenznachweise. Phase 1
+bis Phase 3 bleiben offen; Browsertransport, menschliche Interaktion, Modell,
+Provider, Workflow, neue Aktion, nicht leeres oder privates Payload, Tool,
+Nebenwirkung, Logging, Persistenz, Telemetrie, Hosting, Nutzung durch andere
+oder Zweckänderung lösen eine neue Tor-A-Prüfung aus.
 
 Das lokale SyncGateway ist kein Agent, keine Fachlogik, kein allgemeines
 Backend, kein Storage, kein DataAgent, kein Ersatz für den `SyncAgent` und
@@ -437,10 +544,13 @@ zweiten Meldung noch zu einer unbehandelten Exception.
   synthetischen `syncTest` begrenzt. PromptVault, LearningHub, LichtwaldLog,
   GoldenDawn-Vault, Airtable, DataAgent und TestAgent sind nicht erlaubt.
 
-Diese kleine Capability ist nur vertretbar, weil sie keine privaten Daten
-liest, keinen fachlichen Zustand verändert und nur eine als `synthetic`
-klassifizierte Antwort erzeugen darf. `synthetic` bleibt eine
-Vertragsklassifikation und kein Herkunfts- oder Datenschutzbeweis.
+Diese kleine Capability ist nur vertretbar, weil sie keinen Zugriff auf
+PromptVault, LearningHub, LichtwaldLog oder GoldenDawn-Vault besitzt, das
+Inhalts-Payload bestimmungsgemäß exakt leer bleibt, keinen fachlichen Zustand
+verändert und nur eine als `synthetic` klassifizierte Antwort erzeugen darf.
+Contractmetadaten können dennoch private Bedeutung codieren; `synthetic` und
+der geschlossene Contract bleiben weder Herkunfts-, Nicht-Privatheits- noch
+Datenschutzbeweis.
 
 #### Lokale Raw-Wire- und Decodierungsgrenze
 
@@ -954,12 +1064,13 @@ Telemetrie, Monitoring noch externen Datenfluss. Die Anwendung einzelner
 Prinzipien ist kein vollständiger DSGVO-, AI-Act-, Zero-Trust-,
 Defense-in-Depth- oder sonstiger Compliance-Nachweis.
 
-#### Bedrohungen des durch ADR 0023/0024 entschiedenen Zielpfads
+#### Bedrohungen des durch ADR 0023 bis ADR 0025 entschiedenen Zielpfads
 
 Die lokalen HTTP-, Origin-, Wire-, Decoder- und Boundary-Schutzschichten sowie
-der isolierte SyncAgent-Kern sind implementiert. Deren kontrollierte
-Komposition, Provideradapter, Credential-, Rate-Limit-, Replay- und
-Idempotenzschutz bleiben geplant.
+der isolierte SyncAgent-Kern sind implementiert. ADR 0025 entscheidet ihre
+kontrollierte Handoff-, Response- und Ownergrenze; Kompositionscode,
+Provideradapter, Credential-, Rate-Limit-, Replay- und Idempotenzschutz bleiben
+geplant.
 
 | Bedrohung | Betroffene Grenze | Geplante Schutzschichten | Verbleibendes Risiko | Status |
 | --- | --- | --- | --- | --- |
@@ -968,7 +1079,7 @@ Idempotenzschutz bleiben geplant.
 | langsam tröpfelnder oder unvollständiger Request | lokale Parser- und Socketgrenze | absolute 5.000-/10.000-ms-Fristen, fester 100-ms-Prüftakt, endliche Idle- und Keep-Alive-Zeiten | Eventloop-, Betriebssystem- und Netzwerkplanung können den tatsächlichen Abschluss verzögern; kein Rate Limit | lokal implementiert und regressionsgeprüft |
 | manipulierte oder übergroße Bodybytes | lokale Wire-Grenze | Streaminglimit 65.536, Abbruch bei Byte 65.537, keine Kompression | Node/OS können aktuellen Chunk bereits alloziert haben; Ressourcen vor Prozessannahme | lokale Anwendungspuffergrenze implementiert |
 | ungültiges UTF-8 oder JSON | Decoder und Boundary | strikte einmalige Decodierung, keine Reparatur, kanonische Single-Parser-Boundary | Same-Realm-Runtime-/Decoderfehler | lokal implementiert |
-| Umgehung lokaler Agentenpolicy | Zone B → D | feste `syncTest`-Allowlist, Originalvalidierung, defensive Projektion, Revalidierung und Providerzugriff ausschließlich hinter Zone C | fehlerhafte oder manipulierte künftige lokale Composition; Same-Realm ist keine Sandbox | isolierter Kern implementiert und mutationswirksam geprüft; Komposition und Adapter fehlen |
+| Umgehung lokaler Agentenpolicy | Zone B → D | feste `syncTest`-Allowlist, exakte defensive Boundary-Identität, höchstens ein synchroner Agentenaufruf, untrusted-Result-Prüfung, disjunkte Responseprojektion und Providerzugriff ausschließlich hinter Zone C | fehlerhafte oder manipulierte künftige lokale Composition; Same-Realm ist keine Sandbox | ADR-0025-Vertrag entschieden; Kompositionscode und Adapter fehlen |
 | gestohlenes Provider-Credential | Zone C → D | getrennte lokale Adapterkopie und providerseitiges Prüfmaterial; adapterabhängig noch festzulegende dedizierte Verwendung, Rotation und Widerruf | Nutzung bis Widerruf; Providerablage beweist keine Redaction/Retention; Same-Realm ist keine Sandbox | Provideradapter noch nicht autorisiert |
 | Replay eines gültigen Requests | Zone C → D | keine automatischen Retries; spätere Replay-/Idempotenzregeln | kein Replay-Nachweis für künftige Adapter | Schutzprüfung je Adapterslice geplant |
 | Provider- oder n8n-Ausführungsdaten | Zone D | Datenminimierung und Retention-/Redaction-Review vor Aktivierung | externe Metadatenverarbeitung | n8n Stable OSS `FAIL`, Tenant `UNPROVEN`; sämtliche Provider deaktiviert |
@@ -1972,7 +2083,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
 | `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; vollständig geprüft und veröffentlicht |
 | `v0.2.2` | privater allowlist-basierter View-, Controller-, Service- und Storage-Pfad sowie strikt getrennter synthetischer In-Memory-Demo-Stack mit fester Herkunft, Safe DOM, Closure-/Map-isolierten Entry-IDs, defensiver UI-Projektion, flüchtiger Suche/Filterung, DOM-Unmount-Grenze, statisch redigierten Fehlern, ohne Browser-Key oder Fallback; keine Base64-Bilder in `localStorage`, keine externe Übertragung; vollständig geprüft und veröffentlicht |
-| `v0.3.0` | In Arbeit: SyncContract, SyncService, transportneutrale SyncGateway Request Boundary, separat startbare Loopback-/Raw-Wire-/HTTP-Grenze, generiertes Standalone-Boundary-Derivat, lokal netzwerkinaktive n8n Evidence Foundation und isolierter synchroner modellfreier SyncAgent-Kern implementiert. ADR 0023 entscheidet den lokalen SyncAgent vor optionalen Providern; ADR 0024 friert dessen lokale Kern- und Fehlergrenze ein. Gateway-/SyncAgent-Komposition, Browsertransport und Provideradapter fehlen. n8n Stable OSS bleibt `FAIL`, Tenantmessung `UNPROVEN`, Aktivierung geschlossen; Produktcredentials, Autorisierung, Rate Limits, Replay- und Idempotenzschutz bleiben geplant |
+| `v0.3.0` | In Arbeit: lokale Contract-, Service-, Boundary-, HTTP-, Bundle-, Evidence- und isolierte SyncAgent-Foundations implementiert. ADR 0025 entscheidet den lokalen Gateway-/SyncAgent-Kompositionsvertrag; sein Code und der HTTP-Erfolgspfad fehlen, akzeptierte Requests bleiben bei `503`. n8n Stable OSS und Aktivierung bleiben `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Browsertransport, Provideradapter, Produktcredentials, Autorisierung, Rate Limits, Replay- und Idempotenzschutz bleiben geplant |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
 | `v0.5.0` | Prompt-Injection-Schutz, strukturierter TestAgent-Output, keine Direktzugriffe |
 | `v0.6.0` | End-to-End-Sicherheitsreview und vollständige Demo-Trennung |
@@ -2023,8 +2134,6 @@ jeweiligen Deployment entschieden:
 - Body-Binding, Replay-Schutz und Idempotenz vor privaten oder schreibenden
   Aktionen;
 - konkrete lokale und Cloud-Rate-Limit-Implementierung;
-- konkrete kontrollierte Komposition des lokalen Gateways mit dem lokalen,
-  providerfreien `syncTest`-SyncAgent;
 - je Provider ein eigener Adapterentscheid einschließlich getrennter
   GoldenDawn- und providerseitiger Credentialgrenzen sowie Datenminimierungs-,
   Timeout-, Outputvalidierungs-, Retention- und Kosten-/Ressourcenpolicy;
