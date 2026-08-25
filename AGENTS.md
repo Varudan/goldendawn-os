@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – in Arbeit – ADR 0025 Local SyncGateway–SyncAgent Composition implementiert; nächster Slice: Browser-SyncTransport-Entscheidung und -Vertrag`
+Aktueller Stand: `v0.3.0 – in Arbeit – ADR 0026 Browser SyncTransport Contract angenommen; nächster Slice: isolierte BrowserSyncTransport-Implementierung mit Unit-Suite`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -117,9 +117,9 @@ Dieser Wert ist nur eine Vertragsklassifikation und kein Herkunfts- oder
 Datenschutzbeweis. `v0.2.2` bleibt vollständig lokal. Die Boundary selbst
 besitzt weiterhin keinen HTTP-Handler und ist nicht in `src/main.js` komponiert.
 Aktuell ist
-`v0.3.0 – in Arbeit – ADR 0025 Local SyncGateway–SyncAgent Composition
-implementiert; nächster Slice: Browser-SyncTransport-Entscheidungs-/
-Vertragsslice`.
+`v0.3.0 – in Arbeit – ADR 0026 Browser SyncTransport Contract
+angenommen; nächster Slice: isolierte BrowserSyncTransport-Implementierung
+mit mutationswirksamer Unit-Suite`.
 ADR 0023 ersetzt ADR 0002 und ADR 0019 und übernimmt deren weiterhin
 gültigen Kern: Der `SyncService` bleibt die einzige Kommunikationsschicht des
 Browsers, der lokale `SyncAgent` der einzige Einstieg und Router des
@@ -167,6 +167,15 @@ vollständige serielle Gesamtsuite mit 1332/1332 Tests. Alle Läufe besitzen 0
 Fehlschläge, 0 Skips und 0 Todos. Der Produktions-Build transformiert weiterhin
 exakt 46 Browsermodule; der schreibfreie n8n-Bundle-Driftcheck besteht.
 
+ADR 0026 ergänzt ADR 0017, ADR 0020, ADR 0023 und ADR 0025, ersetzt keine
+bestehende Entscheidung und legt ausschließlich den späteren lokalen
+Browser-SyncTransport-Vertrag fest. Der Vertrag ist angenommen, aber noch
+nicht implementiert. Es existieren weiterhin weder
+`src/transports/browserSyncTransport.js` noch Browserrequest,
+Browser-End-to-End-Fluss oder `src/main.js`-Komposition. Der nächste Slice ist
+ausschließlich die isolierte Implementierung dieses Moduls samt
+mutationswirksamer Unit-Suite; die Browserkomposition folgt danach getrennt.
+
 ADR 0022 ergänzt nun die lokale, importseitig und standardmäßig
 netzwerkinaktive n8n Cloud Ingress & Runtime Evidence Gate Foundation. Es wurde
 kein Cloudrequest ausgeführt oder Tenant verändert; der tenantgebundene
@@ -184,9 +193,9 @@ nicht. ADR 0025 ist im lokalen Gateway-Prozess implementiert: Ein manuell
 gestarteter lokaler Gateway kann ausschließlich den exakt leeren synthetischen
 `syncTest` synchron an den lokalen SyncAgent übergeben und eine defensiv
 projizierte normale Response mit HTTP `200` ausgeben. Der Browser-SyncTransport
-fehlt weiterhin. OpenAI-, lokaler Modell- und n8n-Adapter sind weder
-autorisiert noch implementiert; es entsteht kein externer oder privater
-Datenfluss.
+ist durch ADR 0026 vertraglich entschieden, fehlt aber weiterhin als
+Implementierung. OpenAI-, lokaler Modell- und n8n-Adapter sind weder autorisiert
+noch implementiert; es entsteht kein externer oder privater Datenfluss.
 
 Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
@@ -230,23 +239,37 @@ Innerhalb dieses Pfads gilt verbindlich folgende Implementierungsreihenfolge:
    implementiert ausschließlich `syncTest`;
 3. lokales SyncGateway und lokaler SyncAgent werden getrennt und kontrolliert
    komponiert;
-4. ein konkreter browserseitiger SyncTransport und der lokale End-to-End-
-   `syncTest` folgen;
-5. lokale Missbrauchs-, Parallelitäts-, Zeit- und Ressourcenbegrenzung wird
-   ergänzt;
-6. erst danach werden Provider gesondert entschieden;
-7. OpenAI-, lokaler Modell- und n8n-Adapter folgen jeweils als getrennte
+4. ADR 0026 entscheidet den konkreten Browser-SyncTransport-Vertrag;
+5. der entschiedene Browser-SyncTransport wird isoliert mit der netzwerkfreien
+   mutationswirksamen Unit-Suite `tests/browserSyncTransport.test.js`
+   implementiert, weiterhin ohne `src/main.js`-Komposition; vor Merge wird Tor
+   A anhand der tatsächlichen Implementierung erneut geprüft;
+6. ein getrennter realer und kontext-/versionsgebundener Browser-Runtime-
+   Nachweis prüft CORS/Preflight, PNA/LNA, lokale Netzwerkberechtigung, Secure
+   Context/Mixed Content, Loopbackziel, Redirect, sichtbare und blockierte
+   Responseheader, finale URL, Response-Typ, Browserunterschiede und nötige
+   Benutzerfreigaben;
+7. die lokale Browserkomposition und der Browser-End-to-End-`syncTest` folgen
+   erst nach dessen `PASS` als getrennter Slice;
+8. globale/systemweite Missbrauchs-, Parallelitäts-, Zeit- und
+   Ressourcenbegrenzung für den lokalen Pfad wird ergänzt;
+9. erst danach werden Provider gesondert entschieden;
+10. OpenAI-, lokaler Modell- und n8n-Adapter folgen jeweils als getrennte
    Slices;
-8. private Daten, weitere Aktionen, Tools und Nebenwirkungen folgen nur nach
+11. private Daten, weitere Aktionen, Tools und Nebenwirkungen folgen nur nach
    neuen Contract-, Identitäts-, Berechtigungs-, Replay-, Idempotenz- und
    Datenschutzentscheidungen.
 
-Die Schritte 1 bis 3 sind mit ADR 0023, ADR 0024 und der Implementierung von ADR
-0025 abgeschlossen. Der nächste Slice entscheidet und definiert ausschließlich
-den konkreten Browser-SyncTransport-Vertrag; dessen spätere Implementierung und
-der lokale Browser-End-to-End-`syncTest` bleiben getrennte Folgeschritte.
-Lokale Missbrauchs-, Parallelitäts-, Zeit- und Ressourcenbegrenzung folgt erst
-nach diesem lokalen Browser-End-to-End-Pfad. Provider bleiben außerhalb.
+Die Schritte 1 bis 4 sind mit ADR 0023, ADR 0024, der Implementierung von ADR
+0025 und der Annahme von ADR 0026 abgeschlossen. Der nächste Slice implementiert
+ausschließlich `src/transports/browserSyncTransport.js` und seine
+netzwerkfreie mutationswirksame Unit-Suite in
+`tests/browserSyncTransport.test.js`, weiterhin ohne `src/main.js`-Komposition.
+Danach folgt zunächst der getrennte reale Browser-Runtime-Nachweis; der lokale
+Browser-End-to-End-`syncTest` bleibt ein weiterer getrennter Folgeslice.
+Globale/systemweite Missbrauchs-, Parallelitäts-, Zeit- und
+Ressourcenbegrenzung für den lokalen Pfad folgt erst nach diesem lokalen
+Browser-End-to-End-Pfad. Provider bleiben außerhalb.
 
 Implementiere keine spätere Phase vorzeitig, sofern die Aufgabe dies nicht
 ausdrücklich verlangt und die dafür notwendige Architekturentscheidung nicht
@@ -290,6 +313,254 @@ auch dann `ok: true`; der fachliche Erfolg bleibt ausschließlich
 `syncResponse.success`. Lokale Servicefehler verwenden den getrennten exakten
 Fünf-Felder-Resultvertrag und statische redigierte Fehler. Sie behaupten keine
 Verarbeitung durch den `SyncAgent`.
+
+Der durch ADR 0026 entschiedene, aber noch nicht implementierte
+**Browser SyncTransport Contract** plant ausschließlich
+`src/transports/browserSyncTransport.js` mit dem einzigen Export
+`createBrowserSyncTransport`. Die Factory liefert eine frische gewöhnliche und
+eingefrorene API exakt mit `{ sendSyncRequest }`. Die Methode besitzt genau
+einen formalen Parameter, akzeptiert exakt ein Argument und gibt immer sofort
+ein echtes natives Promise zurück. Falsche Arity endet vor
+Argumentinspektion, Dependencyzugriff oder -aufruf, Timer oder Netzwerk als
+statisch redigierte Rejection. Import und Factory starten keine Request- oder
+Runtimeverarbeitung; die Factory prüft und erfasst nur synchron ihre
+Composition-Funktionen, ohne sie aufzurufen.
+
+Bei Modulevaluation werden die benötigten Reflection-, Apply-, Freeze-, JSON-,
+Typed-Array-Buffer-/ByteLength-/Kopier-, ArrayBuffer-Brand-/ByteLength-/
+optionalen Resizable-, Encoder-/Decoder-Prototypmethoden und
+Plattformdefaults privat erfasst. Für Promise werden insbesondere der native
+Same-Realm-Konstruktor, `Promise.prototype`, die `then`-Methode,
+`Symbol.species`, die ursprünglichen Own-Deskriptoren von
+`Promise.prototype.constructor` und `Promise[Symbol.species]`, die
+Species-Getteridentität sowie die vollständigen Promise-/Object-Ketten bis
+`null` erfasst; ein bloß erfasster Konstruktor schützt nicht vor einer später
+ersetzten Prototypmethode. `createBrowserSyncTransport()` mit null Argumenten
+prüft und verwendet die erfassten Browserdefaults. Ein explizites
+`createBrowserSyncTransport(undefined)`, zusätzliche Argumente oder fehlende
+beziehungsweise unbrauchbare Defaults sind statische Factoryfehler. Bei genau
+einem Composition-Argument werden dessen vollständige Own-Key-Menge einmal und
+die vier erforderlichen Deskriptoren in fester Reihenfolge je einmal erfasst.
+Zulässig ist nur ein gewöhnliches exaktes Vier-Felder-Own-Data-Record aus
+`fetchRequest`, `createAbortController`, `setDeadlineTimer` und
+`clearDeadlineTimer`; Accessors, Symbole, Zusatzfelder, partielle Shapes,
+Reflection-Throws und nicht funktionale Werte ergeben denselben statischen
+`TypeError("Ungültige BrowserSyncTransport-Komposition.")`. Danach wird keine
+Composition-Property erneut gelesen.
+
+Die Seams werden ausschließlich als
+`fetchRequest(fixedEndpoint, freshRequestInit)`, `createAbortController()`,
+`setDeadlineTimer(onDeadline, 5000)` und
+`clearDeadlineTimer(timerHandle)` mit `undefined` als Receiver aufgerufen.
+Andere Seams sind unzulässig. Endpoint, Deadline und Größenlimits bleiben feste
+private Modulwerte. Der Transport garantiert höchstens einen Fetch-Seam-Aufruf
+mit der festen URL und dem geschlossenen Argumentgraphen, nicht die interne
+Netzwerkwirkung einer bösartigen injizierten Funktion. Der produktive
+Defaultpfad verwendet die erfasste native Browserfunktion.
+
+Der einzige Zielendpoint ist exakt
+`http://127.0.0.1:8787/api/sync-test`. `localhost`, IPv6, relative oder
+auflösungsabhängige URLs, Discovery, Redirect, Fallback und Zielwerte aus UI,
+Request, Payload, Query, DOM, Storage oder Environment sind ausgeschlossen.
+Der spätere Browserfluss verlangt deshalb ausdrücklich
+`GOLDENDAWN_SYNC_GATEWAY_PORT = '8787'`; die weiterhin getrennte
+`GOLDENDAWN_SYNC_GATEWAY_ALLOWED_ORIGIN` muss exakt der tatsächlichen lokalen
+Frontend-Origin entsprechen. Der Transport setzt keine Origin; `Origin`,
+`Host` und `Content-Length` bleiben browserverwaltet.
+
+Nach bestandener Arity entsteht mit erfasster Reflection genau ein
+autoritativ descriptor-basierter Requestsnapshot in dieser beobachtbaren
+Reihenfolge: vollständige Root-Own-Key-Menge einmal, Rootprototyp einmal, dann
+die sechs Deskriptoren `version`, `action`, `source`, `requestId`, `timestamp`,
+`payload` je einmal. Die Payloadidentität stammt ausschließlich aus dem
+erfassten `payload`-Descriptor; anschließend folgen Payload-Own-Keys einmal und
+Payloadprototyp einmal. Zulässig sind nur die sechs Stringkeys, aufzählbare
+Own-Data-Properties und ein exakt leeres gewöhnliches Payloadrecord. Symbole,
+Accessors, Zusatz- oder fehlende Keys, Descriptor-Throws und widersprüchliche
+Beobachtungen werden abgelehnt. Danach wird keine Caller- oder Payloadproperty,
+kein Key, Descriptor oder Prototyp erneut gelesen.
+
+Ausschließlich die fünf erfassten primitiven Strings erzeugen einen vollständig
+frischen disjunkten Sechs-Felder-Requestgraphen mit frischem leerem Payload. Der
+Snapshot bleibt nur die interne Reflectionmenge und ist kein Requestobjekt.
+Nur derselbe frische Graph ist Validatorinput: genau einmal vor und genau
+einmal nach seinem Deep Freeze mit derselben Snapshot-`timestamp`-Referenz.
+Caller, Callerpayload oder ein zweites Snapshotobjekt erreichen den Validator
+nie; es gibt weder dritten Aufruf noch Alternativpfad. Die Differenz null beweist nur interne
+Konsistenz, keine unabhängige Frische, Uhrzeit oder Replayabwehr; die operative
+Frischeprüfung bleibt Aufgabe der Gatewaygrenze und es gibt keine Browserclock.
+Der Callergraph wird weder verändert noch eingefroren.
+
+Vor Serialisierung werden Root und Payload terminal auf exakte Own-Data-Shape,
+exakte gewöhnliche Prototypketten bis `null`, tatsächlichen Frozen-Zustand,
+fehlende eigene `toJSON`-Properties, einen unveränderten
+`Object.prototype` ohne eigenes `toJSON` und fehlende fremde verschachtelte
+Identitäten geprüft. Danach folgen genau ein erfasster `JSON.stringify`-Aufruf
+ohne Replacer, ein primitiver String, genau ein Aufruf der erfassten
+`TextEncoder.prototype.encode`-Methode mit richtigem Receiver, eine echte
+brand- und prototypgeprüfte `Uint8Array` und die Grenze 65.536/65.537 Bytes.
+
+Erst nach dieser erfolgreichen Serialisierung wird pro zulässigem Aufruf der
+Controller genau einmal erzeugt; Signal und Abortmethode werden je genau
+einmal kontrolliert aufgelöst und mit dem Controller als erforderlichem
+Receiver gespeichert. Das Signal bleibt ein opaker fremder Wert: Der Vertrag
+prüft weder Typ, Brand noch Ownership und friert es nicht ein.
+
+Der Fetch-Argumentgraph besteht aus einem frischen tatsächlich eingefrorenen
+Null-Prototyp-RequestInit mit exakt `method`, `mode`, `credentials`, `cache`,
+`redirect`, `referrerPolicy`, `keepalive`, `headers`, `body`, `signal` und
+einem getrennten frischen tatsächlich eingefrorenen Null-Prototyp-Headersrecord
+mit ausschließlich `Content-Type: application/json; charset=utf-8`. Die festen
+Werte bleiben `POST`, `cors`, `omit`, `no-store`, `error`, `no-referrer` und
+`keepalive: false`; Body ist nur der einmal erzeugte String und Signal nur die
+einmal erfasste Controller-Signalidentität. Das Freeze des RequestInit begründet
+keine Ownership- oder Freezegarantie für das Signal. Es gibt weder Cookie,
+Authorization, Caller-Signal, Retry, Redirect, Fallback noch zweiten Versuch.
+
+Die event-loop-basierte 5.000-ms-Deadline gilt nur für die asynchrone Fetch-
+und Response-Stream-Phase. Sie präemptiert weder synchrone UTF-8-Decodierung
+noch `JSON.parse` und ist bei blockiertem Eventloop keine harte Echtzeitgrenze.
+Vor Timer und Fetch werden ausschließlich die bereits erfassten Controller-,
+Signal- und Abortwerte weiterverwendet und nicht erneut aufgelöst. Die
+Zustandsmaschine `active → success | transportFailure | deadline` besitzt genau
+einen ersten terminalen Owner. Ein synchron während `setDeadlineTimer`
+feuernder Callback gewinnt, Fetch bleibt nullmal und ein anschließend
+zurückgegebener Handle wird einmal best effort gelöscht. Timerthrow ohne
+vorherige Deadline scheitert vor Fetch. Unmittelbar vor dem tatsächlichen
+Fetch-Seam-Aufruf wird `fetchStarted` gesetzt. Jeder danach gewinnende
+`transportFailure`- oder `deadline`-Pfad abortiert den Controller höchstens
+einmal nicht blockierend mit richtigem Receiver, einschließlich synchronem
+Fetchthrow, ungültigem Promiseprofil, Rejection, Non-200, Redirect, falscher
+finaler URL, falschem Response-Typ, Responsegetter-/Snapshot-, Header-, Body-,
+`getReader`-/Methodenauflösungs-, Reader-, Chunk-, Cap-, EOF-, Release-, UTF-8-,
+JSON- oder Handoff-Fehler. Vor Fetch und bei Erfolg bleibt Abort nullmal. Nach Readerübernahme
+kommen Cancel und Release je höchstens einmal hinzu; vorher wird keine
+Body-Cleanupmethode aufgelöst. Timer-Clear erfolgt pro Handle genau einmal;
+Cleanup wartet nicht und erzeugt weder zweiten Abschluss noch Fetch.
+
+Unmittelbar vor jeder Anwendung der erfassten `Promise.prototype.then`-Methode
+auf Fetch-, Read- oder zulässige Cleanup-Promises werden ohne fremden Hook der
+exakte Same-Realm-Promiseprototyp, eine leere Own-Key-Menge ohne eigene
+`constructor`-Property, die unveränderte Prototypkette, der ursprüngliche
+`Promise.prototype.constructor`-Datendescriptor mit Konstruktoridentität sowie
+der ursprüngliche `Promise[Symbol.species]`-Accessordescriptor mit
+Species-Getteridentität geprüft. Erst danach läuft die erfasste Methode mit
+richtigem Receiver. `Promise.resolve`, freie `.then`-Reads, fremde Thenables,
+Proxies und Subclassen sind unzulässig. Alle kontrollierten Settlementhandler
+fangen beherrschte Throws, prüfen bei späten Settlements zuerst den terminalen
+Zustand und geben auf jedem Pfad ausschließlich primitives `undefined` zurück;
+kein Folgepromise assimiliert einen fremden Handlerrückgabewert.
+
+Nach Fetch werden `status`, `redirected`, `url`, `type`, `headers`, `body` in
+dieser Reihenfolge jeweils genau einmal gelesen und sofort geprüft; ein Fehler
+liest alle späteren Felder nullmal. Non-200 stoppt nach `status`, liest weder
+Header noch Bodymethode und führt nur zum Post-Fetch-Abort. `headers.get` wird
+einmal aufgelöst; `content-type`, `content-length`, `content-encoding` werden
+jeweils nur nach bestandener Vorprüfung gelesen und sofort geprüft. Erst danach
+wird `body` gelesen. Verlangt werden der exakte JSON-/UTF-8-Type, eine
+kanonische vorzeichenlose ASCII-Dezimalzahl bis 16.384 und ein
+browserexponierter Encodingwert exakt `null`.
+
+`Content-Encoding` ist nicht CORS-safelisted und wird vom aktuellen Gateway
+nicht zusätzlich exponiert. `null` bedeutet daher nur „im gefilterten
+Browserheadersobjekt nicht sichtbar“, nicht nachgewiesene Wire-Abwesenheit oder
+fehlende Browserdekompression; ein exponierter nicht-null-Wert scheitert. Das
+Cap zählt browserexponierte, möglicherweise bereits decodierte Bytes, und die
+Gleichheit von browserexponierter Content-Length und kopierten Bytes bleibt nur
+ein enger Gateway-Kompatibilitätscheck, kein allgemeiner Kompressions- oder
+Wire-Oktett-Beweis. Gateway und CORS-Header bleiben unverändert. Ein
+beweiskräftiger sichtbarer Encodingnachweis benötigt einen neuen Gateway-/CORS-
+Entscheidungsslice.
+
+`body.getReader` sowie `reader.read`, `cancel`, `releaseLock` werden je einmal
+aufgelöst und stets mit richtigem Receiver verwendet. Reads sind strikt
+seriell. Für jedes Read-Result werden Prototyp und Own-Key-Menge einmal erfasst;
+die Keysequenz muss exakt `value`, `done` sein. Danach folgen die Deskriptoren
+je einmal in der anderen festen Reihenfolge `done`, `value`; anschließend
+zählen nur Snapshotwerte. Zulässig ist nur ein gewöhnlicher exakter Own-Data-
+Record. Bei `done: false` ist `value` eine echte brandgeprüfte, nicht
+unterklassifizierte `Uint8Array` mit exaktem Prototyp und sicherer positiver
+Ganzzahl-ByteLength. Null Länge scheitert nach genau diesem Read ohne Kopie oder zweiten
+Read; Abort und Readercleanup folgen. Bei `done: true` ist `value` exakt
+`undefined`. Accessors, Zusatzkeys und malformed Chunks sowie beobachtbare
+Proxy-Traps oder Snapshotinkonsistenzen werden abgelehnt.
+
+Die backing-buffer-Identität wird ausschließlich über die erfasste native
+Typed-Array-Buffer-Intrinsic mit dem Chunk als richtigem Receiver ermittelt:
+Sie muss einen echten Same-Realm-`ArrayBuffer` mit exakt erfasstem
+`ArrayBuffer.prototype` ergeben, nicht
+geteilt, nicht growable, nicht detached und, sofern prüfbar, nicht resizable.
+`SharedArrayBuffer`, Growable SharedArrayBuffer, Proxy, fremder Buffer,
+malformed Buffer und ein falscher Bufferprototyp scheitern. ByteLength und
+Kopie verwenden ausschließlich erfasste Typed-Array-/ArrayBuffer-Intrinsics.
+Genau ein eigener fester, nicht geteilter Zielbuffer bis 16.384 Bytes wird angelegt. Zwischen letzter Bufferprüfung und
+sofortiger Kopie liegt kein fremder Hook; die Chunkidentität bleibt nicht bis
+zur Decodierung erhalten. Byte 16.385 stoppt vor Kopie, weiterer Allokation
+oder weiterem Read. Weil jeder akzeptierte Nicht-EOF-Chunk mindestens ein Byte
+beiträgt, gibt es höchstens 16.384 solcher Reads und keine Nullchunk-
+Microtask-Starvation. Sauberer EOF verlangt exakte Längengleichheit,
+`cancel` nullmal und `releaseLock` genau einmal; Fehler und Deadline verwenden
+Cancel/Release höchstens einmal nicht blockierend best effort; Throws und
+zulässige native Cleanup-Rejections werden konsumiert.
+
+Nach sauberem EOF und normalem Release wird die Deadline deaktiviert und der
+Timer vor der synchronen Terminalphase einmal gelöscht. Danach folgen genau
+eine erfasste `TextDecoder.prototype.decode`-Anwendung mit richtigem Receiver,
+`fatal: true`, `ignoreBOM: true` und sichtbarer U+FEFF-BOM sowie genau ein
+erfasstes `JSON.parse` ohne Reviver oder Normalisierung. Vor unmittelbarem
+Promise-Fulfillment müssen Object- und Arrayroots exakt die erfassten
+Prototypketten bis `null` besitzen; `Object.prototype` und `Array.prototype`
+dürfen kein eigenes `then` besitzen. Ein top-level eigenes `then` ist nur als
+nicht aufrufbare Own-Data-Property zulässig. Accessor-, callable oder geerbte
+kompromittierte Formen ergeben statischen Transportfehler.
+
+Nur der einmal geparste, weiterhin unvertrauenswürdige Wert erfüllt den
+Transport. Semantische Responsevalidierung, Korrelation und Projektion bleiben
+beim SyncService. Jeder beherrschte Methodenfehler rejected ausschließlich mit
+dem statischen tief eingefrorenen Profil
+`{ code: "BROWSER_SYNC_TRANSPORT_FAILED", message: "Der lokale Browser-SyncTransport ist fehlgeschlagen." }`
+ohne fremde URL, Header, Body, Bytes, Sentinel-, Timer-, Dependency- oder
+Exceptiondetails und ohne Console, Logging, Storage, Persistenz oder
+Telemetrie. Transportrejections werden `transportFailed`; parsebares malformed
+oder nicht korreliertes `200`-JSON wird ausschließlich `invalidResponse`; eine
+vollständig gültige fachliche Contract-Fehlerresponse bleibt eine normale
+SyncResponse.
+
+Der Anwendungscode sendet keine Cookies, Credentials, Authorization,
+anwendungsseitigen Referrer, privaten Payloads oder Providersecrets. Der
+Browser kann dennoch `Origin`, `User-Agent`, `Accept`, `Accept-Language`,
+`Sec-Fetch-*`, Client Hints und PNA-/LNA-Preflightmetadaten senden; der Prozess
+auf Port 8787 kann sie beobachten. `omit` und `no-referrer` beweisen keine
+Metadatenfreiheit oder Datenschutz. Private Module und Vaults bleiben außerhalb.
+
+Vor Browserkomposition oder End-to-End-Fluss ist ein separat freigegebener,
+an Betriebssystem, Browser und Version, tatsächliche GoldenDawn-Origin und
+festen Loopbackendpoint gebundener Runtime-PASS für CORS/Preflight, PNA/LNA,
+lokale Netzwerkberechtigung, Secure Context/Mixed Content, Erreichbarkeit,
+Redirectverhalten, finale URL, Response-Typ sowie sichtbare und blockierte
+Responseheader, Browserunterschiede und nötige Benutzerfreigaben erforderlich.
+Ein `PASS` bleibt kontext- und versionsgebunden und ist keine allgemeine
+Browsergarantie. Benötigt der Browser neue
+PNA-/LNA- oder CORS-Header beziehungsweise eine Berechtigung, bleibt die
+Komposition geschlossen und ADR 0020/0026 benötigen einen neuen Slice; es gibt
+keinen Fallback auf `localhost`, HTTPS, Proxy, Remote oder Cloud.
+
+Tor A klassifiziert nur diesen aktuellen reinen Dokumentationsslice vorläufig
+als Nicht-KI. Vor Merge der späteren Implementierung werden tatsächlicher Code,
+Browser-APIs, Dependencies und Datenflüsse erneut auf fehlende Modelle,
+modell-, lern- oder statistikbasierte Inferenz, Training, Lernen oder
+Adaptieren, Provider/Workflows, private Payloads, Telemetrie, Persistenz und
+fachliche Nebenwirkungen geprüft. Browserkomposition und menschliche Interaktion
+benötigen nochmals ein eigenes vollständiges Gate. Die spätere netzwerkfreie
+Unit-Suite ist verbindlich unter `tests/browserSyncTransport.test.js`
+dokumentiert und deckt die exakte Reflectionfolge, genau zwei Validatoraufrufe
+auf demselben frischen Graphen, Promise-Constructor/Species und ausschließlich
+`undefined` liefernde Handler, Nullchunk-Fortschritt, native
+`value`-/`done`-Keyfolge, feste nicht geteilte ArrayBuffer, einheitlichen
+Post-Fetch-Abort, fail-fast Response-/Headerzahlen, die gefilterte
+Content-Encoding-Semantik, UTF-8/JSON/Handoff, Redaction und
+Serviceintegration mutationswirksam ab. Sie wird in diesem Slice nicht
+implementiert und führt keine echten Netzwerkrequests aus.
 
 Der implementierte Slice `SyncGateway Request Boundary Foundation` stellt
 `createSyncGatewayRequestBoundary({ generateGatewayRequestId,
@@ -1008,7 +1279,7 @@ Die verbindliche Zieltopologie ist browserinitiiert und setzt den lokalen
 ```text
 GoldenDawn-Browser
   → SyncService
-  → künftiger lokaler SyncTransport
+  → entschiedener, noch nicht implementierter lokaler BrowserSyncTransport
   → lokales SyncGateway auf GD-WS01
   → lokaler SyncAgent
       ├→ zunächst: lokaler deterministischer syncTest-Handler
@@ -1022,9 +1293,11 @@ GoldenDawn-Browser
 
 Die Vertrauensgrenzen sind verbindlich in vier Zonen getrennt:
 
-- **Zone A – Browser:** unvertrauenswürdig, ohne Secrets, erzeugt nur den
-  geschlossenen `syncTest` und wählt weder Provider, Modell, Workflow, Endpoint
-  noch Umgebung;
+- **Zone A – Browser, SyncService und entschiedener BrowserSyncTransport:**
+  unvertrauenswürdig, ohne Secrets, erzeugt nur den geschlossenen `syncTest`;
+  Browser-, UI-, Caller- und Requestwerte wählen weder Provider, Modell,
+  Workflow, Endpoint noch Umgebung, ADR 0026 hält das einzige Transportziel als
+  privaten Modulwert fest;
 - **Zone B – lokales SyncGateway:** autoritative Raw-Wire-, HTTP-, UTF-8- und
   Boundary-Grenze ohne Agenten-, Modell- oder Fachlogik;
 - **Zone C – lokaler SyncAgent:** autoritative lokale Policy-, Validierungs-,
@@ -1049,8 +1322,9 @@ deterministisch, synthetisch, nebenwirkungsfrei, modellfrei und providerfrei.
 Er ruft keinen `ModelProvider`, `WorkflowProvider`, n8n-, OpenAI- oder sonstigen
 externen Adapter auf und setzt keinen davon als Dependency voraus.
 
-Der Browser bestimmt weder Fachagent, Provider, Modell, Workflow, Endpoint,
-Umgebung noch Berechtigungen. Provideroutput bleibt unvertrauenswürdig;
+Browser-, UI-, Caller- und Requestwerte bestimmen weder Fachagent, Provider,
+Modell, Workflow, Endpoint, Umgebung noch Berechtigungen. Das feste
+Browsertransportziel stammt ausschließlich aus ADR 0026. Provideroutput bleibt unvertrauenswürdig;
 Modelloutput darf niemals Berechtigungen, Routing, Providerwahl oder
 Toolausführung bestimmen. Der ADR-0025-Implementierungsslice komponiert den
 lokalen `SyncAgent` ausschließlich als logisch getrennte, injizierte
@@ -1126,7 +1400,7 @@ Testfluss lautet:
 ```text
 LearningTestService
   → SyncService
-  → künftiger lokaler SyncTransport
+  → entschiedener, noch nicht implementierter lokaler BrowserSyncTransport
   → lokales SyncGateway auf GD-WS01
   → lokaler SyncAgent
   → TestAgent
@@ -1359,7 +1633,7 @@ UI-Komponente
   → Anwendungs- oder Modulservice
       ├→ lokaler Storage-Adapter → localStorage
       └→ SyncService
-          → künftiger lokaler SyncTransport
+          → entschiedener, noch nicht implementierter lokaler BrowserSyncTransport
           → lokales SyncGateway auf GD-WS01
           → lokaler SyncAgent
               ├→ zunächst lokaler deterministischer syncTest-Handler
@@ -1423,7 +1697,7 @@ Der vorgesehene Ablauf für ein Lerntestergebnis lautet:
 ```text
 Dashboard
   → SyncService
-  → künftiger lokaler SyncTransport
+  → entschiedener, noch nicht implementierter lokaler BrowserSyncTransport
   → lokales SyncGateway auf GD-WS01
   → lokaler SyncAgent
   → TestAgent
