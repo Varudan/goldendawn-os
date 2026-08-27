@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0026 angenommen; nächster Slice: isolierte BrowserSyncTransport-Implementierung` |
+| Projektphase | `v0.3.0 – ADR 0027 angenommen; nächster Slice: isolierte BrowserSyncTransport-Implementierung gemäß ADR 0027` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,8 +21,8 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern und ADR-0025-In-Process-Komposition implementiert; ausschließlich der exakte leere synthetische Erfolg ergibt lokal HTTP `200`; ADR 0026 entscheidet den Browser SyncTransport Contract, dessen Implementierung, reales Browser-Runtimegate, Browser-End-to-End-Fluss und `src/main.js`-Komposition weiterhin fehlen; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
-| Letzte Aktualisierung | 2026-08-24 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern und ADR-0025-In-Process-Komposition implementiert; ausschließlich der exakte leere synthetische Erfolg ergibt lokal HTTP `200`; ADR 0027 ersetzt ADR 0026 und entscheidet den korrigierten Browser SyncTransport Contract, dessen Implementierung, reales Browser-Runtimegate, Browser-End-to-End-Fluss und `src/main.js`-Komposition weiterhin fehlen; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
+| Letzte Aktualisierung | 2026-08-27 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
@@ -39,8 +39,10 @@ GD-WS01 und das daraus reproduzierbar generierte eigenständige Boundary-
 Artefakt mit seinem SHA-256-Manifest, die lokal netzwerkinaktive Evidence-
 Gate-Foundation aus ADR 0022, den isolierten lokalen modellfreien
 `syncTest`-SyncAgent-Kern aus ADR 0024, den implementierten lokalen
-Kompositionsvertrag aus ADR 0025 und den durch ADR 0026 entschiedenen, noch
-nicht implementierten Browser SyncTransport Contract. ADR 0023
+Kompositionsvertrag aus ADR 0025 und den durch ADR 0027 korrigierten, noch
+nicht implementierten Browser SyncTransport Contract. ADR 0027 ersetzt ADR
+0026 ausschließlich wegen zweier nachgewiesener Nachweisgrenzen; alle nicht
+ausdrücklich ersetzten ADR-0026-Regeln gelten unverändert fort. ADR 0023
 ersetzt den ursprünglich von ADR 0019
 vorgesehenen verpflichtenden n8n-Cloud-Hop durch den lokalen
 SyncAgent vor optionalen capability-spezifischen Providern. Die n8n-Evidenz
@@ -89,11 +91,14 @@ Snapshot-/ABA-, Outputpfad-, Paritäts- und Mutationsprüfungen.
 Der isolierte lokale modellfreie `syncTest`-SyncAgent-Kern erzeugt inzwischen
 aus einem gültigen Request eine neue validierte und korrelierte synthetische
 Normalresponse. Der Gateway-/SyncAgent-Kompositionsvertrag aus ADR 0025 ist
-implementiert. ADR 0026 entscheidet den BrowserSyncTransport-Vertrag; sein
-Modul, die Browserkomposition und optionale OpenAI-, lokale Modell- oder
-n8n-Adapter bleiben nicht implementiert. Der Kern ist ausschließlich über den
-explizit gestarteten lokalen Gateway-Prozess erreichbar, der Browser nutzt ihn
-noch nicht, und es gibt keinen externen Datenfluss. Alle
+implementiert. Der erste Implementierungsversuch des BrowserSyncTransport wurde
+vor jeder Dateiänderung hart gestoppt. ADR 0027 ersetzt ADR 0026 und korrigiert
+die nicht beweisbare Realmprovenienz sowie die öffentliche Erreichbarkeit der
+privaten Requestgrenze; sein Modul, die Browserkomposition und optionale
+OpenAI-, lokale Modell- oder n8n-Adapter bleiben nicht implementiert. Der Kern
+ist ausschließlich über den explizit gestarteten lokalen Gateway-Prozess
+erreichbar, der Browser nutzt ihn noch nicht, und es gibt keinen externen
+Datenfluss. Alle
 LearningTest-, DataAgent- und sonstigen
 externen Agentenverträge bleiben Zielzustand späterer Slices beziehungsweise
 Versionen.
@@ -2572,7 +2577,7 @@ Zielverträge und werden vom aktuellen SyncContract-Modul nicht akzeptiert.
 
 | Aktion | Zweck | Primärer Handler | Status |
 | --- | --- | --- | --- |
-| `syncTest` | geschlossenes `syncTest`-Vertragsformat kontrolliert bauen, Raw-Wire-Bytes lokal begrenzen, streng einmalig dekodieren, den materialisierten String einmalig parsen und defensiv projizieren sowie lokal durch den SyncAgent beantworten und normal korrelieren | lokaler SyncAgent | Vertragsvalidator, transportneutraler SyncService, SyncGateway Request Boundary, lokaler Loopback-HTTP-Handler, modellfreier SyncAgent-Kern und ADR-0025-In-Process-Komposition mit lokaler HTTP-`200`-Normalresponse implementiert; ADR 0026 entscheidet den BrowserSyncTransport-Vertrag, dessen Modul, Komposition und End-to-End-Fluss sowie alle Provideradapter nicht implementiert sind |
+| `syncTest` | geschlossenes `syncTest`-Vertragsformat kontrolliert bauen, Raw-Wire-Bytes lokal begrenzen, streng einmalig dekodieren, den materialisierten String einmalig parsen und defensiv projizieren sowie lokal durch den SyncAgent beantworten und normal korrelieren | lokaler SyncAgent | Vertragsvalidator, transportneutraler SyncService, SyncGateway Request Boundary, lokaler Loopback-HTTP-Handler, modellfreier SyncAgent-Kern und ADR-0025-In-Process-Komposition mit lokaler HTTP-`200`-Normalresponse implementiert; ADR 0027 ersetzt ADR 0026 und entscheidet den korrigierten BrowserSyncTransport-Vertrag, dessen Modul, Komposition und End-to-End-Fluss sowie alle Provideradapter nicht implementiert sind |
 | `learningTest.create` | Lerntest erzeugen und Definition sicher speichern | TestAgent | geplant für eine spätere Version |
 | `learningTest.evaluate` | Antworten bewerten und Ergebnis speichern | TestAgent | geplant für eine spätere Version |
 | `learningTest.result.get` | Gespeichertes Testergebnis abrufen | DataAgent | geplant für eine spätere Version |
@@ -3092,6 +3097,233 @@ oder Thenable-Erkennung und eine Garantie, dass beliebiger Dependency-Code
 niemals wirft oder blockiert, werden nicht behauptet. Für stabile,
 seiteneffektfreie gewöhnliche Werte arbeitet der Service deterministisch und
 ohne Inputmutation.
+
+## Aktueller Browser SyncTransport Contract / ADR 0027
+
+[ADR 0027](decisions/0027-browser-sync-transport-proof-boundaries.md) ersetzt
+ADR 0026. Der erste Implementierungsversuch wurde vor jeder Dateiänderung hart
+gestoppt; Working Tree, Index sowie
+`src/transports/browserSyncTransport.js` und
+`tests/browserSyncTransport.test.js` blieben dabei unverändert. Es erfolgte
+kein Browser-, Netzwerk- oder Gatewayzugriff. Der Stop
+belegt keine Produktlücke, sondern zwei widersprüchliche beziehungsweise mit
+öffentlichen JavaScript-Mitteln nicht erfüllbare Nachweisanforderungen:
+
+1. Die historische Erzeugungsrealm fremd gelieferter echter nativer Promises,
+   `Uint8Array`-Views und `ArrayBuffer` lässt sich nach einer bereits vor der
+   Übergabe vollständig passend vorgenommenen Umprototypisierung nicht
+   beweisen.
+2. Die private Requestgrenze von 65.536 UTF-8-Bytes ist unter dem geschlossenen
+   SyncContract v1 über `sendSyncRequest` nicht bis zu ihren realen
+   Grenzwerten erreichbar.
+
+Die Architektur benötigt für diese Korrektur keine zusätzliche API,
+Dependency oder Produktionsseam. Die Implementierung bleibt bis zum Merge von
+ADR 0027 pausiert. Der unmittelbar folgende ADR-0026-Block bleibt als
+historischer Entscheidungsstand bytegleich erhalten; für den aktuellen Vertrag
+ist ausschließlich ADR 0027 zusammen mit den von ihm unverändert übernommenen
+ADR-0026-Regeln normativ.
+
+### Unverändert übernommener Transportvertrag
+
+Sämtliche nicht ausdrücklich ersetzten Entscheidungen aus ADR 0026 gelten
+unverändert fort. Dazu gehören insbesondere:
+
+- Modulort, einziger Export, Factory-, API- und Arityvertrag;
+- exakt die vier Composition-Seams `fetchRequest`, `createAbortController`,
+  `setDeadlineTimer` und `clearDeadlineTimer`;
+- die feste URL `http://127.0.0.1:8787/api/sync-test`;
+- der einmalige descriptor-basierte Requestsnapshot, der daraus neu erzeugte
+  disjunkte Requestgraph und dessen zweimalige Validierung vor und nach Freeze;
+- genau eine Serialisierung und UTF-8-Messung, die private Requestgrenze von
+  65.536 Bytes sowie die exakte RequestInit- und Headerpolicy;
+- höchstens ein Fetch, kein Retry, kein Redirect-Follow, kein Fallback und kein
+  zweiter Versuch;
+- die native Promise-Brand-, Constructor- und Species-Prüfung, die
+  5.000-ms-Eventloopdeadline und der First-Terminal-Owner;
+- Abort-, Timer-, Reader-Cancel- und Releasegrenzen;
+- die fail-fast Response- und Headerreihenfolge sowie die öffentlich
+  erreichbare Responsegrenze von 16.384/16.385 browserexponierten Bytes;
+- Nullchunk-, Buffer-, EOF- und Kopierregeln;
+- strikte UTF-8-Decodierung mit sichtbarer U+FEFF-BOM-Semantik und genau ein
+  natives `JSON.parse` ohne Reviver;
+- statische Redaction, die unveränderte SyncService-Verantwortung und die
+  unmittelbare Übergabe ausschließlich des einmal geparsten unvertrauenswürdigen
+  Werts;
+- fehlende Browserkomposition, das getrennte PNA-/LNA-/Mixed-Content-
+  Runtimegate und das Verbot vorgezogener Provider-, Modell-, Credential- oder
+  privater Datenpfade.
+
+Diese Regeln werden durch ADR 0027 weder neu interpretiert noch gelockert.
+
+### Beobachtbares natives Promiseprofil statt Realmprovenienz
+
+Für fremd gelieferte Fetch-, Read- und zulässige Cleanup-Promise-Kandidaten
+wird weder eine Erzeugungsrealm noch eine historische Constructor- oder
+Subclassprovenienz behauptet. Zulässig ist ausschließlich ein Kandidat, der
+zum Prüfzeitpunkt alle folgenden beobachtbaren Anforderungen erfüllt:
+
+- echtes natives Promise-Brandprofil;
+- exakt der bei Modulevaluation erfasste lokale `Promise.prototype` und die
+  vollständig erfasste lokale Prototypkette bis `null`;
+- vollständig leere Own-Key-Menge und keine eigene `constructor`-Property;
+- unveränderte erfasste Deskriptoren von
+  `Promise.prototype.constructor` und `Promise[Symbol.species]` einschließlich
+  der erfassten Constructor- und Species-Getteridentitäten;
+- Verarbeitung ausschließlich durch Anwendung der erfassten nativen
+  `Promise.prototype.then`-Referenz mit dem Kandidaten als Receiver.
+
+Ein gewöhnliches unverändertes Cross-Realm-Promise scheitert weiterhin an der
+direkten Prototypidentität. Wurde ein echtes Cross-Realm-Promise oder eine
+echte native Promise-Subclass bereits fixture- beziehungsweise callerseitig
+vollständig auf das lokale beobachtbare Promiseprofil umprototypisiert und
+verbleibt kein beobachtbares Subclassmerkmal, ist seine historische Herkunft
+mit den erlaubten öffentlichen Prüfungen nicht mehr unterscheidbar. Ein solcher
+Kandidat darf nicht unter der falschen Behauptung einer bewiesenen
+Erzeugungsrealm abgelehnt werden. Daraus folgt keine pauschale Zulassung
+beliebiger Cross-Realm-Promises.
+
+Fremde Thenables, Proxies und Fakes ohne natives Promise-Brandprofil,
+zusätzliche Own Keys oder Symbole, eigene `constructor`-Accessors,
+unverändert sichtbare Subclassprototypen, mutierte Constructor- oder Species-
+Deskriptoren, fremde Getter- oder Konstruktoridentitäten, freie `.then`-Reads
+und `Promise.resolve`-Assimilation bleiben ausgeschlossen. Der Transport
+verändert niemals den Prototyp eines fremden Kandidaten. Nur das vom Transport
+über den erfassten lokalen Konstruktor selbst erzeugte äußere Promise ist
+transport-eigen und lokal erzeugt. Realm ist kein Authentisierungs-,
+Autorisierungs-, Identitäts-, Datenschutz- oder Vertrauensbeweis.
+
+### Beobachtbares View-/Bufferprofil statt Realmprovenienz
+
+Für fremde Readerchunks wird weder eine Erzeugungsrealm noch eine historische
+`Uint8Array`-/`ArrayBuffer`-Subclassprovenienz behauptet. Zulässig ist
+ausschließlich ein Kandidat mit:
+
+- echtem nativen `Uint8Array`-Brandprofil und echtem nativen
+  `ArrayBuffer`-Brandprofil;
+- zum Prüfzeitpunkt exakt den erfassten lokalen View-/Bufferprototypidentitäten
+  und ihren vollständigen lokalen Ketten;
+- einem festen, nicht geteilten, nicht detached Backing-Buffer;
+- `resizable === false`, sofern diese Eigenschaft unterstützt und prüfbar ist;
+- einer sicheren positiven ByteLength und sämtlichen bisherigen Restlängen-,
+  Deklarations- und Responsecap-Prüfungen.
+
+Unveränderte Cross-Realm-Views oder -Buffer scheitern weiterhin an der
+Prototypidentität. Wird nur die View oder nur ihr Buffer passend
+umprototypisiert, bleibt der Kandidat unzulässig. Wurden eine echte fremde View
+und ihr echter fester fremder Backing-Buffer bereits vor Übergabe vollständig
+passend umprototypisiert, ist ihre historische Erzeugungsrealm mit öffentlichen
+Prüfungen nicht mehr unterscheidbar. Der Transport nimmt selbst keine solche
+Umprototypisierung vor.
+
+Proxy und Fake, `SharedArrayBuffer`, Growable SharedArrayBuffer, resizable oder
+detached `ArrayBuffer`, malformed Buffer, nur teilweise passende
+Prototypoberflächen, Nullchunk, falsche Länge und jede Überschreitung der
+deklarierten Länge oder des Responsecaps bleiben fail-closed ausgeschlossen.
+Akzeptierte Bytes werden weiterhin unmittelbar und ohne verbleibende
+Fremdidentität in den wirklich transport-eigenen lokalen Zielbuffer kopiert.
+Eine anschließende Mutation oder Wiederverwendung des Fremdchunks darf diese
+Kopie nicht verändern. Realm ist auch hier kein Authentisierungs-,
+Autorisierungs-, Identitäts- oder Vertrauensbeweis.
+
+### Erreichbare Requestgröße und private Defense-in-Depth-Grenze
+
+Der produktive private Requestcap bleibt unverändert bei höchstens 65.536
+UTF-8-Bytes. Byte 65.537 wird vor Controller, Timer und Fetch abgelehnt. Der
+Wert bleibt privat, nicht injizierbar und besitzt weder Testexport noch
+Cap-Parameter oder zusätzliche Composition-Seam.
+
+Unter dem aktuellen geschlossenen SyncContract v1 ist diese reale Capgrenze
+über `sendSyncRequest` jedoch nicht erreichbar. Version, Aktion und Quelle sind
+feste ASCII-Werte, `payload` ist exakt leer, der kanonische Timestamp umfasst
+exakt 24 ASCII-Zeichen und `requestId` ist einschließlich `req_` auf insgesamt
+höchstens 64 erlaubte ASCII-Zeichen begrenzt. Die festen Bestandteile umfassen
+129 Bytes; der größte gültige, kanonisch projizierte und in der festen
+Feldreihenfolge serialisierte v1-Request umfasst daher exakt 193 UTF-8-Bytes.
+Eine insgesamt
+65 Zeichen lange `requestId` ist vertragswidrig und scheitert bereits bei der
+Validierung vor Stringify, Encoding, Controller, Timer und Fetch.
+
+Die 193 Bytes ersetzen den produktiven Cap von 65.536 Bytes nicht. Der private
+Cap bleibt Defense-in-Depth und benötigt bei jeder künftigen
+Contracterweiterung eine neue Erreichbarkeits- und Grenzprüfung. Es wird kein
+öffentlich verhaltensseitig erreichbarer 65.536/65.537-Requestgrenztest
+behauptet. Davon getrennt bleiben die echte Gateway-Raw-Wire-Grenze von
+65.536/65.537 Bytes und die öffentlich erreichbare Browser-Responsegrenze von
+16.384/16.385 Bytes unverändert.
+
+### Späterer mutationswirksamer Testvertrag
+
+Die spätere netzwerkfreie Unit-Suite muss den öffentlichen Kontrollpfad mit
+einer `requestId` aus insgesamt exakt 64 erlaubten ASCII-Zeichen, den festen
+übrigen Contractwerten, einem kanonischen Timestamp und exakt leerem Payload
+prüfen. Der frisch projizierte JSON-Body muss exakt 193 UTF-8-Bytes umfassen und
+bei vollständig bestandenen Doubles bis zu genau einem Fetch gelangen. Eine
+insgesamt 65 Zeichen lange `requestId` muss vor Stringify, Encoding,
+Controller, Timer und Fetch scheitern.
+
+Die aktive Verdrahtung und inklusive Vergleichssemantik des privaten Caps wird
+ausschließlich über temporäre Source-Mutationskopien des späteren
+Transportmoduls belegt:
+
+1. Eine temporäre Modulkopie mit privatem Cap `193` lässt denselben maximal
+   gültigen 193-Byte-Request zu.
+2. Eine getrennte temporäre Modulkopie mit privatem Cap `192` lehnt ihn
+   statisch vor Controller, Timer und Fetch ab.
+3. Wird die Capprüfung entfernt, umgangen oder falsch verglichen, muss
+   mindestens eine Gegenprobe rot werden.
+4. Alle temporären Kopien werden vollständig bereinigt; der eingecheckte
+   Produktionscode bleibt unverändert.
+
+Dieser Harness belegt ausschließlich die aktive Cap-Verdrahtung, die korrekte
+`<=`-/`>`-Semantik und die Position vor Controller, Timer und Fetch. Er belegt
+keinen öffentlich erreichbaren 65.536/65.537-Grenzfall. Contractmutation,
+Serialisierung eines unvalidierten Callers, Validierung hinter der Capprüfung,
+Testexport, injizierbarer Encoder, Cap-Parameter, zusätzliche Factory- oder
+Composition-Seam und Produktionsänderungen nur zugunsten eines Tests bleiben
+verboten.
+
+Die Cross-Realm-Regressionen verwenden ausschließlich `node:vm`, native lokale
+Intrinsics und Doubles. Positive Begrenzungsproben umfassen lokale native
+Promises, vollständig passend umprototypisierte echte Cross-Realm-Promises und
+Promise-Subclasswerte ohne verbleibendes beobachtbares Subclassmerkmal sowie
+eine vollständig passend umprototypisierte echte Cross-Realm-View zusammen mit
+ihrem echten festen Backing-Buffer. Negative Proben umfassen die unveränderten
+Cross-Realm-Werte, nur teilweise umprototypisierte View-/Bufferpaare, fremde
+Thenables, Proxy/Fake, sichtbare Subclass-, Constructor- oder Species-
+Abweichungen sowie Shared, growable, resizable, detached, Null-, Längen- und
+Capfehler. Fulfillment wird kontrolliert verarbeitet, Rejection statisch
+redigiert und die unmittelbare Kopie durch anschließende Quellmutation geprüft.
+Der Transport darf in keiner Probe `Object.setPrototypeOf` auf Eingabewerte
+anwenden. Globale Mutationen laufen seriell, werden in `finally` vollständig
+restauriert und benötigen weder Skip noch Todo.
+
+Die Korrektur entfernt ausschließlich unbeweisbare Provenienz- und
+Erreichbarkeitsbehauptungen. Sie entfernt keine wirksame Brand-, Shape-,
+Promise-, Constructor-, Species-, Buffer-, Copy-, Deadline-, Größen- oder
+Redactionprüfung. Same-Realm und Deep Freeze bleiben keine Sandbox; bereits vor
+Modulevaluation kompromittierte Intrinsics, Enginekompromittierung, OOM und
+Prozessabbruch bleiben außerhalb der Garantie. Es entsteht weiterhin kein
+Browser-, Gateway-, Provider- oder privater Datenfluss und keine KI-, Modell-,
+Workflow-, Credential-, Storage-, Logging- oder Telemetriewirkung.
+
+Die enge Phase-0-/Tor-A-Arbeitshypothese bleibt eine technische Vorprüfung und
+wird nicht zu einer Rechts-, Compliance- oder allgemeinen
+Sicherheitsklassifikation erweitert. Eine neue ADR-Bewertung ist erforderlich,
+wenn Realm als Identitäts- oder Vertrauenssignal dienen soll, ein anderer
+Promise- oder Buffervertrag, eine erweiterte öffentliche API oder Composition
+benötigt wird, der Contract die aktuell erreichbaren 193 Bytes erweitert, der
+private Requestcap geändert oder entfernt werden soll oder Endpoint,
+Fetchpolicy, Deadline, Responsecap, CORS beziehungsweise Fehlersemantik
+geändert werden sollen.
+
+Als nächster Slice darf ausschließlich die isolierte und netzwerkfreie
+BrowserSyncTransport-Implementierung gemäß ADR 0027 begonnen werden. Reales
+Fetch, Browser- oder Gatewaystart, PNA-/LNA-/Mixed-Content-Runtimeevidenz,
+Browserkomposition, Browser-End-to-End-`syncTest`, globale Missbrauchs-,
+Parallelitäts-, Queue- und Prozessgrenzen sowie Provider bleiben getrennt und
+gesperrt. Nur ein späterer kontext- und versionsgebundener Runtime-`PASS` darf
+die Browserkomposition öffnen.
 
 ## Entschiedener Browser SyncTransport Contract / ADR 0026
 
@@ -4107,8 +4339,9 @@ HTTP-Prozess komponiert.
 Der vorhandene lokale Gatewaypfad übergibt seine akzeptierte defensive
 Projektion nach ADR 0025 synchron höchstens einmal an den Kern. Nur ein exakter
 ADR-0024-Erfolg wird als frische defensive Normalresponse mit HTTP `200`
-ausgegeben. ADR 0026 entscheidet ausschließlich den BrowserSyncTransport-
-Vertrag. Als nächster Slice folgt dessen isolierte Implementierung mit
+ausgegeben. ADR 0027 ersetzt ADR 0026 und entscheidet ausschließlich den
+korrigierten BrowserSyncTransport-Vertrag. Als nächster Slice folgt dessen
+isolierte Implementierung mit
 mutationswirksamer Unit-Suite, weiterhin ohne `src/main.js`-Komposition. Der
 lokale Browser-End-to-End-Fluss folgt getrennt; Provider, externe Datenflüsse
 und weitere Aktionen bleiben spätere Slices.
@@ -4266,8 +4499,9 @@ Dieser Vertrag ist implementiert. Der frühere statische
 `503 upstreamUnavailable`-Annahmepfad und sein Serverprofil sind entfernt; nur
 der vollständig erfolgreiche komponierte Pfad ergibt HTTP `200`. Sämtliche
 beherrschten Agent-/Responsefehler bleiben beim bestehenden statischen
-`500 gatewayFailed`. ADR 0026 entscheidet inzwischen ausschließlich den
-BrowserSyncTransport-Vertrag. Als Nächstes folgen nur die isolierte
+`500 gatewayFailed`. ADR 0027 ersetzt ADR 0026 und entscheidet inzwischen
+ausschließlich den korrigierten BrowserSyncTransport-Vertrag. Als Nächstes
+folgen nur die isolierte
 Transportimplementierung und ihre mutationswirksame Unit-Suite; Browser-
 Komposition und End-to-End-Fluss bleiben ein getrennter Folgeslice,
 Betriebsgrenzen und Provider weitere spätere Slices.
@@ -5455,6 +5689,10 @@ serverseitig durch getrennte Workflows und Konfigurationen bestimmt.
 | Element | Limit für Version 1 |
 | --- | --- |
 | bereits vorliegender roher Request-String | maximal 65.536 UTF-8-Bytes, inklusive |
+| größter gültiger kanonisch projizierter Browser-v1-Requestbody | exakt 193 UTF-8-Bytes bei insgesamt 64 erlaubten ASCII-Zeichen in `requestId` |
+| privater BrowserSyncTransport-Requestcap | maximal 65.536 UTF-8-Bytes, inklusive; im geschlossenen v1-Vertrag öffentlich nicht bis zur Capgrenze erreichbar |
+| tatsächlicher lokaler Gateway-Raw-Wire-Request | maximal 65.536 Bytes, inklusive; Byte 65.537 wird während des Empfangs abgebrochen |
+| browserexponierter Responsebody | maximal 16.384 Bytes, inklusive; Byte 16.385 wird vor Kopie abgelehnt |
 | `action` | exakt `syncTest` |
 | `requestId` | 5 bis 64 ASCII-Zeichen |
 | kurzer Titel | maximal 160 Zeichen |
@@ -5473,6 +5711,18 @@ Wire-Bytes dekodiert. Weder Helper noch Boundary begrenzen deshalb die
 tatsächlich empfangenen HTTP-Bytes, verhindern vorherige Body-Allokation oder
 setzen ein produktives Webhook- beziehungsweise DoS-Limit durch. Die übrigen
 Zeilen der Tabelle sind Planungsgrenzen späterer LearningTest-Verträge.
+
+Die vier Request-/Responsegrenzen in der Tabelle sind voneinander getrennt.
+Für den noch nicht implementierten BrowserSyncTransport ergibt der geschlossene
+v1-Contract aus festen ASCII-Werten für Version, Aktion und Quelle, einem
+kanonischen Timestamp, exakt leerem Payload und höchstens 64 erlaubten
+ASCII-Zeichen in `requestId` einen maximalen serialisierten Body von exakt 193
+UTF-8-Bytes. Eine insgesamt 65 Zeichen lange `requestId` scheitert
+vertragsseitig vor Stringify, Encoding, Controller, Timer und Fetch. Der
+private Browsercap von 65.536 Bytes bleibt unverändert Defense-in-Depth und
+wird nicht durch 193 ersetzt. Er ist von der real durchgesetzten Gateway-Raw-
+Wire-Grenze 65.536/65.537 und der erreichbaren Response-Streaminggrenze
+16.384/16.385 zu unterscheiden.
 
 Die historisch durch ADR 0019 entschiedene, durch ADR 0020 implementierte und
 durch ADR 0023 beibehaltene lokale Wire-Grenze muss nach frühen Methoden-,
@@ -5717,7 +5967,8 @@ exakt mit dem internen Request korreliert. Eine gültige normale
 Contract-Fehlerresponse bleibt außen `ok: true`; ihr fachlicher Misserfolg steht
 ausschließlich in `syncResponse.success: false`.
 
-Der durch ADR 0026 entschiedene, noch nicht implementierte Clienttransport
+Der durch ADR 0027 als Ersatz für ADR 0026 entschiedene, noch nicht
+implementierte Clienttransport
 behandelt ausschließlich HTTP `200` als parsebaren Responsekandidaten und
 rejectet insbesondere diese Fälle statisch redigiert als Transportfehler:
 
@@ -5738,7 +5989,8 @@ Validatorlisten oder Stacks werden nicht an den Browser gespiegelt.
 
 Der lokale Listener besitzt die oben dokumentierten endlichen Header-,
 Request-, Socket- und Keep-Alive-Grenzen sowie höchstens einen Request pro
-Socket. ADR 0026 entscheidet zusätzlich die feste 5.000-ms-Per-Call-Deadline
+Socket. ADR 0027 übernimmt zusätzlich unverändert die feste
+5.000-ms-Per-Call-Deadline
 des noch fehlenden Browsertransports ausschließlich für dessen asynchrones
 Fetch- und Streamwarten. Die synchrone Decodierungs- und Parsephase liegt nach
 Disarm und Timerbereinigung außerhalb dieser Eventloopfrist. Sie ist nicht
@@ -6369,8 +6621,8 @@ Eine neue fachliche Prüfung ist kein technischer Retry. Sie erhält:
 
 ## Implementierte Request-, Wire- und lokale Agentenkernreihenfolge
 
-Vor der implementierten Gateway-Eingangsgrenze entscheidet ADR 0026 die noch
-nicht implementierte Browser-Ausgangsreihenfolge:
+Vor der implementierten Gateway-Eingangsgrenze entscheidet ADR 0027 als Ersatz
+für ADR 0026 die noch nicht implementierte Browser-Ausgangsreihenfolge:
 
 1. Root-Own-Keys einmal, Rootprototyp einmal, danach die Deskriptoren `version`,
    `action`, `source`, `requestId`, `timestamp`, `payload` je einmal erfassen,
@@ -6384,14 +6636,17 @@ nicht implementierte Browser-Ausgangsreihenfolge:
    Snapshotobjekt erreichen den Validator nie;
 3. diesen Graphen gegen exakte Prototyp-/`toJSON`-Grenzen terminal absichern;
 4. genau einmal mit erfassten Intrinsics serialisieren, über die erfasste
-   Encoder-Prototypmethode streng als UTF-8 messen und auf 65.536 Bytes
-   begrenzen;
+   Encoder-Prototypmethode streng als UTF-8 messen und auf den privaten Cap von
+   65.536 Bytes begrenzen; unter dem geschlossenen v1-Vertrag ist der größte
+   gültige Body exakt 193 Bytes groß und der reale Cap nur Defense-in-Depth;
 5. Controller und Signal erfassen, einen exakten eingefrorenen Null-Prototyp-
    `RequestInit` bauen und mit einem First-Terminal-Owner sowie der internen
    5.000-ms-Eventloopdeadline höchstens einen Fetch-Seam-Aufruf zum festen
    Loopbackziel starten;
 6. unmittelbar vor jedem erfassten nativen `then` Fetch-, Read- und zulässige
-   Cleanup-Promises einschließlich Constructor-/Species-Grenze prüfen; alle
+   Cleanup-Promises anhand ihres echten nativen Brandprofils, der exakt
+   erfassten lokalen Prototypkette sowie der Constructor-/Species-Oberfläche
+   prüfen, ohne eine historische Erzeugungsrealm zu behaupten; alle
    kontrollierten Handler geben ausschließlich `undefined` zurück;
 7. `fetchStarted` unmittelbar vor Fetch setzen und jeden danach gewinnenden
    Fehler oder die Deadline mit höchstens einem Controllerabort sowie nach
@@ -6403,11 +6658,13 @@ nicht implementierte Browser-Ausgangsreihenfolge:
    Content-Encoding `null` belegt nur gefilterte CORS-Unsichtbarkeit, weder
    Wire-Abwesenheit noch fehlende Dekompression;
 9. Readerresults mit Own-Key-Sequenz `value`, `done` und Descriptorfolge
-   `done`, `value` seriell prüfen; nur positive Chunks auf festen, nicht
-   geteilten Same-Realm-ArrayBuffers sofort in genau einen eigenen festen
-   Zielbuffer kopieren, Nullchunks und instabile Buffer ablehnen, auf höchstens
-   16.384 browserexponierte Bytes begrenzen, EOF und exakte Längengleichheit
-   verlangen sowie den Readerlock genau einmal freigeben;
+   `done`, `value` seriell prüfen; nur positive echte native Chunks mit zum
+   Prüfzeitpunkt exakt passendem lokalem View-/Bufferprototypprofil auf festen,
+   nicht geteilten Buffern sofort in genau einen eigenen festen Zielbuffer
+   kopieren, ohne eine historische Erzeugungsrealm zu behaupten; Nullchunks und
+   instabile Buffer ablehnen, auf höchstens 16.384 browserexponierte Bytes
+   begrenzen, EOF und exakte Längengleichheit verlangen sowie den Readerlock
+   genau einmal freigeben;
 10. Deadline disarmen und Timer bereinigen, dann genau einmal fatal über die
    erfasste Decoder-Prototypmethode dekodieren und genau einmal nativ ohne
    Reviver parsen;
@@ -6415,8 +6672,10 @@ nicht implementierte Browser-Ausgangsreihenfolge:
    prüfen und ausschließlich den weiterhin unvertrauenswürdigen Parsed-Wert
    unmittelbar an den unveränderten SyncService erfüllen.
 
-Diese Reihenfolge ist nur entschieden. Modul, Unit-Suite, reales
-Browser-Runtimegate, Browserkomposition und End-to-End-Fluss fehlen weiterhin.
+Diese Reihenfolge ist nur entschieden. Das beobachtbare Profil ersetzt keine
+Brand-, Prototyp-, Constructor-, Species-, Buffer- oder Kopierprüfung. Modul,
+Unit-Suite, reales Browser-Runtimegate, Browserkomposition und End-to-End-Fluss
+fehlen weiterhin.
 
 Die transportneutrale SyncGateway Request Boundary implementiert für einen
 bereits vollständig materialisierten JavaScript-Wert:
@@ -6493,10 +6752,10 @@ ADR 0024 implementiert davon den isolierten SyncAgent-Kern:
 
 Die Schritte 1 bis 4 der lokalen Agentenreihenfolge sind einschließlich der
 durch ADR 0025 entschiedenen Gateway-/SyncAgent-Komposition implementiert. ADR
-0026 entscheidet nur die davor liegende Browsertransportgrenze. Als Nächstes
-folgt ausschließlich deren isolierte Implementierung samt mutationswirksamer
-Unit-Suite; Browserkomposition, Provider- und externer Fluss bleiben spätere
-getrennte Slices.
+0027 ersetzt ADR 0026 und entscheidet nur die davor liegende korrigierte
+Browsertransportgrenze. Als Nächstes folgt ausschließlich deren isolierte
+Implementierung samt mutationswirksamer Unit-Suite; Browserkomposition,
+Provider- und externer Fluss bleiben spätere getrennte Slices.
 
 Der Browsercaller ist am lokalen Gateway nicht authentisiert und nicht
 vertrauenswürdig. Lokale Konfiguration bestimmt Listener, Route, Origin und
@@ -6520,8 +6779,8 @@ liegt ausschließlich im Credential-/Secret-Store des Providers. Beide Seiten
 sind getrennte Vertrauens- und Betriebsgrenzen. Kein Adapter darf direkt an
 Browser oder SyncService antworten.
 Gateway und lokaler SyncAgent sind für diesen engen Pfad komponiert; der
-BrowserSyncTransport-Vertrag ist durch ADR 0026 entschieden, Implementierung
-und Browserkomposition fehlen weiterhin.
+BrowserSyncTransport-Vertrag ist durch ADR 0027 als Ersatz für ADR 0026
+entschieden, Implementierung und Browserkomposition fehlen weiterhin.
 
 CORS steuert Browserzugriffe, ersetzt aber weder Authentisierung noch
 Autorisierung. Rate Limits bleiben vor dauerhaftem Betrieb für lokales Gateway,
@@ -6585,6 +6844,17 @@ inaktiv.
   ebenfalls nicht, besitzt keinen externen Upstream und führt die defensive
   Projektion nicht aus dem Prozess heraus. Die lokale Gateway-/SyncAgent-
   Komposition erzeugt keinen externen Datenfluss; der Browsertransport fehlt.
+- ADR 0027 verwendet für fremde Promise-, `Uint8Array`- und `ArrayBuffer`-
+  Werte ausschließlich das zum Prüfzeitpunkt beobachtbare native Brand-,
+  Prototyp-, Constructor-/Species- beziehungsweise View-/Bufferprofil. Eine
+  historische Erzeugungsrealm wird nicht behauptet und Realm ist keine
+  Sicherheits-, Identitäts-, Berechtigungs- oder Vertrauensgrenze. Unveränderte
+  Brand-, Shape-, Promise-, Buffer-, Größen-, Deadline- und Redactionprüfungen
+  bleiben wirksam.
+- Akzeptierte Fremdbytes werden unmittelbar in den eigenen lokalen Zielbuffer
+  kopiert. Nachträgliche Mutation oder Wiederverwendung der Quelle verändert
+  diese Kopie nicht; der Transport selbst prototypisiert Eingabewerte niemals
+  um.
 - Der lokale `syncTest` bleibt vollständig providerfrei und darf keine Daten
   aus PromptVault, LearningHub, LichtwaldLog, GoldenDawn-Vault, Airtable,
   lokalen Dateien oder Gesundheits-, Reflexions- und Lerndaten lesen oder
@@ -6725,8 +6995,8 @@ tests/
 └── syncAgent.test.js
 ```
 
-ADR 0026 plant davon getrennt ausschließlich dieses noch nicht vorhandene
-Modul und seine ebenfalls noch nicht vorhandene Unit-Suite:
+ADR 0027 übernimmt davon getrennt den Plan für ausschließlich dieses noch nicht
+vorhandene Modul und seine ebenfalls noch nicht vorhandene Unit-Suite:
 
 ```text
 src/transports/
@@ -6739,7 +7009,8 @@ tests/
 Es gibt weiterhin keinen implementierten Browser-Transportadapter,
 Provideradapter, n8n-Workflow, Webhook oder externen Transport. ADR 0025
 implementiert ausschließlich den lokalen Gateway-/SyncAgent-Kompositionspfad;
-ADR 0026 entscheidet nur den Browsertransportvertrag. Der SyncAgent-Modulimport
+ADR 0027 ersetzt ADR 0026 und entscheidet nur den korrigierten
+Browsertransportvertrag. Der SyncAgent-Modulimport
 bleibt inaktiv, während Bundle und Manifest unkomponiert und inaktiv bleiben.
 Die Paketversion bleibt `0.2.2`.
 
@@ -6780,12 +7051,15 @@ Die Paketversion bleibt `0.2.2`.
 | sequenzielle und parallele Aufrufe | getrennte Records, eigene Korrelation, kein gegenseitiger Einfluss |
 | gewöhnlicher Accessor oder beobachtbar werfende Proxy-Trap | statisch redigierter lokaler Fehler; keine Übernahme fremder Werte |
 
-## Geplante BrowserSyncTransport-Testmatrix
+## Geplante BrowserSyncTransport-Testmatrix gemäß ADR 0027
 
 Der separat freizugebende Implementierungsslice legt ausschließlich
 `tests/browserSyncTransport.test.js` an. Die Suite verwendet Doubles und führt
 keinen echten Netzwerkrequest aus. Sie muss mindestens die folgenden
-mutationswirksamen Fälle abdecken; ADR 0026 selbst implementiert keinen davon.
+mutationswirksamen Fälle abdecken; ADR 0027 ersetzt ADR 0026 und implementiert
+selbst keinen davon. Cross-Realm-Fixtures verwenden ausschließlich `node:vm`,
+native lokale Intrinsics und Doubles. Globale Mutationen laufen seriell,
+werden in `finally` vollständig restauriert und benötigen weder Skip noch Todo.
 
 ### Import und Factory
 
@@ -6821,7 +7095,25 @@ mutationswirksamen Fälle abdecken; ADR 0026 selbst implementiert keinen davon.
   Frische;
 - `JSON.stringify` exakt einmal ohne Replacer;
 - erfasste Encoder-Prototypmethode exakt einmal mit richtigem Receiver;
-- `65.536` gegenüber `65.537` UTF-8-Bytes;
+- maximal gültiger v1-Request mit insgesamt exakt 64 erlaubten ASCII-Zeichen
+  in `requestId`, festen übrigen Contractwerten, kanonischem Timestamp und
+  exakt leerem Payload; der frisch projizierte JSON-Body besitzt exakt 193
+  UTF-8-Bytes und erreicht bei sonst vollständig bestandenen Doubles genau
+  einen Fetch;
+- insgesamt 65 Zeichen lange `requestId`; vertragsseitige Ablehnung vor
+  Stringify, Encoding, Controller, Timer und Fetch;
+- privater produktiver Cap unverändert `65.536`, aber kein behaupteter
+  öffentlich erreichbarer `65.536`/`65.537`-Requestgrenzfall;
+- temporäre Source-Mutationskopie mit privatem Cap `193`, in der derselbe
+  gültige 193-Byte-Request zulässig bleibt;
+- getrennte temporäre Source-Mutationskopie mit privatem Cap `192`, in der
+  derselbe Request statisch vor Controller, Timer und Fetch scheitert;
+- rote Gegenprobe bei entfernter, umgangener oder falsch verglichener
+  Capprüfung sowie vollständige Bereinigung aller temporären Kopien ohne
+  Änderung des eingecheckten Produktionscodes;
+- keine Contractmutation, kein unvalidierter serialisierter Caller, keine
+  Validierung hinter der Capprüfung, kein Testexport, injizierbarer Encoder,
+  Cap-Parameter oder zusätzliche Composition-Seam;
 - post-import mutierte JSON- und Encoder-Prototypfunktionen;
 - eigene beziehungsweise geerbte `toJSON`-Mutation.
 
@@ -6846,16 +7138,29 @@ mutationswirksamen Fälle abdecken; ADR 0026 selbst implementiert keinen davon.
 - werfende Timerregistrierung;
 - synchron werfender Fetch;
 - Fetch-Rejection;
-- fremdes Thenable und ungültiges Promiseprofil;
-- eigenes `constructor`-Accessorproperty auf echtem Promise und zusätzliche
-  eigene Promisekeys;
+- lokales natives Promise mit vollständig geschlossenem beobachtbarem Profil;
+- echtes natives Cross-Realm-Promise, das fixtureseitig bereits vollständig
+  auf das lokale Promiseprofil umprototypisiert wurde;
+- entsprechend umprototypisierte echte native Promise-Subclass ohne
+  verbleibendes beobachtbares Subclassmerkmal;
+- kontrolliertes Fulfillment und statisch redigierte Rejection der positiven
+  Begrenzungsproben;
+- unverändertes Cross-Realm-Promise, fremdes Thenable sowie Proxy oder Fake
+  trotz lokal vorgetäuschtem Prototyp;
+- eigenes `constructor`-Accessorproperty auf echtem Promise, zusätzliche
+  eigene Promisekeys oder Symbole und nicht umprototypisierte Subclass;
 - post-import ersetzter `Promise.prototype.constructor`, Getter statt des
   Original-Datendescriptors und fremde Konstruktoridentität;
 - post-import ersetztes `Promise[Symbol.species]`, fremder Species-Getter oder
-  Species-Konstruktor sowie post-import ersetztes globales
-  `Promise.prototype.then`;
+  Species-Konstruktor;
+- post-import ersetzte globale `Promise.prototype.then`-Property als
+  Unabhängigkeits- und Hostile-Hook-Probe: Der Ersatz wird weder frei gelesen
+  noch aufgerufen, die erfasste native `then`-Referenz bleibt autoritativ; die
+  Probe führt keine dritte Live-Descriptor-Ablehnungsbedingung ein;
 - vollständige Promiseprofilprüfung unmittelbar vor `then` für Fetch-, Read-
-  und Cleanup-Promise;
+  und Cleanup-Promise ohne Behauptung einer historischen Erzeugungsrealm;
+- keine freie `.then`-Property, keine `Promise.resolve`-Assimilation und kein
+  `Object.setPrototypeOf` durch den Transport;
 - alle kontrollierten und späten Settlementhandler geben auf jedem Pfad nur
   primitives `undefined` zurück; kein Sentinel-, Species-, Constructor- oder
   Exceptionleak;
@@ -6894,9 +7199,18 @@ mutationswirksamen Fälle abdecken; ADR 0026 selbst implementiert keinen davon.
   Deskriptorreihenfolge `done`, `value`;
 - einmaliger Read-Result-Own-Key-/Descriptor-Snapshot ohne Rereads sowie
   stateful, werfende und inkonsistente Record-Proxies;
-- echte nicht unterklassifizierte `Uint8Array`;
-- Proxy, Subclass, detached und malformed Chunk;
-- erster Read liefert ein echtes natives Same-Realm-Promise mit
+- gewöhnliche lokale echte native `Uint8Array` auf einem festen, nicht
+  geteilten und nicht detached `ArrayBuffer`, beide mit vollständig passendem
+  beobachtbarem lokalem View-/Bufferprofil und `resizable === false`, sofern
+  unterstützt und prüfbar;
+- fixtureseitig vollständig passend umprototypisierte echte Cross-Realm-View
+  zusammen mit ihrem echten festen Backing-Buffer;
+- unveränderte fremde View, nur die View passend umprototypisiert und nur der
+  Buffer passend umprototypisiert;
+- Proxy oder Fake, unverändert sichtbare Subclass, detached und malformed
+  Chunk;
+- erster Read liefert ein lokales echtes natives Promise mit geschlossenem
+  Profil und
   `{ value: new Uint8Array(0), done: false }`; Rejection nach genau diesem Read,
   keine Kopie, kein zweiter Read, keine Microtask-Starvation, Abort und Cleanup;
 - SharedArrayBuffer-backed `Uint8Array`, Growable SharedArrayBuffer und, sofern
@@ -6904,9 +7218,13 @@ mutationswirksamen Fälle abdecken; ADR 0026 selbst implementiert keinen davon.
 - detached Buffer, falscher Bufferprototyp, post-import ersetzte Buffer-/Typed-
   Array-Getter und unmittelbare saubere Kontrollkopie eines normalen festen
   ArrayBuffers;
-- ungültige Bytewerte in Fake-/malformed Chunks;
+- Nullchunk, falsche Länge, ungültige Bytewerte in Fake-/malformed Chunks und
+  Überschreitung der deklarierten Länge oder des Responsecaps;
 - sofortige Kopie in den einzigen eigenen Puffer;
-- mutierter oder wiederverwendeter Fremdchunk;
+- mutierter oder wiederverwendeter Fremdchunk ohne Wirkung auf die eigene
+  Kopie;
+- keine Umprototypisierung eines Eingabewerts durch den Transport und keine
+  Behauptung einer historischen View-/Buffer-Erzeugungsrealm;
 - exakt `16.384` gegenüber `16.385` exponierten Bytes;
 - deklarierte gegenüber kopierter Bytezahl;
 - Erfolgscleanup und Fehlercleanup.
@@ -7240,7 +7558,8 @@ Der isolierte SyncAgent-Kern gilt als implementiert, wenn:
   Deep Freeze keine Sandbox bilden;
 - der Kern nicht in `src/main.js`, aber ausschließlich im lokalen HTTP-Prozess
   für den leeren synthetischen `syncTest` nach ADR 0025 komponiert ist; der
-  BrowserSyncTransport-Vertrag ist durch ADR 0026 angenommen, während als
+  BrowserSyncTransport-Vertrag ist durch ADR 0027 als Ersatz für ADR 0026
+  angenommen, während als
   nächster Slice nur seine isolierte Implementierung mit mutationswirksamer
   Unit-Suite offen bleibt und die Browserkomposition getrennt folgt;
 - die relevanten Tests und der Produktions-Build real ausgeführt und erst
@@ -7490,7 +7809,8 @@ Vor der jeweiligen Implementierung werden noch konkret entschieden:
 - technische Ablage von Idempotenzschlüsseln;
 - konkrete lokale Agenten- und providerabhängige Timeoutwerte; die feste
   5.000-ms-Browsertransport-Eventloopdeadline für asynchrones Fetch-/Streamwarten
-  ist durch ADR 0026 entschieden, nicht aber eine harte synchrone CPU-Grenze;
+  ist durch ADR 0027 unverändert übernommen, nicht aber eine harte synchrone
+  CPU-Grenze;
 - konkrete lokale und providerabhängige Rate-Limits;
 - Body-Binding-, Replay- und Secret-Härtung vor privaten oder schreibenden
   Aktionen;

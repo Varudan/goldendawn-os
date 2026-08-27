@@ -2,7 +2,7 @@
 
 ## Status
 
-Angenommen – 2026-08-24
+Ersetzt durch [ADR 0027](0027-browser-sync-transport-proof-boundaries.md) – 2026-08-27
 
 ## Kontext
 
