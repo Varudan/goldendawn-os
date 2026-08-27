@@ -33,7 +33,8 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 | [0023](0023-local-syncagent-before-optional-external-providers.md) | Lokaler SyncAgent vor optionalen externen Providern | Angenommen |
 | [0024](0024-local-model-free-syncagent-core-foundation.md) | Local Model-free SyncAgent Core Foundation | Angenommen |
 | [0025](0025-local-syncgateway-syncagent-composition.md) | Local SyncGateway–SyncAgent Composition | Angenommen |
-| [0026](0026-browser-sync-transport-contract.md) | Browser SyncTransport Contract | Angenommen |
+| [0026](0026-browser-sync-transport-contract.md) | Browser SyncTransport Contract | Ersetzt |
+| [0027](0027-browser-sync-transport-proof-boundaries.md) | Beobachtbare Browser-SyncTransport-Nachweisgrenzen | Angenommen |
 
 ## ADR-Regeln
 

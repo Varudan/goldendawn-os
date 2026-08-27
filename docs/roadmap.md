@@ -4,11 +4,11 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0026 angenommen; nächster Slice: isolierte BrowserSyncTransport-Implementierung` |
+| Projektphase | `v0.3.0 – ADR 0027 angenommen; nächster Slice: isolierte BrowserSyncTransport-Implementierung gemäß ADR 0027` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR-0025-In-Process-Komposition für den leeren synthetischen `syncTest` implementiert; ADR 0026 entscheidet ausschließlich den Browser-SyncTransport-Vertrag; Transportimplementierung, reales Browser-Runtimegate, Browserkomposition und Browser-End-to-End-Fluss fehlen; n8n/OpenAI/lokales Modell nicht autorisiert; kein Cloudaufruf; Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; n8n Stable OSS und Aktivierung `FAIL` |
-| Letzte Aktualisierung | 2026-08-24 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR-0025-In-Process-Komposition für den leeren synthetischen `syncTest` implementiert; ADR 0027 ersetzt ADR 0026 und korrigiert ausschließlich die Browser-SyncTransport-Nachweisgrenzen; erster Implementierungsversuch vor jeder Dateiänderung gestoppt; Transportimplementierung, reales Browser-Runtimegate, Browserkomposition und Browser-End-to-End-Fluss fehlen; n8n/OpenAI/lokales Modell nicht autorisiert; kein Cloudaufruf; Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; n8n Stable OSS und Aktivierung `FAIL` |
+| Letzte Aktualisierung | 2026-08-27 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -19,8 +19,8 @@ nicht starre Kalendertermine.
 - Jede Version liefert ein sichtbares und lokal überprüfbares Ergebnis.
 - Eine neue Phase beginnt erst, wenn die Abnahmekriterien der vorherigen Phase
   erfüllt sind.
-- Die aktuelle Implementierungsreihenfolge lautet: **ADR 0026 – Browser-
-  SyncTransport-Entscheidung und Vertrag ✅ → isolierte BrowserSyncTransport-
+- Die aktuelle Implementierungsreihenfolge lautet: **ADR 0027 – beobachtbare
+  Browser-SyncTransport-Nachweisgrenzen ✅ → isolierte BrowserSyncTransport-
   Implementierung und netzwerkfreie Unit-Tests → getrenntes reales und
   umgebungsgebundenes CORS/PNA/LNA-/Mixed-Content-Runtimegate → getrennte
   Browserkomposition und lokaler End-to-End-`syncTest` → globale/systemweite
@@ -40,8 +40,9 @@ nicht starre Kalendertermine.
   wegen negativer commitgebundener Stable-OSS-Befunde `FAIL`. ADR 0023 ersetzt
   ADR 0002 und ADR 0019 und setzt den lokalen SyncAgent als verbindliche
   Agenten- und Providergrenze vor alle optionalen Provider. Die durch ADR 0025
-  entschiedene lokale Komposition ist implementiert. ADR 0026 entscheidet den
-  festen Browser-SyncTransport-Vertrag; Transportimplementierung, reales
+  entschiedene lokale Komposition ist implementiert. ADR 0027 ersetzt ADR 0026
+  und übernimmt den festen Browser-SyncTransport-Vertrag mit zwei korrigierten
+  Nachweisgrenzen; Transportimplementierung, reales
   Browser-Runtimegate, Browser-End-to-End-Fluss und Provideradapter fehlen, und
   der aktuelle Stand kommuniziert nicht extern.
 - Weitere Unterversionen dürfen ergänzt werden, wenn neue, klar abgegrenzte
@@ -72,7 +73,7 @@ nicht starre Kalendertermine.
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.3.0` | Local SyncAgent and Transport Foundation | In Arbeit: lokale Foundations, modellfreier `syncTest`-Kern und ADR-0025-In-Process-Komposition mit lokalem HTTP `200` implementiert; ADR 0026 entscheidet den BrowserSyncTransport-Vertrag, als Nächstes folgt ausschließlich seine isolierte Implementierung mit netzwerkfreien Unit-Tests; reales Browser-Runtimegate, Browserkomposition und End-to-End-Fluss bleiben getrennt, Provideradapter später, das ursprüngliche n8n-Gate `FAIL`/`UNPROVEN` und geschlossen | 🟡 |
+| `v0.3.0` | Local SyncAgent and Transport Foundation | In Arbeit: lokale Foundations, modellfreier `syncTest`-Kern und ADR-0025-In-Process-Komposition mit lokalem HTTP `200` implementiert; ADR 0027 ersetzt ADR 0026 nach einem dateilosen Implementierungsstop und korrigiert die BrowserSyncTransport-Nachweisgrenzen, als Nächstes folgt ausschließlich die isolierte Implementierung gemäß ADR 0027 mit netzwerkfreien Unit-Tests; reales Browser-Runtimegate, Browserkomposition und End-to-End-Fluss bleiben getrennt, Provideradapter später, das ursprüngliche n8n-Gate `FAIL`/`UNPROVEN` und geschlossen | 🟡 |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
 | `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
@@ -619,9 +620,9 @@ eine spätere Phase geplant.
 
 ### Aktueller Stand
 
-`v0.3.0` ist **in Arbeit – ADR 0026 angenommen; nächster Slice: isolierte
-BrowserSyncTransport-Implementierung mit netzwerkfreier mutationswirksamer
-Unit-Suite**.
+`v0.3.0` ist **in Arbeit – ADR 0027 angenommen und ADR 0026 ersetzt; nächster
+Slice: isolierte BrowserSyncTransport-Implementierung gemäß ADR 0027 mit
+netzwerkfreier mutationswirksamer Unit-Suite**.
 Die SyncContract Foundation für Version `1.0`, die Aktion
 `syncTest` und den Handler `SyncAgent`, die asynchrone SyncService Foundation,
 die synchrone transportneutrale SyncGateway Request Boundary, der separate
@@ -642,13 +643,46 @@ fachliche, Provider- oder Persistenzwirkung beantwortet. n8n Cloud,
 self-hosted n8n, OpenAI und lokale Modelle sind ausschließlich optionale
 spätere Provider; keiner ihrer Adapter ist autorisiert oder implementiert.
 Browser-, UI-, Caller- und Requestwerte wählen weder Provider, Modell,
-Workflow, Endpoint noch Umgebung; ADR 0026 hält das einzige Transportziel als
-privaten Modulwert fest. Die durch ADR 0025 entschiedene lokale Gateway-/
-SyncAgent-Komposition ist im bestehenden Prozess implementiert. ADR 0026 ergänzt ADR 0017, ADR 0020,
-ADR 0023 und ADR 0025, ersetzt keine Entscheidung und legt ausschließlich den
-späteren festen Browser-SyncTransport-Vertrag fest. Der Kern ist mit dem
-lokalen SyncGateway, aber weiterhin nicht mit dem Browserpfad komponiert; das
-geplante Transportmodul ist noch nicht implementiert.
+Workflow, Endpoint noch Umgebung; ADR 0027 übernimmt das einzige feste
+Transportziel als privaten Modulwert aus ADR 0026. Die durch ADR 0025
+entschiedene lokale Gateway-/SyncAgent-Komposition ist im bestehenden Prozess
+implementiert. ADR 0027 ersetzt ADR 0026 formal, übernimmt alle nicht
+ausdrücklich korrigierten Entscheidungen unverändert und ändert ausschließlich
+zwei Nachweisgrenzen des späteren Browser-SyncTransport-Vertrags. Der Kern ist
+mit dem lokalen SyncGateway, aber weiterhin nicht mit dem Browserpfad
+komponiert; das geplante Transportmodul ist noch nicht implementiert.
+
+Der erste Implementierungsversuch wurde vor jeder Dateiänderung hart gestoppt.
+Working Tree, Index und die beiden geplanten Zielpfade blieben unverändert; es
+gab keinen echten Browser-, Netzwerk- oder Gatewayzugriff. Der Stop entstand
+aus einer nicht beweisbaren Realm-Provenienzanforderung für fremde native
+Promises, TypedArrays und ArrayBuffer sowie einer unter SyncContract v1 nicht
+öffentlich erreichbaren 65.536-Byte-Requestgrenze, nicht aus einer festgestellten
+Produktlücke. Es werden weder zusätzliche API, Dependency, Produktionsseam
+noch Contracterweiterung benötigt. Der Implementierungsversuch bleibt bis zum
+Merge von ADR 0027 pausiert.
+
+ADR 0027 ersetzt Realm-Provenienz durch das zum Prüfzeitpunkt beobachtbare,
+geschlossene native Brand-, lokale Prototyp-, Own-Key-, Constructor- und
+Species-Profil. Unveränderte Cross-Realm-Werte bleiben wegen ihrer
+Prototypidentität unzulässig; vollständig fixtureseitig umprototypisierte echte
+Promises beziehungsweise echte View und echter fester Backing-Buffer können
+ihre historische Realm mit öffentlichen Prüfungen nicht mehr beweisbar machen.
+Der Transport verändert keine fremden Prototypen und kopiert akzeptierte Bytes
+weiterhin sofort in seinen eigenen lokalen Buffer. Realm bleibt ohne
+Authentisierungs-, Autorisierungs-, Identitäts-, Datenschutz- oder
+Vertrauensbedeutung.
+
+Der private Requestcap bleibt unverändert 65.536 UTF-8-Bytes und Byte 65.537
+scheitert weiterhin vor Controller, Timer und Fetch. Der größte öffentlich
+gültige, kanonisch projizierte v1-Request umfasst wegen der festen Contractwerte,
+des leeren Payloads, des kanonischen Timestamps und der höchstens 64 ASCII-
+Zeichen langen `requestId` aktuell exakt 193 UTF-8-Bytes. Eine 65 Zeichen lange
+ID scheitert bereits vor Serialisierung und Encoding. Der spätere Test belegt
+die private Capverdrahtung deshalb nur in temporären Source-Kopien mit 193 und
+192; er behauptet keinen öffentlich erreichbaren 65.536/65.537-Requestfall. Die
+reale Gateway-Raw-Wire-Grenze 65.536/65.537 und die erreichbare Responsegrenze
+16.384/16.385 bleiben unverändert und getrennt.
 
 Der Request-Payload ist exakt leer; erfolgreiche Responses sind auf
 `dataOrigin: "synthetic"` begrenzt. Dieser Wert ist nur eine
@@ -1360,6 +1394,111 @@ keine Freigabe eines optionalen WorkflowProvider-Adapters.
   Fehlschläge, 0 Skips und 0 Todos. Der Produktions-Build transformiert exakt
   46 Browsermodule; der schreibfreie Bundle-Check meldet keinen Drift.
 
+### Abgeschlossener Entscheidungsslice: Beobachtbare Browser-SyncTransport-Nachweisgrenzen / ADR 0027
+
+- ✅ ADR 0027 am `2026-08-27` angenommen. **ADR 0027 ersetzt ADR 0026.** Die
+  formale Supersession ist erforderlich, weil zwei zuvor bindende
+  Nachweisanforderungen geändert werden; angenommene ADRs werden nicht
+  nachträglich inhaltlich umgeschrieben.
+- ✅ Den ersten Implementierungsversuch als harten, dateilosen Stop vor jeder
+  Dateiänderung dokumentiert. Working Tree, Index sowie
+  `src/transports/browserSyncTransport.js` und
+  `tests/browserSyncTransport.test.js` blieben unverändert beziehungsweise
+  nicht vorhanden. Es gab keinen Browser-, Netzwerk- oder Gatewayzugriff. Die
+  Pause folgt aus zwei widersprüchlichen beziehungsweise öffentlich nicht
+  erfüllbaren Nachweisforderungen, nicht aus einer Produktlücke, und benötigt
+  keine neue API, Dependency oder Produktionsseam.
+- ✅ Sämtliche nicht ausdrücklich ersetzten Entscheidungen aus ADR 0026
+  unverändert übernommen: Modulort und Export, Factory-/API-/Arityvertrag,
+  exakt vier Composition-Seams, feste Loopback-URL, descriptor-basierter
+  Snapshot, frischer disjunkter und zweimal validierter Requestgraph,
+  einmalige Serialisierung und UTF-8-Messung, privater Requestcap, exakte
+  RequestInit-/Headerpolicy, höchstens ein Fetch ohne Retry oder Fallback,
+  Constructor-/Species-Prüfungen, 5.000-ms-Deadline, First-Terminal-Owner,
+  Abort-/Cleanupgrenzen, fail-fast Response-/Headerreihenfolge,
+  16.384/16.385-Responsegrenze, Nullchunk-/EOF-/Kopierregeln, strikte
+  UTF-8-/BOM-/JSON-Semantik, statische Redaction, unveränderte
+  SyncService-Verantwortung sowie geschlossene Browserkomposition, Runtimegates
+  und Providerpfade.
+- ✅ Für fremde Fetch-, Read- und Cleanup-Promise-Kandidaten ausschließlich das
+  zum Prüfzeitpunkt beobachtbare geschlossene Profil als beweisbar festgelegt:
+  echtes natives Promise-Brandprofil, exakt erfasster lokaler
+  `Promise.prototype`, vollständige lokale Prototypkette, leere Own-Keys ohne
+  eigene `constructor`-Property sowie unveränderte Constructor-/Species-
+  Descriptoren und Verarbeitung nur über die erfasste native `then`-Referenz.
+  Eine Erzeugungsrealm oder historische Constructor-/Subclass-Provenienz wird
+  nicht behauptet. Unveränderte Cross-Realm-Promises bleiben negativ; bereits
+  vollständig passend umprototypisierte echte Cross-Realm-Promises und native
+  Subclass-Promises ohne verbleibendes Merkmal sind öffentlich nicht mehr nach
+  Herkunft unterscheidbar. Der Transport selbst verändert keinen fremden
+  Prototyp; sein äußeres Promise bleibt transport-eigen und lokal erzeugt.
+- ✅ Für fremde Readerchunks dieselbe beobachtbare Grenze festgelegt: echte
+  native `Uint8Array`- und `ArrayBuffer`-Brands, exakt lokale
+  Prototypidentitäten und -ketten, fester nicht geteilter, nicht resizable und
+  nicht detached Buffer, positive sichere ByteLength sowie sämtliche Cap- und
+  Restlängenprüfungen. Unveränderte oder nur teilweise umprototypisierte
+  Cross-Realm-Werte bleiben negativ. Eine bereits vollständig passend
+  umprototypisierte echte View samt echtem festem Backing-Buffer ist nach
+  historischer Realm nicht unterscheidbar. Akzeptierte Bytes werden weiterhin
+  ohne verbleibende Fremdidentität sofort in den transport-eigenen lokalen
+  Zielbuffer kopiert; spätere Quellmutation wirkt nicht auf die Kopie.
+- ✅ Realm ausdrücklich nicht als Sicherheits-, Identitäts-, Berechtigungs-,
+  Authentisierungs-, Datenschutz- oder Vertrauenssignal eingeordnet. Fremde
+  Thenables, Proxy/Fake, Zusatzkeys oder Symbole, Constructor-Accessors,
+  sichtbar unveränderte Subclassprototypen, mutierte Constructor-/Species-
+  Descriptoren, Shared/Growable Shared/Resizable/Detached Memory, Nullchunks,
+  falsche Längen und Capüberschreitungen bleiben fail-closed.
+- ✅ Den produktiven privaten Requestcap unverändert auf einschließlich
+  `65.536` UTF-8-Bytes belassen; Byte 65.537 scheitert weiter vor Controller,
+  Timer und Fetch. Unter dem geschlossenen SyncContract v1 ist diese reale
+  Grenze über die öffentliche Transport-API nicht erreichbar. Der maximal
+  gültige 64-ASCII-Zeichen-`requestId` ergibt mit den festen übrigen Werten,
+  kanonischem Timestamp und leerem Payload einen exakt 193 Byte großen
+  JSON-Body. Eine insgesamt 65 Zeichen lange ID scheitert vor Stringify,
+  Encoding, Controller, Timer und Fetch. Die 193 Bytes ersetzen den privaten
+  Cap nicht; sie bestimmen nur die aktuelle öffentliche Erreichbarkeit.
+- ✅ Für den späteren netzwerkfreien Implementierungstest den maximal gültigen
+  193-Byte-v1-Request bis zu genau einem Fetch und die 65-Zeichen-ID bis zur
+  frühen Contractablehnung festgelegt. Die private Capverdrahtung wird kausal
+  ausschließlich an vollständig bereinigten temporären Modulkopien geprüft:
+  Cap `193` lässt denselben Request passieren, Cap `192` lehnt ihn vor
+  Controller, Timer und Fetch ab; Entfernen, Umgehen oder ein falscher Vergleich
+  muss eine Gegenprobe rot machen. Der Nachweis gilt nur Verdrahtung,
+  inklusive/überschreitende Semantik und Position, nicht einer öffentlich
+  erreichbaren 65.536/65.537-Grenze. Contractmutation, Testexport,
+  injizierbarer Encoder, Capparameter, fünfter Seam oder Produktionsänderung
+  zugunsten des Tests bleiben verboten.
+- ✅ Die spätere Cross-Realm-Matrix auf `node:vm`, lokale native Intrinsics und
+  Doubles begrenzt. Positive Promiseproben umfassen lokal native und
+  fixtureseitig vollständig passend umprototypisierte echte Cross-Realm-
+  Promises einschließlich einer nativen Subclass ohne Restmerkmal. Positive
+  Byteproben umfassen eine lokale feste View und eine vollständig passend
+  umprototypisierte echte fremde View samt echtem festem Buffer sowie die
+  mutationsisolierte Sofortkopie. Unveränderte, nur teilweise angeglichene,
+  Proxy-/Fake-, Shared-, Growable-, Resizable-, Detached-, Nullchunk-, Längen-
+  und Capfälle bleiben negativ. Der Transport ruft in keiner Probe
+  `Object.setPrototypeOf` auf Eingabewerten auf; globale Testmutationen müssen
+  seriell und mit vollständigem `finally`-Restore laufen.
+- ✅ Die bestehende enge Phase-0-/Tor-A-Arbeitshypothese nicht zu einer Rechts-
+  oder Complianceklassifikation erweitert. Vor Modulevaluation kompromittierte
+  Intrinsics, Enginekompromittierung, OOM und Prozessabbruch bleiben außerhalb
+  der Garantie; Same-Realm und Deep Freeze bleiben keine Sandbox. Dieser
+  Entscheidungsslice erzeugt keinen Browser-, Gateway-, Provider- oder privaten
+  Datenfluss und besitzt keine KI-, Modell-, Workflow-, Credential-, Storage-,
+  Logging- oder Telemetriewirkung.
+- ✅ Nach ADR 0027 als nächsten Slice ausschließlich die isolierte und
+  netzwerkfreie BrowserSyncTransport-Implementierung gemäß dem korrigierten
+  Vertrag freigegeben. Realer Fetch, Browser- oder Gatewaystart, PNA-/LNA-/
+  Mixed-Content-Evidenz, Browserkomposition, End-to-End-`syncTest`, globale
+  Betriebsgrenzen, Provider, Credentials, private Payloads und weitere Aktionen
+  bleiben getrennt und geschlossen. Nur ein späterer kontext- und
+  versionsgebundener Runtime-`PASS` darf die Browserkomposition öffnen.
+
+Der nachfolgende ADR-0026-Abschnitt bleibt als historischer Stand des
+ersetzten Entscheidungsslices unverändert erhalten. Seine stärkeren
+Same-Realm- und öffentlichen Requestcap-Nachweisbehauptungen sind keine
+aktuellen Anforderungen mehr.
+
 ### Abgeschlossener Entscheidungsslice: Browser SyncTransport Contract / ADR 0026
 
 - ✅ ADR 0026 am `2026-08-24` angenommen und korrigiert. Er ergänzt ADR 0017,
@@ -1590,35 +1729,41 @@ keine Freigabe eines optionalen WorkflowProvider-Adapters.
 4. ✅ **ADR 0026 – Browser-SyncTransport-Entscheidung und -Vertrag:** die
    konkrete Clienttransportgrenze hinter
    `syncTransport.sendSyncRequest(syncRequest)` ausschließlich dokumentarisch
-   entschieden, ohne Transport oder Browserfluss zu implementieren.
-5. ⬜ **Isolierte BrowserSyncTransport-Implementierung:** ausschließlich
+   als damaligen Stand entschieden, ohne Transport oder Browserfluss zu
+   implementieren; die Entscheidung ist inzwischen durch ADR 0027 ersetzt.
+5. ✅ **ADR 0027 – beobachtbare Browser-SyncTransport-Nachweisgrenzen:** den
+   ersten Implementierungsversuch vor jeder Dateiänderung gestoppt, ADR 0026
+   formal ersetzt, alle nicht betroffenen Regeln unverändert übernommen und
+   Realm-Provenienz sowie die öffentliche Requestcap-Erreichbarkeit auf die
+   tatsächlich beweisbaren Profile und 193 gültigen v1-Bytes korrigiert.
+6. ⬜ **Isolierte BrowserSyncTransport-Implementierung:** ausschließlich
    `src/transports/browserSyncTransport.js` und die netzwerkfreie
-   mutationswirksame Unit-Suite `tests/browserSyncTransport.test.js` nach ADR
-   0026 implementieren; vor Merge den tatsächlichen Slice erneut durch Tor A
+   mutationswirksame Unit-Suite `tests/browserSyncTransport.test.js` gemäß ADR
+   0027 implementieren; vor Merge den tatsächlichen Slice erneut durch Tor A
    prüfen; weiterhin keine `src/main.js`-, UI- oder Browserkomposition und kein
    Browser-End-to-End-Test.
-6. ⬜ **Reales Browser-Runtimegate:** an OS, Browserversion, tatsächliche
+7. ⬜ **Reales Browser-Runtimegate:** an OS, Browserversion, tatsächliche
    Frontend-Origin und -Kontext sowie Endpoint gebunden CORS/Preflight,
    PNA/LNA, Berechtigungen, Secure Context/Mixed Content, Loopbackziel,
    Redirect, exponierte und blockierte Responseheader, finale URL,
    Response-Typ, Browserunterschiede und nötige Benutzerfreigaben nachweisen;
    das `PASS` bleibt kontext-/versionsgebunden und ist keine allgemeine
    Browsergarantie; bei
-   erforderlichen Policyänderungen ADR 0020/0026 neu öffnen, ohne Fallback.
-7. ⬜ **Browserkomposition und lokaler End-to-End-`syncTest`:** den isoliert
+   erforderlichen Policyänderungen ADR 0020/0027 neu öffnen, ohne Fallback.
+8. ⬜ **Browserkomposition und lokaler End-to-End-`syncTest`:** den isoliert
    geprüften Clienttransport anschließend getrennt mit dem SyncService
    komponieren und den vollständig lokalen Browserfluss bis zur normal
    korrelierten SyncResponse nachweisen.
-8. ⬜ **Globale/systemweite lokale Betriebsgrenzen:** Missbrauchs-,
+9. ⬜ **Globale/systemweite lokale Betriebsgrenzen:** Missbrauchs-,
    Parallelitäts-, Zeit- und Ressourcenbegrenzung für den lokalen Pfad
    entscheiden, implementieren und verifizieren.
-9. ⬜ **Erst danach getrennte Providerentscheidungen:** jeden externen oder
+10. ⬜ **Erst danach getrennte Providerentscheidungen:** jeden externen oder
    lokalen Provider nur capability-spezifisch, standardmäßig deaktiviert und
    mit eigener Sicherheits-, Datenschutz- und Aktivierungsentscheidung planen.
-10. ⬜ **Provideradapter als getrennte Slices:** OpenAI-, lokales-Modell- und
+11. ⬜ **Provideradapter als getrennte Slices:** OpenAI-, lokales-Modell- und
    n8n-Adapter unabhängig voneinander entscheiden und implementieren; kein
    Adapter ist durch ADR 0023 autorisiert.
-11. ⬜ **Private Daten, weitere Aktionen, Tools und Nebenwirkungen:** erst nach
+12. ⬜ **Private Daten, weitere Aktionen, Tools und Nebenwirkungen:** erst nach
    neuen Contract-, Identitäts-, Berechtigungs-, Replay-, Idempotenz- und
    Datenschutzentscheidungen einführen.
 
@@ -2038,11 +2183,20 @@ entscheidet den lokalen SyncAgent hinter dem lokalen SyncGateway als
 verbindliche Agenten- und Providergrenze. ADR 0024 implementiert den isolierten
 synchronen, modell- und providerfreien `syncTest`-Kern. Der lokale Gateway-/
 SyncAgent-Kompositionsvertrag aus ADR 0025 ist implementiert; der Kern ist mit
-dem Gateway, aber weiterhin nicht mit dem Browser komponiert. ADR 0026 ist am
-`2026-08-24` angenommen und entscheidet ausschließlich den festen
-Browser-SyncTransport-Vertrag. Das geplante Transportmodul, seine Unit-Suite,
-das reale Browser-Runtimegate, seine Browserkomposition und der lokale Browser-
-End-to-End-Fluss sind weiterhin nicht implementiert.
+dem Gateway, aber weiterhin nicht mit dem Browser komponiert. ADR 0027 ist am
+`2026-08-27` angenommen, ersetzt ADR 0026 formal und übernimmt dessen festen
+Browser-SyncTransport-Vertrag mit ausschließlich zwei korrigierten
+Nachweisgrenzen. Der erste Implementierungsversuch wurde vor jeder
+Dateiänderung gestoppt; Working Tree, Index und beide geplanten Zielpfade
+blieben unverändert, und es erfolgte kein Browser-, Netzwerk- oder
+Gatewayzugriff. Das geplante Transportmodul, seine Unit-Suite, das reale
+Browser-Runtimegate, seine Browserkomposition und der lokale Browser-End-to-
+End-Fluss sind weiterhin nicht implementiert. Der produktive private
+65.536-Byte-Requestcap bleibt unverändert, während der größte gültige
+öffentliche v1-Request aktuell exakt 193 UTF-8-Bytes umfasst. Realm-Herkunft
+wird für fremde native Promise-, View- oder Bufferkandidaten nicht mehr
+behauptet; maßgeblich ist ausschließlich ihr geschlossenes beobachtbares
+Brand-/Prototypprofil.
 Der veröffentlichte `v0.2.2`-Umfang bleibt
 vollständig lokal. Es wurde kein Cloudrequest ausgeführt; weder Listener noch
 Evidence-Tool besitzen einen Browser-, Produkt- oder komponierten
@@ -2060,7 +2214,7 @@ Benutzerkonten und weitere Agentenlogik bleiben offen beziehungsweise beginnen
 erst in den dafür vorgesehenen späteren Slices und Versionen. Der nächste
 konkrete Schritt ist ausschließlich die **isolierte Implementierung von
 `src/transports/browserSyncTransport.js` samt netzwerkfreier mutationswirksamer
-Unit-Suite in `tests/browserSyncTransport.test.js`**. Vor Merge wird dieser
+Unit-Suite in `tests/browserSyncTransport.test.js` gemäß ADR 0027**. Vor Merge wird dieser
 tatsächliche Implementierungsslice erneut durch Tor A geprüft. Danach folgt ein
 getrenntes reales und umgebungsgebundenes CORS/PNA/LNA-/Mixed-Content-
 Runtimegate. `src/main.js`-, UI- und Browserkomposition sowie der lokale

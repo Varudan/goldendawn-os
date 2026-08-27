@@ -6,7 +6,77 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – Browser SyncTransport Contract / ADR 0026
+## Unveröffentlicht – v0.3.0 in Arbeit – Beobachtbare Browser-SyncTransport-Nachweisgrenzen / ADR 0027
+
+### Beobachtbare Browser-SyncTransport-Nachweisgrenzen / ADR 0027
+
+- ADR 0027 wurde am `2026-08-27` angenommen und ersetzt ADR 0026 formal. Alle
+  nicht ausdrücklich korrigierten Entscheidungen von ADR 0026 gelten normativ
+  fort; bei Konflikten ist ausschließlich ADR 0027 maßgeblich.
+- Der erste Implementierungsversuch wurde vor jeder Dateiänderung hart
+  gestoppt. Working Tree, Index sowie
+  `src/transports/browserSyncTransport.js` und
+  `tests/browserSyncTransport.test.js` blieben unverändert; Browser, Netzwerk
+  und lokales Gateway wurden nicht angesprochen. Ursache waren zwei
+  unbeweisbare beziehungsweise im gültigen Version-1-Requestraum unerreichbare
+  Nachweisanforderungen, keine Produktlücke. Es entsteht keine neue API,
+  Dependency oder Test-Seam; die Implementierung bleibt bis zum Merge dieser
+  Entscheidung pausiert.
+- Fremde Fetch-, Read- und zulässige Cleanup-Promises werden nicht mehr anhand
+  einer unbeweisbaren Erzeugungsrealm- oder historischen Subclass-Provenienz
+  beurteilt. Entscheidend ist ausschließlich ihr geschlossenes beobachtbares
+  Profil aus echter nativer Promise-Brand, exakt lokalem erfasstem Prototyp und
+  unveränderter Kette, leerer Own-Key-Menge ohne eigene `constructor`-Property,
+  unveränderten Constructor-/Species-Deskriptoren und -Identitäten sowie der
+  Anwendung der erfassten nativen `then`-Methode. Unveränderte Cross-Realm-
+  Werte bleiben negativ; vollständig fixtureseitig umprototypisierte echte
+  Cross-Realm-Promises und native Subclasses ohne beobachtbaren Rest dürfen
+  positiv sein. Der Transport setzt nie Prototypen; sein äußeres Promise bleibt
+  mit dem erfassten lokalen Konstruktor erzeugt.
+- Streamchunks folgen derselben Nachweislogik: echte `Uint8Array`- und
+  Backing-`ArrayBuffer`-Brands, exakt lokale Prototypen und Ketten sowie fester,
+  nicht geteilter, nicht resizable und nicht detached Speicher. Nur eine
+  vollständig vor Übergabe umprototypisierte echte View samt ihrem echten
+  Buffer kann bestehen; die Änderung nur einer Seite scheitert. Akzeptierte
+  Bytes werden sofort in einen tatsächlich lokalen eigenen Zielbuffer kopiert,
+  sodass spätere Quellmutationen die Kopie nicht beeinflussen.
+- Der private produktive Browser-Request-Cap bleibt als Defense-in-Depth bei
+  65.536 Bytes; Byte 65.537 scheitert weiterhin vor Controller, Timer und
+  Fetch. Der größte öffentlich gültige kanonische Version-1-Requestbody ist
+  jedoch exakt 193 UTF-8-Bytes groß: 129 feste Bytes plus höchstens 64
+  ASCII-Zeichen für die gesamte `requestId` einschließlich `req_`. Eine
+  65-Zeichen-ID scheitert vor Stringify, Encode, Controller, Timer und Fetch.
+  Dies ist getrennt von der real erreichbaren Gateway-Raw-Wire-Grenze
+  65.536/65.537 und der Browser-Response-Grenze 16.384/16.385 Bytes.
+- Die spätere mutationswirksame Unit-Suite führt den gültigen 193-Byte-Fall bis
+  exakt einen Fetch und weist die 65-Zeichen-ID früh ab. Temporäre, danach
+  entfernte Quellkopien mit Cap 193 beziehungsweise 192 sowie ein roter
+  Gegenbeweis bei entferntem, umgangenem oder falsch verglichenem Check belegen
+  nur aktive Verdrahtung, inklusive Vergleichssemantik und Position vor
+  Nebenwirkungen. Cross-Realm-Fälle verwenden `node:vm`, native Intrinsics und
+  kontrollierte Doubles, laufen seriell und stellen globale Mutationen in
+  `finally` wieder her; reale Browser- und Netzwerkzugriffe, Skips und Todos
+  bleiben ausgeschlossen.
+- Thenables, Proxies, Fakes, zusätzliche Keys, Symbole, Accessors, sichtbare
+  Subclass-Prototypen, mutierte Constructor-/Species-Zustände, freie `.then`-
+  Reads und `Promise.resolve` bleiben negativ. Eine mutierte globale `.then`-
+  Oberfläche dient ausschließlich als Hostile-Hook-Unabhängigkeitsnachweis:
+  Die ersetzte Property wird nicht frei gelesen oder aufgerufen; die beim
+  Import erfasste Methode bleibt autoritativ.
+- Dieser Slice ändert ausschließlich die zehn freigegebenen
+  Entscheidungs- und Living-Documentation-Pfade. Transport, Unit-Suite,
+  Anwendungskomposition, Browser-End-to-End-Fluss, Gateway, n8n, Cloud,
+  Provider, Credentials, Vault, Paketversion, Tag und Release bleiben
+  unverändert. Kein Runtime-, Provider-, Privatdaten- oder Aktivierungsgate
+  wird geöffnet. Nächster Slice bleibt die isolierte Implementierung gemäß ADR
+  0027; erst danach folgt der getrennte reale Browser-Runtime-Nachweis.
+- Die unveränderte technische Baseline wurde real geprüft: `1332/1332` Tests
+  der vollständigen seriellen Suite bestehen bei `0` Fehlschlägen, `0` Skips
+  und `0` Todos; der Produktions-Build transformiert exakt `46` Module und der
+  schreibfreie n8n-Bundlecheck meldet keinen Drift.
+
+Der folgende ADR-0026-Eintrag dokumentiert den damaligen, inzwischen durch ADR
+0027 ersetzten Stand unverändert. Bei Konflikten gilt ADR 0027.
 
 ### Browser SyncTransport Contract / ADR 0026
 
