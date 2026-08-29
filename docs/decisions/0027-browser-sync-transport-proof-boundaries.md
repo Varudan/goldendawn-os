@@ -2,7 +2,7 @@
 
 ## Status
 
-Angenommen – 2026-08-27
+Ersetzt durch [ADR 0028](0028-browser-sync-transport-validator-integrity-boundary.md) – 2026-08-29
 
 ## Kontext
 
