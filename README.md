@@ -10,7 +10,7 @@
 
 **Current release:** `v0.2.2 — LichtwaldLog Local MVP complete, verified, and published`
 
-**Current development:** `v0.3.0 – in progress – Browser SyncTransport proof boundaries / ADR 0027 accepted; isolated BrowserSyncTransport implementation and unit suite next`
+**Current development:** `v0.3.0 – in progress – isolated BrowserSyncTransport implemented and verified without network access; separate context- and version-bound PNA/LNA/mixed-content runtime gate next`
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -340,6 +340,29 @@ slice reran and reconfirmed those unchanged results: the production build still
 transformed exactly 46 browser modules, and the write-free n8n Bundle drift
 check passed.
 
+The subsequent isolated implementation slice now provides
+`src/transports/browserSyncTransport.js` with the sole export
+`createBrowserSyncTransport` and a fresh ordinary frozen API exactly containing
+`{ sendSyncRequest }`. Its network-free mutation-oriented suite is isolated in
+`tests/browserSyncTransport.test.js`. The implementation preserves the closed
+ADR-0027 snapshot, validation, serialization, Fetch-policy, first-terminal-
+owner deadline, native Promise-observation, bounded stream-copy, strict UTF-8/
+JSON, and redaction boundaries. It remains deliberately uncomposed with both
+the SyncService and `src/main.js`; no browser end-to-end path exists.
+
+The focused BrowserSyncTransport suite passes 272/272 tests, SyncService plus
+BrowserSyncTransport pass 315/315, the six serial Sync suites pass 584/584,
+and the complete serial suite passes 1604/1604. Every run has 0 failures,
+0 cancellations, 0 skips, and 0 todos. The production build still transforms
+exactly 46 modules, and the write-free n8n Bundle drift check reports no drift.
+Phase 0/Gate A was narrowly reconfirmed from the actual code: there is no model,
+statistical inference, provider, workflow, credential, private-content payload,
+logging, storage, telemetry, or legal/compliance classification. No real
+browser, network, Gateway, Cloud, n8n, provider, credential, or vault was used.
+The next slice is exclusively the separate context- and version-bound runtime
+gate for CORS/preflight, PNA/LNA, local-network permission, and secure-context/
+mixed-content behavior.
+
 The **Generated n8n Boundary Bundle Foundation** is now implemented according
 to ADR 0021. SyncContract and SyncGateway Request Boundary remain the only
 domain-canonical sources. The small manifested entry is explicitly maintained
@@ -489,8 +512,8 @@ Successful contract responses remain limited to
 proof of actual provenance or privacy. The isolated SyncAgent core can create
 the validated normal success response directly and is now composed with the
 separately started local SyncGateway through ADR 0025. Neither the delivered
-service nor the request boundary is composed in `src/main.js`, and no browser
-SyncTransport exists. A valid request sent deliberately to the local Gateway
+service, request boundary, nor the isolated BrowserSyncTransport is composed in
+`src/main.js`. A valid request sent deliberately to the local Gateway
 can therefore traverse Boundary and SyncAgent and return only the defensively
 projected normal HTTP `200` response for the exactly empty synthetic
 `syncTest`. There is still no
@@ -538,7 +561,7 @@ flowchart TD
     UI["Dashboard and modules"] --> Services["Application services"]
     Services --> Local["Local storage adapter"]
     Services --> Sync["Sync service"]
-    Sync --> Transport["ADR 0027 contract decided; BrowserSyncTransport not implemented"]
+    Sync --> Transport["BrowserSyncTransport implemented in isolation; not composed"]
     Transport --> Gateway["Separately started local SyncGateway on GD-WS01"]
     Gateway --> Agent["Implemented isolated local SyncAgent core"]
     Agent --> Handler["Implemented model-free local syncTest handler"]
@@ -554,7 +577,7 @@ flowchart TD
 ```
 
 The first locally connected flow will be browser-initiated:
-`GoldenDawn browser → SyncService → contract-decided, not-yet-implemented local
+`GoldenDawn browser → SyncService → isolated, not-yet-composed local
 BrowserSyncTransport → local
 SyncGateway on GD-WS01 → local SyncAgent → locally validated and correlated
 normal SyncResponse`. The first `syncTest` handler remains deterministic,
@@ -586,10 +609,10 @@ state machine still applies the 5,000 ms event-loop deadline only to
 asynchronous Fetch and stream work; the bounded synchronous decode and parse
 phase begins only after the timer is disarmed. The response stream is copied
 immediately into one owned buffer and remains capped at 16,384 actual bytes.
-ADR 0027 changes none of the existing runtime components and has not created
-the planned module.
+The isolated implementation now realizes that unchanged ADR-0027 contract
+without creating an application composition or runtime activation.
 The local HTTP success path is operational only when the separate Gateway is
-started explicitly; the BrowserSyncTransport implementation and the
+started explicitly; the BrowserSyncTransport-to-SyncService composition and the
 browser-initiated end-to-end path remain absent.
 n8n Cloud, self-hosted n8n, OpenAI, and local models are optional later
 providers whose adapters are neither authorized nor implemented. Any later
@@ -1108,8 +1131,8 @@ or Gateway access, and no browser or UI composition was added.
 
 - Build in small, stable, and verifiable steps.
 - Follow the current sequence: **accepted ADR 0027 Browser SyncTransport proof
-  boundaries → isolated BrowserSyncTransport implementation and network-free
-  mutation-oriented unit suite → separate environment-bound real-browser
+  boundaries → completed isolated BrowserSyncTransport implementation and
+  network-free mutation-oriented unit suite → separate environment-bound real-browser
   CORS/PNA/LNA/mixed-content evidence gate → separate browser composition and
   local end-to-end `syncTest` → local abuse, concurrency, time, and resource
   limits → separately decided providers**.
@@ -1121,9 +1144,9 @@ or Gateway access, and no browser or UI composition was added.
   0023 places the local SyncAgent before every optional provider, ADR 0024
   implements its isolated model-free `syncTest` core, and ADR 0025 implements
   the local composition contract without adding a browser or provider path.
-  ADR 0027 replaces ADR 0026, preserves every unaffected browser transport
-  decision, and corrects only its observable proof boundaries without
-  implementing or composing the transport.
+  ADR 0027 replaces ADR 0026 and preserves every unaffected browser transport
+  decision. The transport is now implemented in isolation without composing or
+  activating the browser path.
 - Keep UI components independent from concrete storage technologies.
 - Encapsulate local persistence behind storage adapters.
 - Route communication through services and the local SyncAgent; never let the
@@ -1143,16 +1166,15 @@ or Gateway access, and no browser or UI composition was added.
 - CSS3
 - Node HTTP Local SyncGateway with controlled in-process SyncAgent composition
 - Isolated synchronous model-free `syncTest` SyncAgent core
+- Isolated ADR-0027 BrowserSyncTransport with a network-free mutation suite
 - Deterministic standalone n8n Boundary bundle generation
 - Network-inactive n8n Cloud ingress/runtime evidence tooling
 - Git and GitHub
 
 ### Planned integrations
 
-- isolated implementation of the ADR-0027 BrowserSyncTransport contract and
-  its network-free mutation-oriented unit suite at
-  `tests/browserSyncTransport.test.js`, followed by a separate environment-
-  bound real-browser CORS/PNA/LNA/mixed-content evidence gate and only then the
+- separate environment-bound real-browser CORS/PNA/LNA/mixed-content evidence
+  gate, followed only after `PASS` by BrowserSyncTransport composition and the
   local browser end-to-end `syncTest`
 - optional capability-specific ModelProvider adapters for OpenAI or a local
   model, only after separate decisions
@@ -1178,7 +1200,7 @@ non-binding; see the roadmap for details.
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
 | v0.2.2 | LichtwaldLog Local MVP | Complete, verified, and published |
-| v0.3.0 | Local SyncAgent and Transport Foundation | In progress: local foundations, the isolated model-free `syncTest` core, and the ADR-0025 local Gateway/SyncAgent composition are implemented; ADR 0027 replaces ADR 0026 and corrects the BrowserSyncTransport proof boundaries after a fileless implementation stop; the isolated implementation is next, provider adapters remain unauthorized, and the original n8n activation remains `FAIL`/`UNPROVEN` and closed |
+| v0.3.0 | Local SyncAgent and Transport Foundation | In progress: local foundations, the isolated model-free `syncTest` core, the ADR-0025 local Gateway/SyncAgent composition, and the isolated ADR-0027 BrowserSyncTransport are implemented; the separate context- and version-bound browser runtime gate is next, browser composition remains absent, provider adapters remain unauthorized, and the original n8n activation remains `FAIL`/`UNPROVEN` and closed |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
 | v0.6.0 | Integration | Planned integration and verification of the previously introduced local and external components |
@@ -1195,13 +1217,11 @@ all optional ModelProvider and WorkflowProvider adapters. ADR 0024 implements
 the isolated, synchronous, model-free `syncTest` core. ADR 0025 implements the
 exact local in-process composition contract. ADR 0027 replaces ADR 0026,
 retains every unaffected fixed BrowserSyncTransport rule, and corrects only
-the Realm-provenance and public request-cap proof claims without implementing
-the transport. No Cloud request has
-occurred. The next mandatory slice is exclusively the isolated implementation
-of `src/transports/browserSyncTransport.js` and its network-free mutation-
-oriented unit suite at `tests/browserSyncTransport.test.js`, still without
-`src/main.js` composition. A separate environment-bound real-browser gate must
-then prove the fixed path's CORS/preflight, Private/Local Network Access,
+the Realm-provenance and public request-cap proof claims. The transport and its
+network-free mutation-oriented unit suite are now implemented in isolation,
+still without `src/main.js` composition. No Cloud request has occurred. The next
+mandatory slice is exclusively a separate environment-bound real-browser gate
+that must prove the fixed path's CORS/preflight, Private/Local Network Access,
 permissions, secure-context/mixed-content, redirect, exposed-header, final-URL,
 blocked-header, browser-difference, required-user-approval, and response-type
 behavior. A pass remains context- and version-bound, not a general browser
@@ -1214,8 +1234,8 @@ evidence-schema version decided. Schema-1 has no `overallGate`, and
 its fixed `activationDecision: "FAIL"` remains unchanged.
 Additional patch or minor versions may be inserted when needed without
 reordering these milestones. The current implementation sequence remains
-**accepted ADR 0027 proof boundaries → isolated BrowserSyncTransport implementation →
-environment-bound real-browser CORS/PNA/LNA/mixed-content evidence → separate
+**accepted ADR 0027 proof boundaries → completed isolated BrowserSyncTransport
+implementation → environment-bound real-browser CORS/PNA/LNA/mixed-content evidence → separate
 browser composition and local end-to-end `syncTest` → local operational limits
 → separately decided providers**.
 
@@ -1288,6 +1308,16 @@ Safe, local PowerShell helpers for the manual commit and merged-branch cleanup
 process are documented in [the Git workflow guide](docs/git-workflows.md).
 
 ## Verification
+
+The isolated BrowserSyncTransport implementation was verified without real
+browser, network, Gateway, Cloud, n8n, provider, credential, or vault access.
+The focused suite passed 272/272 tests; SyncService plus BrowserSyncTransport
+passed 315/315; the six serial Sync suites passed 584/584; and the complete
+serial suite passed 1604/1604. All runs had 0 failures, 0 cancellations,
+0 skips, and 0 todos. The production build transformed exactly 46 modules, and
+the write-free n8n Bundle drift check reported no drift. The implementation is
+not composed with the SyncService or `src/main.js`, and no browser end-to-end
+verification is claimed.
 
 The published `v0.2.2` release was verified with:
 
@@ -1406,9 +1436,9 @@ injected local SyncAgent synchronously and at most once, and that the Gateway
 treats the agent result as untrusted, reprojects the normal response, and
 retains sole HTTP and socket ownership. An accepted exactly empty synthetic
 `syncTest` can therefore return HTTP `200` through this explicit local path.
-The BrowserSyncTransport contract is now governed by ADR 0027, but no
-implementation or browser composition exists, and the slice introduces no external or
-private-content flow. The later application sets no cookie, credential,
+The BrowserSyncTransport is now implemented in isolation under ADR 0027, but no
+SyncService or browser composition exists, and the slice introduces no external
+or private-content flow. A later application path sets no cookie, credential,
 authorization value, referrer, private payload, provider secret, logging, or
 telemetry, but the browser may independently emit Origin, user-agent,
 Accept/Accept-Language, Fetch Metadata, Client Hints, and Private/Local Network

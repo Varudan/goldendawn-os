@@ -6,7 +6,197 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – Beobachtbare Browser-SyncTransport-Nachweisgrenzen / ADR 0027
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0028 implementiert
+
+### Browser SyncTransport Validator Integrity Boundary – Implementierung
+
+- Die in ADR 0028 entschiedene private feste v1-Wire-Policy ausschließlich in
+  `src/transports/browserSyncTransport.js` implementiert. Derselbe frische
+  interne Graph erreicht den Contractvalidator weiterhin exakt zweimal vor
+  und nach Deep Freeze; danach läuft die Policy nach dem bestehenden
+  terminalen Profilguard und unmittelbar vor `JSON.stringify` exakt einmal.
+  Ein dritter oder alternativer Validatorpfad wurde nicht ergänzt und der
+  Contractvalidator selbst nicht gehärtet.
+- Die Policy bindet unabhängig die festen v1-Werte, das geschlossene
+  ASCII-Request-ID-Profil, den tatsächlich gültigen kanonischen UTC-Timestamp
+  samt Rückprojektion und 300.000-ms-Konsistenz sowie den exakten normalen
+  eingefrorenen Sechs-Felder-Graphen ohne `toJSON` und mit leerem
+  eingefrorenem Payload. Damit schließt sie die bestätigte Transportlücke vor
+  Stringify, Encoding, Controller, Timer und Fetch.
+- Die vollständige netzwerkfreie ADR-0028-Matrix additiv in
+  `tests/browserSyncTransport.test.js` umgesetzt. Sie weist die aktive Policy
+  bei Validator-, Descriptor-, Collection-, Regex-, Iterator-, Date-/UTC-,
+  Request-ID-, Prototype-, Constructor-/Species-, Deadline-, UTF-8-,
+  Coercion-, Content-Length-, Stream- und Promise-/Host-Mutationen nach. Der
+  kausale Haupttest zeigt, dass die echte Policy denselben Validatorbypass vor
+  Stringify und Fetch stoppt, der bei gezielt neutralisiertem Policy-Callsite
+  exakt einen Fetch erreicht.
+- Die fokussierte BrowserSyncTransport-Suite besteht mit 423/423 Tests, der
+  gemeinsame Lauf von SyncService und BrowserSyncTransport mit 466/466 Tests,
+  die sechs seriellen Sync-Suites mit 735/735 Tests und die vollständige
+  serielle Gesamtsuite mit 1755/1755 Tests. Der ausschließlich aus den
+  Transporttests stammende Zuwachs beträgt `Δ = 151`; alle Läufe besitzen
+  0 Fehlschläge, 0 Cancellations, 0 Skips und 0 Todos. Der Produktions-Build
+  transformiert weiterhin exakt 46 Module und `bundle:n8n:check` ist
+  driftfrei.
+- API, Seams, Dependencies, Endpoint, Caps, SyncContract, Exports, n8n-Bundle,
+  Manifest, Generator, Response-, Promise-, Buffer-, Deadline-, Cleanup-,
+  Redaction- und SyncService-Regeln blieben unverändert. Der
+  BrowserSyncTransport bleibt vom SyncService und von `src/main.js`
+  unkomponiert; ein Browser-End-to-End-Fluss wurde nicht geschaffen.
+- Phase 0/Tor A anhand der tatsächlichen Implementierung erneut bestätigt:
+  keine Modelle, statistische Inferenz, Provider, Credentials, privaten
+  Inhalts-Payloads, Logs, Storage oder Telemetrie. Für Implementierung und
+  Nachweis erfolgte kein realer Browser-, externer Netzwerk-, Gateway-, Cloud-,
+  n8n-, Provider-, Credential- oder Vaultzugriff.
+- Die Promise-/Host-Restgrenze bleibt bestehen: Der Transport assimiliert
+  ungültig profilierte bereits abgelehnte Fetch-, Read- oder Cleanup-Promises
+  nicht und gibt ihren Grund nicht aus. Ein späterer getrennter
+  `unhandledrejection`-/`unhandledRejection`-Hostkanal ist dennoch möglich;
+  Eintritt, Zeitpunkt, Häufigkeit und Prozessfortsetzung werden nicht
+  hostübergreifend garantiert.
+- Als nächster Slice folgt ausschließlich das reale kontext- und
+  versionsgebundene PNA-/LNA-/Mixed-Content-Runtimegate einschließlich
+  CORS/Preflight und lokaler Netzwerkberechtigung. Browserkomposition und
+  Browser-End-to-End-`syncTest` folgen weiterhin erst nach dessen gebundenem
+  `PASS`.
+
+### Browser SyncTransport Validator Integrity Boundary – Entscheidung / ADR 0028
+
+- ADR 0028 am `2026-08-29` als reinen Dokumentations- und
+  Entscheidungsslice angenommen. ADR 0028 ersetzt ADR 0027 formal, übernimmt
+  dessen beide Korrekturen vollständig und lässt sämtliche nicht ausdrücklich
+  geänderten ADR-0026-/ADR-0027-Regeln fortgelten. ADR 0026 behält unverändert
+  seinen direkten Verweis auf ADR 0027; in ADR 0027 wurde ausschließlich die
+  Statuszeile auf ADR 0028 aktualisiert, der Body ab `## Kontext` blieb
+  bytegleich.
+- Einen bestätigten, damals noch nicht behobenen Produktfehler dokumentiert: Die
+  beiden erforderlichen `validateSyncRequest`-Aufrufe verwenden live
+  manipulierbare Laufzeitfunktionen. Die bestehende terminale Prüfung bestätigt
+  Shape, Freeze und Snapshotidentität, aber keine davon unabhängigen festen
+  v1-Werte. Kontrollierte netzwerkfreie Proben konnten vertragswidrige
+  Versionen, Aktionen, Quellen und Request-IDs bis zu Serialisierung,
+  Controller, Timer und Fetch-Seam gelangen lassen. Die damalige grüne Suite
+  mit 1604/1604 Tests schließt diese Nachweislücke nicht.
+- Die spätere Requestreihenfolge verbindlich präzisiert:
+  `descriptorbasierter Snapshot → frischer interner Graph →
+  validateSyncRequest #1 → Deep Freeze → validateSyncRequest #2 → bestehende
+  terminale Shape-/Freeze-Prüfung → neue feste v1-Wire-Policy → Stringify →
+  UTF-8-Encoding → Controller → Timer → Fetch`. Derselbe frische Graph bleibt
+  exakt zweimal Validatorinput; ein dritter Aufruf bleibt ebenso verboten wie
+  jeder weitere generische oder alternative Validatorpfad.
+- Genau eine private, nicht exportierte feste v1-Wire-Policy unmittelbar vor
+  `JSON.stringify` entschieden. Sie liest Properties ausschließlich aus dem
+  internen tief eingefrorenen Graphen über bei Modulevaluation erfasste
+  Intrinsics und verwendet daneben nur die bereits erfasste primitive
+  Referenzzeit. Callerroot und Callerpayload werden nicht erneut gelesen;
+  live aufgelöste oder importierte Regex-, Array-, Set-, Map-, Iterator-,
+  String-, Date-, Number-, Math-, Object-, Reflect- oder Validator-Allowlist-
+  Oberflächen bleiben ausgeschlossen.
+- Die feste Policy ausschließlich an Version `1.0`, Aktion `syncTest`, Quelle
+  `goldendawn-os`, das 5- bis 64-Codeeinheiten-ASCII-Request-ID-Profil mit
+  Präfix `req_`, den exakt 24 Zeichen langen kanonischen UTC-Timestamp mit
+  echter Datumsvalidität und identischer UTC-Rückprojektion, höchstens 300.000
+  ms interne Zeitdifferenz sowie den exakten normalen eingefrorenen
+  Sechs-Felder-Graphen ohne `toJSON` und mit leerem eingefrorenem Payload
+  gebunden. Der Zeitvergleich beweist keine unabhängige Frische,
+  Uhrvertrauenswürdigkeit oder Replayabwehr.
+- Jede Policyabweichung muss mit dem bestehenden statischen Transportfehler vor
+  transportgesteuertem Stringify, Encoding, Controller, Timer und Fetch
+  scheitern. Die Policy verhindert keine eigenen Nebenwirkungen eines zuvor
+  ausgeführten kompromittierten Same-Realm-Validator-Hooks; Same-Realm bleibt
+  keine Sandbox. Eine neue Version, Aktion oder Quelle benötigt eine eigene
+  Entscheidung und einen eigenen Implementierungsnachweis.
+- Factory, Methoden-API, Arity, vier Composition-Seams, fester
+  Loopbackendpoint, Snapshot, frischer disjunkter Graph, zwei
+  Contractvalidatoraufrufe, private Requestgrenze 65.536, ADR-0027-Nachweis
+  193/192, höchstens ein Fetch, Deadline, First-Terminal-Owner, Abort, Cleanup,
+  beobachtbare Promise-/Bufferprofile, Streamcopy, striktes UTF-8, einmaliges
+  JSON-Parsing, Redaction, SyncService-Korrelation und fehlende
+  `src/main.js`-Komposition unverändert fortgeschrieben.
+- Promise-/Host-Restgrenze explizit dokumentiert: keine freie `.then`-
+  Auflösung, kein `Promise.resolve` und keine Anwendung der erfassten nativen
+  `then`-Methode vor vollständig bestandenem Promiseprofil. Der Transport
+  übernimmt keinen fremden Rejectiongrund; ein bereits abgelehntes ungültig
+  profiliertes Fetch-, Read- oder Cleanup-Promise kann dennoch später einen
+  getrennten hostabhängigen `unhandledrejection`- beziehungsweise
+  `unhandledRejection`-Kanal auslösen. Eintritt, Zeitpunkt, Häufigkeit und
+  Prozessfortsetzung werden nicht hostübergreifend garantiert.
+- Die Responseheader- und Content-Length-Entscheidung unverändert belassen:
+  fehlende beziehungsweise `null` Content-Length scheitert vor
+  `content-encoding`, Body, Reader und Chunk; `16.384` bleibt inklusive,
+  deklarierte `16.385` scheitert in der Headerprüfung. Ein 16.385-Byte-Chunk
+  bei deklarierter Länge 16.384 verletzt zugleich Restlänge und absoluten Cap
+  und muss vor Kopie, weiterer Allokation und weiterem Read abbrechen; er ist
+  kein isolierter Nachweis nur des absoluten Caps.
+- Die spätere mutationswirksame Testmatrix um Validator-, Reflection-,
+  Collection-, Regex-, Iterator-, Date-/UTC-, Request-ID-, Prototype-,
+  Constructor-/Species-, Deadline-, UTF-8-, Coercion-, Content-Length-,
+  Stream- und Promise-/Host-Proben ergänzt. Eine gültige Kontrolle verlangt
+  exakt zwei Contractvalidatoraufrufe, eine Policyprüfung und einen Fetch. Ein
+  temporärer kausaler Mutationstest muss bei neutralisierter oder umgangener
+  Policy mindestens einen Validatorbypass wieder bis Fetch lassen.
+- Dieser damalige Entscheidungsslice änderte keinen Produkt- oder Testcode.
+  SyncContract, Exports, n8n-Bundle, Manifest und Generator blieben
+  unverändert. Der anschließend getrennt ausgeführte Implementierungsslice ist
+  im vorstehenden Abschnitt dokumentiert.
+
+### Browser SyncTransport Foundation – Implementierung
+
+- Den gemäß ADR 0027 geschlossenen BrowserSyncTransport isoliert in
+  `src/transports/browserSyncTransport.js` implementiert. Das Modul exportiert
+  ausschließlich `createBrowserSyncTransport`; jede Factory liefert eine
+  frische gewöhnliche und eingefrorene API exakt mit `{ sendSyncRequest }`.
+  Import und Factory bleiben request-, timer- und netzwerkinaktiv.
+- Composition und Requestgrenze descriptorbasiert geschlossen: Die vier Seams
+  und der Callerrequest werden in fester Reihenfolge genau einmal erfasst und
+  nicht erneut gelesen. Ausschließlich aus dem Snapshot entsteht ein frischer,
+  disjunkter Sechs-Felder-Requestgraph; nur derselbe Graph wird mit derselben
+  Timestampreferenz genau einmal vor und genau einmal nach seinem Deep Freeze
+  validiert. Callergraph und Callerpayload bleiben unverändert.
+- Genau einen erfassten Stringify- und Encoderaufruf, den festen Endpoint
+  `http://127.0.0.1:8787/api/sync-test`, frische eingefrorene Null-Prototyp-
+  Records für Header und RequestInit sowie höchstens einen Fetch-Seam-Aufruf
+  ohne Retry, Redirect oder Fallback umgesetzt. Der gültige maximale v1-Request
+  mit exakt 193 UTF-8-Bytes erreicht Fetch genau einmal; eine 65 Zeichen lange
+  `requestId` scheitert vor Serialisierung und Nebenwirkungen. Bereinigte
+  temporäre Quellkopien mit Caps 193 und 192 belegen mutationswirksam nur die
+  private Request-Cap-Verdrahtung und deren Position vor Nebenwirkungen.
+- Die 5.000-ms-First-Terminal-Owner-Deadline, höchstens einen nicht blockierenden
+  Abort nach Fetchbeginn und best-effort Timer-, Reader- und Abortcleanup
+  umgesetzt. Fetch-, Read- und zulässige Cleanup-Promises werden ausschließlich
+  über die erfasste native `Promise.prototype.then`-Methode und das geschlossene
+  Brand-, Prototyp-, Own-Key-, Constructor- und Speciesprofil beobachtet. Freie
+  `.then`-Reads, `Promise.resolve`, Thenableassimilation und transportseitige
+  Prototypänderungen bleiben ausgeschlossen.
+- Response und browserexponierte Header fail-fast geprüft, akzeptierte echte
+  `Uint8Array`-/feste `ArrayBuffer`-Chunks sofort in genau einen eigenen lokalen
+  Puffer kopiert und die öffentliche Responsekante 16.384/16.385 Bytes getrennt
+  geprüft. Nach deaktivierter Deadline folgen strikt fataler UTF-8-Decode,
+  genau ein `JSON.parse` ohne Reviver und der geschlossene Parsed-Value-Handoff.
+- Die mutationswirksame Unit-Suite ausschließlich in
+  `tests/browserSyncTransport.test.js` ergänzt. Sie verwendet kontrollierte
+  Doubles und `node:vm`-Fixtures, restauriert globale Mutationen in `finally`
+  und besitzt weder reale Browser- noch Netzwerk- oder Gatewayzugriffe.
+- Die fokussierte BrowserSyncTransport-Suite besteht mit 272/272 Tests,
+  SyncService und BrowserSyncTransport gemeinsam mit 315/315 Tests, die sechs
+  seriellen Sync-Suites mit 584/584 Tests und die vollständige serielle
+  Gesamtsuite mit 1604/1604 Tests. Alle Läufe besitzen 0 Fehlschläge,
+  0 Cancellations, 0 Skips und 0 Todos. Der Produktions-Build transformiert
+  weiterhin exakt 46 Module; der schreibfreie `bundle:n8n:check` meldet keinen
+  Drift.
+- Phase 0/Tor A anhand der tatsächlichen Implementierung eng erneut bestätigt:
+  kein Modell, keine statistische Inferenz, kein Provider oder Workflow, keine
+  Credentials oder privaten Inhalts-Payloads, kein Logging, Storage oder
+  Telemetrie und keine Rechts- oder Complianceklassifikation. Es gab keine
+  reale Browser-, Netzwerk-, Gateway-, Cloud-, n8n-, Provider-, Credential-
+  oder Vaultnutzung.
+- Der Transport bleibt vom `SyncService` und von `src/main.js` unkomponiert;
+  ein Browser-End-to-End-Fluss existiert nicht. Der nächste Slice ist
+  ausschließlich das getrennte reale, kontext- und versionsgebundene
+  Runtimegate für CORS/Preflight, PNA/LNA, lokale Netzwerkberechtigung und
+  Secure Context/Mixed Content. Browserkomposition, End-to-End-`syncTest`,
+  operative Limits und Provider bleiben spätere getrennte Slices.
 
 ### Beobachtbare Browser-SyncTransport-Nachweisgrenzen / ADR 0027
 
