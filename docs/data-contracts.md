@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0028 implementiert; feste transportlokale v1-Wire-Policy mutationswirksam nachgewiesen; nächster Slice: reales PNA-/LNA-/Mixed-Content-Runtimegate` |
+| Projektphase | `v0.3.0 – ADR 0029 als Local Browser Runtime Evidence Gate angenommen; tatsächlicher Runtimegate-Status UNPROVEN; nächster Slice: gesondert autorisierter realer Runtime-Evidence-Nachweis` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,8 +21,8 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy implementiert; die bestätigte Transportlücke ist mutationswirksam geschlossen, der Contractvalidator selbst unverändert; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; reales Browser-Runtimegate und Browser-End-to-End-Fluss fehlen; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
-| Letzte Aktualisierung | 2026-08-29 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy implementiert; ADR 0029 entscheidet den geschlossenen Browser-Runtime-Evidence-Record, ohne eine Messung auszuführen; tatsächlicher Runtimegate-Status `UNPROVEN`; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
+| Letzte Aktualisierung | 2026-08-30 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
@@ -3172,12 +3172,596 @@ Vaultnutzung. Der Befund bleibt ein enger technischer Arbeitsbefund und kein
 Runtime-, Datenschutz- oder Compliancebeweis.
 
 Der Transport ist weiterhin weder mit dem SyncService noch in `src/main.js`
-komponiert; ein Browser-End-to-End-`syncTest` existiert nicht. Als Nächstes
-folgt ausschließlich das getrennte reale, kontext- und versionsgebundene
-PNA-/LNA-/Mixed-Content-
-Browser-Runtimegate einschließlich CORS-, Berechtigungs-, Loopback-, Redirect-,
-Header- und Responsebeobachtungen. Browserkomposition und lokaler Browser-End-
-to-End-`syncTest` bleiben danach weitere getrennte Slices.
+komponiert; ein Browser-End-to-End-`syncTest` existiert nicht. ADR 0029
+entscheidet ausschließlich den Vertrag des weiterhin nicht ausgeführten
+Browser-Runtime-Evidence-Gates. Als Nächstes folgt nur ein gesondert
+autorisierter realer, kontext- und versionsgebundener PNA-/LNA-/Mixed-Content-
+Nachweis einschließlich CORS-, Berechtigungs-, Loopback-, Redirect-, Header-
+und Responsebeobachtungen. Browserkomposition und lokaler Browser-End-to-End-
+`syncTest` bleiben danach weitere getrennte Slices.
+
+## Browser Runtime Evidence Record / ADR 0029
+
+[ADR 0029](decisions/0029-browser-runtime-evidence-gate.md) ergänzt ADR 0020
+und ADR 0028, operationalisiert die fortgeltenden ADR-0026-/ADR-0027-
+Runtimeanforderungen und ersetzt keinen ADR. Der folgende Vertrag beschreibt
+ausschließlich einen später gesondert autorisierten Messlauf. In diesem
+Dokumentationsslice wird weder eine JSON-Vorlage noch ein ausgefüllter Record,
+Harness oder Runtimeartefakt erzeugt. Der tatsächliche Gatezustand bleibt
+`UNPROVEN`.
+
+### Geltung und geschlossene Rootform
+
+Ein `BrowserRuntimeEvidenceRecord` gilt für genau einen Messlauf, genau ein
+Browserziel und genau ein vor dem ersten Request vollständig gebundenes
+Basistupel `T₀`. Jedes Objekt besitzt ausschließlich die nachfolgend genannten
+aufzählbaren Own-Data-Properties. Zusätzliche Keys, frei benannte Maps sowie
+freie `metadata`-, `notes`-, `details`- oder Blobfelder sind ungültig. Arrays
+sind kanonisch geordnet, duplikatfrei und auf ihre jeweilige Pflichtmenge
+begrenzt.
+
+```text
+BrowserRuntimeEvidenceRecord = {
+  schemaVersion,
+  recordType,
+  measurementRunId,
+  observedAt,
+  timeZone,
+  baseContextId,
+  baseContext,
+  vectors,
+  pnaLnaClassification,
+  gates,
+  overallGate,
+  cleanupConfirmed,
+  remainingLimits
+}
+```
+
+| Feld | Geschlossener Vertrag |
+| --- | --- |
+| `schemaVersion` | Ganzzahl, exakt `1` |
+| `recordType` | exakt `browser-runtime-evidence` |
+| `measurementRunId` | lokales ASCII-Label `[a-z0-9-]{1,32}`; nicht aus Benutzer-, Rechner-, Profil-, Request- oder Zeitwerten abgeleitet |
+| `observedAt` | kanonischer RFC-3339-Zeitpunkt der Bindung von `T₀`; niemals der SyncRequest-Timestamp |
+| `timeZone` | exakt `{ id, utcOffset }`; sanitierter IANA-Zonenname und `Z` oder `±HH:MM` |
+| `baseContextId` | eindeutiges lokales ASCII-Label `[a-z0-9-]{1,32}` für dieses vollständige `T₀` |
+| `baseContext` | exakt die unten definierte sanitierte `T₀`-Form |
+| `vectors` | exakt drei Einträge in der Reihenfolge `positive-default`, `negative-origin`, `redirect-error` |
+| `pnaLnaClassification` | exakt die unten definierte getrennte CORS-/PNA-/LNA-Klassifikation |
+| `gates` | exakt die zehn benannten Pflichtgates |
+| `overallGate` | exakt `PASS`, `FAIL` oder `UNPROVEN` |
+| `cleanupConfirmed` | boolesche, aus allen Vektoren und Cleanupchecks abgeleitete Laufgesamtbestätigung |
+| `remainingLimits` | exakt die unten festgelegte kanonische Aussagegrenzenliste |
+
+### Vollständiges Basistupel `T₀`
+
+`observedAt`, `timeZone`, `baseContextId` und `baseContext` bilden gemeinsam
+das unveränderliche `T₀`. Vektorzeiten sind keine stillen Ersatzwerte und
+werden nicht als zweite Baseline gespeichert.
+
+```text
+BaseContextT0 = {
+  repository,
+  hostRuntime,
+  operatingSystem,
+  node,
+  browser,
+  profile,
+  networkEnvironment,
+  initialState,
+  bindingComparisonProfile,
+  frontend,
+  transportRequest,
+  gateway
+}
+
+repository = { commit, state }
+hostRuntime = { executionClass }
+operatingSystem = { family, edition, architecture, version, build, patch }
+node = { version }
+browser = {
+  product, channel, version, engine, engineBuild,
+  executionMode, privateMode
+}
+profile = {
+  lifecycle, extensions, startParameters, featureFlags,
+  enterprisePolicies
+}
+networkEnvironment = { proxy, vpn }
+initialState = {
+  serviceWorker, permission, preflightCache, siteCache
+}
+frontend = {
+  topLevelUrl, serializedOrigin, contextKind, isSecureContext
+}
+transportRequest = {
+  factoryProfile, compositionProfile, requestProfile,
+  requestEqualityMethod, initialUrl, initialScheme, initialHost,
+  initialPort, initialPath, requestInitProfile
+}
+gateway = {
+  listenerHost, listenerPort, portEnvironmentValue,
+  allowedOrigin, endpoint, responderProfile
+}
+```
+
+Die Feldwerte sind geschlossen:
+
+- `repository.commit` ist Lower-Hex mit exakt 40 Zeichen;
+  `repository.state` ist `clean`, `dirty` oder `unknown`.
+- `hostRuntime.executionClass` ist `local-disposable`, `local-dedicated` oder
+  `unknown`; ein Rechnername ist verboten.
+- `operatingSystem.family` ist `windows`, `macos` oder `linux`;
+  `architecture` ist `x64`, `arm64` oder `x86`. Edition, Version, Build und
+  Patch sind sanitierte ASCII-Produktwerte von 1 bis 64 Zeichen ohne Pfad,
+  Benutzer- oder Rechnerbezug.
+- `node.version` ist eine sanitierte kanonische Semver von 1 bis 32 Zeichen.
+- `browser.product` ist `chrome`, `edge`, `firefox` oder `safari`; `channel`
+  ist `stable`, `beta`, `dev`, `canary`, `esr`, `release` oder
+  `technology-preview`; `engine` ist `blink`, `gecko` oder `webkit`.
+  Vollversion und Enginebuild sind sanitierte ASCII-Versionswerte von 1 bis
+  64 Zeichen. `executionMode` ist ausschließlich `visible`; `privateMode` ist
+  boolesch.
+- `profile.lifecycle` ist `fresh-disposable`, `reused` oder `unknown`;
+  `extensions` ist `none`, `present-sanitized` oder `unknown`.
+  `startParameters`, `featureFlags` und `enterprisePolicies` sind jeweils
+  `none-effective`, `effective-non-bypassing`, `security-bypassing` oder
+  `unknown`. Diese Klassifikation speichert keine freien Parameterwerte.
+- `networkEnvironment.proxy` und `.vpn` sind jeweils `inactive`,
+  `active-sanitized` oder `unknown`.
+- `initialState.serviceWorker` ist `absent`, `present` oder `unknown`;
+  `permission` ist `prompt`, `granted`, `denied`, `unsupported` oder
+  `unknown`; `preflightCache` und `siteCache` sind `empty-confirmed`,
+  `not-empty` oder `unknown`.
+- `bindingComparisonProfile` ist exakt
+  `ephemeral-exact-effective-context-comparison-without-retention`. Für alle
+  Bindungsfelder, deren persistierte Form aus Datenschutzgründen nur eine
+  Klassifikation enthält, bindet der spätere Lauf vor dem ersten Request
+  zusätzlich den tatsächlich wirksamen Wert flüchtig und vergleicht ihn nach
+  jedem Vektor exakt. Dazu gehören insbesondere Erweiterungszustand,
+  Startparameter, Featureflags, Enterprise-Richtlinien, Proxy, VPN,
+  Service-Worker-, Permission- und Cachezustand. Die zugrunde liegenden
+  Rohwerte, Listen und Pfade werden nach dem Vergleich verworfen und niemals
+  in den Evidence-Record übernommen.
+- `frontend.topLevelUrl` und `.serializedOrigin` sind die exakt autorisierten
+  lokalen Frontendwerte ohne Userinfo, Query oder Fragment. Zulässig sind nur
+  Loopbackhost und der vorab freigegebene lokale Frontendport; Rechnername und
+  sonstiger privater Netzraum sind ausgeschlossen. `contextKind` ist
+  `top-level`, `frame` oder `worker`; der positive Pfad verlangt `top-level`.
+  `isSecureContext` ist der tatsächliche boolesche Browserwert.
+- `transportRequest.factoryProfile` ist exakt `real-default-factory`,
+  `compositionProfile` exakt `transport-only` und `requestProfile` exakt
+  `synthetic-v1-syncTest-empty-payload`. `requestEqualityMethod` ist exakt
+  `ephemeral-full-value-comparison-without-retention`: Request-ID,
+  Requesttimestamp und Body werden nur flüchtig für den Gleichheitsvergleich
+  verwendet und nicht in den Record übernommen. `initialUrl` ist exakt
+  `http://127.0.0.1:8787/api/sync-test`, `initialScheme` exakt `http`,
+  `initialHost` exakt `127.0.0.1`, `initialPort` die Ganzzahl `8787` und
+  `initialPath` exakt `/api/sync-test`. `requestInitProfile` ist exakt
+  `adr-0028-fixed` und
+  bindet die unveränderte transportlokale Methoden-, CORS-, Credential-,
+  Redirect-, Referrer-, Cache- und Content-Type-Projektion.
+- `gateway.listenerHost` ist exakt `127.0.0.1`, `listenerPort` die Ganzzahl
+  `8787` und `portEnvironmentValue` der primitive String `"8787"`.
+  `allowedOrigin` ist genau ein
+  geschlossenes Objekt `{ value, relationToFrontend }`; `value` ist unter
+  `T₀` exakt die sanitierte `frontend.serializedOrigin` und
+  `relationToFrontend` exakt `matches-frontend-origin`. `endpoint` ist exakt
+  `http://127.0.0.1:8787/api/sync-test` und `responderProfile` unter `T₀`
+  exakt `production-gateway`.
+
+`file:`, `about:blank`, DevTools als eigener Origin, ein verborgenes Iframe,
+ein Worker oder ein anderer Ersatzkontext darf nicht als GoldenDawn-Top-Level-
+Kontext erscheinen. Sicherheitsdeaktivierende Konfiguration ist erfassbar,
+ergibt aber Gate-`FAIL`; ein fehlender oder `unknown`-Wert hält das betroffene
+Gate `UNPROVEN`.
+
+### Vektoren und geschlossenes Delta
+
+Jeder Vektor besitzt exakt folgende Keys:
+
+```text
+VectorEvidence = {
+  vectorId,
+  baseContextId,
+  allowedDeltaFields,
+  changedDeltaFields,
+  expectedDelta,
+  observedDelta,
+  expectation,
+  observation,
+  gateIds,
+  status,
+  noOtherBindingFieldsChanged,
+  restoreConfirmed,
+  cleanupConfirmed
+}
+
+ExpectedDeltaEntry = { field, baseValue, vectorValue }
+ObservedDeltaEntry = {
+  field, baseValue, vectorValue, comparisonBasis,
+  observationState, result
+}
+```
+
+`observationState` ist ausschließlich `observed`, `not-observed` oder
+`ambiguous`; `result` ausschließlich `match`, `mismatch` oder `unproven`.
+`comparisonBasis` ist `recorded-sanitized-value` oder
+`ephemeral-exact-value-without-retention`.
+`status` ist ausschließlich `PASS`, `FAIL` oder `UNPROVEN`.
+
+Die einzige Allowlist für beabsichtigte `Δᵥ`-Felder lautet in dieser
+Reihenfolge:
+
+```text
+gateway.allowedOrigin
+gateway.responderProfile
+```
+
+Die Wertdomäne des ersten Feldes ist exakt
+`{ value, relationToFrontend }`. `value` ist eine sanitierte exakte lokale
+Origin ohne Userinfo, Query, Fragment, Rechnername oder privaten Netzraum;
+`relationToFrontend` ist `matches-frontend-origin` oder
+`mismatches-frontend-origin` und muss aus `value ===
+frontend.serializedOrigin` korrekt abgeleitet sein. Der Origin-Negativvektor
+bindet seinen erwarteten abweichenden `value` vor dem Lauf. Dieses eine
+zusammengesetzte Recordfeld repräsentiert ausschließlich den tatsächlichen
+Wert von `GOLDENDAWN_SYNC_GATEWAY_ALLOWED_ORIGIN` samt seiner daraus
+abgeleiteten Relation; es führt kein zweites Runtime-Delta ein. Die Wertdomäne des
+zweiten Feldes ist `production-gateway` oder
+`redirect-fixture-with-local-sentinel`. Das Redirectfixture, seine
+Redirectantwort und der gebundene Null-Request-Sentinel bilden ein einziges
+geschlossenes Responderprofil und dürfen nicht als mehrere Kontextdeltas
+ausgegeben werden.
+
+`redirect-fixture-with-local-sentinel` bedeutet exakt: derselbe Listener,
+initiale Endpoint und gewöhnliche CORS-Semantik wie unter `T₀`; genau ein
+gültiger `OPTIONS` am initialen Pfad mit `204`; danach genau ein `POST` am
+initialen Pfad; darauf genau eine vollständig gesendete leere
+`307 Temporary Redirect`-Response mit
+`Location: http://127.0.0.1:8787/__goldendawn-adr-0029-redirect-sentinel`;
+und null Requests jeder Methode am Sentinelpfad. Ein Listener-, Preflight-,
+CORS- oder Vorabfehler erfüllt dieses Profil nicht und kann die kausale
+Redirectkontrolle nicht auf `PASS` setzen.
+
+| Vektor | Bindung und exakt zulässiges Delta | Erwartung | Zugeordnete Gates |
+| --- | --- | --- | --- |
+| `positive-default` | `baseContextId` referenziert `T₀`; `allowedDeltaFields` und `expectedDelta` sind leer; für `PASS` sind auch `changedDeltaFields` und `observedDelta` leer | `positive-success` | `contextBinding`, `secureContextMixedContent`, `exactLoopback`, `ordinaryCorsPreflight`, `pnaLnaPermission`, `normalSyntheticTransport`, `responseHeaderFiltering` |
+| `negative-origin` | `allowedDeltaFields` enthält genau `gateway.allowedOrigin`; `expectedDelta` bindet Baseline `{ value: frontend.serializedOrigin, relationToFrontend: matches-frontend-origin }` und den vorab festgelegten abweichenden sanitisierten Originwert mit `relationToFrontend: mismatches-frontend-origin`. Für Vektor-`PASS` müssen `changedDeltaFields` und `observedDelta` genau dieses Feld und exakt diese Werte bestätigen. Browser, Profil, Frontend, `transportRequest` und alle übrigen Gatewayfelder bleiben identisch zu `T₀`. | `cors-blocked-before-post` | `negativeOrigin` |
+| `redirect-error` | `allowedDeltaFields` enthält genau `gateway.responderProfile`; `expectedDelta` bindet `production-gateway` zu `redirect-fixture-with-local-sentinel`. Für Vektor-`PASS` müssen `changedDeltaFields` und `observedDelta` genau dieses Feld und exakt diese Werte bestätigen. Browser, Profil, Frontend, vollständiges `transportRequest` einschließlich initialer URL, Host, Port und Pfad sowie alle übrigen Gatewayfelder bleiben identisch zu `T₀`. | `closed-redirect-failure` | `redirectControl` |
+
+`observation` ist ausschließlich `positive-success`,
+`cors-blocked-before-post`, `closed-redirect-failure`, `unexpected-success`,
+`unexpected-post`, `unexpected-sentinel-request` oder `ambiguous`.
+
+Alle positiven Beobachtungen erfolgen exakt unter `T₀`. Ein Negativvektor
+kopiert `T₀` nicht, sondern referenziert dessen `baseContextId`.
+`allowedDeltaFields` und `expectedDelta` enthalten exakt das vorab festgelegte
+`Δᵥ`. `changedDeltaFields` ist dagegen die kanonisch geordnete Liste aller
+tatsächlich und eindeutig beobachteten Änderungen. Seine geschlossene
+Felddomäne besteht ausschließlich aus den durch die vorstehende
+`BaseContextT0`-Grammatik festgelegten Punktpfaden; `gateway.allowedOrigin`
+wird dabei als das definierte zusammengesetzte Konfigurationsfeld atomar
+behandelt. Freie oder unbekannte Feldnamen sind unzulässig. Dadurch kann die
+Liste neben dem erwarteten Delta auch jede unbeabsichtigte Abweichung benennen,
+ohne sie nachträglich zu erlauben.
+
+`observedDelta` enthält die Vereinigung aus erwarteten und tatsächlich
+beobachteten Änderungen. Bei einem tatsächlich geänderten Feld ist
+`observationState: observed`; bei fehlender oder mehrdeutiger Wirkung ist der
+`vectorValue` `null` und der Zustand `not-observed` beziehungsweise
+`ambiguous`. Für beabsichtigte Deltas werden die exakten sanitisierten Werte
+mit `comparisonBasis: recorded-sanitized-value` erfasst. Bei einer
+unbeabsichtigten Änderung eines nur klassifiziert gespeicherten Feldes bleiben
+`baseValue` und `vectorValue` auf seine erlaubten sanitisierten Recordwerte
+begrenzt; `comparisonBasis: ephemeral-exact-value-without-retention` hält fest,
+dass der flüchtige Exaktvergleich abwich, ohne den Rohwert zu persistieren.
+`result` bindet den Vergleich als `match`, `mismatch` oder `unproven`. Nur für
+ein Vektor-`PASS` stimmen erlaubte, tatsächliche, erwartete und beobachtete
+Deltas exakt überein.
+
+`noOtherBindingFieldsChanged` bestätigt, dass alle übrigen Bindungswerte
+wertidentisch zu `T₀` blieben. Das schließt Browser-, Versions-, Profil-,
+Frontend-, Gateway- und vollständige `transportRequest`-Bindung sowie die
+flüchtig exakt verglichenen wirksamen Kontextwerte ein. Für den tatsächlichen
+Request erfolgt der vollständige Wertevergleich ebenfalls flüchtig; der Record
+speichert ausschließlich das Gleichheitsergebnis, niemals Request-ID,
+Timestamp, Body oder die redigierten Kontextrohwerte.
+
+Nach `negative-origin` muss `gateway.allowedOrigin` einschließlich Wert und
+Relation exakt auf das Objekt aus `T₀` zurückgestellt sein. Nach
+`redirect-error` müssen Fixture und Sentinel
+vollständig entfernt und das Produktions-Gatewayprofil aus `T₀`
+wiederhergestellt sein. `restoreConfirmed` und `cleanupConfirmed` werden je
+Vektor separat geführt. Der positive Vektor setzt beide Werte nur dann auf
+`true`, wenn er keinen abweichenden oder verbleibenden vektorlokalen Zustand
+hinterließ.
+
+### Getrennte PNA-/LNA-Klassifikation
+
+`pnaLnaClassification` besitzt exakt folgende Keys und Werte:
+
+```text
+{
+  ordinaryCorsSeparated,
+  sourceAddressSpace,
+  targetAddressSpace,
+  pnaRequestHeader,
+  pnaResponseHeader,
+  lnaModel,
+  permissionName,
+  permissionBefore,
+  prompt,
+  userActivation,
+  outcome,
+  persistence,
+  reset,
+  pathAdjustmentRequired
+}
+```
+
+- `ordinaryCorsSeparated` ist boolesch.
+- Quell- und Zieladressraum sind jeweils `public`, `local`, `loopback` oder
+  `unknown`.
+- PNA-Request- und Responseheader sind jeweils `present`, `absent` oder
+  `unknown`.
+- `lnaModel` ist `permission`, `context-exempt`, `not-implemented` oder
+  `unknown`.
+- `permissionName` ist `local-network-access`, `local-network`,
+  `loopback-network`, `none-observed` oder `unknown`.
+- `permissionBefore` ist `prompt`, `granted`, `denied`, `unsupported` oder
+  `unknown`; `prompt` ist `shown`, `not-shown` oder `unknown`;
+  `userActivation` ist `required`, `not-required` oder `unknown`.
+- `outcome` ist `allowed`, `denied`, `context-exempt`, `not-implemented` oder
+  `unknown`.
+- `persistence` ist `not-tested`, `persisted`, `not-persisted` oder `unknown`;
+  `reset` ist `confirmed`, `failed`, `unproven` oder `not-authorized`.
+- `pathAdjustmentRequired` ist `none`, `header`, `permission`, `policy`,
+  `product` oder `unknown`.
+
+`context-exempt`, `not-implemented`, `not-tested` und `not-authorized` sind
+Beobachtungsklassifikationen, niemals ein vierter Gatestatus. Historische PNA-
+Header dürfen `present` oder `absent` sein; erforderlich ist ihre eindeutige,
+vom gewöhnlichen CORS-Preflight getrennte Beobachtung. Ein benötigter neuer
+Header, eine benötigte Permission, Policy- oder Produktänderung ergibt `FAIL`.
+
+Für `pnaLnaPermission` gilt zusätzlich die folgende zwingende Cross-Field-
+Ableitung:
+
+- `lnaModel: not-implemented` oder `unknown`, `outcome: not-implemented` oder
+  `unknown` sowie eine nicht eindeutig trennbare Policy-, Cache- oder
+  Permissionwirkung ergeben `UNPROVEN`.
+- `outcome: denied` auf dem unveränderten positiven Pfad oder
+  `pathAdjustmentRequired` mit `header`, `permission`, `policy` oder `product`
+  ergeben `FAIL`. Das gilt auch für einen erst durch Permissiongewährung,
+  stilles Gewähren, Policy oder Sicherheitsbypass funktionsfähigen Pfad.
+- Ein Gate-`PASS` kann ausschließlich eine vollständig belegte
+  `lnaModel: context-exempt`-/`outcome: context-exempt`-Beobachtung mit
+  `permissionName: none-observed`, `prompt: not-shown`,
+  `userActivation: not-required`, `pathAdjustmentRequired: none`, bekannten
+  Quell- und Zieladressräumen sowie eindeutig als `present` oder `absent`
+  klassifizierten PNA-Headern stützen. Dieses `PASS` gilt nur für `T₀` und
+  behauptet weder einen LNA-Permission-Schutzpfad noch einen öffentlichen
+  HTTPS-Origin.
+
+### Exakt zehn Gates und ihre Pflichtchecks
+
+```text
+gates = {
+  contextBinding,
+  secureContextMixedContent,
+  exactLoopback,
+  ordinaryCorsPreflight,
+  pnaLnaPermission,
+  normalSyntheticTransport,
+  responseHeaderFiltering,
+  negativeOrigin,
+  redirectControl,
+  cleanupRedaction
+}
+
+GateEvidence = { gateId, status, layers, checks }
+Check = {
+  checkId, expected, observationState, observed, result
+}
+```
+
+`gateId` muss dem jeweiligen Rootkey entsprechen. `status` besitzt nur die
+drei Gatewerte. `layers` ist keine frei wählbare Teilmenge, sondern muss je
+Gate exakt der folgenden kanonisch geordneten Liste entsprechen:
+
+| Gate | Exakte unabhängige Beobachtungsebenen |
+| --- | --- |
+| `contextBinding` | `javascript`, `browser-network`, `gateway-process`, `user-permission` |
+| `secureContextMixedContent` | `javascript`, `browser-network` |
+| `exactLoopback` | `javascript`, `browser-network`, `gateway-process` |
+| `ordinaryCorsPreflight` | `browser-network`, `gateway-process` |
+| `pnaLnaPermission` | `browser-network`, `user-permission` |
+| `normalSyntheticTransport` | `javascript`, `browser-network`, `gateway-process` |
+| `responseHeaderFiltering` | `javascript`, `gateway-process` |
+| `negativeOrigin` | `javascript`, `browser-network`, `gateway-process` |
+| `redirectControl` | `javascript`, `browser-network`, `gateway-process` |
+| `cleanupRedaction` | `javascript`, `browser-network`, `gateway-process`, `user-permission` |
+
+Jede aufgeführte Ebene muss unabhängig beobachtet und darf nicht aus einer
+anderen Ebene abgeleitet werden. Fehlt eine notwendige Ebenenbeobachtung oder
+ist sie nicht trennbar, kann das Gate höchstens `UNPROVEN` sein; ein
+beobachteter Ebenenwiderspruch oder eine Grenzverletzung ergibt `FAIL`.
+`expected` und `observed` sind keine freien JSON-Werte: `checkId` bindet ihre
+nachfolgend festgelegte boolesche, numerische oder Enumdomäne. Jeder Check
+kommt in seinem Gate genau einmal und in der angegebenen Reihenfolge vor.
+
+| Gate | Pflichtchecks und erwartete Werte |
+| --- | --- |
+| `contextBinding` | `binding.complete=true`; `binding.consistent=true`; `repository.clean=true`; `browser.visible=true`; `profile.freshDisposable=true`; `profile.privateMode=true`; `securityBypass.absent=true` |
+| `secureContextMixedContent` | `window.isSecureContext=true`; `loopbackTreatment=allowed` aus `allowed\|blocked\|upgraded\|unknown`; `browserConsole.securityClassification=no-block` aus `no-block\|mixed-content-block\|other-security-block\|unknown`; `targetAddressSpace.required=false` |
+| `exactLoopback` | `request.initialUrl=fixed-endpoint`; `request.finalUrl=fixed-endpoint`, jeweils aus `fixed-endpoint\|other\|unknown`; `request.redirected=false`; `routeMechanism=direct-127.0.0.1` aus `direct-127.0.0.1\|localhost\|ipv6\|dns\|proxy\|https\|remote\|redirect\|unknown` |
+| `ordinaryCorsPreflight` | `preflight.sequence=OPTIONS-POST`; `gateway.optionsCount=1`; `gateway.postCount=1`; `preflight.origin=exact-frontend-origin`; `preflight.requestMethod=POST`; `preflight.requestHeaders=includes-content-type-no-unapproved`; `preflight.status=204`; `preflight.allowOrigin=exact-frontend-origin`; `preflight.allowMethods=post-only`; `preflight.allowHeaders=content-type-only`; `preflight.vary=origin-only`; `preflight.allowCredentials=absent` |
+| `pnaLnaPermission` | `ordinaryCorsSeparated=true`; `sourceAddressSpace.classified=true`; `targetAddressSpace.classified=true`; `pnaRequestHeader.classified=true`; `pnaResponseHeader.classified=true`; `lnaModel.classified=true`; `permissionName.classified=true`; `permissionBefore.classified=true`; `prompt.classified=true`; `userActivation.classified=true`; `outcome.classified=true`; `pathAdjustmentRequired=none` aus `none\|header\|permission\|policy\|product\|unknown`; zusätzlich gelten die vorstehende Cross-Field-Ableitung und ihre einzige `PASS`-Form |
+| `normalSyntheticTransport` | `transport.path=real-default-factory`; `request.profile=synthetic-v1-syncTest-empty-payload`; `composition.profile=transport-only`; `response.httpStatus=200`; `response.ok=true`; `response.redirected=false`; `response.finalUrl=fixed-endpoint`; `response.type=cors`; `response.correlation=valid` |
+| `responseHeaderFiltering` | `js.contentType=application-json-utf8`; `js.contentLength.classification=canonical-decimal-within-16384`; `js.contentLength.value` ist eine Ganzzahl von 0 bis 16.384; `js.cacheControl=no-store`; `js.contentEncoding=null`; `server.xContentTypeOptions=present`; `server.vary=present`; `server.allowOrigin=present`; `js.xContentTypeOptionsVisibility=filtered`; `js.varyVisibility=filtered`; `js.allowOriginVisibility=filtered` |
+| `negativeOrigin` | `nonDeltaBindings.unchanged=true`; `browser.blocked=true`; `responseBody.readable=false`; `gateway.postCount=0`; `fallback.used=false` |
+| `redirectControl` | `nonDeltaBindings.unchanged=true`; `fixture.optionsCount=1`; `fixture.preflightStatus=204`; `fixture.preflightMatchedT0=true`; `fixture.postCount=1`; `fixture.redirectStatus=307`; `fixture.redirectLocation=fixed-local-sentinel`; `fixture.redirectResponseSent=true`; `transport.closedFailure=true`; `sentinel.requestCount=0`; `finalUrl.invented=false` |
+| `cleanupRedaction` | `processes.stopped=true`; `profileHarness.removed=true`; `permissionSiteState.cleared=true`; `networkRecordings.removed=true`; `environment.restored=true`; `ports.free=true`; `repository.restored=true`; `runtimeResidue.absent=true`; `redaction.confirmed=true` |
+
+Die exakten Domänen aller nicht booleschen und nicht rein numerischen Checks
+lauten:
+
+```text
+loopbackTreatment = allowed | blocked | upgraded | unknown
+browserConsole.securityClassification =
+  no-block | mixed-content-block | other-security-block | unknown
+request.initialUrl = fixed-endpoint | other | unknown
+request.finalUrl = fixed-endpoint | other | unknown
+routeMechanism =
+  direct-127.0.0.1 | localhost | ipv6 | dns | proxy | https |
+  remote | redirect | unknown
+preflight.sequence = OPTIONS-POST | other | not-observed | unknown
+preflight.origin = exact-frontend-origin | other | absent | unknown
+preflight.requestMethod = POST | other | absent | unknown
+preflight.requestHeaders =
+  includes-content-type-no-unapproved | other | absent | unknown
+preflight.allowOrigin = exact-frontend-origin | other | absent | unknown
+preflight.allowMethods = post-only | other | absent | unknown
+preflight.allowHeaders = content-type-only | other | absent | unknown
+preflight.vary = origin-only | other | absent | unknown
+preflight.allowCredentials = absent | present | unknown
+pathAdjustmentRequired = none | header | permission | policy | product | unknown
+transport.path = real-default-factory | other | unknown
+request.profile = synthetic-v1-syncTest-empty-payload | other | unknown
+composition.profile = transport-only | sync-service | ui-main | unknown
+response.finalUrl = fixed-endpoint | other | unknown
+response.type = cors | other | unknown
+response.correlation = valid | invalid | unknown
+js.contentType = application-json-utf8 | other | null | unknown
+js.contentLength.classification =
+  canonical-decimal-within-16384 | over-limit | noncanonical | missing | unknown
+js.contentLength.value = non-negative-integer | null
+js.cacheControl = no-store | other | null | unknown
+js.contentEncoding = null | present | unknown
+server.xContentTypeOptions = present | absent | unknown
+server.vary = present | absent | unknown
+server.allowOrigin = present | absent | unknown
+js.xContentTypeOptionsVisibility = visible | filtered | unknown
+js.varyVisibility = visible | filtered | unknown
+js.allowOriginVisibility = visible | filtered | unknown
+fixture.redirectLocation = fixed-local-sentinel | other | absent | unknown
+```
+
+Nichtnegative Counts sind Ganzzahlen. `observationState` und `result` verwenden
+dieselben geschlossenen Werte wie bei Deltabeobachtungen. Ein unbekannter
+Check, ein unzulässiger Wert oder ein zusätzliches Feld macht den Record für
+das betroffene Gate nicht beweiskräftig.
+
+Check-, Gate- und Vektorstatus sind keine frei gesetzten Behauptungen, sondern
+werden zwingend abgeleitet:
+
+- Ein Check besitzt `result: match` genau dann, wenn
+  `observationState: observed` gilt und der beobachtete Wert seine feste
+  Erwartung erfüllt. Ein erlaubter `unknown`- beziehungsweise `null`-
+  Unbestimmtheitssentinel sowie `not-observed` oder `ambiguous` ergeben
+  ausschließlich `unproven`. Für die reinen Kontextinvalidierungschecks
+  `binding.complete`, `binding.consistent` und
+  `nonDeltaBindings.unchanged` ergibt auch ein beobachtetes `false` zunächst
+  `unproven`; nur eine zusätzlich beobachtete Grenzverletzung kann daraus
+  `FAIL` machen. Jeder andere eindeutig beobachtete Gegenwert ergibt
+  `mismatch`.
+- Ein Gate besitzt `PASS` genau dann, wenn sämtliche Pflichtchecks
+  `observed`/`match` sind, die exakten unabhängigen `layers` belegt sind und
+  alle für das Gate festgelegten Cross-Field-Invarianten bestehen. Mindestens
+  ein `mismatch`, ein beobachteter Ebenenwiderspruch, eine ausdrücklich als
+  `FAIL` definierte Cross-Field-Konstellation oder ein bekannter Restore-/
+  Cleanupfehler ergibt `FAIL`. Gibt es keinen solchen `FAIL`-Grund, aber
+  mindestens ein `unproven`, eine fehlende beziehungsweise untrennbare Ebene,
+  eine `UNPROVEN`-Cross-Field-Konstellation oder strukturell unvollständige
+  Evidenz, ergibt das Gate `UNPROVEN`.
+- Ein Vektor besitzt `PASS` genau dann, wenn seine Root-
+  `baseContextId` gilt, `allowedDeltaFields` und `expectedDelta` seinem festen
+  Profil entsprechen, `changedDeltaFields` exakt die erwartete tatsächliche
+  Änderung enthält, jeder erwartete und beobachtete Deltaeintrag
+  `observed`/`match` ist, `observation` exakt `expectation` entspricht, alle
+  zugeordneten Gates `PASS` sind und `noOtherBindingFieldsChanged`,
+  `restoreConfirmed` sowie `cleanupConfirmed` jeweils `true` sind. Eine
+  beobachtete Abwehrverletzung, ein unerwarteter Request oder Erfolg sowie ein
+  bekannter Restore-/Cleanupfehler ergibt `FAIL`. Ein falscher oder
+  unbeabsichtigter Delta- beziehungsweise sonstiger Bindungswert ohne
+  beobachtete Grenzverletzung ergibt `UNPROVEN`; dasselbe gilt für jede übrige
+  fehlende oder mehrdeutige Bedingung.
+
+### Aggregation
+
+Die Aggregation ist fail-closed:
+
+1. Eine belegte Lauf- oder Grenzverletzung ergibt für das betroffene Gate
+   `FAIL`. Fehlende, mehrdeutige oder strukturell unvollständige Evidenz ergibt
+   `UNPROVEN`.
+2. Eine zusätzliche oder unbeabsichtigte Kontextabweichung ergibt
+   `UNPROVEN`; verletzt sie beobachtbar die entschiedene Grenze, ergibt sie
+   `FAIL`.
+3. Mindestens ein Pflicht-`FAIL` ergibt `overallGate: FAIL`.
+4. `overallGate: PASS` ist ausschließlich zulässig, wenn die positiven Gates
+   1 bis 7 exakt unter `T₀` bestehen, die Gates 8 und 9 ausschließlich unter
+   ihren allowlisteten `Tᵥ` bestehen, alle zehn Gates und alle drei Vektoren
+   `PASS` besitzen, alle Vektoren dieselbe `baseContextId` referenzieren,
+   `noOtherBindingFieldsChanged`, `restoreConfirmed` und `cleanupConfirmed`
+   jeweils `true` sind und der Top-Level-Wert `cleanupConfirmed` ebenfalls
+   `true` ist.
+5. Jede andere Konstellation ergibt `overallGate: UNPROVEN`.
+6. Ein bekannter Cleanupfehler ergibt Gate 10 und Gesamtgate `FAIL`; ein
+   fehlender oder mehrdeutiger Cleanupnachweis ergibt jeweils `UNPROVEN`.
+7. Ein nachweislich fehlgeschlagener Restore oder vektorlokaler Cleanup ergibt
+   für den betroffenen Negativvektor `FAIL`; ist nur die Bestätigung fehlend
+   oder mehrdeutig, bleibt er `UNPROVEN`.
+8. Top-Level-`cleanupConfirmed` ist nur dann `true`, wenn alle
+   vektorlokalen Cleanupwerte und sämtliche Checks aus `cleanupRedaction`
+   `true` sind. `permissionBefore` muss mit `initialState.permission`, jeder
+   Delta-Basiswert mit `T₀` und jede `baseContextId` mit der Rootreferenz
+   übereinstimmen. Ein belegter Widerspruch ist `FAIL`, fehlende Beweisbarkeit
+   `UNPROVEN`.
+
+Es gibt kein `N/A`. Ein nicht ausgeführtes Browserziel bleibt `UNPROVEN`; ein
+Record-`PASS` gilt nicht für ein anderes Produkt, eine andere Vollversion,
+einen anderen Channel, Enginebuild, Betriebssystem- oder Origin-Kontext.
+
+### Redaction und verbleibende Grenzen
+
+Verboten sind Benutzer- und Rechnername, persönliche Profilpfade,
+vollständiger User-Agent, Cookies, Tokens, Credentials, HAR- oder
+Netzwerkdumps, frei kopierte Rohheader, Konsolen- oder Fehlerfreitext,
+Gatewaylogs, Request-ID, Requesttimestamp, Request- oder Responsebody, private
+Netzwerkdetails sowie PromptVault-, LearningHub-, LichtwaldLog- oder
+Vaultinhalte. Zulässig sind nur die fest definierten Headerklassifikationen,
+booleschen Werte, Counts, sanitisierten Produktwerte und Enums dieses Vertrags.
+
+`remainingLimits` enthält immer exakt und in dieser Reihenfolge:
+
+```text
+other-browser-product
+other-browser-version
+other-browser-channel
+other-engine
+other-operating-system
+other-origin-or-context
+public-https-origin
+local-process-identity-or-trust
+authentication
+authorization
+metadata-freedom
+wire-octets
+compression-absence
+privacy-or-private-data-suitability
+exactly-once-delivery
+freshness
+replay-protection
+idempotency
+global-abuse-or-resource-limits
+browser-composition
+browser-e2e
+```
+
+Diese Liste ist keine offene Notizliste. Sie begrenzt die Aussage selbst eines
+späteren `PASS` und darf weder gekürzt noch durch freie Texte erweitert werden.
 
 ## Aktuelle Browser SyncTransport Validator Integrity Boundary / ADR 0028
 
@@ -3315,11 +3899,14 @@ versionsgebunden charakterisiert.
 ### Aktivierungsreihenfolge
 
 ADR 0028 ist implementiert und die vollständige mutationswirksame Matrix
-besitzt ihr netzwerkfreies `PASS`. Als nächster Slice folgt ausschließlich das
-getrennte reale, kontext-, betriebssystem-, browser- und versionsgebundene
-CORS-/Preflight-, PNA-/LNA-, lokale Netzwerkberechtigungs- und Secure-Context-/
-Mixed-Content-Runtimegate. Browserkomposition und lokaler
-Browser-End-to-End-`syncTest` bleiben weitere getrennte Folgeslices. Eine
+besitzt ihr netzwerkfreies `PASS`. ADR 0029 ist als rein dokumentarischer
+Vertrag des an `T₀` und die allowlisteten Negativdeltas gebundenen Runtimegates
+angenommen; es wurde kein Messlauf ausgeführt und der tatsächliche Status bleibt
+`UNPROVEN`. Als nächster Slice folgt ausschließlich der gesondert autorisierte
+reale, kontext-, betriebssystem-, browser- und versionsgebundene CORS-/
+Preflight-, PNA-/LNA-, lokale Netzwerkberechtigungs- und Secure-Context-/Mixed-
+Content-Nachweis. Browserkomposition und lokaler Browser-End-to-End-`syncTest`
+bleiben weitere getrennte Folgeslices. Eine angenommene Entscheidung, eine
 implementierte Policy oder die isolierte Transportexistenz öffnet keines
 dieser Gates automatisch. Phase 0/Tor A wurde anhand der tatsächlichen
 Implementierung erneut bestätigt: Modelle, Inferenz, Provider, Credentials,
@@ -6922,8 +7509,10 @@ entschiedene feste v1-Wire-Policy ist samt kausaler ADR-0028-Matrix
 implementiert; 423/423 fokussierte Tests und `Δ = 151` weisen die
 Lückenschließung bei unverändertem Contractvalidator nach. Das beobachtbare Profil
 ersetzt keine Brand-, Prototyp-, Constructor-, Species-, Buffer- oder
-Kopierprüfung. Als Nächstes folgt ausschließlich das reale kontext- und
-versionsgebundene PNA-/LNA-/Mixed-Content-Browser-Runtimegate. Produktive
+Kopierprüfung. ADR 0029 operationalisiert den dafür erforderlichen
+Evidence-Record, ohne einen Runtimevorgang auszuführen; der Gatezustand bleibt
+`UNPROVEN`. Als Nächstes folgt ausschließlich der gesondert autorisierte reale,
+an `T₀` gebundene PNA-/LNA-/Mixed-Content-Browser-Runtime-Nachweis. Produktive
 SyncService-/`src/main.js`-Komposition und Browser-End-to-End-Fluss fehlen
 weiterhin und folgen erst nach dessen gebundenem `PASS`.
 
@@ -7031,8 +7620,10 @@ sind getrennte Vertrauens- und Betriebsgrenzen. Kein Adapter darf direkt an
 Browser oder SyncService antworten.
 Gateway und lokaler SyncAgent sind für diesen engen Pfad komponiert; der
 BrowserSyncTransport ist gemäß ADR 0027 isoliert implementiert und netzwerkfrei
-geprüft, während produktive SyncService-/`src/main.js`-Komposition und
-Browser-End-to-End-Fluss weiterhin fehlen.
+geprüft. ADR 0029 entscheidet ausschließlich dessen späteres Browser-Runtime-
+Evidence-Gate; der tatsächliche Gatezustand bleibt `UNPROVEN`. Produktive
+SyncService-/`src/main.js`-Komposition und Browser-End-to-End-Fluss fehlen
+weiterhin.
 
 CORS steuert Browserzugriffe, ersetzt aber weder Authentisierung noch
 Autorisierung. Rate Limits bleiben vor dauerhaftem Betrieb für lokales Gateway,

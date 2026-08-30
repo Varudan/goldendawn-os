@@ -6,7 +6,43 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0028 implementiert
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0029 angenommen; Runtimegate UNPROVEN
+
+### Local Browser Runtime Evidence Gate – Entscheidung / ADR 0029
+
+- ADR 0029 am `2026-08-30` als reinen Dokumentations- und
+  Entscheidungsslice angenommen. Er ergänzt ADR 0020 und ADR 0028,
+  operationalisiert die fortgeltenden ADR-0026-/ADR-0027-
+  Runtimeanforderungen und ersetzt keinen bestehenden ADR.
+- Alle positiven Pflichtbeobachtungen an ein vollständiges unveränderliches
+  Basistupel `T₀` gebunden. Die Negativvektoren verwenden ausschließlich
+  `T_origin = T₀ + Δ_origin` mit absichtlich abweichender Allowed-Origin und
+  `T_redirect = T₀ + Δ_redirect` mit einer ausdrücklich klassifizierten
+  lokalen Redirectfixture. Jede weitere Abweichung bleibt `UNPROVEN` oder
+  ergibt bei beobachteter Grenzverletzung `FAIL`.
+- Zehn Pflichtgates, die getrennten JavaScript-, Browsernetzwerk-, Gateway-
+  und Benutzerbeobachtungsebenen sowie die ausschließlichen Status `PASS`,
+  `FAIL` und `UNPROVEN` festgelegt. Ein Gesamt-`PASS` verlangt alle positiven
+  Gates exakt unter `T₀`, beide Negativkontrollen ausschließlich unter ihren
+  allowlisteten Deltas, Restore auf `T₀` nach jedem Negativvektor und bestätigten
+  abschließenden Cleanup.
+- Den geschlossenen sanitisierten Evidence-Record mit eindeutiger
+  `baseContextId`, Basistupelreferenz je Vektor, tatsächlich geänderten
+  Deltafeldern, erwarteten und beobachteten Deltawerten, Ausschluss weiterer
+  Bindungsabweichungen sowie `restoreConfirmed` und `cleanupConfirmed`
+  normativ in `docs/data-contracts.md` definiert.
+- Gewöhnlichen CORS-Preflight, historisches PNA und aktuelles
+  permissionbasiertes LNA getrennt. Hersteller- und Spezifikationsquellen
+  bleiben Kontext, keine Runtimeevidenz; jedes Ergebnis ist an Browserprodukt,
+  Vollversion, Channel, Betriebssystem, Profil, Policies, Berechtigungen,
+  Top-Level-Origin und Endpoint gebunden.
+- In diesem Slice keinen Browser, Gateway, Vite-/Preview-Server, Port,
+  Request, Permissionpfad, Harness, Fixture oder Evidence-Template gestartet,
+  angelegt oder verändert. Produktcode, Tests, Endpoint, Header,
+  Konfiguration, Komposition, Browser-E2E, private Daten, Cloud, Provider, n8n
+  und Vault blieben außerhalb. Der tatsächliche Runtimegate-Status bleibt
+  `UNPROVEN`; als Nächstes folgt nur ein gesondert autorisierter realer
+  Runtime-Evidence-Slice.
 
 ### Browser SyncTransport Validator Integrity Boundary – Implementierung
 
@@ -55,11 +91,10 @@ Release.
   `unhandledrejection`-/`unhandledRejection`-Hostkanal ist dennoch möglich;
   Eintritt, Zeitpunkt, Häufigkeit und Prozessfortsetzung werden nicht
   hostübergreifend garantiert.
-- Als nächster Slice folgt ausschließlich das reale kontext- und
-  versionsgebundene PNA-/LNA-/Mixed-Content-Runtimegate einschließlich
-  CORS/Preflight und lokaler Netzwerkberechtigung. Browserkomposition und
-  Browser-End-to-End-`syncTest` folgen weiterhin erst nach dessen gebundenem
-  `PASS`.
+- Der nachfolgende ADR-0029-Entscheidungsslice operationalisiert das reale
+  kontext- und versionsgebundene Runtimegate. Seine Messung bleibt ein
+  gesondert zu autorisierender Slice; Browserkomposition und Browser-End-to-
+  End-`syncTest` folgen weiterhin erst nach dessen an `T₀` gebundenem `PASS`.
 
 ### Browser SyncTransport Validator Integrity Boundary – Entscheidung / ADR 0028
 
