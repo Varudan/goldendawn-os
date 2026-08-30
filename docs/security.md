@@ -4,9 +4,9 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0029 als Local Browser Runtime Evidence Gate angenommen; tatsächlicher Runtimegate-Status UNPROVEN; nächster Slice: gesondert autorisierter realer Runtime-Evidence-Nachweis` |
+| Projektphase | `v0.3.0 – gebundenes Chrome-151-Runtimegate FAIL; nächster Slice: Architekturentscheidung zur positiven BrowserSyncTransport-Laufzeitabweichung` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR-0025-Gateway-/SyncAgent-Handoff-, Response- und Ownergrenze, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy für den leeren synthetischen `syncTest` implementiert; ADR 0029 operationalisiert das weiterhin nicht ausgeführte, an `T₀` und allowlistete Negativdeltas gebundene Browser-Runtimegate; tatsächlicher Runtimegate-Status `UNPROVEN`, Browserkomposition und Browser-End-to-End-Fluss fehlen; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter nicht implementiert |
+| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR-0025-Gateway-/SyncAgent-Handoff-, Response- und Ownergrenze, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy für den leeren synthetischen `syncTest` implementiert; der einmalige an `chrome-stable-win-t0-01` gebundene Lauf ist wegen des Widerspruchs zwischen vollständig beobachteter HTTP-200-Response und statisch zurückgewiesenem Transport-Promise mit `overallGate: FAIL` dokumentiert; PNA/LNA und nicht ausgeführte Negativkontrollen bleiben `UNPROVEN`, Cleanup ist `PASS`; Browserkomposition und Browser-End-to-End-Fluss fehlen; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter nicht implementiert |
 | Letzte Aktualisierung | 2026-08-30 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
@@ -62,7 +62,7 @@ Daten sein. Sie werden neu erstellt und als Demo-Inhalte gekennzeichnet.
 flowchart TD
     Browser["Browser und Vite-Frontend"] --> Service["SyncService"]
     Service -.->|noch nicht komponiert| Transport["Isoliert implementierter BrowserSyncTransport"]
-    Transport -.->|Runtimegate und Browserkomposition fehlen| Gateway["Separat startbares lokales SyncGateway auf GD-WS01"]
+    Transport -.->|Runtimegate FAIL; Browserkomposition fehlt| Gateway["Separat startbares lokales SyncGateway auf GD-WS01"]
     Gateway --> Sync["Kontrolliert komponierter lokaler SyncAgent"]
     Sync --> LocalHandler["Zunächst: lokaler deterministischer syncTest-Handler"]
     Sync -.->|später capability-spezifisch| ModelProvider["Optionaler ModelProvider"]
@@ -580,9 +580,9 @@ Komposition; ein Browser-End-to-End-Fluss fehlt.
 ADR 0029 ergänzt ADR 0020 und ADR 0028, operationalisiert die fortgeltenden
 ADR-0026-/ADR-0027-Runtimeanforderungen und ersetzt keinen ADR. Es entscheidet
 ausschließlich den Sicherheits- und Evidenzvertrag eines später gesondert
-freizugebenden Messlaufs. Dieser Dokumentationsslice startete weder Browser,
-Gateway noch Devserver und führte keinen Request, Port- oder Permissionzugriff
-aus. Der tatsächliche Runtimegate-Status bleibt `UNPROVEN`.
+freizugebenden Messlaufs. Dieser Dokumentationsslice selbst startete weder
+Browser, Gateway noch Devserver und führte keinen Request, Port- oder
+Permissionzugriff aus.
 
 Alle positiven Pflichtbeobachtungen bleiben an das vollständige unveränderliche
 Basistupel `T₀` gebunden. Die Origin- und Redirect-Negativkontrollen dürfen
@@ -601,12 +601,30 @@ private Netzdetails und GoldenDawn-Inhalte bleiben verboten. Ein bekannter
 Cleanupfehler ist `FAIL`, ein fehlender oder mehrdeutiger Nachweis
 `UNPROVEN`.
 
-Der nächste Slice ist ausschließlich der gesondert autorisierte reale,
-kontext- und versionsgebundene Nachweis für gewöhnliches CORS/Preflight,
-historisches PNA, aktuelles LNA, lokale Netzwerkberechtigung, Secure Context,
-Loopback, Redirect und Headerfilterung. `FAIL` und `UNPROVEN` halten
-Browserkomposition und Browser-E2E geschlossen. Selbst ein an `T₀` gebundenes
-`PASS` öffnet nur einen weiteren Browserkompositions-Entscheidungsslice.
+Der danach einmalig autorisierte Lauf unter `chrome-stable-win-t0-01`
+beobachtete im einzigen gestarteten Vektor `positive-default` genau einen
+gewöhnlichen `OPTIONS 204`, danach einen vollständig beantworteten `POST 200`
+und die erwarteten JavaScript-sichtbaren Responsewerte. Das öffentliche
+BrowserSyncTransport-Promise wies dennoch statisch redigiert zurück. Dieser
+belegte Ebenenwiderspruch ist kein Datenleck und keine Ursachenfeststellung,
+setzt aber `normalSyntheticTransport` und das Gesamtgate auf `FAIL`. Die
+Korrelation und der positive Vektor bleiben nach Schema 1 `UNPROVEN`.
+`pnaLnaPermission` bleibt wegen unbekanntem Zieladressraum `UNPROVEN`; die
+beiden Negativvektoren wurden stopregelkonform ohne Retry nicht ausgeführt und
+bleiben einschließlich Restore `UNPROVEN`.
+
+Jan beobachtete keinen Local-Network-/Loopback-Dialog und führte keine
+Browserinteraktion aus. Daraus folgt weder allgemeine Permissionfreiheit noch
+Kompatibilität eines anderen Kontexts. Alle selbst gestarteten Prozesse wurden
+kontrolliert beendet, die Ports freigegeben sowie Profil, Harness und
+Fragmente entfernt; `cleanupRedaction` ist `PASS` und der Gesamtcleanup
+bestätigt. Browserkomposition und Browser-E2E bleiben geschlossen. Als
+nächster Slice folgt eine gesonderte Architekturentscheidung zur beobachteten
+Laufzeitabweichung der ADR-0020-/ADR-0028-Vertragskette und danach
+gegebenenfalls ein eigener Implementierungsslice. Ein neuer Runtime-Evidence-
+Lauf benötigt erneut eine ausdrückliche Autorisierung; selbst ein späteres an
+`T₀` gebundenes `PASS` öffnet nur einen weiteren Browserkompositions-
+Entscheidungsslice.
 
 #### Aktuelle BrowserSyncTransport-Validator-Integritätsgrenze / ADR 0028
 
@@ -703,11 +721,11 @@ keine Behauptungen über Wire-Oktette, Kompression, Browserdekompression oder
 bereits durch Browser, Engine, Betriebssystem oder Netzwerkstack erfolgte
 Allokationen.
 
-Als nächster Slice folgt ausschließlich das getrennte reale, kontext-, host- und
-versionsgebundene CORS-/Preflight-, PNA-/LNA-, lokale
-Netzwerkberechtigungs- und Secure-Context-/Mixed-Content-Runtimegate. Erst
-dessen gebundenes `PASS` darf die weiterhin getrennte Browserkomposition
-öffnen; der lokale Browser-End-to-End-`syncTest` bleibt ein weiterer
+Der danach getrennt ausgeführte Chrome-151-Runtime-Evidence-Lauf endete mit
+Gesamt-`FAIL`. Als nächster Slice folgt ausschließlich die gesonderte
+Architekturentscheidung zur positiven Transportabweichung; erst ein späteres
+gebundenes Gesamt-`PASS` darf die weiterhin getrennte Browserkomposition
+öffnen. Der lokale Browser-End-to-End-`syncTest` bleibt ein weiterer
 Folgeslice. Phase 0/Tor A ist anhand der tatsächlichen Implementierung erneut
 bestätigt; Modelle, Inferenz, Provider, Credentials, private Inhalts-Payloads,
 Logs, Storage und Telemetrie blieben außerhalb. Es erfolgte kein realer
@@ -1755,21 +1773,23 @@ Response- und Ownergrenze sind implementiert. Der BrowserSyncTransport, seine
 beobachtbaren Promise-/Bufferprofile, die korrigierte Requestcap-
 Nachweisgrenze sowie die feste v1-Wire-Policy sind isoliert implementiert und
 mutationswirksam regressionsgeprüft. ADR 0029 entscheidet das reale
-Browser-Runtime-Evidence-Gate, führt es aber nicht aus; dessen Status bleibt
-`UNPROVEN`. Browserkomposition, Browser-E2E, Provideradapter sowie Credential-,
+Browser-Runtime-Evidence-Gate. Der einmalige Chrome-151-Lauf ist mit
+Gesamt-`FAIL` dokumentiert; PNA/LNA und die nicht ausgeführten
+Negativkontrollen bleiben `UNPROVEN`, Cleanup ist `PASS`. Browserkomposition,
+Browser-E2E, Provideradapter sowie Credential-,
 Rate-Limit-, Replay- und Idempotenzschutz bleiben offen.
 
 | Bedrohung | Betroffene Grenze | Geplante Schutzschichten | Verbleibendes Risiko | Status |
 | --- | --- | --- | --- | --- |
-| bösartige Webseite | Zone A → B | feste URL `http://127.0.0.1:8787/api/sync-test`, exakte Origin-Allowlist, POST-only, `credentials: "omit"`, geschlossene `syncTest`-Capability | kompromittierter erlaubter Origin; Nicht-Browser umgehen CORS; Loopback und CORS authentisieren den lokalen Prozess nicht | Gateway und isolierter Browsertransport implementiert; reales ADR-0029-Runtimegate `UNPROVEN`, Komposition fehlt |
-| manipuliertes fremdes Promise | asynchrone Fetch-, Read- und Cleanup-Grenze | echtes natives Brandprofil, exakter lokaler Promiseprototyp und vollständige Kette, leere Own Keys, unveränderte Constructor-/Species-Descriptoren, ausschließlich erfasstes natives `then`; keine Assimilation oder freie `.then`-Reads | eine historische Erzeugungsrealm oder bereits vollständig verdeckte Subclass-Provenienz ist nach vollständiger Umprototypisierung öffentlich nicht beweisbar; Realm ist kein Vertrauenssignal; getrennter Host-Rejectionkanal bleibt möglich | ADR-0027-Profil isoliert implementiert und einschließlich `node:vm`-/Hostregression geprüft; Runtimegate `UNPROVEN` |
-| manipulierter fremder Readerchunk oder Backing-Buffer | Response-Stream und lokale Kopiergrenze | echte Uint8Array-/ArrayBuffer-Brands, für View und Buffer exakte lokale Prototypen und Ketten, kein Shared/growable/resizable/detached Memory, positive Restlänge und sofortige Kopie in eigenen festen Zielbuffer | historische Realm oder vollständig verdeckte Subclass-Provenienz ist nicht beweisbar; vor Modulevaluation kompromittierte Intrinsics bleiben außerhalb der Garantie | ADR-0027-Profil isoliert implementiert und Cross-Realm-Regression geprüft; Runtimegate `UNPROVEN` |
-| umgangene oder falsch verglichene private Browser-Requestgrenze | Requestserialisierung vor Controller, Timer und Fetch | unveränderter privater Cap 65.536; öffentlich erreichbarer maximaler v1-Request exakt 193 Bytes; kausaler 193/192-Source-Mutationsnachweis ohne Produktionsseam; feste ADR-0028-v1-Wire-Policy | der öffentliche v1-Vertrag erreicht 65.536/65.537 nicht; der Mutationstest beweist nur Verdrahtung, Vergleich und Position, keine reale öffentliche Capkante | Transport, feste Policy und mutationswirksamer Nachweis implementiert; Runtimegate `UNPROVEN` |
-| bösartiger lokaler Prozess oder Responder auf Port `8787` | Zone A → B | feste Loopback-URL, exakte Responseform und nebenwirkungsfreie Capability; spätere Rate Limits und Caller-/Prozessidentitätsentscheidung | keine lokale Caller- oder Serverprozessidentität; URL, CORS und Responseform beweisen nicht, welcher Prozess antwortet | Loopback, Capability und isolierter Browsertransport implementiert; Runtimegate `UNPROVEN`, Identität und Rate Limits offen |
+| bösartige Webseite | Zone A → B | feste URL `http://127.0.0.1:8787/api/sync-test`, exakte Origin-Allowlist, POST-only, `credentials: "omit"`, geschlossene `syncTest`-Capability | kompromittierter erlaubter Origin; Nicht-Browser umgehen CORS; Loopback und CORS authentisieren den lokalen Prozess nicht | Gateway und isolierter Browsertransport implementiert; ADR-0029-Gesamtgate `FAIL`, Komposition fehlt |
+| manipuliertes fremdes Promise | asynchrone Fetch-, Read- und Cleanup-Grenze | echtes natives Brandprofil, exakter lokaler Promiseprototyp und vollständige Kette, leere Own Keys, unveränderte Constructor-/Species-Descriptoren, ausschließlich erfasstes natives `then`; keine Assimilation oder freie `.then`-Reads | eine historische Erzeugungsrealm oder bereits vollständig verdeckte Subclass-Provenienz ist nach vollständiger Umprototypisierung öffentlich nicht beweisbar; Realm ist kein Vertrauenssignal; getrennter Host-Rejectionkanal bleibt möglich | ADR-0027-Profil isoliert implementiert und einschließlich `node:vm`-/Hostregression geprüft; ADR-0029-Gesamtgate `FAIL`, konkrete Ursache nicht belegt |
+| manipulierter fremder Readerchunk oder Backing-Buffer | Response-Stream und lokale Kopiergrenze | echte Uint8Array-/ArrayBuffer-Brands, für View und Buffer exakte lokale Prototypen und Ketten, kein Shared/growable/resizable/detached Memory, positive Restlänge und sofortige Kopie in eigenen festen Zielbuffer | historische Realm oder vollständig verdeckte Subclass-Provenienz ist nicht beweisbar; vor Modulevaluation kompromittierte Intrinsics bleiben außerhalb der Garantie | ADR-0027-Profil isoliert implementiert und Cross-Realm-Regression geprüft; ADR-0029-Gesamtgate `FAIL`, konkrete Ursache nicht belegt |
+| umgangene oder falsch verglichene private Browser-Requestgrenze | Requestserialisierung vor Controller, Timer und Fetch | unveränderter privater Cap 65.536; öffentlich erreichbarer maximaler v1-Request exakt 193 Bytes; kausaler 193/192-Source-Mutationsnachweis ohne Produktionsseam; feste ADR-0028-v1-Wire-Policy | der öffentliche v1-Vertrag erreicht 65.536/65.537 nicht; der Mutationstest beweist nur Verdrahtung, Vergleich und Position, keine reale öffentliche Capkante | Transport, feste Policy und mutationswirksamer Nachweis implementiert; ADR-0029-Gesamtgate `FAIL` |
+| bösartiger lokaler Prozess oder Responder auf Port `8787` | Zone A → B | feste Loopback-URL, exakte Responseform und nebenwirkungsfreie Capability; spätere Rate Limits und Caller-/Prozessidentitätsentscheidung | keine lokale Caller- oder Serverprozessidentität; URL, CORS und Responseform beweisen nicht, welcher Prozess antwortet | Loopback, Capability und isolierter Browsertransport implementiert; ADR-0029-Gesamtgate `FAIL`, Identität und Rate Limits offen |
 | langsam tröpfelnder oder unvollständiger Request | lokale Parser- und Socketgrenze | absolute 5.000-/10.000-ms-Fristen, fester 100-ms-Prüftakt, endliche Idle- und Keep-Alive-Zeiten | Eventloop-, Betriebssystem- und Netzwerkplanung können den tatsächlichen Abschluss verzögern; kein Rate Limit | lokal implementiert und regressionsgeprüft |
 | manipulierte oder übergroße Bodybytes | lokale Wire-Grenze | Streaminglimit 65.536, Abbruch bei Byte 65.537, keine Kompression | Node/OS können aktuellen Chunk bereits alloziert haben; Ressourcen vor Prozessannahme | lokale Anwendungspuffergrenze implementiert |
 | ungültiges UTF-8 oder JSON | Decoder und Boundary | strikte einmalige Decodierung, keine Reparatur, kanonische Single-Parser-Boundary | Same-Realm-Runtime-/Decoderfehler | lokal implementiert |
-| Umgehung lokaler Agentenpolicy | Zone B → D | feste `syncTest`-Allowlist, exakte defensive Boundary-Identität, höchstens ein synchroner Agentenaufruf, untrusted-Result-Prüfung, disjunkte Responseprojektion und Providerzugriff ausschließlich hinter Zone C | Same-Realm ist keine Sandbox; vor Modulevaluation kompromittierte Primordials bleiben außerhalb der Garantie | ADR-0025-Komposition und isolierter Browsertransport implementiert; Runtimegate `UNPROVEN`, Browserkomposition und Adapter fehlen |
+| Umgehung lokaler Agentenpolicy | Zone B → D | feste `syncTest`-Allowlist, exakte defensive Boundary-Identität, höchstens ein synchroner Agentenaufruf, untrusted-Result-Prüfung, disjunkte Responseprojektion und Providerzugriff ausschließlich hinter Zone C | Same-Realm ist keine Sandbox; vor Modulevaluation kompromittierte Primordials bleiben außerhalb der Garantie | ADR-0025-Komposition und isolierter Browsertransport implementiert; ADR-0029-Gesamtgate `FAIL`, Browserkomposition und Adapter fehlen |
 | gestohlenes Provider-Credential | Zone C → D | getrennte lokale Adapterkopie und providerseitiges Prüfmaterial; adapterabhängig noch festzulegende dedizierte Verwendung, Rotation und Widerruf | Nutzung bis Widerruf; Providerablage beweist keine Redaction/Retention; Same-Realm ist keine Sandbox | Provideradapter noch nicht autorisiert |
 | Replay eines gültigen Requests | Zone C → D | keine automatischen Retries; spätere Replay-/Idempotenzregeln | kein Replay-Nachweis für künftige Adapter | Schutzprüfung je Adapterslice geplant |
 | Provider- oder n8n-Ausführungsdaten | Zone D | Datenminimierung und Retention-/Redaction-Review vor Aktivierung | externe Metadatenverarbeitung | n8n Stable OSS `FAIL`, Tenant `UNPROVEN`; sämtliche Provider deaktiviert |
@@ -2400,9 +2420,10 @@ Upstream. Der lokale SyncAgent-Kern ist kontrolliert mit diesem Gateway
 komponiert. Der BrowserSyncTransport und seine feste v1-Wire-Policy sind
 isoliert implementiert und netzwerkfrei mutationswirksam geprüft. ADR 0029
 entscheidet das davon getrennte reale und umgebungsgebundene Browser-Runtime-
-Evidence-Gate, führt es aber nicht aus; sein tatsächlicher Status bleibt
-`UNPROVEN`. Erst ein gesondert autorisierter Lauf kann ein an `T₀` gebundenes
-`PASS` liefern. `src/main.js`-, UI- und Browserkomposition sowie der lokale
+Evidence-Gate. Der einmalig autorisierte Chrome-151-Lauf ist mit Gesamt-
+`FAIL`, PNA/LNA und Negativkontrollen `UNPROVEN` sowie Cleanup `PASS`
+dokumentiert. Vor einem neuen Lauf folgt die gesonderte Architekturentscheidung
+zur positiven Transportabweichung. `src/main.js`-, UI- und Browserkomposition sowie der lokale
 Browser-End-to-End-Fluss folgen erst danach getrennt. VPN, Reverse Proxy,
 IP-Allowlist oder eine Browser-Authentisierung
 können für spätere private oder schreibende Capabilities zusätzlich nötig
@@ -2609,7 +2630,9 @@ Der lokale `SyncAgent` ist als isolierter Kern implementiert und ausschließlich
 über den explizit gestarteten lokalen Gateway-Prozess für den leeren
 synthetischen `syncTest` operativ erreichbar. Der BrowserSyncTransport samt
 ADR-0028-v1-Wire-Policy ist isoliert implementiert und regressionsgeprüft. Das
-davon getrennte ADR-0029-Runtime-Evidence-Gate bleibt tatsächlich `UNPROVEN`;
+davon getrennte ADR-0029-Runtime-Evidence-Gate ist für den einmaligen
+Chrome-151-Lauf insgesamt `FAIL`; PNA/LNA und die nicht ausgeführten
+Negativkontrollen bleiben `UNPROVEN`.
 Browserkomposition und End-to-End-Pfad fehlen weiterhin. Der SyncAgent bildet
 die autoritative serverseitige Policy-, Validierungs- und Responsegrenze für
 den aktuellen `syncTest`:
@@ -2785,7 +2808,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
 | `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; vollständig geprüft und veröffentlicht |
 | `v0.2.2` | privater allowlist-basierter View-, Controller-, Service- und Storage-Pfad sowie strikt getrennter synthetischer In-Memory-Demo-Stack mit fester Herkunft, Safe DOM, Closure-/Map-isolierten Entry-IDs, defensiver UI-Projektion, flüchtiger Suche/Filterung, DOM-Unmount-Grenze, statisch redigierten Fehlern, ohne Browser-Key oder Fallback; keine Base64-Bilder in `localStorage`, keine externe Übertragung; vollständig geprüft und veröffentlicht |
-| `v0.3.0` | In Arbeit: lokale Contract-, Service-, Boundary-, HTTP-, Bundle-, Evidence- und SyncAgent-Foundations, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy samt mutationswirksamer ADR-0028-Matrix implementiert. ADR 0029 ist als geschlossenes, an `T₀` und die zwei allowlisteten Negativdeltas gebundenes Local Browser Runtime Evidence Gate angenommen; der tatsächliche Runtimegate-Status bleibt `UNPROVEN`. Nur der exakte leere synthetische Erfolg ergibt lokal HTTP `200`; Agent-/Responsefehler bleiben statisch `500 gatewayFailed`. Der Transport ist produktiv weder mit dem SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss und Runtimefreigabe fehlen. Als nächster Slice folgt ausschließlich ein gesondert autorisierter realer, kontext- und versionsgebundener PNA/LNA-/Mixed-Content-Nachweis; Browserkomposition und End-to-End folgen erst nach dessen `PASS`. n8n Stable OSS und Aktivierung bleiben `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter, Produktcredentials, Autorisierung, Rate Limits, Replay- und Idempotenzschutz bleiben geplant |
+| `v0.3.0` | In Arbeit: lokale Contract-, Service-, Boundary-, HTTP-, Bundle-, Evidence- und SyncAgent-Foundations, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy samt mutationswirksamer ADR-0028-Matrix implementiert. Der einmalige Chrome-151-Runtime-Evidence-Lauf ist mit Gesamt-`FAIL`, PNA/LNA und Negativkontrollen `UNPROVEN` sowie Cleanup `PASS` dokumentiert. Nur der exakte leere synthetische Erfolg ergibt lokal HTTP `200`; Agent-/Responsefehler bleiben statisch `500 gatewayFailed`. Der Transport ist produktiv weder mit dem SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss und Runtimefreigabe fehlen. Als nächster Slice folgt ausschließlich die Architekturentscheidung zur positiven Transportabweichung; Browserkomposition und End-to-End folgen erst nach einem späteren Gesamt-`PASS`. n8n Stable OSS und Aktivierung bleiben `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter, Produktcredentials, Autorisierung, Rate Limits, Replay- und Idempotenzschutz bleiben geplant |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
 | `v0.5.0` | Prompt-Injection-Schutz, strukturierter TestAgent-Output, keine Direktzugriffe |
 | `v0.6.0` | End-to-End-Sicherheitsreview und vollständige Demo-Trennung |
