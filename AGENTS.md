@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – in Arbeit – ADR 0029 als Local Browser Runtime Evidence Gate angenommen; tatsächlicher Runtimegate-Status UNPROVEN; nächster Slice: gesondert autorisierter realer Runtime-Evidence-Nachweis`
+Aktueller Stand: `v0.3.0 – in Arbeit – gebundenes Chrome-151-Runtimegate FAIL; nächster Slice: Architekturentscheidung zur positiven BrowserSyncTransport-Laufzeitabweichung`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -117,9 +117,9 @@ Dieser Wert ist nur eine Vertragsklassifikation und kein Herkunfts- oder
 Datenschutzbeweis. `v0.2.2` bleibt vollständig lokal. Die Boundary selbst
 besitzt weiterhin keinen HTTP-Handler und ist nicht in `src/main.js` komponiert.
 Aktuell ist
-`v0.3.0 – in Arbeit – ADR 0029 als Local Browser Runtime Evidence Gate
-angenommen; tatsächlicher Runtimegate-Status UNPROVEN; nächster Slice:
-gesondert autorisierter realer Runtime-Evidence-Nachweis`.
+`v0.3.0 – in Arbeit – gebundenes Chrome-151-Runtimegate FAIL; nächster Slice:
+Architekturentscheidung zur positiven BrowserSyncTransport-
+Laufzeitabweichung`.
 ADR 0023 ersetzt ADR 0002 und ADR 0019 und übernimmt deren weiterhin
 gültigen Kern: Der `SyncService` bleibt die einzige Kommunikationsschicht des
 Browsers, der lokale `SyncAgent` der einzige Einstieg und Router des
@@ -259,13 +259,33 @@ geschlossen allowlisteten Tupel `T_origin = T₀ + Δ_origin` und
 ergibt bei beobachteter Grenzverletzung `FAIL`. Restore auf `T₀` und Cleanup
 sind nach jedem Negativvektor getrennt zu bestätigen.
 
-ADR 0029 ist ein reiner Dokumentationsslice. Es wurden kein Browser, Gateway,
-Devserver, Port, realer Request, Permissionpfad, Harness oder Fixture gestartet
-oder verändert. Der tatsächliche Runtimegate-Status bleibt `UNPROVEN`. Der
-nächste Slice ist ausschließlich ein gesondert autorisierter realer, kontext-
-und versionsgebundener Runtime-Evidence-Nachweis. Browserkomposition und lokaler
-Browser-End-to-End-`syncTest` folgen weiterhin erst nach dessen an `T₀`
-gebundenem `PASS` als weitere getrennte Slices.
+ADR 0029 selbst bleibt ein reiner Dokumentationsslice. In diesem
+Entscheidungsslice wurden kein Browser, Gateway, Devserver, Port, realer
+Request, Permissionpfad, Harness oder Fixture gestartet oder verändert. Der
+danach gesondert autorisierte Runtime-Evidence-Slice ist davon getrennt.
+
+Der einmalige reale Lauf unter `chrome-stable-win-t0-01` verwendete sichtbar
+Chrome Stable `151.0.7922.174` unter Windows 11 Home 25H2 Build `26200.9168`,
+Node `24.19.0`, die Top-Level-Origin `http://127.0.0.1:5173` und den festen
+Gatewayendpoint auf `127.0.0.1:8787`. Im einzigen gestarteten Vektor
+`positive-default` wurden genau ein gewöhnlicher `OPTIONS 204`, danach genau
+ein vollständig beantworteter `POST 200` und die erwarteten
+JavaScript-sichtbaren Responsewerte beobachtet. Das öffentliche
+BrowserSyncTransport-Promise wies dennoch statisch redigiert zurück. Der
+belegte Ebenenwiderspruch setzt `normalSyntheticTransport` und das Gesamtgate
+auf `FAIL`; die nicht beobachtete Korrelation hält den positiven Vektor nach
+der geschlossenen Vektorgrammatik `UNPROVEN`. `pnaLnaPermission` bleibt wegen
+unbekanntem Zieladressraum `UNPROVEN`. `negative-origin` und `redirect-error`
+wurden stopregelkonform nicht ausgeführt und bleiben einschließlich ihrer
+Restores `UNPROVEN`. Jan beobachtete keinen Permissiondialog und führte keine
+Browserinteraktion aus. Der vollständige Cleanup ist `PASS`; Profil, Harness,
+Fragmente und selbst gestartete Prozesse wurden entfernt, die Ports freigegeben
+und Repository sowie Vite-Cache auf ihre Baseline bestätigt. Ein Retry ist
+nicht autorisiert. Browserkomposition und Browser-End-to-End-`syncTest`
+bleiben geschlossen; als nächster Slice folgt ausschließlich eine gesonderte
+Architekturentscheidung zur beobachteten Laufzeitabweichung der
+ADR-0020-/ADR-0028-Vertragskette und danach gegebenenfalls ein eigener
+Implementierungsslice.
 Der nachfolgende ADR-0027-Entscheidungsstand bleibt als historische Ebene
 unverändert dokumentiert.
 
@@ -372,21 +392,25 @@ Innerhalb dieses Pfads gilt verbindlich folgende Implementierungsreihenfolge:
 9. ADR 0029 entscheidet das geschlossene, an `T₀` und allowlistete
    Negativdeltas gebundene Local Browser Runtime Evidence Gate, ohne einen
    Runtimevorgang auszuführen oder zu autorisieren;
-10. erst nach dieser Entscheidung prüft ein gesondert autorisierter realer und kontext-/
-   versionsgebundener Browser-Runtime-Nachweis CORS/Preflight, PNA/LNA, lokale
-   Netzwerkberechtigung, Secure Context/Mixed Content, Loopbackziel, Redirect,
-   sichtbare und blockierte Responseheader, finale URL, Response-Typ,
-   Browserunterschiede und nötige Benutzerfreigaben;
-11. die lokale Browserkomposition folgt erst nach dessen `PASS` als eigener
+10. der einmalig autorisierte, reale und kontext-/versionsgebundene Chrome-
+   Runtime-Nachweis wurde nach dem positiven Vektor stopregelkonform beendet:
+   `normalSyntheticTransport` und Gesamtgate sind `FAIL`, PNA/LNA sowie alle
+   nicht ausgeführten Negativkontrollen bleiben `UNPROVEN`;
+11. vor einem neuen Runtime-Evidence-Lauf folgt eine gesonderte
+   Architekturentscheidung zur beobachteten positiven Transportabweichung und
+   danach gegebenenfalls ein eigener Implementierungsslice; jeder neue Lauf
+   benötigt eine neue ausdrückliche Autorisierung;
+12. die lokale Browserkomposition folgt erst nach einem späteren gebundenen
+   Runtime-`PASS` als eigener
    getrennter Entscheidungs- und Implementierungsslice;
-12. der Browser-End-to-End-`syncTest` folgt danach als weiterer getrennter
+13. der Browser-End-to-End-`syncTest` folgt danach als weiterer getrennter
    Slice;
-13. globale/systemweite Missbrauchs-, Parallelitäts-, Zeit- und
+14. globale/systemweite Missbrauchs-, Parallelitäts-, Zeit- und
    Ressourcenbegrenzung für den lokalen Pfad wird ergänzt;
-14. erst danach werden Provider gesondert entschieden;
-15. OpenAI-, lokaler Modell- und n8n-Adapter folgen jeweils als getrennte
+15. erst danach werden Provider gesondert entschieden;
+16. OpenAI-, lokaler Modell- und n8n-Adapter folgen jeweils als getrennte
    Slices;
-16. private Daten, weitere Aktionen, Tools und Nebenwirkungen folgen nur nach
+17. private Daten, weitere Aktionen, Tools und Nebenwirkungen folgen nur nach
    neuen Contract-, Identitäts-, Berechtigungs-, Replay-, Idempotenz- und
    Datenschutzentscheidungen.
 
@@ -395,10 +419,12 @@ Die Schritte 1 bis 9 sind mit ADR 0023, ADR 0024, der Implementierung von ADR
 isolierten BrowserSyncTransport-Implementierung samt netzwerkfreier
 mutationswirksamer Unit-Suite, der Annahme von ADR 0028 sowie der
 transportlokalen Policyimplementierung und ihrer kausalen Testmatrix
-und der Annahme von ADR 0029 abgeschlossen. Der nächste Slice ist ausschließlich
-der gesondert autorisierte reale, an sein vollständiges `T₀` gebundene Browser-
-Runtime-Nachweis für CORS/Preflight, PNA/LNA, lokale Netzwerkberechtigung und
-Secure Context/Mixed Content samt den beiden allowlisteten Negativvektoren.
+und der Annahme von ADR 0029 abgeschlossen. Schritt 10 wurde einmalig
+ausgeführt und mit Gesamt-`FAIL` stopregelkonform beendet; nur der positive
+Vektor lief, die Negativvektoren blieben `UNPROVEN`. Der nächste Slice ist
+ausschließlich die in Schritt 11 verlangte Architekturentscheidung; ein neuer
+Runtime-Evidence-Lauf bleibt bis zu einer neuen ausdrücklichen Autorisierung
+gesperrt.
 Der lokale Browser-End-to-End-`syncTest` bleibt ein weiterer getrennter
 Folgeslice und darf erst nach dem Runtime-`PASS` komponiert werden.
 Globale/systemweite Missbrauchs-, Parallelitäts-, Zeit- und
@@ -569,11 +595,15 @@ bleibt an das vollständige Basistupel `T₀` gebunden; ausschließlich die
 Negativvektoren dürfen ihre vorab allowlisteten Deltas `Δ_origin` und
 `Δ_redirect` verwenden und müssen danach Restore auf `T₀` sowie Cleanup
 belegen. Der genaue Evidence-Record ist in `docs/data-contracts.md` geschlossen
-definiert. Dieser ADR-0029-Slice führt keine Runtimeoperation aus und lässt den
-tatsächlichen Gatezustand `UNPROVEN`. Der nächste Slice ist ausschließlich der
-gesondert autorisierte reale Browser-Runtime-Evidence-Nachweis;
-Browserkomposition und Browser-End-to-End-`syncTest` folgen erst nach dessen an
-`T₀` gebundenem `PASS` getrennt.
+definiert. Der ADR-0029-Entscheidungsslice selbst führte keine Runtimeoperation
+aus. Der danach getrennt autorisierte Lauf ist im Record
+`chrome-stable-win-01` mit Gesamt-`FAIL` dokumentiert: Gate 6 enthält den
+belegten Widerspruch zwischen vollständig beobachteter HTTP-200-Response und
+statisch zurückgewiesenem Transport-Promise; Gate 5 sowie die beiden nicht
+ausgeführten Negativgates bleiben `UNPROVEN`, Cleanup ist `PASS`. Vor einem
+neuen Lauf folgt die gesonderte Architekturentscheidung zur positiven
+Transportabweichung; Browserkomposition und Browser-End-to-End-`syncTest`
+bleiben bis zu einem späteren an `T₀` gebundenen Gesamt-`PASS` gesperrt.
 
 Der nachfolgende ADR-0027-Stand bleibt als historische Entscheidungsebene
 unverändert dokumentiert.

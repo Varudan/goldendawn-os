@@ -6,7 +6,46 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0029 angenommen; Runtimegate UNPROVEN
+## Unveröffentlicht – v0.3.0 in Arbeit – Chrome-Runtimegate FAIL
+
+### Local Browser Runtime Evidence – Chrome Stable unter Windows
+
+- Den einmalig autorisierten, sichtbaren Chrome-Stable-Lauf unter dem
+  vollständigen Basistupel `chrome-stable-win-t0-01` ausgeführt und als
+  geschlossenen Schema-1-Record unter
+  `docs/evidence/browser-runtime-evidence.chrome-stable-windows-01.json`
+  dokumentiert. Gebunden waren Chrome `151.0.7922.174`, Windows 11 Home 25H2
+  Build `26200.9168`, Node `24.19.0`, die Top-Level-Origin
+  `http://127.0.0.1:5173` und der feste Gatewayendpoint auf
+  `127.0.0.1:8787`.
+- Im einzigen gestarteten Vektor `positive-default` genau einen gewöhnlichen
+  CORS-Preflight mit `OPTIONS 204`, danach genau einen vollständig
+  beantworteten `POST 200` und die erwarteten JavaScript-sichtbaren
+  Responsewerte beobachtet. Das öffentliche BrowserSyncTransport-Promise wies
+  dennoch mit dem statisch redigierten Transportfehler zurück. Dieser belegte
+  Widerspruch der JavaScript-, Browsernetzwerk- und Gatewayebene setzt
+  `normalSyntheticTransport` und damit `overallGate` auf `FAIL`; die
+  Korrelation blieb unbeobachtet und der positive Vektor nach der geschlossenen
+  Vektorgrammatik `UNPROVEN`.
+- Den Lauf unmittelbar ohne Retry gestoppt. `negative-origin` und
+  `redirect-error`, ihre Deltas und ihre Restores wurden nicht ausgeführt und
+  bleiben `UNPROVEN`. Die PNA-/LNA-Klassifikation bleibt wegen unbekanntem
+  Zieladressraum ebenfalls `UNPROVEN`; es wurde kein zusätzlicher Header,
+  keine Permission-, Policy- oder Produktanpassung vorgenommen.
+- Jan bestätigte nach dem Cleanup, dass kein Local-Network-/Loopback-Dialog
+  sichtbar war und keine Browserinteraktion erfolgte. Diese Beobachtung
+  beweist weder allgemeine Permissionfreiheit noch einen anderen Browser-,
+  Versions-, OS-, Origin- oder Produktkontext.
+- Chrome, Controller, Gateway und Vite kontrolliert beendet, alle gebundenen
+  Ports freigegeben sowie temporäres Profil, Harness und sanitierte Fragmente
+  entfernt. Repository und gesondert gebundener Vite-Cache entsprachen danach
+  wieder exakt ihrer Baseline; Produkt-, Test-, ADR-, Paket-, Bundle- und
+  Generatorquellen blieben unverändert.
+- Browserkomposition und Browser-End-to-End-`syncTest` bleiben geschlossen.
+  Als nächster Slice folgt eine gesonderte Architekturentscheidung zur
+  beobachteten Laufzeitabweichung der ADR-0020-/ADR-0028-Vertragskette und
+  danach gegebenenfalls ein eigener Implementierungsslice. Ein neuer
+  Runtime-Evidence-Lauf benötigt erneut eine ausdrückliche Autorisierung.
 
 ### Local Browser Runtime Evidence Gate – Entscheidung / ADR 0029
 

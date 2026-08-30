@@ -1,0 +1,928 @@
+{
+  "schemaVersion": 1,
+  "recordType": "browser-runtime-evidence",
+  "measurementRunId": "chrome-stable-win-01",
+  "observedAt": "2026-08-30T14:14:54.865Z",
+  "timeZone": {
+    "id": "Europe/Berlin",
+    "utcOffset": "+02:00"
+  },
+  "baseContextId": "chrome-stable-win-t0-01",
+  "baseContext": {
+    "repository": {
+      "commit": "8001cc7eb7d2fed68c5ca4061514b486a204ac44",
+      "state": "clean"
+    },
+    "hostRuntime": {
+      "executionClass": "local-disposable"
+    },
+    "operatingSystem": {
+      "family": "windows",
+      "edition": "Windows 11 Home",
+      "architecture": "x64",
+      "version": "25H2",
+      "build": "26200",
+      "patch": "9168"
+    },
+    "node": {
+      "version": "24.19.0"
+    },
+    "browser": {
+      "product": "chrome",
+      "channel": "stable",
+      "version": "151.0.7922.174",
+      "engine": "blink",
+      "engineBuild": "@39c51c70dd5feca6b6aba5bb7997b595011c553d",
+      "executionMode": "visible",
+      "privateMode": true
+    },
+    "profile": {
+      "lifecycle": "fresh-disposable",
+      "extensions": "none",
+      "startParameters": "effective-non-bypassing",
+      "featureFlags": "none-effective",
+      "enterprisePolicies": "none-effective"
+    },
+    "networkEnvironment": {
+      "proxy": "inactive",
+      "vpn": "inactive"
+    },
+    "initialState": {
+      "serviceWorker": "absent",
+      "permission": "prompt",
+      "preflightCache": "empty-confirmed",
+      "siteCache": "empty-confirmed"
+    },
+    "bindingComparisonProfile": "ephemeral-exact-effective-context-comparison-without-retention",
+    "frontend": {
+      "topLevelUrl": "http://127.0.0.1:5173/",
+      "serializedOrigin": "http://127.0.0.1:5173",
+      "contextKind": "top-level",
+      "isSecureContext": true
+    },
+    "transportRequest": {
+      "factoryProfile": "real-default-factory",
+      "compositionProfile": "transport-only",
+      "requestProfile": "synthetic-v1-syncTest-empty-payload",
+      "requestEqualityMethod": "ephemeral-full-value-comparison-without-retention",
+      "initialUrl": "http://127.0.0.1:8787/api/sync-test",
+      "initialScheme": "http",
+      "initialHost": "127.0.0.1",
+      "initialPort": 8787,
+      "initialPath": "/api/sync-test",
+      "requestInitProfile": "adr-0028-fixed"
+    },
+    "gateway": {
+      "listenerHost": "127.0.0.1",
+      "listenerPort": 8787,
+      "portEnvironmentValue": "8787",
+      "allowedOrigin": {
+        "value": "http://127.0.0.1:5173",
+        "relationToFrontend": "matches-frontend-origin"
+      },
+      "endpoint": "http://127.0.0.1:8787/api/sync-test",
+      "responderProfile": "production-gateway"
+    }
+  },
+  "vectors": [
+    {
+      "vectorId": "positive-default",
+      "baseContextId": "chrome-stable-win-t0-01",
+      "allowedDeltaFields": [],
+      "changedDeltaFields": [],
+      "expectedDelta": [],
+      "observedDelta": [],
+      "expectation": "positive-success",
+      "observation": "ambiguous",
+      "gateIds": [
+        "contextBinding",
+        "secureContextMixedContent",
+        "exactLoopback",
+        "ordinaryCorsPreflight",
+        "pnaLnaPermission",
+        "normalSyntheticTransport",
+        "responseHeaderFiltering"
+      ],
+      "status": "UNPROVEN",
+      "noOtherBindingFieldsChanged": true,
+      "restoreConfirmed": true,
+      "cleanupConfirmed": true
+    },
+    {
+      "vectorId": "negative-origin",
+      "baseContextId": "chrome-stable-win-t0-01",
+      "allowedDeltaFields": [
+        "gateway.allowedOrigin"
+      ],
+      "changedDeltaFields": [],
+      "expectedDelta": [
+        {
+          "field": "gateway.allowedOrigin",
+          "baseValue": {
+            "value": "http://127.0.0.1:5173",
+            "relationToFrontend": "matches-frontend-origin"
+          },
+          "vectorValue": {
+            "value": "http://127.0.0.1:5174",
+            "relationToFrontend": "mismatches-frontend-origin"
+          }
+        }
+      ],
+      "observedDelta": [
+        {
+          "field": "gateway.allowedOrigin",
+          "baseValue": {
+            "value": "http://127.0.0.1:5173",
+            "relationToFrontend": "matches-frontend-origin"
+          },
+          "vectorValue": null,
+          "comparisonBasis": "recorded-sanitized-value",
+          "observationState": "not-observed",
+          "result": "unproven"
+        }
+      ],
+      "expectation": "cors-blocked-before-post",
+      "observation": "ambiguous",
+      "gateIds": [
+        "negativeOrigin"
+      ],
+      "status": "UNPROVEN",
+      "noOtherBindingFieldsChanged": false,
+      "restoreConfirmed": false,
+      "cleanupConfirmed": true
+    },
+    {
+      "vectorId": "redirect-error",
+      "baseContextId": "chrome-stable-win-t0-01",
+      "allowedDeltaFields": [
+        "gateway.responderProfile"
+      ],
+      "changedDeltaFields": [],
+      "expectedDelta": [
+        {
+          "field": "gateway.responderProfile",
+          "baseValue": "production-gateway",
+          "vectorValue": "redirect-fixture-with-local-sentinel"
+        }
+      ],
+      "observedDelta": [
+        {
+          "field": "gateway.responderProfile",
+          "baseValue": "production-gateway",
+          "vectorValue": null,
+          "comparisonBasis": "recorded-sanitized-value",
+          "observationState": "not-observed",
+          "result": "unproven"
+        }
+      ],
+      "expectation": "closed-redirect-failure",
+      "observation": "ambiguous",
+      "gateIds": [
+        "redirectControl"
+      ],
+      "status": "UNPROVEN",
+      "noOtherBindingFieldsChanged": false,
+      "restoreConfirmed": false,
+      "cleanupConfirmed": true
+    }
+  ],
+  "pnaLnaClassification": {
+    "ordinaryCorsSeparated": true,
+    "sourceAddressSpace": "loopback",
+    "targetAddressSpace": "unknown",
+    "pnaRequestHeader": "absent",
+    "pnaResponseHeader": "absent",
+    "lnaModel": "permission",
+    "permissionName": "none-observed",
+    "permissionBefore": "prompt",
+    "prompt": "not-shown",
+    "userActivation": "not-required",
+    "outcome": "allowed",
+    "persistence": "not-tested",
+    "reset": "confirmed",
+    "pathAdjustmentRequired": "none"
+  },
+  "gates": {
+    "contextBinding": {
+      "gateId": "contextBinding",
+      "status": "PASS",
+      "layers": [
+        "javascript",
+        "browser-network",
+        "gateway-process",
+        "user-permission"
+      ],
+      "checks": [
+        {
+          "checkId": "binding.complete",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "binding.consistent",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "repository.clean",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "browser.visible",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "profile.freshDisposable",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "profile.privateMode",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "securityBypass.absent",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        }
+      ]
+    },
+    "secureContextMixedContent": {
+      "gateId": "secureContextMixedContent",
+      "status": "PASS",
+      "layers": [
+        "javascript",
+        "browser-network"
+      ],
+      "checks": [
+        {
+          "checkId": "window.isSecureContext",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "loopbackTreatment",
+          "expected": "allowed",
+          "observationState": "observed",
+          "observed": "allowed",
+          "result": "match"
+        },
+        {
+          "checkId": "browserConsole.securityClassification",
+          "expected": "no-block",
+          "observationState": "observed",
+          "observed": "no-block",
+          "result": "match"
+        },
+        {
+          "checkId": "targetAddressSpace.required",
+          "expected": false,
+          "observationState": "observed",
+          "observed": false,
+          "result": "match"
+        }
+      ]
+    },
+    "exactLoopback": {
+      "gateId": "exactLoopback",
+      "status": "PASS",
+      "layers": [
+        "javascript",
+        "browser-network",
+        "gateway-process"
+      ],
+      "checks": [
+        {
+          "checkId": "request.initialUrl",
+          "expected": "fixed-endpoint",
+          "observationState": "observed",
+          "observed": "fixed-endpoint",
+          "result": "match"
+        },
+        {
+          "checkId": "request.finalUrl",
+          "expected": "fixed-endpoint",
+          "observationState": "observed",
+          "observed": "fixed-endpoint",
+          "result": "match"
+        },
+        {
+          "checkId": "request.redirected",
+          "expected": false,
+          "observationState": "observed",
+          "observed": false,
+          "result": "match"
+        },
+        {
+          "checkId": "routeMechanism",
+          "expected": "direct-127.0.0.1",
+          "observationState": "observed",
+          "observed": "direct-127.0.0.1",
+          "result": "match"
+        }
+      ]
+    },
+    "ordinaryCorsPreflight": {
+      "gateId": "ordinaryCorsPreflight",
+      "status": "PASS",
+      "layers": [
+        "browser-network",
+        "gateway-process"
+      ],
+      "checks": [
+        {
+          "checkId": "preflight.sequence",
+          "expected": "OPTIONS-POST",
+          "observationState": "observed",
+          "observed": "OPTIONS-POST",
+          "result": "match"
+        },
+        {
+          "checkId": "gateway.optionsCount",
+          "expected": 1,
+          "observationState": "observed",
+          "observed": 1,
+          "result": "match"
+        },
+        {
+          "checkId": "gateway.postCount",
+          "expected": 1,
+          "observationState": "observed",
+          "observed": 1,
+          "result": "match"
+        },
+        {
+          "checkId": "preflight.origin",
+          "expected": "exact-frontend-origin",
+          "observationState": "observed",
+          "observed": "exact-frontend-origin",
+          "result": "match"
+        },
+        {
+          "checkId": "preflight.requestMethod",
+          "expected": "POST",
+          "observationState": "observed",
+          "observed": "POST",
+          "result": "match"
+        },
+        {
+          "checkId": "preflight.requestHeaders",
+          "expected": "includes-content-type-no-unapproved",
+          "observationState": "observed",
+          "observed": "includes-content-type-no-unapproved",
+          "result": "match"
+        },
+        {
+          "checkId": "preflight.status",
+          "expected": 204,
+          "observationState": "observed",
+          "observed": 204,
+          "result": "match"
+        },
+        {
+          "checkId": "preflight.allowOrigin",
+          "expected": "exact-frontend-origin",
+          "observationState": "observed",
+          "observed": "exact-frontend-origin",
+          "result": "match"
+        },
+        {
+          "checkId": "preflight.allowMethods",
+          "expected": "post-only",
+          "observationState": "observed",
+          "observed": "post-only",
+          "result": "match"
+        },
+        {
+          "checkId": "preflight.allowHeaders",
+          "expected": "content-type-only",
+          "observationState": "observed",
+          "observed": "content-type-only",
+          "result": "match"
+        },
+        {
+          "checkId": "preflight.vary",
+          "expected": "origin-only",
+          "observationState": "observed",
+          "observed": "origin-only",
+          "result": "match"
+        },
+        {
+          "checkId": "preflight.allowCredentials",
+          "expected": "absent",
+          "observationState": "observed",
+          "observed": "absent",
+          "result": "match"
+        }
+      ]
+    },
+    "pnaLnaPermission": {
+      "gateId": "pnaLnaPermission",
+      "status": "UNPROVEN",
+      "layers": [
+        "browser-network",
+        "user-permission"
+      ],
+      "checks": [
+        {
+          "checkId": "ordinaryCorsSeparated",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "sourceAddressSpace.classified",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "targetAddressSpace.classified",
+          "expected": true,
+          "observationState": "ambiguous",
+          "observed": false,
+          "result": "unproven"
+        },
+        {
+          "checkId": "pnaRequestHeader.classified",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "pnaResponseHeader.classified",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "lnaModel.classified",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "permissionName.classified",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "permissionBefore.classified",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "prompt.classified",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "userActivation.classified",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "outcome.classified",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "pathAdjustmentRequired",
+          "expected": "none",
+          "observationState": "observed",
+          "observed": "none",
+          "result": "match"
+        }
+      ]
+    },
+    "normalSyntheticTransport": {
+      "gateId": "normalSyntheticTransport",
+      "status": "FAIL",
+      "layers": [
+        "javascript",
+        "browser-network",
+        "gateway-process"
+      ],
+      "checks": [
+        {
+          "checkId": "transport.path",
+          "expected": "real-default-factory",
+          "observationState": "observed",
+          "observed": "real-default-factory",
+          "result": "match"
+        },
+        {
+          "checkId": "request.profile",
+          "expected": "synthetic-v1-syncTest-empty-payload",
+          "observationState": "observed",
+          "observed": "synthetic-v1-syncTest-empty-payload",
+          "result": "match"
+        },
+        {
+          "checkId": "composition.profile",
+          "expected": "transport-only",
+          "observationState": "observed",
+          "observed": "transport-only",
+          "result": "match"
+        },
+        {
+          "checkId": "response.httpStatus",
+          "expected": 200,
+          "observationState": "observed",
+          "observed": 200,
+          "result": "match"
+        },
+        {
+          "checkId": "response.ok",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "response.redirected",
+          "expected": false,
+          "observationState": "observed",
+          "observed": false,
+          "result": "match"
+        },
+        {
+          "checkId": "response.finalUrl",
+          "expected": "fixed-endpoint",
+          "observationState": "observed",
+          "observed": "fixed-endpoint",
+          "result": "match"
+        },
+        {
+          "checkId": "response.type",
+          "expected": "cors",
+          "observationState": "observed",
+          "observed": "cors",
+          "result": "match"
+        },
+        {
+          "checkId": "response.correlation",
+          "expected": "valid",
+          "observationState": "not-observed",
+          "observed": "unknown",
+          "result": "unproven"
+        }
+      ]
+    },
+    "responseHeaderFiltering": {
+      "gateId": "responseHeaderFiltering",
+      "status": "PASS",
+      "layers": [
+        "javascript",
+        "gateway-process"
+      ],
+      "checks": [
+        {
+          "checkId": "js.contentType",
+          "expected": "application-json-utf8",
+          "observationState": "observed",
+          "observed": "application-json-utf8",
+          "result": "match"
+        },
+        {
+          "checkId": "js.contentLength.classification",
+          "expected": "canonical-decimal-within-16384",
+          "observationState": "observed",
+          "observed": "canonical-decimal-within-16384",
+          "result": "match"
+        },
+        {
+          "checkId": "js.contentLength.value",
+          "expected": 297,
+          "observationState": "observed",
+          "observed": 297,
+          "result": "match"
+        },
+        {
+          "checkId": "js.cacheControl",
+          "expected": "no-store",
+          "observationState": "observed",
+          "observed": "no-store",
+          "result": "match"
+        },
+        {
+          "checkId": "js.contentEncoding",
+          "expected": null,
+          "observationState": "observed",
+          "observed": null,
+          "result": "match"
+        },
+        {
+          "checkId": "server.xContentTypeOptions",
+          "expected": "present",
+          "observationState": "observed",
+          "observed": "present",
+          "result": "match"
+        },
+        {
+          "checkId": "server.vary",
+          "expected": "present",
+          "observationState": "observed",
+          "observed": "present",
+          "result": "match"
+        },
+        {
+          "checkId": "server.allowOrigin",
+          "expected": "present",
+          "observationState": "observed",
+          "observed": "present",
+          "result": "match"
+        },
+        {
+          "checkId": "js.xContentTypeOptionsVisibility",
+          "expected": "filtered",
+          "observationState": "observed",
+          "observed": "filtered",
+          "result": "match"
+        },
+        {
+          "checkId": "js.varyVisibility",
+          "expected": "filtered",
+          "observationState": "observed",
+          "observed": "filtered",
+          "result": "match"
+        },
+        {
+          "checkId": "js.allowOriginVisibility",
+          "expected": "filtered",
+          "observationState": "observed",
+          "observed": "filtered",
+          "result": "match"
+        }
+      ]
+    },
+    "negativeOrigin": {
+      "gateId": "negativeOrigin",
+      "status": "UNPROVEN",
+      "layers": [
+        "javascript",
+        "browser-network",
+        "gateway-process"
+      ],
+      "checks": [
+        {
+          "checkId": "nonDeltaBindings.unchanged",
+          "expected": true,
+          "observationState": "not-observed",
+          "observed": false,
+          "result": "unproven"
+        },
+        {
+          "checkId": "browser.blocked",
+          "expected": true,
+          "observationState": "not-observed",
+          "observed": false,
+          "result": "unproven"
+        },
+        {
+          "checkId": "responseBody.readable",
+          "expected": false,
+          "observationState": "not-observed",
+          "observed": false,
+          "result": "unproven"
+        },
+        {
+          "checkId": "gateway.postCount",
+          "expected": 0,
+          "observationState": "not-observed",
+          "observed": 0,
+          "result": "unproven"
+        },
+        {
+          "checkId": "fallback.used",
+          "expected": false,
+          "observationState": "not-observed",
+          "observed": false,
+          "result": "unproven"
+        }
+      ]
+    },
+    "redirectControl": {
+      "gateId": "redirectControl",
+      "status": "UNPROVEN",
+      "layers": [
+        "javascript",
+        "browser-network",
+        "gateway-process"
+      ],
+      "checks": [
+        {
+          "checkId": "nonDeltaBindings.unchanged",
+          "expected": true,
+          "observationState": "not-observed",
+          "observed": false,
+          "result": "unproven"
+        },
+        {
+          "checkId": "fixture.optionsCount",
+          "expected": 1,
+          "observationState": "not-observed",
+          "observed": 0,
+          "result": "unproven"
+        },
+        {
+          "checkId": "fixture.preflightStatus",
+          "expected": 204,
+          "observationState": "not-observed",
+          "observed": 0,
+          "result": "unproven"
+        },
+        {
+          "checkId": "fixture.preflightMatchedT0",
+          "expected": true,
+          "observationState": "not-observed",
+          "observed": false,
+          "result": "unproven"
+        },
+        {
+          "checkId": "fixture.postCount",
+          "expected": 1,
+          "observationState": "not-observed",
+          "observed": 0,
+          "result": "unproven"
+        },
+        {
+          "checkId": "fixture.redirectStatus",
+          "expected": 307,
+          "observationState": "not-observed",
+          "observed": 0,
+          "result": "unproven"
+        },
+        {
+          "checkId": "fixture.redirectLocation",
+          "expected": "fixed-local-sentinel",
+          "observationState": "not-observed",
+          "observed": "unknown",
+          "result": "unproven"
+        },
+        {
+          "checkId": "fixture.redirectResponseSent",
+          "expected": true,
+          "observationState": "not-observed",
+          "observed": false,
+          "result": "unproven"
+        },
+        {
+          "checkId": "transport.closedFailure",
+          "expected": true,
+          "observationState": "not-observed",
+          "observed": false,
+          "result": "unproven"
+        },
+        {
+          "checkId": "sentinel.requestCount",
+          "expected": 0,
+          "observationState": "not-observed",
+          "observed": 0,
+          "result": "unproven"
+        },
+        {
+          "checkId": "finalUrl.invented",
+          "expected": false,
+          "observationState": "not-observed",
+          "observed": false,
+          "result": "unproven"
+        }
+      ]
+    },
+    "cleanupRedaction": {
+      "gateId": "cleanupRedaction",
+      "status": "PASS",
+      "layers": [
+        "javascript",
+        "browser-network",
+        "gateway-process",
+        "user-permission"
+      ],
+      "checks": [
+        {
+          "checkId": "processes.stopped",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "profileHarness.removed",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "permissionSiteState.cleared",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "networkRecordings.removed",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "environment.restored",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "ports.free",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "repository.restored",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "runtimeResidue.absent",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        },
+        {
+          "checkId": "redaction.confirmed",
+          "expected": true,
+          "observationState": "observed",
+          "observed": true,
+          "result": "match"
+        }
+      ]
+    }
+  },
+  "overallGate": "FAIL",
+  "cleanupConfirmed": true,
+  "remainingLimits": [
+    "other-browser-product",
+    "other-browser-version",
+    "other-browser-channel",
+    "other-engine",
+    "other-operating-system",
+    "other-origin-or-context",
+    "public-https-origin",
+    "local-process-identity-or-trust",
+    "authentication",
+    "authorization",
+    "metadata-freedom",
+    "wire-octets",
+    "compression-absence",
+    "privacy-or-private-data-suitability",
+    "exactly-once-delivery",
+    "freshness",
+    "replay-protection",
+    "idempotency",
+    "global-abuse-or-resource-limits",
+    "browser-composition",
+    "browser-e2e"
+  ]
+}

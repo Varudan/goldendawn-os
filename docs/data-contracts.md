@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0029 als Local Browser Runtime Evidence Gate angenommen; tatsächlicher Runtimegate-Status UNPROVEN; nächster Slice: gesondert autorisierter realer Runtime-Evidence-Nachweis` |
+| Projektphase | `v0.3.0 – gebundenes Chrome-151-Runtimegate FAIL; nächster Slice: Architekturentscheidung zur positiven BrowserSyncTransport-Laufzeitabweichung` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,7 +21,7 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy implementiert; ADR 0029 entscheidet den geschlossenen Browser-Runtime-Evidence-Record, ohne eine Messung auszuführen; tatsächlicher Runtimegate-Status `UNPROVEN`; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy implementiert; der einmalige Schema-1-Lauf `chrome-stable-win-01` ist mit `normalSyntheticTransport: FAIL`, `pnaLnaPermission: UNPROVEN`, nicht ausgeführten Negativvektoren und `cleanupRedaction: PASS` dokumentiert; `overallGate: FAIL`; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
 | Letzte Aktualisierung | 2026-08-30 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
@@ -3185,10 +3185,13 @@ und Responsebeobachtungen. Browserkomposition und lokaler Browser-End-to-End-
 [ADR 0029](decisions/0029-browser-runtime-evidence-gate.md) ergänzt ADR 0020
 und ADR 0028, operationalisiert die fortgeltenden ADR-0026-/ADR-0027-
 Runtimeanforderungen und ersetzt keinen ADR. Der folgende Vertrag beschreibt
-ausschließlich einen später gesondert autorisierten Messlauf. In diesem
-Dokumentationsslice wird weder eine JSON-Vorlage noch ein ausgefüllter Record,
-Harness oder Runtimeartefakt erzeugt. Der tatsächliche Gatezustand bleibt
-`UNPROVEN`.
+den geschlossen persistierbaren Record eines jeweils gesondert autorisierten
+Messlaufs. Der erste und einzige Record
+`docs/evidence/browser-runtime-evidence.chrome-stable-windows-01.json` bindet
+Chrome Stable `151.0.7922.174` unter Windows 11 Home 25H2 an
+`chrome-stable-win-t0-01`; sein Gesamtgate ist `FAIL`. ADR 0029 selbst bleibt
+bytegleich und war weiterhin ausschließlich der vorausgehende
+Dokumentationsslice.
 
 ### Geltung und geschlossene Rootform
 
@@ -3762,6 +3765,31 @@ browser-e2e
 
 Diese Liste ist keine offene Notizliste. Sie begrenzt die Aussage selbst eines
 späteren `PASS` und darf weder gekürzt noch durch freie Texte erweitert werden.
+
+### Aktueller Instanzstand
+
+Der Schema-1-Record `chrome-stable-win-01` enthält exakt die drei
+Pflichtvektoren und zehn Gates. Nur `positive-default` wurde gestartet. Unter
+dem vollständig gebundenen `T₀` wurden ein gewöhnlicher `OPTIONS 204`, danach
+ein vollständig beantworteter `POST 200` und die erwarteten
+JavaScript-sichtbaren Responsewerte beobachtet; das öffentliche
+BrowserSyncTransport-Promise wies dennoch statisch redigiert zurück. Dieser
+belegte Ebenenwiderspruch setzt `normalSyntheticTransport` auf `FAIL` und damit
+`overallGate` auf `FAIL`. Weil Schema 1 weder einen freien Promisecheck noch
+einen zusätzlichen positiven Fehler-Observationwert zulässt, bleibt die nicht
+beobachtete Korrelation `unknown`/`unproven` und der Vektor
+`positive-default` selbst `UNPROVEN`; es wird weder eine ungültige Korrelation
+noch eine Fehlerursache erfunden.
+
+`pnaLnaPermission` bleibt wegen des nicht klassifizierbaren Zieladressraums
+`UNPROVEN`. `negative-origin` und `redirect-error` wurden nach der Stopregel
+nicht ausgeführt; ihre Beobachtungen und Restores bleiben `UNPROVEN`, während
+das nachweisliche Fehlen vektorlokaler Rückstände und der vollständige
+Gesamtcleanup bestätigt sind. Die übrigen Gatewerte lauten in kanonischer
+Reihenfolge `PASS`, `PASS`, `PASS`, `PASS`, `UNPROVEN`, `FAIL`, `PASS`,
+`UNPROVEN`, `UNPROVEN`, `PASS`. Der Record öffnet weder Browserkomposition
+noch Browser-E2E und gilt nicht für einen anderen Browser-, Versions-, OS-,
+Origin- oder Kontextwert.
 
 ## Aktuelle Browser SyncTransport Validator Integrity Boundary / ADR 0028
 
@@ -7510,11 +7538,13 @@ implementiert; 423/423 fokussierte Tests und `Δ = 151` weisen die
 Lückenschließung bei unverändertem Contractvalidator nach. Das beobachtbare Profil
 ersetzt keine Brand-, Prototyp-, Constructor-, Species-, Buffer- oder
 Kopierprüfung. ADR 0029 operationalisiert den dafür erforderlichen
-Evidence-Record, ohne einen Runtimevorgang auszuführen; der Gatezustand bleibt
-`UNPROVEN`. Als Nächstes folgt ausschließlich der gesondert autorisierte reale,
-an `T₀` gebundene PNA-/LNA-/Mixed-Content-Browser-Runtime-Nachweis. Produktive
-SyncService-/`src/main.js`-Komposition und Browser-End-to-End-Fluss fehlen
-weiterhin und folgen erst nach dessen gebundenem `PASS`.
+Evidence-Record; sein Entscheidungsslice selbst führte keinen Runtimevorgang
+aus. Der danach einmalig autorisierte Chrome-151-Lauf ist mit Gesamt-`FAIL`,
+PNA/LNA und Negativvektoren `UNPROVEN` sowie Cleanup `PASS` dokumentiert. Als
+Nächstes folgt ausschließlich die gesonderte Architekturentscheidung zur
+positiven Transportabweichung. Produktive SyncService-/`src/main.js`-
+Komposition und Browser-End-to-End-Fluss fehlen weiterhin und folgen erst nach
+einem späteren gebundenen Gesamt-`PASS`.
 
 Die transportneutrale SyncGateway Request Boundary implementiert für einen
 bereits vollständig materialisierten JavaScript-Wert:
@@ -7620,10 +7650,10 @@ sind getrennte Vertrauens- und Betriebsgrenzen. Kein Adapter darf direkt an
 Browser oder SyncService antworten.
 Gateway und lokaler SyncAgent sind für diesen engen Pfad komponiert; der
 BrowserSyncTransport ist gemäß ADR 0027 isoliert implementiert und netzwerkfrei
-geprüft. ADR 0029 entscheidet ausschließlich dessen späteres Browser-Runtime-
-Evidence-Gate; der tatsächliche Gatezustand bleibt `UNPROVEN`. Produktive
-SyncService-/`src/main.js`-Komposition und Browser-End-to-End-Fluss fehlen
-weiterhin.
+geprüft. ADR 0029 entscheidet dessen getrenntes Browser-Runtime-Evidence-Gate;
+der einmalige Chrome-151-Lauf ist insgesamt `FAIL`, während PNA/LNA und die
+nicht ausgeführten Negativvektoren `UNPROVEN` bleiben. Produktive SyncService-/
+`src/main.js`-Komposition und Browser-End-to-End-Fluss fehlen weiterhin.
 
 CORS steuert Browserzugriffe, ersetzt aber weder Authentisierung noch
 Autorisierung. Rate Limits bleiben vor dauerhaftem Betrieb für lokales Gateway,
