@@ -6,7 +6,68 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – Chrome-Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0030 angenommen; Chrome-Runtimegate FAIL
+
+### BrowserSyncTransport Runtime Diagnostic Observer Boundary – Entscheidung / ADR 0030
+
+- ADR 0030 am `2026-08-30` als reinen Dokumentations- und
+  Entscheidungsslice angenommen. Er ergänzt ADR 0028 und ADR 0029, ersetzt
+  keinen ADR und bewertet ADR 0020 ausdrücklich erneut, ohne dessen
+  Produktions-Gateway-Baseline zu ändern. ADR 0020 sowie ADR 0026 bis ADR 0029
+  und der historische Evidence-Record bleiben bytegleich.
+- Den unveränderten Ausgangsbefund festgehalten: `OPTIONS 204`, vollständig
+  beantwortetes `POST 200`, erwartete JavaScript-sichtbare Responsewerte und
+  danach statisch redigierte Transportablehnung. Das ADR-0029-Runtimegate bleibt
+  `FAIL`; der Ursachenstatus bleibt `CAUSE_NOT_PROVEN`. ADR 0030 ist weder
+  Ursachennachweis noch Runtime-`PASS`, Produktfreigabe, Implementierung oder
+  Laufautorisierung.
+- Die neue Bindung `T_replay ≡R T₀` und
+  `T_diag = T_replay + Δ_observer` entschieden. `T_replay` ist eine neue
+  vollständige Referenzbindung und kein observerfreier Kontrolllauf. Neue
+  Run-ID, Messzeit, Repositorycommit und Wegwerfprofilinstanz werden getrennt
+  gebunden; sie sind kein Observerdelta. Nur tatsächlich persistierte
+  historische Klassifikationen und aus dem historischen Git-Tree ableitbare
+  Einzelartefakthashes dürfen verglichen werden.
+- `Δ_observer` auf einen exklusiven lokalen Pipe-Controller, genau ein
+  Top-Level-Target, eine Session, eine geschlossene minimale Target-/Runtime-/
+  Network-Operations-Allowlist, genau eine Main-World-Auswertung, genau eine
+  argumentlose Factoryerzeugung und genau einen gültigen synthetischen
+  v1-`syncTest` begrenzt. Sourceinstrumentierung, Composition-Seams,
+  Runtimeoberflächenmutation, Fetch-Interception, Debugger, Profiler, Tracing,
+  Responsebody-Lesen, freie Rohinspektion, Zusatzrequests und Observerausgabe
+  während des Laufs bleiben verboten.
+- Ausschließlich zehn externe Diagnosestufen mit ebenenlokaler
+  Empfangsreihenfolge und getrennten Clock-Domänen zugelassen.
+  `internalStage` und `internalOwner` bleiben `unknown`;
+  `Network.loadingFinished` beweist keinen JavaScript-Streamabschluss und eine
+  Nähe zur 5.000-ms-Grenze höchstens `deadline-compatible`. Absolute
+  Observerneutralität wird nicht behauptet.
+- Das Requestbudget auf einen Default-Transportaufruf, null Retries, null
+  direkte Diagnose-Fetches, null Negativvektoren, erwartbar genau einen
+  `OPTIONS` und einen `POST` sowie null Observerrequests zum Produktendpoint
+  geschlossen. Ein zusätzlicher Transportaufruf oder `POST` ist ein
+  Diagnosevertragsbruch; fehlende oder mehrdeutige Zuordnung bleibt ohne
+  belegten Verstoß `UNPROVEN`.
+- In `docs/data-contracts.md` den unabhängigen geschlossenen
+  `BrowserTransportDiagnosticRecord` entschieden. Seine Achsen sind
+  `observerGate: PASS | FAIL | UNPROVEN`, die fünf geschlossenen
+  Diagnosefindings und ausnahmslos `causeStatus: CAUSE_NOT_PROVEN`; das
+  ADR-0029-`overallGate` bleibt davor und danach `FAIL`. Der Vertrag speichert
+  keine Roh-CDP-/HAR-/Header-/Body-/Fehlerdaten, Requestidentitäten,
+  persönlichen Pfade, Prozess- oder Browserkennungen, privaten Netzwerkdetails
+  oder GoldenDawn-/Vault-/Credentialdaten.
+- In diesem Slice weder Recordvorlage noch Record, Controller, Harness,
+  Fixture, Observer oder Diagnosefoundation erstellt und keine Runtimeoperation
+  ausgeführt. Als nächster Slice folgt ausschließlich die vollständig
+  netzwerkfreie Implementierung und Prüfung der passiven Diagnosefoundation.
+  Ein sichtbarer Diagnoselauf benötigt danach eine neue ausdrückliche
+  Autorisierung; Browserkomposition und Browser-End-to-End bleiben bis zu einem
+  späteren vollständig neuen ADR-0029-Gesamt-`PASS` geschlossen.
+- Den reinen Dokumentationsstand mit 1755/1755 Tests der vollständigen
+  seriellen Suite bei 0 Fehlschlägen, Abbrüchen, Skips und Todos, dem
+  Produktions-Build mit exakt 46 transformierten Modulen sowie dem
+  schreibfreien driftfreien `bundle:n8n:check` regressionsgeprüft. Diese lokalen
+  Prüfungen sind weder Runtime- noch Diagnoseevidenz.
 
 ### Local Browser Runtime Evidence – Chrome Stable unter Windows
 
@@ -42,10 +103,10 @@ Release.
   wieder exakt ihrer Baseline; Produkt-, Test-, ADR-, Paket-, Bundle- und
   Generatorquellen blieben unverändert.
 - Browserkomposition und Browser-End-to-End-`syncTest` bleiben geschlossen.
-  Als nächster Slice folgt eine gesonderte Architekturentscheidung zur
-  beobachteten Laufzeitabweichung der ADR-0020-/ADR-0028-Vertragskette und
-  danach gegebenenfalls ein eigener Implementierungsslice. Ein neuer
-  Runtime-Evidence-Lauf benötigt erneut eine ausdrückliche Autorisierung.
+  Der danach verlangte Architekturentscheidungsslice ist inzwischen mit ADR
+  0030 abgeschlossen, ohne den historischen Befund oder das Gesamt-`FAIL` zu
+  ändern. Ein sichtbarer Diagnose- oder Runtime-Evidence-Lauf benötigt erneut
+  eine ausdrückliche Autorisierung.
 
 ### Local Browser Runtime Evidence Gate – Entscheidung / ADR 0029
 
