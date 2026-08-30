@@ -4,11 +4,11 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0028 implementiert; feste transportlokale v1-Wire-Policy mutationswirksam nachgewiesen; nächster Slice: reales PNA-/LNA-/Mixed-Content-Runtimegate` |
+| Projektphase | `v0.3.0 – ADR 0029 als Local Browser Runtime Evidence Gate angenommen; tatsächlicher Runtimegate-Status UNPROVEN; nächster Slice: gesondert autorisierter realer Runtime-Evidence-Nachweis` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy für den leeren synthetischen `syncTest` implementiert; bestätigte Validator-Integritätslücke der Wirefreigabe mutationswirksam geschlossen, Contractvalidator unverändert; der Transport bleibt weder mit dem SyncService noch in `src/main.js` komponiert; nächster Slice ausschließlich reales kontext- und versionsgebundenes Browser-Runtimegate; Browser-End-to-End-Fluss fehlt; n8n/OpenAI/lokales Modell nicht autorisiert; kein Cloudaufruf; Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; n8n Stable OSS und Aktivierung `FAIL` |
-| Letzte Aktualisierung | 2026-08-29 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy für den leeren synthetischen `syncTest` implementiert; ADR 0029 operationalisiert das Browser-Runtimegate als geschlossenes `T₀`-/`Tᵥ`-Modell, führt aber keine Messung aus; tatsächlicher Runtimegate-Status `UNPROVEN`; der Transport bleibt weder mit dem SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n/OpenAI/lokales Modell nicht autorisiert; kein Cloudaufruf; Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; n8n Stable OSS und Aktivierung `FAIL` |
+| Letzte Aktualisierung | 2026-08-30 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -23,9 +23,10 @@ nicht starre Kalendertermine.
   Browser-SyncTransport-Nachweisgrenzen ✅ → isolierte BrowserSyncTransport-
   Implementierung und netzwerkfreie Unit-Tests ✅ → ADR 0028 – feste
   Validator-Integritätsgrenze für v1 ✅ → transportlokale v1-Wire-Policy und
-  mutationswirksame Tests ✅ → getrenntes reales und umgebungsgebundenes
-  CORS/PNA/LNA-/Mixed-Content-Runtimegate → getrennte Browserkomposition und lokaler End-to-End-
-  `syncTest` → globale/systemweite Missbrauchs-, Parallelitäts-, Zeit- und
+  mutationswirksame Tests ✅ → ADR 0029 – geschlossenes Local Browser Runtime
+  Evidence Gate ✅ → gesondert autorisierter realer und umgebungsgebundener
+  CORS/PNA/LNA-/Mixed-Content-Nachweis → getrennte Browserkomposition →
+  getrennter lokaler End-to-End-`syncTest` → globale/systemweite Missbrauchs-, Parallelitäts-, Zeit- und
   Ressourcenlimits → getrennte Providerentscheidungen**.
 - Die Reihe `v0.2.x` ist bewusst lokalen GoldenDawn-OS-Modulen vorbehalten.
   `v0.3.0` bereitet die erste lokale prozessübergreifende Kommunikation mit dem
@@ -48,7 +49,9 @@ nicht starre Kalendertermine.
   entscheidet gegen die damals bestätigte Validator-Integritätslücke genau
   eine feste transportlokale v1-Wire-Policy. Die Policy und ihre
   mutationswirksame Matrix sind implementiert und schließen die Transportlücke
-  bei unverändertem Contractvalidator. Reales Browser-Runtimegate, Browserkomposition,
+  bei unverändertem Contractvalidator. ADR 0029 operationalisiert das
+  Runtimegate an `T₀`, die zwei allowlisteten Negativdeltas, zehn Pflichtgates,
+  Restore und Cleanup; die reale Messung bleibt `UNPROVEN`. Browserkomposition,
   Browser-End-to-End-Fluss und Provideradapter fehlen, und der aktuelle Stand
   kommuniziert nicht extern.
 - Weitere Unterversionen dürfen ergänzt werden, wenn neue, klar abgegrenzte
@@ -79,7 +82,7 @@ nicht starre Kalendertermine.
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.3.0` | Local SyncAgent and Transport Foundation | In Arbeit: lokale Foundations, modellfreier `syncTest`-Kern, ADR-0025-In-Process-Komposition mit lokalem HTTP `200`, isolierter BrowserSyncTransport und feste v1-Wire-Policy samt mutationswirksamer ADR-0028-Matrix implementiert; bestätigte Transportlücke bei unverändertem Contractvalidator geschlossen; als Nächstes ausschließlich reales kontext-/versionsgebundenes Browser-Runtimegate, Browserkomposition und End-to-End-Fluss danach getrennt, Provideradapter später, das ursprüngliche n8n-Gate `FAIL`/`UNPROVEN` und geschlossen | 🟡 |
+| `v0.3.0` | Local SyncAgent and Transport Foundation | In Arbeit: lokale Foundations, modellfreier `syncTest`-Kern, ADR-0025-In-Process-Komposition mit lokalem HTTP `200`, isolierter BrowserSyncTransport und feste v1-Wire-Policy samt mutationswirksamer ADR-0028-Matrix implementiert; ADR 0029 als `T₀`-/`Tᵥ`-gebundenes Browser-Runtime-Evidence-Gate angenommen, tatsächlicher Gatezustand `UNPROVEN`; als Nächstes ausschließlich ein gesondert autorisierter realer Nachweis, Browserkomposition und End-to-End-Fluss danach getrennt, Provideradapter später, das ursprüngliche n8n-Gate `FAIL`/`UNPROVEN` und geschlossen | 🟡 |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
 | `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
@@ -626,9 +629,9 @@ eine spätere Phase geplant.
 
 ### Aktueller Stand
 
-`v0.3.0` ist **in Arbeit – ADR 0028 implementiert; feste transportlokale
-v1-Wire-Policy mutationswirksam nachgewiesen; nächster Slice: ausschließlich
-das reale kontext- und versionsgebundene PNA-/LNA-/Mixed-Content-Runtimegate**.
+`v0.3.0` ist **in Arbeit – ADR 0029 als Local Browser Runtime Evidence Gate
+angenommen; tatsächlicher Runtimegate-Status `UNPROVEN`; nächster Slice:
+ausschließlich ein gesondert autorisierter realer Runtime-Evidence-Nachweis**.
 Die SyncContract Foundation für Version `1.0`, die Aktion
 `syncTest` und den Handler `SyncAgent`, die asynchrone SyncService Foundation,
 die synchrone transportneutrale SyncGateway Request Boundary, der separate
@@ -688,10 +691,16 @@ desselben Validatorbypasses bei gezielt neutralisiertem Policy-Callsite nach.
 Die Verifikation besteht mit 423/423, 466/466, 735/735 und 1755/1755 Tests bei
 `Δ = 151` und jeweils 0 Fehlschlägen, Abbrüchen, Skips und Todos; der Build
 transformiert weiterhin exakt 46 Module und `bundle:n8n:check` ist driftfrei.
-Als nächster Slice folgt ausschließlich das reale kontext- und
-versionsgebundene Browser-Runtimegate. Browserkomposition
-und lokaler Browser-End-to-End-`syncTest` bleiben danach weitere getrennte
-Slices.
+ADR 0029 ergänzt ADR 0020 und ADR 0028, operationalisiert die fortgeltenden
+ADR-0026-/ADR-0027-Runtimeanforderungen und ersetzt keinen ADR. Alle positiven
+Pflichtbeobachtungen sind an das unveränderliche Basistupel `T₀` gebunden; die
+Origin- und Redirect-Negativkontrollen verwenden ausschließlich ihre
+allowlisteten Deltas `Δ_origin` und `Δ_redirect`. Der Entscheidungsslice führte
+keinen Runtimevorgang aus. Der tatsächliche Gatezustand bleibt `UNPROVEN`.
+Als Nächstes folgt ausschließlich ein gesondert autorisierter realer,
+kontext- und versionsgebundener Browser-Runtime-Evidence-Nachweis.
+Browserkomposition und lokaler Browser-End-to-End-`syncTest` bleiben danach
+weitere getrennte Slices.
 
 Der erste Implementierungsversuch wurde vor jeder Dateiänderung hart gestoppt.
 Working Tree, Index und die beiden geplanten Zielpfade blieben unverändert; es
@@ -1582,9 +1591,33 @@ keine Freigabe eines optionalen WorkflowProvider-Adapters.
   Promise; ein späterer getrennter Hostkanal bleibt möglich, ohne
   hostübergreifende Garantie für Eintritt, Zeitpunkt, Häufigkeit oder
   Prozessfortsetzung.
-- ⬜ Nächster Slice: ausschließlich das reale kontext- und versionsgebundene
-  PNA-/LNA-/Mixed-Content-Runtimegate. Browserkomposition und lokaler
-  End-to-End-`syncTest` folgen erst nach dessen gebundenem `PASS`.
+
+### Abgeschlossener Entscheidungsslice: Local Browser Runtime Evidence Gate / ADR 0029
+
+- ✅ ADR 0029 am `2026-08-30` als reinen Dokumentations- und
+  Entscheidungsslice angenommen. Er ergänzt ADR 0020 und ADR 0028,
+  operationalisiert die fortgeltenden ADR-0026-/ADR-0027-
+  Runtimeanforderungen und ersetzt keinen ADR.
+- ✅ Das vollständige unveränderliche Basistupel `T₀` für alle positiven
+  Pflichtbeobachtungen und die exakt zwei geschlossen allowlisteten
+  Negativtupel `T_origin = T₀ + Δ_origin` sowie
+  `T_redirect = T₀ + Δ_redirect` festgelegt. Jede andere Abweichung bleibt
+  `UNPROVEN` oder ergibt bei beobachteter Grenzverletzung `FAIL`.
+- ✅ Zehn Pflichtgates, getrennte Beobachtungsebenen, browser- und
+  versionsgebundene Statusaggregation, vollständigen Restore nach jedem
+  Negativvektor, vektorlokalen Cleanup und abschließenden Cleanup entschieden.
+- ✅ Den sanitisierten, allowlist-basierten Evidence-Record geschlossen in
+  `docs/data-contracts.md` definiert; kein Template oder ausgefülltes
+  Evidenzartefakt angelegt.
+- ✅ Keinen Browser, Gateway, Devserver, Port, realen Request,
+  Permissionzustand, Harness oder Fixture verwendet oder verändert. Produkt-
+  und Testcode, Endpoint, Header, Konfiguration, Komposition, Browser-E2E,
+  private Daten, Cloud, Provider, n8n und Vault blieben außerhalb. Der
+  tatsächliche Runtimegate-Status bleibt `UNPROVEN`.
+- ⬜ Nächster Slice: ausschließlich der gesondert autorisierte reale,
+  kontext- und versionsgebundene PNA-/LNA-/Mixed-Content-Runtime-Evidence-
+  Nachweis. Browserkomposition und lokaler End-to-End-`syncTest` folgen erst
+  nach dessen an `T₀` gebundenem `PASS`.
 
 Der folgende ADR-0027-Entscheidungsslice und der anschließende ADR-0026-Block
 bleiben als damalige Entscheidungs- und Vorimplementierungshistorie
@@ -1948,7 +1981,13 @@ aktuellen Anforderungen mehr.
    Ablehnung jeder Abweichung und den kausalen Bypass bei neutralisierter
    Policy in einer temporären Quellkopie mutationswirksam belegt. Contract,
    Bundle, Manifest und Generator bleiben unverändert.
-9. ⬜ **Nächster Slice – reales Browser-Runtimegate nach Policy-`PASS`:** an OS,
+9. ✅ **ADR 0029 – Local Browser Runtime Evidence Gate:** das Runtimegate als
+   reinen Dokumentationsvertrag an `T₀`, zwei geschlossen allowlistete
+   Negativdeltas, zehn Pflichtgates, Restore, Cleanup und einen geschlossenen
+   Evidence-Record gebunden; keinen Runtimevorgang ausgeführt. Der tatsächliche
+   Gatezustand bleibt `UNPROVEN`.
+10. ⬜ **Nächster Slice – gesondert autorisierter realer Runtime-Evidence-
+   Nachweis:** an OS,
    Browserversion, tatsächliche Frontend-Origin und -Kontext sowie Endpoint
    gebunden CORS/Preflight, PNA/LNA, Berechtigungen, Secure Context/Mixed
    Content, Loopbackziel, Redirect, exponierte und blockierte Responseheader,
@@ -1956,20 +1995,22 @@ aktuellen Anforderungen mehr.
    nachweisen; das `PASS` bleibt kontext-/versionsgebunden und ist keine
    allgemeine Browsergarantie; bei erforderlichen Policyänderungen die
    betroffenen ADRs neu öffnen, ohne Fallback.
-10. ⬜ **Browserkomposition und lokaler End-to-End-`syncTest`:** den isoliert
-   geprüften Clienttransport erst danach getrennt mit dem SyncService
-   komponieren und den vollständig lokalen Browserfluss bis zur normal
-   korrelierten SyncResponse nachweisen.
-11. ⬜ **Globale/systemweite lokale Betriebsgrenzen:** Missbrauchs-,
+11. ⬜ **Browserkomposition:** erst nach dem gebundenen Runtime-`PASS` in einem
+   eigenen Entscheidungs- und Implementierungsslice den isoliert geprüften
+   Clienttransport mit dem SyncService komponieren.
+12. ⬜ **Lokaler End-to-End-`syncTest`:** den vollständig lokalen Browserfluss
+   bis zur normal korrelierten SyncResponse danach in einem weiteren getrennten
+   Slice nachweisen.
+13. ⬜ **Globale/systemweite lokale Betriebsgrenzen:** Missbrauchs-,
    Parallelitäts-, Zeit- und Ressourcenbegrenzung für den lokalen Pfad
    entscheiden, implementieren und verifizieren.
-12. ⬜ **Erst danach getrennte Providerentscheidungen:** jeden externen oder
+14. ⬜ **Erst danach getrennte Providerentscheidungen:** jeden externen oder
    lokalen Provider nur capability-spezifisch, standardmäßig deaktiviert und
    mit eigener Sicherheits-, Datenschutz- und Aktivierungsentscheidung planen.
-13. ⬜ **Provideradapter als getrennte Slices:** OpenAI-, lokales-Modell- und
+15. ⬜ **Provideradapter als getrennte Slices:** OpenAI-, lokales-Modell- und
    n8n-Adapter unabhängig voneinander entscheiden und implementieren; kein
    Adapter ist durch ADR 0023 autorisiert.
-14. ⬜ **Private Daten, weitere Aktionen, Tools und Nebenwirkungen:** erst nach
+16. ⬜ **Private Daten, weitere Aktionen, Tools und Nebenwirkungen:** erst nach
    neuen Contract-, Identitäts-, Berechtigungs-, Replay-, Idempotenz- und
    Datenschutzentscheidungen einführen.
 
@@ -2410,6 +2451,13 @@ unmittelbar vor Stringify fest. Diese Policy und ihre kausale
 mutationswirksame Matrix sind implementiert und schließen die Transportlücke;
 der Contractvalidator selbst blieb unverändert. SyncContract, Bundle,
 Manifest und Generator wurden nicht geändert.
+ADR 0029 ist am `2026-08-30` als reine Dokumentationsentscheidung angenommen.
+Er ergänzt ADR 0020 und ADR 0028, operationalisiert die fortgeltenden ADR-
+0026-/ADR-0027-Runtimeanforderungen und ersetzt keinen ADR. Positive
+Pflichtbeobachtungen bleiben an `T₀`, die beiden Negativkontrollen ausschließlich
+an ihre allowlisteten Deltas gebunden. In diesem Slice erfolgten weder Browser-,
+Gateway-, Devserver-, Request-, Port- noch Permissionoperationen; der
+tatsächliche Browser-Runtimegate-Status bleibt `UNPROVEN`.
 Der veröffentlichte `v0.2.2`-Umfang bleibt
 vollständig lokal. Es wurde kein Cloudrequest ausgeführt; weder Listener noch
 Evidence-Tool besitzen einen Browser-, Produkt- oder komponierten
@@ -2425,8 +2473,9 @@ Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein allgemeines Fachbackend,
 Benutzerkonten und weitere Agentenlogik bleiben offen beziehungsweise beginnen
 erst in den dafür vorgesehenen späteren Slices und Versionen. Der nächste
-konkrete Schritt ist ausschließlich das **reale kontext- und
-versionsgebundene CORS/PNA/LNA-/Mixed-Content-Runtimegate**. Der ADR-0028-
+konkrete Schritt ist ausschließlich der **gesondert autorisierte reale,
+kontext- und versionsgebundene CORS/PNA/LNA-/Mixed-Content-Runtime-Evidence-
+Nachweis nach ADR 0029**. Der ADR-0028-
 Implementierungsslice wurde mit 423/423 fokussierten Tests, 466/466 Tests mit
 dem SyncService, 735/735 Tests der sechs Sync-Suites und 1755/1755 Tests der
 vollständigen seriellen Gesamtsuite bei `Δ = 151` und jeweils 0 Fehlschlägen,

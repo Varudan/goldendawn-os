@@ -36,6 +36,7 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 | [0026](0026-browser-sync-transport-contract.md) | Browser SyncTransport Contract | Ersetzt |
 | [0027](0027-browser-sync-transport-proof-boundaries.md) | Beobachtbare Browser-SyncTransport-Nachweisgrenzen | Ersetzt |
 | [0028](0028-browser-sync-transport-validator-integrity-boundary.md) | Browser SyncTransport Validator Integrity Boundary | Angenommen |
+| [0029](0029-browser-runtime-evidence-gate.md) | Local Browser Runtime Evidence Gate | Angenommen |
 
 ## ADR-Regeln
 

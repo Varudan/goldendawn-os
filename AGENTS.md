@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – in Arbeit – ADR 0028 implementiert; feste transportlokale v1-Wire-Policy mutationswirksam nachgewiesen; nächster Slice: reales kontext- und versionsgebundenes PNA-/LNA-/Mixed-Content-Runtimegate`
+Aktueller Stand: `v0.3.0 – in Arbeit – ADR 0029 als Local Browser Runtime Evidence Gate angenommen; tatsächlicher Runtimegate-Status UNPROVEN; nächster Slice: gesondert autorisierter realer Runtime-Evidence-Nachweis`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -117,9 +117,9 @@ Dieser Wert ist nur eine Vertragsklassifikation und kein Herkunfts- oder
 Datenschutzbeweis. `v0.2.2` bleibt vollständig lokal. Die Boundary selbst
 besitzt weiterhin keinen HTTP-Handler und ist nicht in `src/main.js` komponiert.
 Aktuell ist
-`v0.3.0 – in Arbeit – ADR 0028 implementiert; feste transportlokale
-v1-Wire-Policy mutationswirksam nachgewiesen; nächster Slice: reales kontext-
-und versionsgebundenes PNA-/LNA-/Mixed-Content-Runtimegate`.
+`v0.3.0 – in Arbeit – ADR 0029 als Local Browser Runtime Evidence Gate
+angenommen; tatsächlicher Runtimegate-Status UNPROVEN; nächster Slice:
+gesondert autorisierter realer Runtime-Evidence-Nachweis`.
 ADR 0023 ersetzt ADR 0002 und ADR 0019 und übernimmt deren weiterhin
 gültigen Kern: Der `SyncService` bleibt die einzige Kommunikationsschicht des
 Browsers, der lokale `SyncAgent` der einzige Einstieg und Router des
@@ -250,9 +250,21 @@ Netzwerk-, Gateway-, Cloud-, n8n-, Provider-, Credential- oder Vaultzugriff.
 Der Browsertransport bleibt unkomponiert; ein Browser-End-to-End-Fluss wurde
 nicht geschaffen.
 
-Der nächste Slice ist ausschließlich das getrennte reale, kontext- und
-versionsgebundene PNA-/LNA-/Mixed-Content-Runtimegate. Browserkomposition und
-lokaler Browser-End-to-End-`syncTest` folgen weiterhin erst nach dessen
+ADR 0029 ergänzt ADR 0020 und ADR 0028, operationalisiert die fortgeltenden
+ADR-0026-/ADR-0027-Runtimeanforderungen und ersetzt keinen ADR. Alle positiven
+Pflichtbeobachtungen sind an ein vollständiges unveränderliches Basistupel
+`T₀` gebunden. Die beiden Negativvektoren verwenden ausschließlich ihre
+geschlossen allowlisteten Tupel `T_origin = T₀ + Δ_origin` und
+`T_redirect = T₀ + Δ_redirect`; jede weitere Abweichung bleibt `UNPROVEN` oder
+ergibt bei beobachteter Grenzverletzung `FAIL`. Restore auf `T₀` und Cleanup
+sind nach jedem Negativvektor getrennt zu bestätigen.
+
+ADR 0029 ist ein reiner Dokumentationsslice. Es wurden kein Browser, Gateway,
+Devserver, Port, realer Request, Permissionpfad, Harness oder Fixture gestartet
+oder verändert. Der tatsächliche Runtimegate-Status bleibt `UNPROVEN`. Der
+nächste Slice ist ausschließlich ein gesondert autorisierter realer, kontext-
+und versionsgebundener Runtime-Evidence-Nachweis. Browserkomposition und lokaler
+Browser-End-to-End-`syncTest` folgen weiterhin erst nach dessen an `T₀`
 gebundenem `PASS` als weitere getrennte Slices.
 Der nachfolgende ADR-0027-Entscheidungsstand bleibt als historische Ebene
 unverändert dokumentiert.
@@ -357,33 +369,38 @@ Innerhalb dieses Pfads gilt verbindlich folgende Implementierungsreihenfolge:
 8. die feste v1-Wire-Policy ist transportlokal samt der vollständigen
    netzwerkfreien mutationswirksamen ADR-0028-Matrix implementiert, ohne
    Contract-, Bundle-, Manifest- oder Generatoränderung;
-9. erst nach deren `PASS` prüft ein getrennter realer und kontext-/
+9. ADR 0029 entscheidet das geschlossene, an `T₀` und allowlistete
+   Negativdeltas gebundene Local Browser Runtime Evidence Gate, ohne einen
+   Runtimevorgang auszuführen oder zu autorisieren;
+10. erst nach dieser Entscheidung prüft ein gesondert autorisierter realer und kontext-/
    versionsgebundener Browser-Runtime-Nachweis CORS/Preflight, PNA/LNA, lokale
    Netzwerkberechtigung, Secure Context/Mixed Content, Loopbackziel, Redirect,
    sichtbare und blockierte Responseheader, finale URL, Response-Typ,
    Browserunterschiede und nötige Benutzerfreigaben;
-10. die lokale Browserkomposition und der Browser-End-to-End-`syncTest` folgen
-   erst nach dessen `PASS` als getrennter Slice;
-11. globale/systemweite Missbrauchs-, Parallelitäts-, Zeit- und
+11. die lokale Browserkomposition folgt erst nach dessen `PASS` als eigener
+   getrennter Entscheidungs- und Implementierungsslice;
+12. der Browser-End-to-End-`syncTest` folgt danach als weiterer getrennter
+   Slice;
+13. globale/systemweite Missbrauchs-, Parallelitäts-, Zeit- und
    Ressourcenbegrenzung für den lokalen Pfad wird ergänzt;
-12. erst danach werden Provider gesondert entschieden;
-13. OpenAI-, lokaler Modell- und n8n-Adapter folgen jeweils als getrennte
+14. erst danach werden Provider gesondert entschieden;
+15. OpenAI-, lokaler Modell- und n8n-Adapter folgen jeweils als getrennte
    Slices;
-14. private Daten, weitere Aktionen, Tools und Nebenwirkungen folgen nur nach
+16. private Daten, weitere Aktionen, Tools und Nebenwirkungen folgen nur nach
    neuen Contract-, Identitäts-, Berechtigungs-, Replay-, Idempotenz- und
    Datenschutzentscheidungen.
 
-Die Schritte 1 bis 8 sind mit ADR 0023, ADR 0024, der Implementierung von ADR
+Die Schritte 1 bis 9 sind mit ADR 0023, ADR 0024, der Implementierung von ADR
 0025, der Annahme von ADR 0026, ihrer formalen Ersetzung durch ADR 0027, der
 isolierten BrowserSyncTransport-Implementierung samt netzwerkfreier
 mutationswirksamer Unit-Suite, der Annahme von ADR 0028 sowie der
 transportlokalen Policyimplementierung und ihrer kausalen Testmatrix
-abgeschlossen. Der nächste Slice ist ausschließlich der getrennte reale,
-kontext- und versionsgebundene Browser-
+und der Annahme von ADR 0029 abgeschlossen. Der nächste Slice ist ausschließlich
+der gesondert autorisierte reale, an sein vollständiges `T₀` gebundene Browser-
 Runtime-Nachweis für CORS/Preflight, PNA/LNA, lokale Netzwerkberechtigung und
-Secure Context/Mixed Content. Der lokale Browser-End-to-End-`syncTest` bleibt
-ein weiterer getrennter Folgeslice und darf erst nach dem Runtime-`PASS`
-komponiert werden.
+Secure Context/Mixed Content samt den beiden allowlisteten Negativvektoren.
+Der lokale Browser-End-to-End-`syncTest` bleibt ein weiterer getrennter
+Folgeslice und darf erst nach dem Runtime-`PASS` komponiert werden.
 Globale/systemweite Missbrauchs-, Parallelitäts-, Zeit- und
 Ressourcenbegrenzung für den lokalen Pfad folgt erst nach diesem lokalen
 Browser-End-to-End-Pfad. Provider bleiben außerhalb.
@@ -544,10 +561,19 @@ Sync-Suites und 1755/1755 Tests der vollständigen seriellen Gesamtsuite bei
 Produktions-Build transformiert weiterhin exakt 46 Module; der schreibfreie
 `bundle:n8n:check` besteht driftfrei. Tor A wurde anhand der tatsächlichen
 Implementierung erneut bestätigt. Der Browsertransport bleibt unkomponiert;
-ein Browser-End-to-End-Fluss wurde nicht geschaffen. Der nächste Slice ist
-ausschließlich das getrennte reale kontext- und versionsgebundene
-Browser-Runtimegate; Browserkomposition und Browser-End-to-End-`syncTest`
-folgen erst nach dessen gebundenem `PASS` getrennt.
+ein Browser-End-to-End-Fluss wurde nicht geschaffen.
+
+ADR 0029 ergänzt ADR 0020 und ADR 0028, operationalisiert die fortgeltenden
+ADR-0026-/ADR-0027-Runtimeanforderungen und ersetzt keinen ADR. Das Gesamtgate
+bleibt an das vollständige Basistupel `T₀` gebunden; ausschließlich die
+Negativvektoren dürfen ihre vorab allowlisteten Deltas `Δ_origin` und
+`Δ_redirect` verwenden und müssen danach Restore auf `T₀` sowie Cleanup
+belegen. Der genaue Evidence-Record ist in `docs/data-contracts.md` geschlossen
+definiert. Dieser ADR-0029-Slice führt keine Runtimeoperation aus und lässt den
+tatsächlichen Gatezustand `UNPROVEN`. Der nächste Slice ist ausschließlich der
+gesondert autorisierte reale Browser-Runtime-Evidence-Nachweis;
+Browserkomposition und Browser-End-to-End-`syncTest` folgen erst nach dessen an
+`T₀` gebundenem `PASS` getrennt.
 
 Der nachfolgende ADR-0027-Stand bleibt als historische Entscheidungsebene
 unverändert dokumentiert.
