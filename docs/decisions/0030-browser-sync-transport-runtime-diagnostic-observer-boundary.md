@@ -2,7 +2,7 @@
 
 ## Status
 
-Angenommen – 2026-08-30
+Ersetzt durch [ADR 0031](0031-browser-sync-transport-diagnostic-envelope-and-observation-completion-boundary.md) – 2026-08-30
 
 Das dokumentierte ADR-0029-Runtimegate bleibt `FAIL`. Der Ursachenstatus bleibt
 ausnahmslos `CAUSE_NOT_PROVEN`. Die Annahme dieses ADR ist weder

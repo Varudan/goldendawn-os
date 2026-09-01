@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – in Arbeit – ADR 0030 angenommen; gebundenes Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: netzwerkfreie passive Diagnosefoundation`
+Aktueller Stand: `v0.3.0 – in Arbeit – ADR 0031 angenommen; gebundenes Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: netzwerkfreie passive Diagnosefoundation`
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -117,7 +117,7 @@ Dieser Wert ist nur eine Vertragsklassifikation und kein Herkunfts- oder
 Datenschutzbeweis. `v0.2.2` bleibt vollständig lokal. Die Boundary selbst
 besitzt weiterhin keinen HTTP-Handler und ist nicht in `src/main.js` komponiert.
 Aktuell ist
-`v0.3.0 – in Arbeit – ADR 0030 angenommen; gebundenes Chrome-151-Runtimegate
+`v0.3.0 – in Arbeit – ADR 0031 angenommen; gebundenes Chrome-151-Runtimegate
 weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: netzwerkfreie passive
 Diagnosefoundation`.
 ADR 0023 ersetzt ADR 0002 und ADR 0019 und übernimmt deren weiterhin
@@ -320,6 +320,20 @@ nicht. ADR 0030 ist ein reiner Dokumentationsslice und autorisiert weder
 Foundationimplementierung noch Diagnoselauf. Als Nächstes folgt ausschließlich
 die netzwerkfreie Implementierung und Prüfung der passiven
 Diagnosefoundation.
+
+ADR 0031 ersetzt ADR 0030 formal und übernimmt sämtliche nicht ausdrücklich
+korrigierten Regeln. Der `BrowserTransportDiagnosticRecord` behält
+`schemaVersion: 1`, `recordType: browser-transport-diagnostic` und exakt die
+20 bestehenden Cleanup-Check-IDs; eine 21. ID wird nicht ergänzt. Zulässig ist
+nur die unmittelbare geschlossene Vier-Felder-By-Value-Projektion über die
+technisch unvermeidbare flüchtige `Runtime.RemoteObject`-Antworthülle ohne
+Handle, Preview, Exceptiondetails, Folgeinspektion oder Rohpersistenz. Die
+controllerlokale Observation-Completion-Barriere lautet exakt
+`observationClosed := (S && N) || C`; erst nach dem atomaren
+Beobachtungsfreeze beginnt Cleanup, dessen endgültiger Status getrennt nach
+allen 20 Checks bestimmt wird. Bestätigte Verletzungen behalten
+`FAIL`-Präzedenz. ADR 0031 implementiert und autorisiert weiterhin nichts; das
+ADR-0029-Gesamtgate bleibt `FAIL` und die Ursache `CAUSE_NOT_PROVEN`.
 Der nachfolgende ADR-0027-Entscheidungsstand bleibt als historische Ebene
 unverändert dokumentiert.
 
@@ -431,7 +445,10 @@ Innerhalb dieses Pfads gilt verbindlich folgende Implementierungsreihenfolge:
    `normalSyntheticTransport` und Gesamtgate sind `FAIL`, PNA/LNA sowie alle
    nicht ausgeführten Negativkontrollen bleiben `UNPROVEN`;
 11. ADR 0030 entscheidet die passive BrowserSyncTransport-Runtime-
-   Diagnosegrenze, ohne sie zu implementieren oder einen Lauf zu autorisieren;
+   Diagnosegrenze; ADR 0031 ersetzt sie formal, bestätigt exakt 20 Cleanup-IDs,
+   begrenzt die flüchtige CDP-By-Value-Hülle und entscheidet
+   `observationClosed := (S && N) || C`, ohne Foundation oder Lauf zu
+   implementieren oder zu autorisieren;
 12. die passive Diagnosefoundation wird in einem eigenen vollständig
    netzwerkfreien Implementierungsslice erstellt und getestet;
 13. erst danach werden Zielbrowser, `T_replay`, Observer, exakt ein Request,
@@ -463,8 +480,10 @@ mutationswirksamer Unit-Suite, der Annahme von ADR 0028 sowie der
 transportlokalen Policyimplementierung und ihrer kausalen Testmatrix
 und der Annahme von ADR 0029 abgeschlossen. Schritt 10 wurde einmalig
 ausgeführt und mit Gesamt-`FAIL` stopregelkonform beendet; nur der positive
-Vektor lief, die Negativvektoren blieben `UNPROVEN`. ADR 0030 erfüllt Schritt
-11 als reine Dokumentationsentscheidung; Ursache und Runtimegate bleiben
+Vektor lief, die Negativvektoren blieben `UNPROVEN`. ADR 0031 ersetzt die mit
+ADR 0030 begonnene reine Dokumentationsentscheidung formal und erfüllt Schritt
+11 mit der korrigierten Envelope- und Completion-Grenze; Ursache und
+Runtimegate bleiben
 `CAUSE_NOT_PROVEN` beziehungsweise `FAIL`. Der nächste Slice ist
 ausschließlich die netzwerkfreie Diagnosefoundation aus Schritt 12. Jeder
 sichtbare Diagnose- oder Runtime-Evidence-Lauf bleibt bis zu seiner neuen
@@ -647,15 +666,20 @@ statisch zurückgewiesenem Transport-Promise; Gate 5 sowie die beiden nicht
 ausgeführten Negativgates bleiben `UNPROVEN`, Cleanup ist `PASS`. Die Ursache
 bleibt `CAUSE_NOT_PROVEN`.
 
-ADR 0030 ergänzt ADR 0028 und ADR 0029, ersetzt keinen ADR und lässt ADR 0020
-als erneut bewertete Produktions-Gateway-Baseline unverändert. Es entscheidet
-den unabhängigen passiven Diagnosepfad mit `T_replay ≡R T₀`, ausschließlich
+ADR 0031 ersetzt ADR 0030 formal, übernimmt dessen fortgeltende Ergänzung von
+ADR 0028 und ADR 0029 und lässt ADR 0020 als erneut bewertete Produktions-
+Gateway-Baseline unverändert. Es entscheidet den unabhängigen passiven
+Diagnosepfad mit `T_replay ≡R T₀`, ausschließlich
 allowlistetem `Δ_observer`, exakt einem Transportstimulus, externen
 Diagnosestufen, getrennten Clock-Domänen, geschlossenem Requestbudget und dem
-separaten `BrowserTransportDiagnosticRecord`. `observerGate` ist kein
+separaten `BrowserTransportDiagnosticRecord`. Dieser behält exakt 20
+Cleanup-Check-IDs. Die einzige erlaubte Settlementübertragung ist eine
+geschlossene Vier-Felder-By-Value-Projektion über eine sofort verworfene
+flüchtige `Runtime.RemoteObject`-Hülle ohne Handle oder Rohdatenpfad; die
+Abschlussbarriere lautet `(S && N) || C`. `observerGate` ist kein
 Runtimegate; Reproduktion ist kein Ursachennachweis, `internalStage` und
 `internalOwner` bleiben `unknown`, und das ADR-0029-Gesamtgate bleibt `FAIL`.
-ADR 0030 implementiert und autorisiert nichts. Als Nächstes folgt nur die
+ADR 0031 implementiert und autorisiert nichts. Als Nächstes folgt nur die
 netzwerkfreie Implementierung und Prüfung der Diagnosefoundation;
 Browserkomposition und Browser-End-to-End-`syncTest` bleiben bis zu einem
 späteren vollständig neuen ADR-0029-Gesamt-`PASS` gesperrt.
