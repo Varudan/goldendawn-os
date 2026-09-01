@@ -6,7 +6,46 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0030 angenommen; Chrome-Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0031 angenommen; Chrome-Runtimegate FAIL
+
+### BrowserSyncTransport Diagnostic Envelope and Observation Completion Boundary – Entscheidung / ADR 0031
+
+- ADR 0031 am `2026-08-30` als reinen Korrektur- und Dokumentationsslice
+  angenommen. Er ersetzt ADR 0030 formal und übernimmt sämtliche nicht
+  ausdrücklich korrigierten ADR-0030-Regeln. ADR 0020, ADR 0028, ADR 0029,
+  der historische Evidence-Record und der ADR-0030-Hauptteil bleiben
+  unverändert.
+- Bestätigt, dass Schema 1 des `BrowserTransportDiagnosticRecord` exakt die
+  bestehenden 20 Cleanup-Check-IDs enthält. Es wird keine 21. ID ergänzt und
+  keine ID entfernt, umbenannt oder umgeordnet.
+- Erfolgreiche `Runtime.evaluate`-Kommandoantwort, Methodenergebnis und
+  flüchtige `Runtime.RemoteObject`-Hülle getrennt. Zulässig ist ausschließlich
+  die unmittelbare geschlossene Vier-Felder-By-Value-Projektion ohne Handle,
+  Preview, Exceptiondetails, alternative Serialisierung, Folgeinspektion oder
+  Rohpersistenz. Verbotene Hüllenfelder werden nur auf Own-Presence geprüft;
+  ihre Inhalte werden nie gelesen.
+- Den Profilwert auf
+  `immediate-closed-by-value-primitives-via-transient-cdp-remote-object-envelope-no-handle-v1`
+  korrigiert. Die drei zulässigen outcome/profile-Paare sind geschlossen;
+  `relationId` und `deltaProfile` bleiben unverändert.
+- Mit `S` für das gültig projizierte Settlement, `N` für das eindeutig
+  POST-zugeordnete Networkterminal und `C` für das controllerlokale
+  6.000-ms-Capturefenster die Abschlussformel exakt als
+  `observationClosed := (S && N) || C` festgelegt. Erst der atomare
+  Beobachtungsfreeze erlaubt Cleanup; der endgültige Cleanupstatus folgt
+  getrennt aus allen 20 Checks. Späte Ereignisse werden verworfen.
+- Eine eindeutig falsche Hüllenform, vorzeitiger Cleanup oder Änderung des
+  eingefrorenen Zustands ergibt `observerGate: FAIL` und
+  `finding: observer-invalid`. Eine fehlende, abgeschnittene, doppelte oder
+  nicht eindeutig korrelierbare Antwort bleibt ohne bestätigte Verletzung
+  `UNPROVEN`/`inconclusive`; bestätigte Verletzungen besitzen
+  `FAIL`-Präzedenz.
+- Weder Diagnosefoundation, Tests, Recordvorlage, Controller, Harness,
+  Fixture oder Launcher erstellt noch Browser-, CDP-, Netzwerk-, Gateway-,
+  Port-, Request-, Permission- oder Profiloperation ausgeführt. Das
+  ADR-0029-`overallGate` bleibt `FAIL`, die Ursache `CAUSE_NOT_PROVEN` und der
+  nächste Slice ausschließlich die netzwerkfreie Implementierung und Prüfung
+  der passiven Diagnosefoundation.
 
 ### BrowserSyncTransport Runtime Diagnostic Observer Boundary – Entscheidung / ADR 0030
 
