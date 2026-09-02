@@ -6,9 +6,113 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0031 angenommen; Chrome-Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0032 angenommen; Chrome-Runtimegate FAIL
 
-### BrowserSyncTransport Diagnostic Envelope and Observation Completion Boundary – Entscheidung / ADR 0031
+### BrowserSyncTransport Diagnostic Capture, Timing and Projection Determinism Boundary – Entscheidung / ADR 0032
+
+- ADR 0032 am `2026-09-02` als reinen Dokumentations- und Entscheidungsslice
+  angenommen. Er ersetzt ADR 0031 formal und übernimmt alle nicht ausdrücklich
+  korrigierten ADR-0030-/ADR-0031-Regeln. ADR 0031 bleibt mit bytegleichem
+  Hauptteil ab `## Kontext` historische Ebene; ADR 0030 bleibt durch ADR 0031
+  ersetzt. ADR 0020, ADR 0028, ADR 0029 und der historische Evidence-Record
+  bleiben unverändert.
+- Schema 1 und sämtliche Kardinalitäten des
+  `BrowserTransportDiagnosticRecord` unverändert gelassen: 17 Rootfelder,
+  sechs CDP-Operationen, 17 Integritätschecks, neun Requestzähler plus Sequenz,
+  zehn Stages, drei Clock-Domänen, exakt 20 Cleanup-IDs und fünf Findings. Die
+  exakte Fortführung ohne Versionswechsel ist nur zulässig, weil weder eine
+  Implementierung noch eine konforme persistierte Instanz existiert.
+- Einen getrennten globalen Setupcap von exakt `6.000 ms` entschieden. Vor dem
+  einzigen Send werden Cap-/Clock-Fähigkeit validiert und scharf geschaltet,
+  `m_setup` exakt einmal erfasst, `t_setup := 0` gesetzt, die Deadline
+  `m_setup + 6000` als konkreter Timer armiert und Stage 1 `observer-armed`
+  gesetzt; erst danach wird
+  `Target.getTargets` nichtblockierend gesendet. Der Setup führt
+  `Target.getTargets`, `Target.attachToTarget` und `Network.enable` strikt
+  sequenziell mit höchstens einem ausstehenden Kommando aus und setzt den Cap
+  nie pro Kommando zurück. Scheitert die Cap-/Clock-Fähigkeit, entsteht `V`
+  oder kein gültig gestarteter Versuch; die pure Foundation erzeugt nur den
+  nichtblockierenden Command-Intent.
+- Für jede antwortartig eingereihte Nachricht beim Dequeue vor Reflection
+  `m_answer` genau einmal erfasst und roh `d := m_answer - m_setup` gebildet.
+  Nur bei `d < 6000` darf die geschlossene Setupantwort-Grammatik synchron und
+  begrenzt geprüft werden; bei `d >= 6000` gewinnt der Cap und der Inhalt
+  bleibt ungelesen. Ungültige, negative, rückläufige oder werfende Clockwerte
+  ergeben `V`. Die genaue Antwortgrammatik bleibt in ADR 0032 und im Living
+  Contract normativ. Nur drei eindeutig korrelierte, erfolgreiche und
+  vollständig validierte Antworten ergeben `setupReady`. Bei
+  `Target.getTargets` wird zuerst die Anzahl der `page`-Kandidaten mit exakt
+  gebundener URL unabhängig von `attached` bestimmt; nur bei genau einem wird
+  `attached === false` geprüft und danach `targetId` gebunden. Eine Antwort
+  gilt erst am verarbeiteten Setupcap oder nach irreversibler
+  Verbindungsschließung als fehlend, nicht schon bei leerer Queue oder bloßem
+  Noch-nicht-Eintreffen. Fehlende oder eindeutig terminal unbrauchbare
+  Setupergebnisse schließen ohne Obserververstoß als `U` mit
+  `UNPROVEN/inconclusive`.
+- Die Abschlusslogik als `setupClosed := setupReady || U || V` und
+  `observationClosed := V || U || C` totalisiert. Persistierte 10-ms-Rundung
+  beeinflusst die Capentscheidung nicht; bei `elapsed >= 6000 ms` gewinnt der
+  Setupcap, außer ein bereits bestätigtes sticky `V` besitzt `FAIL`-Präzedenz.
+  Späte Setupantworten werden verworfen und können weder Setup noch Stimulus
+  rückwirkend erzeugen.
+- `Runtime.evaluate` ausschließlich nach `setupReady` und höchstens einmal
+  zugelassen. Erst sein bestätigter Sendeübergang startet das getrennte
+  6.000-ms-Capturefenster. `P := S && N` bezeichnet nur vorläufig vollständige
+  Produktevidenz und schließt die Beobachtung nicht; ohne sticky bestätigtes
+  `V` bleibt der Observer bis zum verarbeiteten `C` aktiv. So bleiben doppelte
+  Evaluate-Antworten und zusätzliche budgetrelevante Requests im vollständigen
+  Capturefenster sichtbar.
+- Für einen Setupabschluss durch `U` verbindlich
+  `captureWindowState: not-started`, `observerGate: UNPROVEN`,
+  `finding: inconclusive` und
+  `causeStatus: CAUSE_NOT_PROVEN` festgelegt. Evaluation, Factory und
+  Transportstimulus bleiben `zero`, gegatete Downstream-Kommandos
+  `zero/unproven`, nicht zuverlässig beobachtete Networkcounts `unknown` und
+  die Sequenz `incomplete`. Stage 1 `observer-armed` bleibt
+  `observed/match`; nur die gegateten Stages 2 bis 8 werden
+  `not-observed/unproven` mit `null` für Timing und `receiptOrder`. Ein Versuch
+  enthält höchstens einen Stimulus; `PASS` und jeder nicht-inkonklusive Befund
+  verlangen exakt einen.
+- Den Abschluss zweiphasig getrennt: zuerst ein frischer tief eingefrorener
+  Pre-Cleanup-Observation-Snapshot bei `U`, `V` oder `C`, danach ein eigenes
+  Cleanup-Ledger aus dem tatsächlich erreichten partiellen Setupzustand. Der
+  getrennte Cleanup-Finalisierungscap bleibt `60.000 ms`, die bestehenden 20
+  Cleanup-IDs bleiben unverändert und der Finalrecord wird erst nach
+  Cleanupfinalisierung frisch aus beiden unveränderten Projektionen erzeugt.
+  Die Gründe umfassen mindestens `setup-cap`, `setup-terminal-unproven`,
+  `capture-cap` und `confirmed-violation`.
+- Die exakte 10-ms-Timingfunktion und ihre Nullpunkte, die feste Stage-/Layer-/
+  Clock-Matrix sowie getrennte Clock-Domänen entschieden. Die Foundation-
+  Hashdomäne bindet rohe Bytes des tatsächlich geladenen späteren Pfads
+  `scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js`; die
+  Evaluation-Hashdomäne bindet UTF-8 ohne BOM über exakt den tatsächlich
+  gesendeten primitiven `Runtime.evaluate.params.expression`-String.
+- Die Main-World-Projektion auf den geschlossenen verschachtelten Baum aus
+  `preTransportContext`, `execution` und optionalem `settlement` erweitert.
+  Alle konsumierten untrusted CDP-Felder werden descriptorbasiert ausschließlich
+  als eigene Data-Properties geprüft; beobachtbare Accessor-, Descriptor- oder
+  Hüllenverletzungen werden fail-closed behandelt, ohne verbotene Inhalte zu
+  lesen. Der unvertrauenswürdige Eingangsgraph erhält dadurch weder bestätigte
+  Plain-Data-/Proxyfreiheit noch Parser-/Pipe-Provenienz. Nur die frische
+  Controllerprojektion kann als gewöhnlich und geschlossen bestätigt werden.
+- Die pure Foundation allein kann kein reales `observerGate: PASS` belegen.
+  Adapterabhängige Provenienz darf erst aus identitätsgebundener Evidenz des
+  späteren Adapters abgeleitet und nie als freies Bool übernommen werden.
+- Die Replayrelation auf `adr-0032-causal-replay-v2` und exakt 59 Vergleiche
+  totalisiert: acht Artefakte einschließlich des geschlossenen Frontend-
+  Runtime-Source-Set-Manifests, separat `repository.state` und 50 kausale
+  Kontextwerte einschließlich `toolchain.vite.lockfileVersion`.
+- Weder Foundation, Adapter, Tests, Record, Controller, Launcher noch Browser-,
+  CDP-, Netzwerk-, Gateway-, Port-, Request-, Permission- oder Profiloperation
+  erstellt beziehungsweise ausgeführt. Das ADR-0029-`overallGate` bleibt vor
+  und nach der Diagnose `FAIL`; `causeStatus` bleibt ausnahmslos
+  `CAUSE_NOT_PROVEN`. Als Nächstes folgt ausschließlich die reine netzwerkfreie
+  effects-as-data-Foundation. Raw-Pipe-, Parser-, Queue-, Ressourcen-, Cap-/
+  Timer-, Launcher-, Hashbindungs- und Laufzeitadapter benötigen danach einen
+  eigenen ADR und eine getrennte netzwerkfreie Implementierung; erst
+  anschließend kann ein sichtbarer Lauf gesondert autorisiert werden.
+
+### Historischer Stand: BrowserSyncTransport Diagnostic Envelope and Observation Completion Boundary – Entscheidung / ADR 0031
 
 - ADR 0031 am `2026-08-30` als reinen Korrektur- und Dokumentationsslice
   angenommen. Er ersetzt ADR 0030 formal und übernimmt sämtliche nicht

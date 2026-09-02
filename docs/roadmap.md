@@ -4,11 +4,11 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0031 angenommen; Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: netzwerkfreie passive Diagnosefoundation` |
+| Projektphase | `v0.3.0 – ADR 0032 angenommen; Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: reine netzwerkfreie effects-as-data-Diagnosefoundation` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy für den leeren synthetischen `syncTest` implementiert; der einmalige Schema-1-Lauf `chrome-stable-win-01` bleibt wegen des Widerspruchs zwischen vollständig beobachteter HTTP-200-Response und statisch zurückgewiesenem Transport-Promise mit `overallGate: FAIL` dokumentiert; Ursache `CAUSE_NOT_PROVEN`, PNA/LNA und nicht ausgeführte Negativkontrollen `UNPROVEN`, Cleanup `PASS`; ADR 0031 ersetzt ADR 0030 formal und entscheidet die korrigierte separate passive Diagnosegrenze, implementiert oder autorisiert sie aber nicht; der Transport bleibt weder mit dem SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n/OpenAI/lokales Modell nicht autorisiert; kein Cloudaufruf; Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; n8n Stable OSS und Aktivierung `FAIL` |
-| Letzte Aktualisierung | 2026-08-30 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy für den leeren synthetischen `syncTest` implementiert; der einmalige Schema-1-Lauf `chrome-stable-win-01` bleibt wegen des Widerspruchs zwischen vollständig beobachteter HTTP-200-Response und statisch zurückgewiesenem Transport-Promise mit `overallGate: FAIL` dokumentiert; Ursache `CAUSE_NOT_PROVEN`, PNA/LNA und nicht ausgeführte Negativkontrollen `UNPROVEN`, Cleanup `PASS`; ADR 0032 ersetzt ADR 0031 formal und entscheidet die totalisierte separate Diagnose-Determinismusgrenze, implementiert oder autorisiert sie aber nicht; der Transport bleibt weder mit dem SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n/OpenAI/lokales Modell nicht autorisiert; kein Cloudaufruf; Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; n8n Stable OSS und Aktivierung `FAIL` |
+| Letzte Aktualisierung | 2026-09-02 |
 
 Diese Roadmap übersetzt die Vision und Architektur von GoldenDawn OS in kleine,
 überprüfbare Entwicklungsstufen. Sie definiert Ergebnisse und Qualitätsgrenzen,
@@ -26,8 +26,10 @@ nicht starre Kalendertermine.
   mutationswirksame Tests ✅ → ADR 0029 – geschlossenes Local Browser Runtime
   Evidence Gate ✅ → einmaliger umgebungsgebundener Chrome-151-Nachweis
   `FAIL` → ADR 0030 – passive Diagnosegrenze ✅ → ADR 0031 – korrigierte
-  Envelope- und Observation-Completion-Grenze ✅ → netzwerkfreie
-  Diagnosefoundation → gesondert autorisierter sichtbarer Diagnoselauf → nur
+  Envelope- und Observation-Completion-Grenze ✅ → ADR 0032 – Capture-, Timing-
+  und Projection-Determinismusgrenze ✅ → reine netzwerkfreie effects-as-data-
+  Diagnosefoundation → eigener Adapter-ADR und getrennte netzwerkfreie
+  Adapterimplementierung → gesondert autorisierter sichtbarer Diagnoselauf → nur
   bei ausreichendem Befund eigener Produkt-ADR und eigener
   Implementierungsslice → vollständig neuer ADR-0029-Lauf nur nach gesonderter
   Autorisierung → getrennte Browserkomposition erst nach Gesamt-`PASS` →
@@ -59,8 +61,9 @@ nicht starre Kalendertermine.
   Restore und Cleanup. Der einmalig autorisierte Chrome-151-Lauf erreichte
   `overallGate: FAIL`; PNA/LNA und die stopregelkonform nicht ausgeführten
   Negativkontrollen bleiben `UNPROVEN`, Cleanup ist `PASS`; die Ursache bleibt
-  `CAUSE_NOT_PROVEN`. ADR 0031 ersetzt ADR 0030 formal und entscheidet nur die
-  korrigierte separate passive Diagnosegrenze. Browserkomposition, Browser-End-to-End-Fluss und
+  `CAUSE_NOT_PROVEN`. ADR 0032 ersetzt ADR 0031 formal und entscheidet nur die
+  totalisierte separate Diagnose-Determinismusgrenze; ADR 0031 bleibt
+  historische Ebene. Browserkomposition, Browser-End-to-End-Fluss und
   Provideradapter fehlen, und der aktuelle Stand kommuniziert nicht extern.
 - Weitere Unterversionen dürfen ergänzt werden, wenn neue, klar abgegrenzte
   Arbeitspakete entstehen.
@@ -90,7 +93,7 @@ nicht starre Kalendertermine.
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.3.0` | Local SyncAgent and Transport Foundation | In Arbeit: lokale Foundations, modellfreier `syncTest`-Kern, ADR-0025-In-Process-Komposition mit lokalem HTTP `200`, isolierter BrowserSyncTransport und feste v1-Wire-Policy samt mutationswirksamer ADR-0028-Matrix implementiert; der einmalige Chrome-151-Runtime-Evidence-Lauf bleibt mit Gesamt-`FAIL`, Ursache `CAUSE_NOT_PROVEN`, PNA/LNA und Negativkontrollen `UNPROVEN` sowie Cleanup `PASS` dokumentiert; ADR 0031 ersetzt ADR 0030 formal und entscheidet die noch nicht implementierte korrigierte passive Diagnosegrenze, als Nächstes folgt ausschließlich ihre netzwerkfreie Foundation; Browserkomposition und End-to-End-Fluss erst nach einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`, Provideradapter später, das ursprüngliche n8n-Gate `FAIL`/`UNPROVEN` und geschlossen | 🟡 |
+| `v0.3.0` | Local SyncAgent and Transport Foundation | In Arbeit: lokale Foundations, modellfreier `syncTest`-Kern, ADR-0025-In-Process-Komposition mit lokalem HTTP `200`, isolierter BrowserSyncTransport und feste v1-Wire-Policy samt mutationswirksamer ADR-0028-Matrix implementiert; der einmalige Chrome-151-Runtime-Evidence-Lauf bleibt mit Gesamt-`FAIL`, Ursache `CAUSE_NOT_PROVEN`, PNA/LNA und Negativkontrollen `UNPROVEN` sowie Cleanup `PASS` dokumentiert; ADR 0032 ersetzt ADR 0031 formal und entscheidet die noch nicht implementierte totalisierte Diagnose-Determinismusgrenze, als Nächstes folgt ausschließlich die reine netzwerkfreie effects-as-data-Foundation und danach ein eigener Adapter-ADR samt netzwerkfreier Implementierung; Browserkomposition und End-to-End-Fluss erst nach einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`, Provideradapter später, das ursprüngliche n8n-Gate `FAIL`/`UNPROVEN` und geschlossen | 🟡 |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
 | `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
@@ -637,9 +640,9 @@ eine spätere Phase geplant.
 
 ### Aktueller Stand
 
-`v0.3.0` ist **in Arbeit – ADR 0031 angenommen; gebundenes Chrome-151-
+`v0.3.0` ist **in Arbeit – ADR 0032 angenommen; gebundenes Chrome-151-
 Runtimegate weiterhin `FAIL`; Ursache `CAUSE_NOT_PROVEN`; nächster Slice:
-ausschließlich die netzwerkfreie passive Diagnosefoundation**.
+ausschließlich die reine netzwerkfreie effects-as-data-Diagnosefoundation**.
 Die SyncContract Foundation für Version `1.0`, die Aktion
 `syncTest` und den Handler `SyncAgent`, die asynchrone SyncService Foundation,
 die synchrone transportneutrale SyncGateway Request Boundary, der separate
@@ -712,13 +715,15 @@ Promise wies dennoch statisch redigiert zurück.
 `normalSyntheticTransport` und das Gesamtgate sind deshalb `FAIL`; PNA/LNA,
 der positive Vektor nach der geschlossenen Vektorgrammatik und die nicht
 ausgeführten Negativvektoren bleiben `UNPROVEN`. Cleanup ist `PASS`; die
-Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0031 ersetzt ADR 0030 formal und
-entscheidet ausschließlich die davon unabhängige korrigierte passive
-Diagnosegrenze. Als Nächstes folgt deren
-netzwerkfreie Foundationimplementierung und -prüfung. Ein sichtbarer
-Diagnoselauf benötigt danach eine neue ausdrückliche Autorisierung;
-Browserkomposition und lokaler Browser-End-to-End-`syncTest` bleiben bis zu
-einem späteren vollständig neuen ADR-0029-Gesamt-`PASS` geschlossen.
+Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0032 ersetzt ADR 0031 formal und
+entscheidet ausschließlich die davon unabhängige totalisierte Diagnose-
+Determinismusgrenze; ADR 0031 bleibt historische Ebene. Als Nächstes folgt die
+reine netzwerkfreie effects-as-data-Foundationimplementierung und -prüfung.
+Danach müssen ein eigener Adapter-ADR und seine getrennte netzwerkfreie
+Implementierung folgen; erst anschließend kann ein sichtbarer Diagnoselauf neu
+autorisiert werden. Browserkomposition und lokaler Browser-End-to-End-
+`syncTest` bleiben bis zu einem späteren vollständig neuen ADR-0029-Gesamt-
+`PASS` geschlossen.
 
 Der erste Implementierungsversuch wurde vor jeder Dateiänderung hart gestoppt.
 Working Tree, Index und die beiden geplanten Zielpfade blieben unverändert; es
@@ -1503,11 +1508,16 @@ keine Freigabe eines optionalen WorkflowProvider-Adapters.
 - ✅ Slice-Grenze eingehalten: Der BrowserSyncTransport ist weder mit dem
   SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss,
   Runtimefreigabe, Provider und globale Betriebsgrenzen bleiben geschlossen.
-  Als nächster Slice folgt ausschließlich das getrennte reale, kontext- und
-  versionsgebundene PNA-/LNA-/Mixed-Content-Runtimegate einschließlich der
-  übrigen CORS-, Berechtigungs-, Loopback-, Redirect-, Header- und
-  Responsebeobachtungen. Erst dessen gebundenes `PASS` kann die getrennte
-  Browserkomposition öffnen.
+  Im damaligen ADR-0027-Entscheidungsstand folgte als nächster Slice
+  ausschließlich das getrennte reale, kontext- und versionsgebundene PNA-/
+  LNA-/Mixed-Content-Runtimegate einschließlich der übrigen CORS-,
+  Berechtigungs-, Loopback-, Redirect-, Header- und Responsebeobachtungen.
+  Erst dessen gebundenes `PASS` konnte die getrennte Browserkomposition
+  öffnen. Nach ADR 0032 folgt separat als aktueller nächster Slice
+  ausschließlich die reine netzwerkfreie effects-as-data-Diagnosefoundation.
+  Danach folgen ein eigener Adapter-ADR und seine getrennte netzwerkfreie
+  Implementierung; erst anschließend darf ein sichtbarer Diagnoselauf
+  gesondert autorisiert werden.
 
 ### Abgeschlossener Entscheidungsslice: Browser SyncTransport Validator Integrity Boundary / ADR 0028
 
@@ -1707,12 +1717,13 @@ keine Freigabe eines optionalen WorkflowProvider-Adapters.
   Fixture, Observer oder Diagnosefoundation erstellt und keinen Browser-,
   Vite-, Gateway-, Listener-, Port-, Request-, Permission- oder Diagnoselauf
   ausgeführt.
-- ⬜ Nächster Slice: ausschließlich die passive Diagnosefoundation in einem
-  vollständig netzwerkfreien Implementierungsslice erstellen und testen. Erst
-  danach können Zielbrowser, `T_replay`, Observer, der einzelne Request,
-  Benutzerinteraktion und Cleanup gesondert autorisiert werden.
+- ⬜ Damals sollte als nächster Slice ausschließlich die passive
+  Diagnosefoundation in einem vollständig netzwerkfreien
+  Implementierungsslice erstellt und getestet werden. Diese Folgereihenfolge
+  wurde vor der Implementierung durch ADR 0031 und anschließend ADR 0032
+  präzisiert.
 
-### Abgeschlossener Korrekturentscheidungsslice: Diagnostic Envelope and Observation Completion Boundary / ADR 0031
+### Historischer abgeschlossener Korrekturentscheidungsslice: Diagnostic Envelope and Observation Completion Boundary / ADR 0031
 
 - ✅ ADR 0031 am `2026-08-30` als reinen Dokumentationsslice angenommen. Er
   ersetzt ADR 0030 formal und übernimmt alle nicht ausdrücklich korrigierten
@@ -1733,9 +1744,99 @@ keine Freigabe eines optionalen WorkflowProvider-Adapters.
 - ✅ ADR-0029-`overallGate: FAIL`, `CAUSE_NOT_PROVEN`, Replayrelation,
   Observerdelta, Requestbudget, sechs CDP-Kommandos, vier Networkeventklassen,
   zehn externe Stages, Clock-Domänen und Redaction unverändert gelassen.
-- ⬜ Nächster Slice bleibt ausschließlich die vollständig netzwerkfreie
-  Implementierung und Prüfung der passiven Diagnosefoundation. Ein sichtbarer
-  Lauf benötigt danach eine eigene ausdrückliche Autorisierung.
+- ⬜ Der damals nächste Slice war ausschließlich die vollständig netzwerkfreie
+  Implementierung und Prüfung der passiven Diagnosefoundation. Dieser Stand
+  wurde vor einer Implementierung durch ADR 0032 ersetzt.
+
+### Abgeschlossener Entscheidungsslice: Diagnostic Capture, Timing and Projection Determinism Boundary / ADR 0032
+
+- ✅ ADR 0032 am `2026-09-02` als reinen Dokumentationsslice angenommen. Er
+  ersetzt ADR 0031 formal und übernimmt sämtliche nicht ausdrücklich
+  korrigierten ADR-0030-/ADR-0031-Regeln. ADR 0031 bleibt mit bytegleichem
+  Hauptteil ab `## Kontext` historische Ebene; ADR 0020, ADR 0028, ADR 0029 und
+  der historische Evidence-Record bleiben unverändert. Foundation, Adapter und
+  Lauf sind weder implementiert noch autorisiert.
+- ✅ Schema 1, Recordtyp und sämtliche Kardinalitäten unverändert gelassen: 17
+  Rootfelder, sechs CDP-Operationen, 17 Integritätschecks, neun Requestzähler
+  plus Sequenz, zehn Stages, drei Clock-Domänen, exakt 20 Cleanup-IDs und fünf
+  Findings. Die exakte Fortführung ohne Versionswechsel ist nur zulässig, weil
+  weder eine Implementierung noch eine konforme persistierte Instanz existiert.
+  `overallGate` bleibt vor und nach der Diagnose `FAIL`;
+  `causeStatus` bleibt ausnahmslos `CAUSE_NOT_PROVEN`.
+- ✅ Einen einzigen globalen Setupcap von exakt `6.000 ms` über
+  `Target.getTargets`, `Target.attachToTarget` und `Network.enable` entschieden.
+  Vor dem einzigen GetTargets-Sendeversuch werden Cap-/Clock-Fähigkeit
+  validiert und scharf geschaltet, `m_setup` genau einmal erfasst,
+  `t_setup := 0` gesetzt, der konkrete Timer auf `m_setup + 6000` armiert und
+  Stage 1 `observer-armed` gesetzt; erst danach entsteht der nichtblockierende
+  Command-Intent. Der Setup bleibt
+  strikt sequenziell mit höchstens einem ausstehenden Kommando und setzt den
+  Cap nicht pro Kommando zurück. Eine fehlende Cap-/Clock-Fähigkeit ergibt `V`
+  oder keinen gültig gestarteten Versuch; die pure Foundation besitzt diese
+  reale Fähigkeit nicht.
+- ✅ Für jede antwortartig eingereihte Nachricht beim Dequeue vor Reflection
+  `m_answer` genau einmal erfasst und roh `d := m_answer - m_setup` gebildet.
+  Nur `d < 6000` erlaubt die begrenzte synchrone Prüfung gegen die in ADR 0032
+  und dem Living Contract geschlossene Setupantwort-Grammatik; bei
+  `d >= 6000` gewinnt der Cap bei ungelesenem Inhalt. Ungültige, negative,
+  rückläufige oder werfende Clockwerte ergeben `V`. Nur drei eindeutig
+  korrelierte, erfolgreiche und vollständig validierte Antworten ergeben
+  `setupReady`. Bei `Target.getTargets` wird zuerst die Anzahl der `page`-
+  Kandidaten mit exakt gebundener URL unabhängig von `attached` bestimmt; nur
+  bei genau einem wird `attached === false` geprüft und danach `targetId`
+  gebunden. Eine Antwort gilt erst am verarbeiteten Setupcap oder nach
+  irreversibler Verbindungsschließung als fehlend, nicht schon bei leerer Queue
+  oder bloßem Noch-nicht-Eintreffen. Fehlende oder terminal unbrauchbare
+  Setupergebnisse werden ohne bestätigten Obserververstoß `U` und damit
+  `UNPROVEN/inconclusive`.
+- ✅ Die Abschlussformeln auf `setupClosed := setupReady || U || V` und
+  `observationClosed := V || U || C` totalisiert. `Runtime.evaluate` darf nur
+  nach `setupReady` und höchstens einmal gesendet werden; erst sein bestätigter
+  Sendeübergang startet das getrennte 6.000-ms-Capturefenster. `S && N` ist nur
+  Produkt-Evidence-Completeness und schließt den Observer nicht. Ohne sticky
+  bestätigtes `V` bleibt das vollständige Capture bis zum verarbeiteten `C`
+  aktiv; späte Antworten werden verworfen.
+- ✅ Für `U` `captureWindowState: not-started`, null Evaluation, Factory und
+  Stimulus, `zero/unproven` für gegatete Downstream-Kommandos, `unknown` für
+  nicht zuverlässig beobachtete Networkcounts und `incomplete` für die Sequenz
+  festgelegt. Stage 1 bleibt `observed/match`; nur die gegateten Stages 2 bis 8
+  werden `not-observed/unproven` mit `null` für Timing und `receiptOrder`. Der
+  Record beschreibt genau einen Diagnoseversuch und höchstens einen Stimulus;
+  `PASS` und jeder nicht-inkonklusive Befund verlangen exakt einen.
+  Abschlussgründe umfassen mindestens `setup-cap`,
+  `setup-terminal-unproven`, `capture-cap` und `confirmed-violation`.
+- ✅ Einen tief eingefrorenen Pre-Cleanup-Observation-Snapshot und ein danach
+  getrennt erzeugtes Cleanup-Ledger entschieden. Cleanup beginnt auch nach `U`
+  aus dem tatsächlich erreichten partiellen Setupzustand; die 20 Cleanup-IDs
+  und der eigene 60.000-ms-Finalisierungscap bleiben unverändert. Der
+  Finalrecord wird erst nach Cleanupfinalisierung frisch aus beiden
+  unveränderten Projektionen zusammengesetzt.
+- ✅ Die exakte 10-ms-Timingfunktion mit getrennten Nullpunkten, Stage-/Layer-/
+  Clock-Matrix und ohne Cross-Clock-Verrechnung gebunden. Die Foundation-
+  Hashdomäne verwendet rohe Inhaltsbytes des später tatsächlich geladenen
+  Pfads `scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js`;
+  `evaluationSha256` verwendet UTF-8 ohne BOM über exakt den gesendeten
+  primitiven Expression-String.
+- ✅ Die Main-World-Ausgabe auf den geschlossenen verschachtelten By-Value-Baum
+  aus `preTransportContext`, `execution` und optionalem `settlement` begrenzt.
+  Untrusted CDP-Hüllen und jedes konsumierte Feld werden descriptorbasiert als
+  eigene Data-Properties geprüft; verbotene Inhalte werden nicht gelesen. Das
+  bestätigt den Eingangsgraphen weder als gewöhnlich oder Plain Data noch als
+  proxyfrei, parser- oder pipe-authentisch; nur die frische
+  Controllerprojektion kann als gewöhnlich und geschlossen bestätigt werden.
+  Die pure Foundation allein kann kein reales `observerGate: PASS` belegen;
+  adapterabhängige Provenienz darf erst aus identitätsgebundener Evidenz des
+  späteren Adapters abgeleitet und nie als freies Bool übernommen werden.
+- ✅ Die totale Replayrelation `adr-0032-causal-replay-v2` auf exakt 59
+  Vergleiche erweitert: acht Artefakte einschließlich Frontend-Runtime-Source-
+  Set, separat `repository.state` und 50 Kontextwerte einschließlich
+  `toolchain.vite.lockfileVersion`.
+- ⬜ Nächster Slice: ausschließlich die reine, importinaktive und vollständig
+  netzwerkfreie effects-as-data-Foundation implementieren und testen. Danach
+  müssen Raw-Pipe-, Parser-, Queue-, Ressourcen-, Cap-/Timer-, Adapter-,
+  Launcher- und Hashbindung in einem eigenen ADR entschieden und getrennt
+  netzwerkfrei implementiert werden. Erst nach beiden Slices darf ein
+  sichtbarer Diagnoselauf gesondert autorisiert werden.
 
 Der folgende ADR-0027-Entscheidungsslice und der anschließende ADR-0026-Block
 bleiben als damalige Entscheidungs- und Vorimplementierungshistorie
@@ -2109,43 +2210,49 @@ aktuellen Anforderungen mehr.
    Endpoint gebunden ausgeführt und nach `positive-default` stopregelkonform
    beendet; `normalSyntheticTransport` und Gesamtgate `FAIL`, PNA/LNA sowie
    die nicht ausgeführten Negativkontrollen `UNPROVEN`, Cleanup `PASS`.
-11. ✅ **ADR 0030 / ADR 0031 – korrigierte passive Runtime-Diagnosegrenze:**
-   den unabhängigen Pipe-Observer, `T_replay ≡R T₀`, externe Stages, das exakte
-   Requestbudget und den `BrowserTransportDiagnosticRecord` entschieden;
-   ADR 0031 ersetzt ADR 0030 formal und ergänzt die exakt 20 Cleanup-IDs, die
-   flüchtige By-Value-Hüllengrenze und `(S && N) || C`, ohne Foundation oder
-   Lauf zu implementieren oder zu autorisieren.
-12. ⬜ **Nächster Slice – netzwerkfreie Diagnosefoundation:** den passiven
-   Controller und die geschlossene Projektions-/Integritätslogik in einem
-   eigenen vollständig netzwerkfreien Slice implementieren und testen.
-13. ⬜ **Separate Laufautorisierung:** erst danach Zielbrowser, `T_replay`,
-   Observer, exakt einen Request, Benutzerinteraktion und Cleanup ausdrücklich
-   autorisieren.
-14. ⬜ **Einmaliger sichtbarer Diagnoselauf:** ausschließlich den autorisierten
+11. ✅ **ADR 0030 / ADR 0031 / ADR 0032 – totalisierte passive Runtime-
+   Diagnosegrenze:** den unabhängigen Diagnoseversuch, `T_replay ≡R T₀`,
+   externe Stages, das exakte Requestbudget und den
+   `BrowserTransportDiagnosticRecord` entschieden; ADR 0032 ersetzt ADR 0031
+   formal und totalisiert Setupcap `U`, vollständiges Capture bis `V` oder `C`,
+   Timing, Hashdomänen, verschachtelte Projektion, descriptorbasierte CDP-
+   Grenzen, Snapshot/Ledger, 59 Replayvergleiche und Cleanup, ohne Foundation,
+   Adapter oder Lauf zu implementieren oder zu autorisieren.
+12. ⬜ **Nächster Slice – reine netzwerkfreie effects-as-data-Foundation:** den
+   importinaktiven Controller und die geschlossene Projektions-/
+   Integritätslogik ohne Realdefaults oder I/O implementieren und testen.
+13. ⬜ **Getrennter Adapter-ADR und netzwerkfreie Implementierung:** Raw-Pipe-,
+   Parser-, Queue-, Ressourcen-, Cap-/Timer-, Hashbindungs-, Launcher- und
+   Laufzeitadapter entscheiden und danach getrennt ohne Browser- oder
+   Netzwerkzugriff implementieren.
+14. ⬜ **Separate Laufautorisierung:** erst danach Zielbrowser, `T_replay`,
+   Observer, höchstens einen Transportstimulus, Benutzerinteraktion und Cleanup
+   ausdrücklich autorisieren.
+15. ⬜ **Einmaliger sichtbarer Diagnoselauf:** ausschließlich den autorisierten
    Einmallauf ausführen und in einem getrennten sanitisierten Record
    dokumentieren.
-15. ⬜ **Bedingter Produktentscheidungs-ADR:** nur bei ausreichendem Befund eine
+16. ⬜ **Bedingter Produktentscheidungs-ADR:** nur bei ausreichendem Befund eine
    Produktänderung entscheiden; Reproduktion allein ist kein Ursachennachweis.
-16. ⬜ **Getrennte Produktimplementierung:** ausschließlich die zuvor
+17. ⬜ **Getrennte Produktimplementierung:** ausschließlich die zuvor
    entschiedene Produktänderung implementieren und prüfen.
-17. ⬜ **Vollständig neuer ADR-0029-Runtime-Evidence-Lauf:** mit neuer Run-ID
+18. ⬜ **Vollständig neuer ADR-0029-Runtime-Evidence-Lauf:** mit neuer Run-ID
    und vollständiger Gatematrix separat autorisieren und ausführen.
-18. ⬜ **Browserkomposition:** erst nach dessen Gesamt-`PASS` in einem eigenen
+19. ⬜ **Browserkomposition:** erst nach dessen Gesamt-`PASS` in einem eigenen
    Entscheidungs- und Implementierungsslice den isoliert geprüften
    Clienttransport mit dem SyncService komponieren.
-19. ⬜ **Lokaler End-to-End-`syncTest`:** den vollständig lokalen Browserfluss
+20. ⬜ **Lokaler End-to-End-`syncTest`:** den vollständig lokalen Browserfluss
    bis zur normal korrelierten SyncResponse danach in einem weiteren getrennten
    Slice nachweisen.
-20. ⬜ **Globale/systemweite lokale Betriebsgrenzen:** Missbrauchs-,
+21. ⬜ **Globale/systemweite lokale Betriebsgrenzen:** Missbrauchs-,
    Parallelitäts-, Zeit- und Ressourcenbegrenzung für den lokalen Pfad
    entscheiden, implementieren und verifizieren.
-21. ⬜ **Erst danach getrennte Providerentscheidungen:** jeden externen oder
+22. ⬜ **Erst danach getrennte Providerentscheidungen:** jeden externen oder
    lokalen Provider nur capability-spezifisch, standardmäßig deaktiviert und
    mit eigener Sicherheits-, Datenschutz- und Aktivierungsentscheidung planen.
-22. ⬜ **Provideradapter als getrennte Slices:** OpenAI-, lokales-Modell- und
+23. ⬜ **Provideradapter als getrennte Slices:** OpenAI-, lokales-Modell- und
    n8n-Adapter unabhängig voneinander entscheiden und implementieren; kein
    Adapter ist durch ADR 0023 autorisiert.
-23. ⬜ **Private Daten, weitere Aktionen, Tools und Nebenwirkungen:** erst nach
+24. ⬜ **Private Daten, weitere Aktionen, Tools und Nebenwirkungen:** erst nach
    neuen Contract-, Identitäts-, Berechtigungs-, Replay-, Idempotenz- und
    Datenschutzentscheidungen einführen.
 
@@ -2436,7 +2543,7 @@ Vor dem Start einer neuen Version werden folgende Punkte geprüft:
 | --- | --- |
 | Unkontrolliertes Scope-Wachstum | Version 1 strikt auf drei Agenten und definierte Module begrenzen |
 | Secrets im Frontend | GoldenDawn-seitige Credentialkopien nur in der vertrauenswürdigen Runtime-/Secretverwaltung konkreter Adapter auf GD-WS01, providerseitiges Prüfmaterial getrennt im jeweiligen Provider-Store halten; Same-Realm und Providerablage nicht als Secret-Isolation, Redaction, Retention oder Nichtweitergabe überbehaupten |
-| Live manipulierbare Validatoroberflächen und ungeklärte positive Browser-Laufzeitabweichung | Die implementierte feste transportlokale v1-Wire-Policy samt kausalem Mutationsnachweis schließt die damalige Transportlücke; Contractvalidator und Same-Realm bleiben unverändert. Der einmalige Chrome-151-Runtime-Lauf endete wegen einer getrennten positiven Transportabweichung mit Gesamt-`FAIL`; ADR 0031 ersetzt ADR 0030 formal und begrenzt ausschließlich die spätere passive Diagnose, der Ursachenstatus bleibt exakt `CAUSE_NOT_PROVEN` |
+| Live manipulierbare Validatoroberflächen und ungeklärte positive Browser-Laufzeitabweichung | Die implementierte feste transportlokale v1-Wire-Policy samt kausalem Mutationsnachweis schließt die damalige Transportlücke; Contractvalidator und Same-Realm bleiben unverändert. Der einmalige Chrome-151-Runtime-Lauf endete wegen einer getrennten positiven Transportabweichung mit Gesamt-`FAIL`; ADR 0032 ersetzt ADR 0031 formal und begrenzt ausschließlich die spätere totalisierte Diagnose, der Ursachenstatus bleibt exakt `CAUSE_NOT_PROVEN` |
 | Kopplung an Airtable-Feldnamen | Mapping vollständig im DataAgent kapseln |
 | Ungültige Modellantworten | Struktur validieren und kontrollierte Fallbacks verwenden |
 | Doppelte Datensätze | Stabile IDs, `requestId` und idempotente Schreiblogik einsetzen |
@@ -2612,8 +2719,19 @@ ADR 0031 ersetzt ADR 0030 formal, übernimmt dessen fortgeltende Grenzen und
 korrigiert ausschließlich die Cleanup-Kardinalität, die flüchtige
 CDP-By-Value-Hülle und den gemeinsamen Beobachtungsabschluss. Der Vertrag
 behält exakt 20 Cleanup-IDs; die Completion-Barriere lautet `(S && N) || C`.
-ADR 0031 ist angenommen, aber weder Foundation noch Lauf sind implementiert
-oder autorisiert.
+ADR 0031 ist als historische Ebene angenommen; vor Foundation oder Lauf wurde
+dieser Stand durch ADR 0032 ersetzt.
+ADR 0032 ist am `2026-09-02` als reine Dokumentationsentscheidung angenommen.
+Er ersetzt ADR 0031 formal und totalisiert die Setup-, vollständige Capture-,
+Timing-, Hash-, Projection-, Replay-, Zwei-Phasen-Snapshot-/Ledger- und
+Cleanupgrenze. Der getrennte globale Setupcap beträgt 6.000 ms und schließt
+ohne `setupReady` als `U`; `Runtime.evaluate` bleibt bis dahin verboten. Nach
+seinem höchstens einmaligen bestätigten Send bleibt das Capture ohne sticky
+`V` bis zum 6.000-ms-Cap `C` offen. Der getrennte Cleanup-Finalisierungscap
+bleibt 60.000 ms. Schema 1 und sämtliche Kardinalitäten bleiben unverändert;
+die Replaymenge umfasst exakt 59 Vergleiche. Weder Foundation, Adapter noch
+Lauf sind implementiert oder autorisiert. Das ADR-0029-`overallGate` bleibt
+`FAIL`; `causeStatus` bleibt ausnahmslos `CAUSE_NOT_PROVEN`.
 Der veröffentlichte `v0.2.2`-Umfang bleibt
 vollständig lokal. Es wurde kein Cloudrequest ausgeführt; weder Listener noch
 Evidence-Tool besitzen einen Browser-, Produkt- oder komponierten
@@ -2630,8 +2748,11 @@ automatische Cloud-Sicherung, Airtable, ein allgemeines Fachbackend,
 Benutzerkonten und weitere Agentenlogik bleiben offen beziehungsweise beginnen
 erst in den dafür vorgesehenen späteren Slices und Versionen. Der nächste
 konkrete Schritt ist ausschließlich die **vollständig netzwerkfreie
-Implementierung und Prüfung der passiven ADR-0031-Diagnosefoundation**. Erst
-danach können Zielbrowser, `T_replay`, Observer, exakt ein Request,
+Implementierung und Prüfung der reinen ADR-0032-effects-as-data-
+Diagnosefoundation**. Danach müssen Raw-Pipe-, Parser-, Queue-, Ressourcen-,
+Cap-/Timer-, Hashbindungs-, Launcher- und Laufzeitadapter in einem eigenen ADR
+entschieden und getrennt netzwerkfrei implementiert werden. Erst anschließend
+können Zielbrowser, `T_replay`, Observer, höchstens ein Transportstimulus,
 Benutzerinteraktion und Cleanup für einen sichtbaren Einmallauf separat
 autorisiert werden. Ein neuer ADR-0029-Runtime-Evidence-Lauf benötigt später
 eine neue Run-ID, die vollständige Gatematrix und eine eigene ausdrückliche
