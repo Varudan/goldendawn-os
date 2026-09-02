@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0031 angenommen; Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: netzwerkfreie passive Diagnosefoundation` |
+| Projektphase | `v0.3.0 – ADR 0032 angenommen; gebundenes Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: reine netzwerkfreie effects-as-data-Diagnosefoundation` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,8 +21,8 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy implementiert; der einmalige Schema-1-Lauf `chrome-stable-win-01` bleibt mit `normalSyntheticTransport: FAIL`, `pnaLnaPermission: UNPROVEN`, nicht ausgeführten Negativvektoren und `cleanupRedaction: PASS` dokumentiert; `overallGate: FAIL`, Ursache `CAUSE_NOT_PROVEN`; ADR 0031 ersetzt ADR 0030 formal und entscheidet ausschließlich den korrigierten separaten passiven Diagnosevertrag, implementiert oder autorisiert ihn aber nicht; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
-| Letzte Aktualisierung | 2026-08-30 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy implementiert; der einmalige Schema-1-Lauf `chrome-stable-win-01` bleibt mit `normalSyntheticTransport: FAIL`, `pnaLnaPermission: UNPROVEN`, nicht ausgeführten Negativvektoren und `cleanupRedaction: PASS` dokumentiert; `overallGate: FAIL`, Ursache `CAUSE_NOT_PROVEN`; ADR 0032 ersetzt ADR 0031 formal und totalisiert ausschließlich den separaten passiven Diagnosevertrag, implementiert oder autorisiert aber weder Diagnosefoundation noch Adapter oder Runtimevorgang; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
+| Letzte Aktualisierung | 2026-09-02 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
@@ -43,7 +43,7 @@ Kompositionsvertrag aus ADR 0025, den durch ADR 0027 korrigierten und
 inzwischen isoliert implementierten Browser SyncTransport Contract sowie die
 mit ADR 0028 implementierte feste Validator-Integritätsgrenze, das durch ADR
 0029 entschiedene und mit Gesamt-`FAIL` ausgeführte Runtimegate sowie den durch
-ADR 0031 als formalen Ersatz für ADR 0030 davon getrennt entschiedenen, noch
+ADR 0032 als formalen Ersatz für ADR 0031 davon getrennt totalisierten, noch
 nicht implementierten
 `BrowserTransportDiagnosticRecord`. ADR 0028
 ersetzt ADR 0027 formal, übernimmt dessen
@@ -3178,37 +3178,39 @@ Runtime-, Datenschutz- oder Compliancebeweis.
 Der Transport ist weiterhin weder mit dem SyncService noch in `src/main.js`
 komponiert; ein Browser-End-to-End-`syncTest` existiert nicht. Der einmalig
 ausgeführte ADR-0029-Lauf bleibt mit Gesamt-`FAIL` dokumentiert; seine Ursache
-ist `CAUSE_NOT_PROVEN`. ADR 0031 ersetzt ADR 0030 formal und entscheidet
+ist `CAUSE_NOT_PROVEN`. ADR 0032 ersetzt ADR 0031 formal und totalisiert
 ausschließlich den davon unabhängigen passiven Diagnosevertrag. Als Nächstes
-folgt nur dessen
-netzwerkfreie Foundationimplementierung und -prüfung. Ein sichtbarer
-Diagnoselauf benötigt danach eine neue ausdrückliche Autorisierung;
+folgt nur dessen reine netzwerkfreie effects-as-data-Foundationimplementierung
+und -prüfung; darauf folgen ein eigener Adapter-ADR und dessen getrennte
+netzwerkfreie Implementierung. Erst danach benötigt ein sichtbarer
+Diagnoselauf eine neue ausdrückliche Autorisierung;
 Browserkomposition und lokaler Browser-End-to-End-`syncTest` bleiben bis zu
 einem späteren vollständig neuen ADR-0029-Gesamt-`PASS` geschlossen.
 
-## Browser Transport Diagnostic Record / ADR 0030
+<a id="browser-transport-diagnostic-record--adr-0030"></a>
 
-[ADR 0031](decisions/0031-browser-sync-transport-diagnostic-envelope-and-observation-completion-boundary.md)
-ersetzt [ADR 0030](decisions/0030-browser-sync-transport-runtime-diagnostic-observer-boundary.md)
-formal und definiert unter Beibehaltung dieses ADR-0030-Ankers einen
-eigenständigen persistierbaren Diagnosevertrag für genau einen
-später separat autorisierten passiven BrowserSyncTransport-Einmallauf. Der
-Vertrag ist kein vierter ADR-0029-Vektor, kein zusätzliches ADR-0029-Gate und
-keine Erweiterung des `BrowserRuntimeEvidenceRecord`. Der historische Record
-und sein `overallGate: FAIL` bleiben unverändert.
+## Browser Transport Diagnostic Record / ADR 0032
 
-Dieser Abschnitt definiert ausschließlich eine geschlossene Datenform. Er ist
-weder JSON-Recordvorlage noch ausgefüllter Record, Controller, Harness, Fixture
-oder Observer und autorisiert keine Runtimeoperation.
+ADR 0032 ersetzt ADR 0031 formal und übernimmt alle nicht ausdrücklich
+geänderten Regeln. ADR 0030 bleibt als bereits durch ADR 0031 ersetzte
+historische Ebene erhalten. Dieser Living Contract beschreibt ausschließlich
+den künftigen passiven Diagnose-Record; er autorisiert weder Foundation,
+Adapter noch einen Browser-, CDP-, Debug-Pipe-, Vite-, Gateway-, Netzwerk- oder
+Diagnoselauf.
+
+`BrowserTransportDiagnosticRecord` besitzt weiterhin `schemaVersion: 1`,
+`recordType: browser-transport-diagnostic`, exakt 17 Rootfelder, sechs
+Protokolloperationen, 17 Integritätschecks, neun Requestbudgetzähler plus
+Sequenz, zehn Stages, drei Clockdomänen, 20 Cleanup-IDs und fünf Findings. Das
+ADR-0029-Gesamtgate bleibt `FAIL`; `causeStatus` bleibt ausnahmslos
+`CAUSE_NOT_PROVEN`.
+
+`schemaVersion: 1` bleibt ausschließlich deshalb unverändert, weil weder eine
+Implementierung noch eine einzige konforme persistierte
+`BrowserTransportDiagnosticRecord`-Instanz existiert. Daraus folgt weder eine
+Migrations- noch eine Rückwärtskompatibilitätsbehauptung.
 
 ### Geschlossene Rootform
-
-Ein `BrowserTransportDiagnosticRecord` gilt für genau einen Diagnose-Run,
-genau ein gebundenes Top-Level-Target, genau einen Transportstimulus und genau
-einen nach dem Cleanup materialisierten sanitisierten Record. Jedes Objekt
-besitzt ausschließlich die ausdrücklich genannten aufzählbaren
-Own-Data-Properties. Zusätzliche Keys sowie freie `metadata`-, `notes`-,
-`details`-, Header-, Event- oder Blobfelder sind ungültig.
 
 ```text
 BrowserTransportDiagnosticRecord = {
@@ -3232,25 +3234,18 @@ BrowserTransportDiagnosticRecord = {
 }
 ```
 
-| Feld | Geschlossener Vertrag |
-| --- | --- |
-| `schemaVersion` | Ganzzahl, exakt `1` |
-| `recordType` | exakt `browser-transport-diagnostic` |
-| `diagnosticRunId` | lokales ASCII-Label `[a-z0-9-]{1,32}`; nicht aus Benutzer-, Rechner-, Profil-, Request- oder Zeitwerten abgeleitet |
-| `observedAt` | kanonischer RFC-3339-Zeitpunkt der Bindung von `T_replay`; niemals Requesttimestamp oder Recordmaterialisierungszeit |
-| `timeZone` | exakt `{ id, utcOffset }`; sanitierter IANA-Zonenname und `Z` oder `±HH:MM` |
-| `historicalEvidence` | exakte unveränderliche Referenz auf den unten gebundenen ADR-0029-Record |
-| `replay` | neue Identitäten von `T_replay`, kausal relevante Werte und geschlossene `≡R`-Vergleiche |
-| `observer` | ausschließlich das geschlossene `Δ_observer`, seine Operationen und Integritätschecks |
-| `requestBudget` | exakte targetgebundene Zählklassen und Sequenz |
-| `publicSettlement` | nur das geschlossene öffentliche Promise-Settlement; keine Response- oder Fehlerrohdaten |
-| `stages` | exakt zehn externe Slots in kanonischer Vokabularreihenfolge |
-| `timing` | feste getrennte Clock-Domänen, Rundung, Caps und Capturefenster |
-| `cleanup` | geschlossene Abschluss- und Rückstandschecks |
-| `adr0029OverallGate` | exakt `{ before: "FAIL", after: "FAIL", unchanged: true }` |
-| `observerGate` | exakt `PASS`, `FAIL` oder `UNPROVEN`; ausschließlich Diagnoseintegrität, niemals Runtimegate |
-| `finding` | exakt einer der unten definierten fünf Diagnosebefunde |
-| `causeStatus` | ausnahmslos exakt `CAUSE_NOT_PROVEN` |
+Die Rootwerte sind:
+
+- `schemaVersion` exakt `1`;
+- `recordType` exakt `browser-transport-diagnostic`;
+- `diagnosticRunId` ein neues lokales ASCII-Label `[a-z0-9-]{1,32}`;
+- `observedAt` exakt im 24-stelligen kanonischen
+  `YYYY-MM-DDTHH:mm:ss.sssZ`-Profil mit echter UTC-Rückprojektion;
+- `timeZone` eine ASCII-IANA-Zeitzonen-ID mit höchstens 64 Zeichen;
+- `observerGate` exakt `PASS`, `FAIL` oder `UNPROVEN`;
+- `causeStatus` ausnahmslos exakt `CAUSE_NOT_PROVEN`;
+- `adr0029OverallGate` exakt
+  `{ before: "FAIL", after: "FAIL", unchanged: true }`.
 
 ### Unveränderliche historische Referenz
 
@@ -3266,7 +3261,7 @@ historicalEvidence = {
 }
 ```
 
-Die zulässigen Werte sind für Schema 1 fest:
+Die Werte sind fest:
 
 ```text
 recordPath = docs/evidence/browser-runtime-evidence.chrome-stable-windows-01.json
@@ -3276,21 +3271,21 @@ baseContextId = chrome-stable-win-t0-01
 overallGate = FAIL
 ```
 
-Der Record darf diese Referenz weder ersetzen noch eine revidierte historische
-Instanz einbetten. `before` und `after` unter `adr0029OverallGate` bleiben
-unabhängig von jedem Diagnosebefund `FAIL`.
+Der historische Record wird weder ersetzt noch revidiert. Der neue
+Diagnoserecord ist kein vierter ADR-0029-Vektor und kein zusätzliches
+Runtimegate.
 
-### Neues `T_replay` und Relation `≡R`
+### Neues `T_replay` und totale Relation
 
-Die einzige zulässige Bindung lautet:
+Die einzige zulässige Bindung bleibt:
 
 ```text
 T_replay ≡R T₀
 T_diag = T_replay + Δ_observer
 ```
 
-`T_replay` ist eine neue Referenzbindung, kein observerfreier Kontrolllauf.
-Historisches `T₀ + Δ_observer` ist unzulässig. `replay` besitzt exakt:
+`T_replay` ist eine neue Referenzbindung vor dem höchstens einen Stimulus und
+kein observerfreier Kontrolllauf. `replay` besitzt exakt:
 
 ```text
 replay = {
@@ -3316,34 +3311,55 @@ equivalence = {
 }
 ```
 
-- `replayContextId` ist ein neues lokales ASCII-Label
-  `[a-z0-9-]{1,32}` und verschieden von `baseContextId`.
-- `repositoryCommit` bindet den neuen Lower-Hex-Commit mit exakt 40 Zeichen;
-  er muss nicht und darf nicht als identisch zum historischen Commit
-  vorausgesetzt werden. `repositoryState` ist exakt `clean`, `dirty` oder
-  `unknown`; der autorisierbare Pfad verlangt `clean`.
-- `profileInstanceBinding.lifecycle` ist exakt
-  `fresh-disposable-new-instance-confirmed`, `reused` oder `unknown`.
-  `newInstanceConfirmed` und `historicalInstanceReused` sind boolesch; nur
-  `true` und `false` in dieser Reihenfolge sind zulässig. Ein flüchtiges
-  Instanzlabel darf die Bindung unterstützen, wird jedoch nicht persistiert.
-- `relationId` ist exakt `adr-0030-causal-replay-v1`.
-- `noUnexplainedCausalDeviation` ist boolesch.
-- `equivalence.result` ist exakt `EQUIVALENT`, `DIVERGED` oder `UNPROVEN`.
-  `EQUIVALENT` verlangt ausnahmslos alle Pflichtvergleiche
-  `observed`/`match` und `noUnexplainedCausalDeviation: true`.
-  Mindestens ein `mismatch` ergibt `DIVERGED`; andernfalls ergibt mindestens
-  ein `unproven` `UNPROVEN`.
+- `replayContextId` ist `[a-z0-9-]{1,32}`, neu und verschieden von
+  `baseContextId`.
+- `repositoryCommit` ist ein Lower-Hex-Git-Commit mit genau 40 Zeichen.
+- `repositoryState` ist `clean`, `dirty` oder `unknown`; ein autorisierbarer
+  Lauf verlangt `clean`.
+- `relationId` ist exakt `adr-0032-causal-replay-v2`.
+- `noUnexplainedCausalDeviation` ist `confirmed`, `contradicted` oder
+  `unproven`.
+- `equivalence.result` ist `EQUIVALENT`, `DIVERGED` oder `UNPROVEN`.
 
-Neue Run-ID, Messzeit, Zeitzone, Repositorycommit, `replayContextId` und
-Wegwerfprofilinstanz sind neue gebundene Identitäten. Sie sind weder literale
-Wiederholungen ihrer historischen Gegenstücke noch Observerdelta.
+`profileInstanceBinding` wird total abgeleitet:
 
-### Geschlossene kausale Vergleichsmenge
+```text
+fresh-disposable-new-instance-confirmed
+  newInstanceConfirmed: true
+  historicalInstanceReused: false
 
-`comparisons` enthält genau einen Eintrag für jeden nachfolgend genannten
-`fieldId`. Die Reihenfolge entspricht dieser Liste; Duplikate fehlen. Jeder
-Eintrag besitzt exakt:
+reused
+  newInstanceConfirmed: false
+  historicalInstanceReused: true
+
+unknown
+  newInstanceConfirmed: false
+  historicalInstanceReused: false
+```
+
+`true/true` ist ungültig. Neue Run-ID, Messzeit, Zeitzone, Repositorycommit,
+Replaykontext und Wegwerfprofil sind neue gebundene Identitäten und kein
+Observerdelta.
+
+Die Äquivalenzableitung ist exakt:
+
+```text
+DIVERGED
+  bei mindestens einem mismatch
+  oder noUnexplainedCausalDeviation = contradicted
+
+UNPROVEN
+  wenn kein DIVERGED-Grund vorliegt und mindestens ein unproven besteht
+  oder noUnexplainedCausalDeviation = unproven
+
+EQUIVALENT
+  ausschließlich bei allen Vergleichen observed/match
+  und noUnexplainedCausalDeviation = confirmed
+```
+
+### Exakt 59 kausale Vergleiche
+
+Jeder Vergleich besitzt exakt:
 
 ```text
 comparison = {
@@ -3358,19 +3374,17 @@ comparison = {
 comparisonBasis =
   historical-record-value |
   historical-record-closed-derivation |
-  historical-commit-artifact-sha256
+  historical-commit-artifact-sha256 |
+  historical-commit-closed-derivation
 
 observationState = observed | not-observed | ambiguous
 result = match | mismatch | unproven
 ```
 
 Bei `not-observed` oder `ambiguous` ist `result` zwingend `unproven`.
-`historicalValue` und `replayValue` verwenden ausschließlich den für den
-jeweiligen `fieldId` geschlossenen primitiven Wert oder `null`. Eine fehlende
-historische Grundlage verwendet `null` und `unproven`; sie wird niemals
-rekonstruiert oder als Gleichheit behandelt.
-
-Die vollständige Feld-ID-Allowlist lautet:
+Fehlende historische oder neue Grundlagen verwenden `null` und `unproven` und
+werden niemals als Gleichheit behandelt. `comparisons` enthält ohne Duplikat
+exakt diese 59 `fieldId` in dieser Reihenfolge:
 
 ```text
 artifact.transport.src/transports/browserSyncTransport.js.sha256
@@ -3380,6 +3394,7 @@ artifact.gateway.server/localSyncGatewayRuntimeConfig.js.sha256
 artifact.gateway.server/localSyncGatewayHttpServer.js.sha256
 artifact.gateway.src/gateways/syncGatewayRequestBoundary.js.sha256
 artifact.gateway.src/agents/syncAgent.js.sha256
+artifact.frontend.runtime-source-set.sha256
 repository.state
 hostRuntime.executionClass
 operatingSystem.family
@@ -3430,16 +3445,107 @@ gateway.allowedOrigin.relationToFrontend
 gateway.endpoint
 gateway.responderProfile
 gateway.responseProfile
+toolchain.vite.lockfileVersion
 ```
 
-Die sieben `artifact.*`-Werte verwenden jeweils Lower-Hex-SHA-256 mit exakt 64
-Zeichen und die Vergleichsbasis `historical-commit-artifact-sha256`. Jeder
-Pfad wird einzeln verglichen; ein freier oder zusammengefasster Gatewayhash ist
-ungültig. `gateway.responseProfile` verwendet die unten festgelegte
-`historical-record-closed-derivation`; alle übrigen Felder verwenden
-`historical-record-value`.
+Das sind acht Artefaktvergleiche, ein separater `repository.state`-Vergleich
+und 50 kausale Kontextvergleiche. Die acht `artifact.*`-Werte verwenden
+Lower-Hex-SHA-256 und `historical-commit-artifact-sha256`.
+`gateway.responseProfile` verwendet
+`historical-record-closed-derivation`;
+`historical-commit-closed-derivation` darf ausschließlich für
+`toolchain.vite.lockfileVersion` verwendet werden; dieser Vergleich verwendet
+diese Basis. Die übrigen kausalen Werte verwenden `historical-record-value`.
+Es wird kein Vergleich ergänzt; die Kardinalität bleibt unverändert bei 59.
 
-`causalContext` besitzt exakt diese geschlossene Form:
+#### Frontend-Runtime-Source-Set
+
+Die historische Basis ist der Git-Tree des im Evidence-Record gebundenen
+Commits `8001cc7eb7d2fed68c5ca4061514b486a204ac44`. Das historische Set
+besitzt exakt diese 51 Literalpfade:
+
+```text
+index.html
+package-lock.json
+package.json
+src/agents/syncAgent.js
+src/contracts/syncContract.js
+src/data/mock/learningHubDemo.js
+src/data/mock/lichtwaldLogDemo.js
+src/gateways/syncGatewayRequestBoundary.js
+src/main.js
+src/modules/learning-hub/learningArtifactContract.js
+src/modules/learning-hub/learningHub.css
+src/modules/learning-hub/learningHubContract.js
+src/modules/learning-hub/learningHubController.js
+src/modules/learning-hub/learningHubView.js
+src/modules/learning-hub/learningProgressContract.js
+src/modules/learning-hub/learningProgressProjection.js
+src/modules/learning-hub/learningTestAttemptContract.js
+src/modules/learning-hub/learningTestBankContract.js
+src/modules/learning-hub/learningTestEngine.js
+src/modules/lichtwald-log/lichtwaldLog.css
+src/modules/lichtwald-log/lichtwaldLogContract.js
+src/modules/lichtwald-log/lichtwaldLogController.js
+src/modules/lichtwald-log/lichtwaldLogSearch.js
+src/modules/lichtwald-log/lichtwaldLogView.js
+src/modules/prompt-vault/promptSearch.js
+src/modules/prompt-vault/promptSeedData.js
+src/modules/prompt-vault/promptVault.css
+src/modules/prompt-vault/promptVaultController.js
+src/modules/prompt-vault/promptVaultView.js
+src/navigationVisibility.js
+src/services/learningArtifactService.js
+src/services/learningHubDemoInitializer.js
+src/services/learningHubService.js
+src/services/learningProgressService.js
+src/services/learningTestService.js
+src/services/lichtwaldLogDemoService.js
+src/services/lichtwaldLogService.js
+src/services/promptService.js
+src/services/syncService.js
+src/storage/learningArtifactStorage.js
+src/storage/learningHubDemoInitializationStorage.js
+src/storage/learningHubStorage.js
+src/storage/learningProgressStorage.js
+src/storage/learningTestAttemptStorage.js
+src/storage/learningTestBankStorage.js
+src/storage/lichtwaldLogDemoStorage.js
+src/storage/lichtwaldLogStorage.js
+src/storage/promptStorage.js
+src/storage/storageAdapter.js
+src/style.css
+src/transports/browserSyncTransport.js
+```
+
+Der Manifeststrom ist exakt:
+
+```text
+goldendawn-frontend-runtime-source-set-v1\n
+<literal-path>\t<byte-length-decimal>\t<sha256-of-raw-git-blob-content>\n
+...
+```
+
+Pfade verwenden `/`. Einträge stehen in lexikografischer UTF-8-Bytereihenfolge.
+Das Manifest ist UTF-8 ohne BOM, verwendet ausschließlich LF und besitzt
+genau einen abschließenden Newline. Bytelänge und Einzeldigest beziehen sich
+auf den rohen Git-Blobinhalt ohne Git-Objektheader, BOM-, EOL-, Unicode-,
+Trim- oder andere Normalisierung. Der historische Manifestdigest ist:
+
+```text
+6f3d5740b043308b4d38df33b6293c9064d8dd1b3f0c5801d50844336c195591
+```
+
+Im Replaycommit werden erneut `index.html`, `package.json`,
+`package-lock.json` und jeder dort getrackte reguläre Pfad unter `src/`
+aufgelöst. Abweichende Pfadmengen oder Bytes ergeben bei bestätigter
+Ableitung `mismatch`; fehlende oder mehrdeutige Ableitung ergibt `unproven`.
+Globs, NUL-separierte Ersatzformate und vage Sammelhashes sind keine zulässige
+Hashdomäne.
+
+#### Geschlossener kausaler Kontext und Vite
+
+`causalContext` besitzt exakt:
 
 ```text
 causalContext = {
@@ -3453,7 +3559,8 @@ causalContext = {
   bindingComparisonProfile,
   frontend,
   transportRequest,
-  gateway
+  gateway,
+  toolchain
 }
 
 hostRuntime = { executionClass }
@@ -3480,50 +3587,47 @@ gateway = {
   allowedOrigin: { value, relationToFrontend },
   endpoint, responderProfile, responseProfile
 }
+toolchain = {
+  vite: {
+    lockfileVersion,
+    runtimeVersion
+  }
+}
 ```
 
-Die kausalen Feldwerte sind geschlossen:
+Die bisherigen geschlossenen ADR-0030-Werte bleiben unverändert. Insbesondere
+sind Factoryprofil `real-default-factory`, Komposition `transport-only`,
+Requestprofil `synthetic-v1-syncTest-empty-payload`, Equalityprofil
+`ephemeral-full-value-comparison-without-retention`, Request-Init-Profil
+`adr-0028-fixed`, Endpoint
+`http://127.0.0.1:8787/api/sync-test`, Listenerhost `127.0.0.1` und
+Responseprofil `adr-0020-options204-post200-syncresponse-v1`.
 
-- OS-, Node-, Browser- und Hostwerte verwenden die sanitisierten Typen und
-  Klassifikationen ihrer gleichnamigen Felder: Familien und Architekturen sind
-  allowlistet, Produktversionen ASCII mit 1 bis 64 Zeichen und
-  `executionMode` exakt `visible`.
-- Profil-, Flag-, Policy-, Erweiterungs-, Proxy-, VPN-, Service-Worker-,
-  Permission- und Cachewerte verwenden ausschließlich die im historischen
-  Record persistierten Klassen. Verworfenene historische Rohwerte werden nicht
-  rekonstruiert; neue Rohwerte werden nach ihrer flüchtigen Klassifikation
-  verworfen. `profile.startParameters` vergleicht die Basisklasse ohne den
-  exakt als `Δ_observer` gebundenen Pipe-Parameter; jeder weitere neue
-  Parameter oder Flag ist eine kausale Abweichung.
-- `bindingComparisonProfile` bleibt exakt
-  `ephemeral-exact-effective-context-comparison-without-retention`.
-- Frontendwerte bleiben auf die vorab autorisierte lokale Top-Level-URL und
-  serialisierte Loopback-Origin ohne Userinfo, Query oder Fragment begrenzt;
-  `contextKind` ist exakt `top-level` und `isSecureContext` boolesch.
-- `factoryProfile` ist exakt `real-default-factory`, `compositionProfile`
-  exakt `transport-only`, `requestProfile` exakt
-  `synthetic-v1-syncTest-empty-payload`, `requestEqualityMethod` exakt
-  `ephemeral-full-value-comparison-without-retention` und
-  `requestInitProfile` exakt `adr-0028-fixed`.
-- Initiale URL und `gateway.endpoint` sind exakt
-  `http://127.0.0.1:8787/api/sync-test`; Scheme ist `http`, Host und
-  Listenerhost sind `127.0.0.1`, Port und Listenerport sind `8787`, der Pfad
-  ist `/api/sync-test`.
-- `gateway.allowedOrigin.value` und `.relationToFrontend`,
-  Portumgebungswert und Responderprofil verwenden nur ihre im historischen
-  Record persistierten Werte. `responseProfile` ist exakt
-  `adr-0020-options204-post200-syncresponse-v1` und verwendet als einzige
-  Vergleichsgrundlage `historical-record-closed-derivation`: Die Klassifikation
-  wird nur aus den im historischen Record geschlossen gespeicherten
-  `OPTIONS 204`-, `POST 200`- und sichtbaren Responseprofilwerten abgeleitet,
-  ohne Rohwerte zu rekonstruieren.
+Die historische Ableitung von `toolchain.vite.lockfileVersion` erfolgt
+ausschließlich am gebundenen historischen Commit und über exakt diesen Pfad:
 
-`causalContext` enthält genau die als `replayValue` gespeicherten Werte. Es
-enthält keine freien Rohwerte, Listen, Kommandozeilen oder Metadatenfelder.
+```text
+package-lock.json
+→ lockfileVersion === 3
+→ packages["node_modules/vite"].version
+```
 
-### Observerprofil und Integrität
+Der Wert am letzten Pfad muss ein unveränderter primitiver kanonischer
+SemVer-String sein; der so abgeleitete historische Wert lautet `8.1.4`. Die
+Replayableitung verwendet denselben Pfad am `replay.repositoryCommit`.
+Fehlende, malformed oder mehrdeutige Grundlagen ergeben `unproven`. Es gibt
+keinen Fallback auf den Evidence-Record, eine Root-Dependency-Range,
+`node_modules`, eine Registry oder eine tatsächlich geladene Binärdatei.
 
-`observer` besitzt exakt:
+Diese Basis bestätigt ausschließlich die Lockfileversion. Die tatsächlich
+verwendete Vite-`runtimeVersion` bleibt ein getrennter Authentizitätsnachweis
+der neuen Laufbindung und kein 60. Vergleich. Fehlender Nachweis ihrer
+Übereinstimmung ergibt `unproven`, bestätigte Abweichung `mismatch`. Die
+Vergleichskardinalität bleibt unverändert bei 59.
+
+### Observerprofil
+
+`observer` besitzt exakt zwölf Felder:
 
 ```text
 observer = {
@@ -3544,83 +3648,567 @@ observer = {
 
 Die geschlossenen Werte sind:
 
-- `deltaProfile` exakt `adr-0030-passive-external-observer-v1`;
-- `controllerExclusivity` exakt `exclusive`, `not-exclusive` oder `unknown`;
-- `connectionProfile` exakt `remote-debugging-pipe`, `other-prohibited` oder
-  `unknown`; nur `remote-debugging-pipe` ist gültig, und ein Debugportwert wird
-  niemals gespeichert;
-- `targetProfile` exakt `single-goldendawn-top-level`, `other` oder `unknown`;
-- `foundationSha256` und `evaluationSha256` jeweils Lower-Hex-SHA-256 mit 64
-  Zeichen oder `null`; sie binden die später getrennt implementierte
-  netzwerkfreie Foundation und die eine Auswertung, ohne deren Quelle zu
-  kopieren. `null` bedeutet `unproven`;
-- `mainWorldEvaluationCount` und `transportFactoryCallCount` jeweils
-  `zero`, `one`, `multiple` oder `unknown`; nur `one` ist gültig;
-- `primitiveProjectionProfile` exakt
-  `immediate-closed-by-value-primitives-via-transient-cdp-remote-object-envelope-no-handle-v1`;
-- `interferenceObservation` exakt
-  `none-contract-visible-detected`, `contract-visible-detected` oder `unknown`.
+```text
+deltaProfile =
+  adr-0030-passive-external-observer-v1
 
-`protocolOperations` enthält exakt diese sechs Einträge und sonst keinen:
+controllerExclusivity =
+  exclusive | not-exclusive | unknown
 
-| `command` | `allowedMaximum` | Gültige beobachtete Zählklasse |
-| --- | ---: | --- |
-| `Target.getTargets` | 1 | `one` |
-| `Target.attachToTarget` | 1 | `one` |
-| `Network.enable` | 1 | `one` |
-| `Runtime.evaluate` | 1 | `one` |
-| `Network.disable` | 1 | `zero` oder `one`, abhängig vom bereits geschlossenen Ziel |
-| `Target.detachFromTarget` | 1 | `zero` oder `one`, abhängig von der bereits geschlossenen Session |
+connectionProfile =
+  remote-debugging-pipe | other-prohibited | unknown
 
-Jeder Operationseintrag besitzt exakt `{ command, allowedMaximum,
-observedCountClass, result }`. `observedCountClass` ist `zero`, `one`,
-`multiple` oder `unknown`; `result` ist `match`, `mismatch` oder `unproven`.
-Eine Operation außerhalb der Allowlist kann nicht nachträglich eingetragen
-werden, sondern verletzt den Observervertrag.
+targetProfile =
+  single-goldendawn-top-level | other | unknown
 
-`Runtime.evaluate` verwendet genau eine Main-World-Auswertung mit
-`awaitPromise: true`, `returnByValue: true`, `generatePreview: false`, ohne
-`objectGroup`, Command-Line-API, User-Gesture-Modus, `serializationOptions`
-oder zweite Auswertung.
+mainWorldEvaluationCount =
+  zero | one | multiple | unknown
 
-Die erfolgreiche Antwort auf dieses Kommando, das
-`Runtime.evaluate`-Methodenergebnis und dessen flüchtige
-`Runtime.RemoteObject`-Hülle sind getrennte Protokollebenen. Eine gültige
-Settlementbeobachtung verlangt eine eindeutig korrelierte erfolgreiche
-Kommandoantwort ohne eigenes CDP-Fehlerfeld, ein Methodenergebnis ohne eigene
-`exceptionDetails`-Property sowie eine `Runtime.RemoteObject`-Hülle mit
-`type === "object"` und eigener serialisierter `value`-Property. Die Hülle
-darf keine eigene `objectId`, `unserializableValue`, `deepSerializedValue`,
-`preview` oder `customPreview`-Property besitzen. Bei diesen verbotenen
-Feldern sowie beim CDP-Fehlerfeld und bei `exceptionDetails` wird
-ausschließlich ihre Own-Presence geprüft; ihre Inhalte werden auch im
-Verletzungsfall nicht gelesen. Ausschließlich die für die eindeutige
-CDP-Antwortkorrelation erforderlichen Routingfelder dürfen flüchtig ausgewertet
-werden und werden direkt nach der Zuordnung verworfen.
+transportFactoryCallCount =
+  zero | one | multiple | unknown
 
-Die eigene `value`-Property enthält ausschließlich die geschlossene
-Vier-Felder-By-Value-Projektion `{ outcome, staticProfileResult,
-relativeMilliseconds, timingState }`. Zulässig sind genau die Paare
-`fulfilled`/`not-applicable`, `static-redacted-rejection`/`match` und
-`other-rejection`/`mismatch`; relative Dauer und Timingstatus folgen der unten
-festgelegten ADR-0030-Timinggrenze. Außer den ausschließlich flüchtig für die
-eindeutige CDP-Antwortkorrelation verwendeten Routingfeldern werden sämtliche
-sonstigen Metadaten der Kommandoantwort, des Methodenergebnisses und der
-`Runtime.RemoteObject`-Hülle weder ausgewertet noch persistiert. Hülle,
-Routingfelder und nicht projizierte Felder werden unmittelbar nach der
-geschlossenen Projektion verworfen. Die
-Hülle ist kein Remote-Handle und kein persistierbares Diagnoseartefakt;
-`Runtime.getProperties`, `Runtime.releaseObject`, Object-ID-Dereferenzierung
-und jede Folgeinspektion bleiben verboten.
+primitiveProjectionProfile =
+  immediate-closed-by-value-pretransport-context-and-settlement-v2-no-handle
 
-Aus Network dürfen ausschließlich `Network.requestWillBeSent`,
-`Network.responseReceived`, `Network.loadingFinished` und
-`Network.loadingFailed` für den gebundenen Endpoint sofort auf geschlossene
-Primitive projiziert werden. Andere Eventfelder werden nicht inspiziert und
-nicht persistiert.
+interferenceObservation =
+  none-contract-visible-detected |
+  contract-visible-detected |
+  unknown
+```
 
-`integrityChecks` enthält in dieser Reihenfolge exakt die folgenden Check-IDs,
-jeweils mit `confirmed`, `violated` oder `unproven`:
+`foundationSha256` und `evaluationSha256` sind Lower-Hex-SHA-256 mit genau 64
+Zeichen oder `null`; `null` bedeutet `unproven`.
+
+#### Foundation- und Evaluation-Hashdomänen
+
+Der einzige spätere Foundationpfad lautet:
+
+```text
+scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js
+```
+
+Er ist ein selbständiges importinaktives Modul ohne lokale oder relative
+Implementierungsimports. Einziger Export ist
+`createBrowserSyncTransportRuntimeDiagnosticObserver`; jede Factory liefert
+eine frische gewöhnliche tief eingefrorene API exakt `{ run }`, und `run` ist
+one-shot sowie Promise-basiert.
+
+Die Foundation besitzt keine Realdefaults, kein CLI, keinen Main-Guard und
+keinen Launcher-, Browser-, Pipe-, Prozess-, Socket-, Port-, Dateisystem- oder
+Netzwerkzugriff. Sie verarbeitet nur effects-as-data: unveränderliche
+Command-, Cap- und Cleanup-Intents sowie unvertraute materialisierte
+In-Memory-Werte.
+
+`foundationSha256` ist SHA-256 über die exakten tatsächlich geladenen
+Dateibytes dieses Pfads. Vor einem späteren Lauf müssen sie bytegleich zum
+Git-Blobinhalt unter `replay.repositoryCommit` sein. Git-Objektheader und jede
+Normalisierung bleiben außerhalb. Abweichung ergibt
+`sourceUnmodified: violated`; fehlender oder mehrdeutiger Nachweis
+`sourceUnmodified: unproven`.
+
+`evaluationSha256` ist Lower-Hex-SHA-256 über:
+
+```text
+UTF-8(exakt Runtime.evaluate.params.expression)
+```
+
+Die Domäne ist der tatsächlich gesendete primitive String, UTF-8 ohne BOM,
+ohne Normalisierung, Trim, Wrapper, JSON-Serialisierung oder CDP-Envelope. Der
+Hash wird vor dem Send gebildet; gehashter und gesendeter String sind
+bytegleich. Der statische Text enthält keine Run-ID, Request-ID,
+Requesttimestamp, Profilkennung oder privaten Werte. Ohne Evaluate-Send ist
+der Wert `null`.
+
+### Globaler Setupcap, Capture und Completion
+
+Ein gültiger Diagnoseversuch beginnt ausschließlich in dieser Reihenfolge:
+
+1. Die eine controller-monotone Clockfähigkeit und die eine
+   One-shot-Setupcapfähigkeit werden vollständig validiert. Ein fehlender,
+   nicht funktionaler, werfend aufgelöster oder nicht scharf schaltbarer Cap-
+   beziehungsweise Clockpfad verhindert einen gültigen Diagnoseversuch vor
+   jedem Kommando und Stimulus.
+2. `m_setup` wird nach validierter Cap-/Clock-Fähigkeit exakt einmal
+   controller-monoton erfasst. Throw, nicht endliche primitive Zahl oder
+   negativer Wert ist `V`; es gibt keinen Kommando-Send.
+3. Der persistierte relative Nullpunkt wird auf `t_setup := 0` gesetzt und die
+   rohe Deadline als `setupDeadline := m_setup + 6000` gebildet. Der
+   One-shot-Setupcap wird auf diese Deadline scharf
+   geschaltet. Ein nicht endliches oder nicht sicher darstellbares Ergebnis
+   ist `V`. Wirft oder versagt das tatsächliche Arm, ist kein gültiger
+   Diagnoseversuch entstanden und kein Kommando darf gesendet werden.
+4. Erst nach bestätigtem Cap-Arm wird Stage 1 `observer-armed` als
+   `observed/match`, `receiptOrder: 1`, `relativeMilliseconds: 0` und
+   `timingState: measured` eingefroren.
+5. Danach wird der unveränderliche `Target.getTargets`-Intent erzeugt und
+   nicht blockierend genau einmal gesendet. Der Timer ist vor dem Send aktiv.
+
+Setupkommandos laufen strikt sequenziell; zu jedem Zeitpunkt existiert
+höchstens eine ausstehende Setupantwort. Erst ein vollständig erfolgreiches
+Profil erlaubt das nächste Kommando.
+
+Die getrennten Zustände sind:
+
+```text
+setupWindowMilliseconds = 6000
+captureWindowMilliseconds = 6000
+
+m_setup := exakt einmal controller-monoton nach validierter
+           Cap-/Clock-Fähigkeit erfasst
+t_setup := 0
+setupDeadline := m_setup + 6000
+
+setupReady := alle drei Setupantworten sind eindeutig korreliert,
+              erfolgreich und vollständig validiert
+
+U := Setup ist vor Runtime.evaluate terminal nicht beweisbar
+V := sticky bestätigte Observer-, Hüllen-, Request- oder Ablaufverletzung
+C := verarbeiteter controllerlokaler Capturecap nach gesendetem
+     Runtime.evaluate
+
+setupClosed       := setupReady || U || V
+observationClosed := V || U || C
+
+S := genau ein gültiger Settlementkandidat
+N := genau ein eindeutig dem POST zugeordnetes loadingFinished
+     oder loadingFailed
+P := S && N
+
+productEvidenceComplete := P
+```
+
+Der Setupcap umfasst gemeinsam `Target.getTargets`,
+`Target.attachToTarget` und `Network.enable` und wird nicht zurückgesetzt.
+Beim Dequeue jedes materialisierten CDP-Eingangswerts während einer
+ausstehenden Setupantwort wird die controller-monotone Clock vor jeder
+Reflection genau einmal zu `m_answer` ausgewertet.
+`lastValidControllerMonotonicSample` ist initial exakt `m_setup`. Es gibt für
+diesen Eingangswert keine zweite Clockauswertung. Throw, eine nicht endliche
+oder negative primitive Zahl, `m_answer < m_setup` oder
+`m_answer < lastValidControllerMonotonicSample` ist `V`. Erst nach bestandener
+Endlichkeits-, Nichtnegativitäts- und Monotonieprüfung wird
+`lastValidControllerMonotonicSample := m_answer` gesetzt.
+
+Nur bei der rohen Differenz `d_setup := m_answer - m_setup` strikt kleiner
+als `6000` darf der Eingangswert descriptorbasiert inspiziert werden. Bei
+`d_setup >= 6000` gewinnt der Setupcap; der gesamte dequeue-te Eingangswert
+bleibt ungelesen und kann weder Setup, `V` noch einen Stimulus nachträglich
+begründen. Persistierte 10-ms-Rundung beeinflusst diese Entscheidung nie.
+Bereits bestätigtes `V` besitzt absolute Präzedenz.
+
+Ein Eingangswert, insbesondere ein CDP-Event, ohne eigene Response-ID ist kein
+Antwortkandidat und verändert den ausstehenden Setupzustand nicht. Besitzt ein
+descriptor-richtig beobachtbarer Antwortkandidat eine Response-ID, ist aber
+deren Zuordnung zur einzigen ausstehenden Command-ID und gegebenenfalls zur
+gebundenen Session fehlend oder mehrdeutig, ist das `U`. Ein malformed
+Routingdescriptor oder Routingwert ist `V`. Besitzt eine
+eindeutig korrelierte descriptor-richtig beobachtbare Antwort eine eigene normale Data-Property
+`error`, ist sie eine Setupfehlerantwort und führt zu `U`; ihr Wert wird nie
+gelesen. Ein Accessor, falscher oder sonst malformed `error`-Descriptor ist
+`V`.
+
+`U` wird unterschieden:
+
+- `setup-cap`: Der Cap wurde vor `setupReady` oder `V` verarbeitet,
+  insbesondere bei fehlender Antwort.
+- `setup-terminal-unproven`: Ein eindeutig korrelierter browserseitiger
+  CDP-Fehler, kein oder mehrere geeignete Targets, nicht eindeutig gebundene
+  Session oder nicht eindeutig erfolgreiches `Network.enable` macht den Setup
+  vorher terminal unbewiesen, ohne eine Verletzung zu bestätigen. Dasselbe
+  gilt bei irreversibel geschlossener Verbindung vor der erforderlichen
+  Antwort.
+
+Eine Antwort gilt nur dann als fehlend, wenn der Setupcap verarbeitet wurde
+oder die gebundene Verbindung vor ihrer erforderlichen eindeutig korrelierten
+Antwort irreversibel geschlossen ist. Eine momentan leere Queue oder eine
+lediglich noch nicht eingetroffene Antwort reicht dafür nicht aus.
+
+Falsch erzeugtes Kommando, falsche Parameter, Allowlistüberschreitung,
+bestätigte Descriptor-/Envelopeverletzung oder ein vom Controller
+beziehungsweise Observer bestätigt ausgeführtes fremdes oder zweites
+Attachment ist `V`, nicht `U`. Verhindert Routing bereits die Korrelation,
+gilt ohne unabhängige Verletzung `U`.
+
+`Runtime.evaluate` darf ausschließlich nach `setupReady` und höchstens einmal
+gesendet werden. Erst sein bestätigter Sendeübergang startet den getrennten
+6.000-ms-Capturecap. Nach `U` oder `V` und bei verspäteter Setupantwort gibt es
+keinen Stimulus. `S`, `N` und `P` schließen die Observation nicht. Ohne `V`
+bleibt das Capture bis zum verarbeiteten `C` aktiv. Bei `V` wird sofort
+fail-closed eingefroren und ein bereits gestarteter Capturecap entwaffnet.
+Bei `C` zählen alle bis zur Cap-Verarbeitung verarbeiteten Beobachtungen; bei
+Gleichzeitigkeit entscheidet die controllerlokale Verarbeitungsreihenfolge.
+Nach dem Freeze eintreffende Werte werden verworfen und begründen keine
+Abwesenheitsaussage.
+
+Eine zweite descriptor-richtig beobachtbare Antwort auf eines der drei
+Setupkommandos vor dem Evaluate-Sendeübergang ergibt
+`U/setup-terminal-unproven`; Evaluate bleibt gegatet. Wird eine solche
+Dublette erst während des Capturefensters verarbeitet, bleibt ihr tatsächlicher
+Antwortcount `multiple`; der Send-Ledger-Count bleibt davon unverändert. Das
+betroffene Operationsergebnis wird `unproven`. Die Dublette erzeugt allein kein
+`V`, hält den endgültigen Ausgang aber bis `C` `UNPROVEN/inconclusive`. Eine
+malformed Dublette ist jederzeit `V`.
+
+`timing.completion` besitzt im Finalrecord exakt:
+
+```text
+completion = {
+  productEvidenceComplete,
+  observationCloseReason,
+  observationClosed,
+  captureWindowState,
+  evaluateReplyCountClass,
+  requestBudgetFinalized,
+  cleanupFinalizeReason,
+  cleanupFinalized
+}
+
+observationCloseReason =
+  setup-cap |
+  setup-terminal-unproven |
+  capture-cap |
+  confirmed-violation
+
+captureWindowState = not-started | elapsed | truncated
+evaluateReplyCountClass = zero | one | multiple | unknown
+cleanupFinalizeReason = all-steps-terminal | cleanup-cap
+```
+
+Die Ableitung ist:
+
+- `U`: entsprechender Setupgrund, `not-started`, `zero`,
+  `productEvidenceComplete: false`, `observationClosed: true` und
+  `requestBudgetFinalized: true`;
+- `C`: `capture-cap`, `elapsed`;
+- `V` vor Evaluate-Send: `confirmed-violation`, `not-started`;
+- `V` nach Evaluate-Send: `confirmed-violation`, `truncated`.
+
+Regulärer `PASS` verlangt `capture-cap`, `elapsed`, genau eine gültige
+Evaluate-Antwort, einen Stimulus und ein finalisiertes Requestbudget. Null oder
+mehrere ansonsten gültige Evaluate-Antworten sind `UNPROVEN`; eine eindeutig
+korrelierte malformed Hülle ist `V`.
+
+Bei `U`, `V` oder `C` wird zuerst ein frischer tief eingefrorener
+Pre-Cleanup-Observation-Snapshot erzeugt. Er enthält Replay- und Hashbindungen,
+Observer-/Evaluationzustand, die ersten vier Operationen, Requestbudget,
+Settlement, Stages 1 bis 8, Timing, die sechs observationsseitigen
+Completionwerte und den sticky `FAIL`-Latch.
+
+Danach entsteht getrennt ein tief eingefrorenes Cleanup-Ledger mit
+`Network.disable`, `Target.detachFromTarget`, Stages 9 und 10, 20 Checks sowie
+den zwei cleanupseitigen Completionwerten. Erst der Finalrecord projiziert aus
+beiden unveränderten Quellen das geschlossene achtfeldrige Completionobjekt.
+Cleanup vor Snapshot, Mutation oder Übernahme später Ereignisse ist
+`FAIL/observer-invalid`.
+
+### Sechs Protokolloperationen
+
+`protocolOperations` enthält exakt diese sechs Einträge in dieser Reihenfolge:
+
+```text
+Target.getTargets
+Target.attachToTarget
+Network.enable
+Runtime.evaluate
+Network.disable
+Target.detachFromTarget
+```
+
+Jeder Eintrag besitzt exakt:
+
+```text
+operation = {
+  command,
+  allowedMaximum,
+  observedCountClass,
+  result
+}
+
+allowedMaximum = 1
+observedCountClass = zero | one | multiple | unknown
+result = match | mismatch | unproven
+```
+
+Der controllerlokale unveränderliche Send-Ledger ist die einzige Quelle für
+Zählklasse und Parameterprofil:
+
+- erlaubtes, einmal gesendetes und erforderlichenfalls eindeutig erfolgreiches
+  Profil: `one/match`;
+- gesendetes, aber am Setupcap oder nach irreversibler
+  Verbindungsschließung wegen fehlender beziehungsweise wegen fehlerhafter
+  oder mehrdeutiger Antwort nicht beweisbares Setupprofil: `one/unproven`;
+- nach `U` oder `V` bewusst gegatetes Downstreamkommando:
+  `zero/unproven`, nie `zero/mismatch`;
+- falsche Parameter, Überschreitung oder Allowlistverletzung:
+  `mismatch` und `V`;
+- `Network.disable` und `Target.detachFromTarget`: `zero` oder `one` abhängig
+  von der tatsächlich verfügbaren identitätsgebundenen Cleanupfähigkeit.
+
+Die Parameterprofile sind exakt:
+
+```text
+Target.getTargets
+  params: {}
+
+Target.attachToTarget
+  params: { targetId: <ephemeral>, flatten: true }
+
+Network.enable
+  params: {}
+
+Runtime.evaluate
+  params: {
+    expression: <prehashed exact string>,
+    awaitPromise: true,
+    returnByValue: true,
+    generatePreview: false
+  }
+
+Network.disable
+  params: {}
+
+Target.detachFromTarget
+  params: { sessionId: <ephemeral> }
+```
+
+Jeder Setup-Antwortkandidat besitzt eine eigene normale Data-Property `id` mit
+der exakt erwarteten Request-ID; sessiongebundene Antworten besitzen zusätzlich
+eine eigene normale Data-Property `sessionId` mit der exakt erwarteten
+Session-ID. Die drei erfolgreichen Setupresultate besitzen ausschließlich diese
+Profile:
+
+```text
+Target.getTargets.result     = { targetInfos }
+Target.attachToTarget.result = { sessionId }
+Network.enable.result        = {}
+```
+
+Die drei `result`-Werte müssen das descriptor-beobachtbare Profil der exakt
+geschlossenen Records besitzen; dies bestätigt keine gewöhnliche oder
+proxyfreie Eingabeidentität. `targetInfos` muss das descriptor-beobachtbare
+Profil eines dichten Arrays besitzen. Jeder TargetInfo-Rawrecord muss die
+erforderlichen eigenen normalen Data-Properties `targetId`, `type`, `url` und
+`attached` besitzen; weitere TargetInfo-Feldwerte bleiben ungelesen.
+
+Zuerst werden über `type` und `url` alle Einträge mit `type === "page"` und
+exakt gebundener URL gezählt, unabhängig von `attached`. Genau ein solcher
+Kandidat ist erforderlich. Erst danach muss an genau diesem Kandidaten
+`attached === false` gelten und erst dann wird sein `targetId` gebunden. Null
+oder mehrere Kandidaten sowie `attached !== false` ergeben `U`; ein zweiter
+passender, bereits attachter Eintrag darf nicht ignoriert werden.
+
+`Target.attachToTarget.result.sessionId` ist eine eigene normale Data-Property
+mit einem nichtleeren primitiven String. `Network.enable.result` muss exakt das
+descriptor-beobachtbare Profil eines leeren Records besitzen; dies bestätigt
+keine gewöhnliche oder proxyfreie Eingabeidentität. Eine Antwort gilt nur am
+verarbeiteten Setupcap oder nach irreversibler Verbindungsschließung als
+fehlend und ergibt dann `U`;
+eine leere Queue oder ein bloßes Noch-nicht-Eintreffen genügt nicht. Eine
+normale Fehlerantwort oder null beziehungsweise mehrere gültige Kandidaten
+ergeben ebenfalls `U`. Eine
+korrelierte angebliche Erfolgsantwort mit fehlendem `result`, fehlender
+Pflichtproperty, falschem Typ, falschem Descriptor oder nicht geschlossener
+Resultform ergibt `V`.
+
+Zusatzparameter, insbesondere `contextId`, `uniqueContextId`, `objectGroup`,
+`includeCommandLineAPI`, `userGesture`, `serializationOptions` und
+CDP-Timeoutparameter, sind verboten. Command-IDs sind flüchtige streng
+steigende positive Safe Integers. Routing verwendet nur die eine flache
+Session. Setup-CDP-Fehler ergeben `U`; korrelierter Evaluate-Fehler oder eigene
+`exceptionDetails` ergibt `V`; Disable-/Detachfehler sind Cleanup-`FAIL`.
+
+### Target-, Session- und Networkprofil
+
+Aus `Target.getTargets` dürfen nur eigene Data-Descriptoren dieser Felder
+gelesen werden:
+
+```text
+targetId
+type
+url
+attached
+```
+
+Zuerst werden alle Einträge mit `type === "page"` und exakt der vorgebundenen
+Top-Level-URL gezählt, ohne `attached` in dieses Kandidatenprädikat
+einzubeziehen. Nur bei genau einem Kandidaten wird dessen `attached` geprüft;
+es muss exakt `false` sein, bevor `targetId` gebunden wird. Null oder mehrere
+Kandidaten sowie `attached !== false` ergeben `U`; insbesondere darf ein
+zweiter passender Eintrag mit `attached === true` nicht ignoriert werden. Nur
+ein unabhängig als Controller-/Observerhandlung bestätigtes fremdes oder
+zweites Attachment ergibt `V`.
+
+Aus Network dürfen nur folgende Pfade gelesen werden:
+
+```text
+Eventrouting:
+method
+sessionId
+params
+
+requestWillBeSent:
+requestId
+request.url
+request.method
+timestamp
+
+responseReceived:
+requestId
+response.url
+response.status
+timestamp
+
+loadingFinished:
+requestId
+timestamp
+
+loadingFailed:
+requestId
+timestamp
+```
+
+`loadingFailed.errorText`, Header, Body, Initiator, Redirectdetails und andere
+Felder bleiben ungelesen. Zuordnung erfolgt nur über gebundene Session, exakte
+URL-Gleichheit ohne Normalisierung und flüchtige Request-ID. Wiederholte oder
+neue Endpoint-IDs sind zusätzliche Sequenzeinträge und werden nicht
+überschrieben. Alle flüchtigen IDs werden vor Recordmaterialisierung
+verworfen.
+
+### Descriptorbasierte CDP-Hülle und v2-Projektion
+
+Die Foundation behauptet für keinen unvertrauenswürdigen materialisierten
+Eingabegraphen Parser-, Raw-Byte-, Materialisierungs-, Plain-Data- oder
+Proxy-free-Provenienz. Auch ein transparent pass-through Proxy kann bei
+Prototyp-, Own-Key- und Descriptorprüfungen wie sein Ziel erscheinen. Diese
+bloße Möglichkeit ist allein weder `V` noch ein Grund für eine
+Proxy-free-Bestätigung.
+
+Nur konsumierte erforderliche Feldwerte werden descriptorbasiert über die bei
+Modulevaluation erfassten Intrinsics gelesen. Jedes davon muss eine eigene
+aufzählbare Data-Property ohne Getter oder Setter und mit dem erforderlichen
+primitiven Wertprofil sein. Geerbte oder frei aufgelöste Properties bleiben
+verboten. Accessor, Reflection-Throw, falscher Descriptor oder malformed
+erforderlicher Wert ist nach eindeutiger Korrelation
+`V/FAIL/observer-invalid`. Geschlossene Own-Key- beziehungsweise Own-Presence-
+Prüfungen dürfen ausschließlich die benannten Vertrags- und Verbotsfelder
+klassifizieren; zusätzliche Feldwerte bleiben ungelesen und werden nie
+übernommen oder persistiert.
+
+Für `Runtime.evaluate` gilt zwingend:
+
+1. Antwort über Command-ID und gegebenenfalls Session-ID korrelieren.
+2. Own-Presence von `error` prüfen; Inhalt nie lesen.
+3. Eigenen Data-Descriptor `result` als Methodenergebnis übernehmen.
+4. Own-Presence von `exceptionDetails` prüfen.
+5. Eigenen Data-Descriptor `result` als `Runtime.RemoteObject` übernehmen.
+6. `type` und `value` nur über eigene Data-Descriptoren lesen.
+7. Own-Presence von `objectId`, `unserializableValue`,
+   `deepSerializedValue`, `preview` und `customPreview` prüfen.
+8. Ausschließlich die konsumierten erforderlichen Projektionsblätter gegen
+   ihre Descriptor- und primitiven Wertprofile prüfen, ohne den Eingabegraphen
+   als Plain Data oder proxyfrei zu klassifizieren.
+9. Akzeptierte primitive Blätter sofort ohne Eingabereferenz in einen frischen
+   controller-eigenen gewöhnlichen geschlossenen Recordbaum kopieren, diesen
+   tief einfrieren und Hüllen sowie Routingwerte verwerfen.
+
+Zusätzliche äußere Metadaten werden weder aufgezählt noch gelesen. Falscher
+erforderlicher Descriptor nach eindeutiger Korrelation ist
+`FAIL/observer-invalid`; verhindert Routing die Korrelation, gilt ohne
+unabhängige Verletzung `UNPROVEN/inconclusive`.
+
+Die eigene `Runtime.RemoteObject.value`-Property besitzt exakt:
+
+```text
+value = {
+  preTransportContext,
+  execution,
+  settlement
+}
+
+preTransportContext = {
+  url,
+  origin,
+  topLevel,
+  secureContext
+}
+
+contextResult = match | mismatch | unproven
+
+execution = {
+  factoryCallCount,
+  transportCallCount,
+  dispatchState
+}
+
+factoryCallCount = zero | one
+transportCallCount = zero | one
+
+dispatchState =
+  dispatched |
+  blocked-context-mismatch |
+  blocked-context-unproven |
+  failed-before-public-settlement
+
+settlement = null | {
+  outcome,
+  staticProfileResult,
+  relativeMilliseconds,
+  timingState
+}
+```
+
+Jedes der vier Kontextfelder enthält nur einen `contextResult`, niemals reale
+abweichende URL- oder Originwerte. Die vier Prüfungen erfolgen innerhalb
+derselben Main-World-Evaluation vor Import, Factory und Transport. Nur viermal
+`match` erlaubt dynamischen Import des unveränderten realen Transports,
+einmalige Auswertung des benannten Exports, höchstens einen argumentlosen
+Factoryaufruf, Konstruktion eines frischen gültigen v1-`syncTest`-Requests und
+höchstens einen `sendSyncRequest(request)`-Aufruf.
+
+Bei Kontext-`mismatch` oder `unproven` bleiben beide Counts `zero`,
+Settlement ist `null` und es gibt keinen Produktrequest. Das ist
+`UNPROVEN/inconclusive`, kein Obserververstoß. Fehler vor öffentlichem Promise
+werden ohne Grund- oder Stackinspektion auf
+`failed-before-public-settlement` projiziert. `dispatched` verlangt Counts
+`one/one` und ein nicht-nullisches Settlement. `settlement: null` setzt `S`
+nie wahr.
+
+Ein Fulfillmentwert wird nicht inspiziert. Ein Rejectiongrund darf nur
+descriptorbasiert gegen das descriptor- und freeze-beobachtbare Profil des
+exakten statischen Zwei-Feld-Records geprüft werden:
+
+```text
+code = BROWSER_SYNC_TRANSPORT_FAILED
+message = Der lokale Browser-SyncTransport ist fehlgeschlagen.
+```
+
+Accessor, Symbol, Zusatzfeld, falscher Prototyp, fehlender Freeze oder falscher
+Wert ergibt `other-rejection/mismatch`; kein Getter wird aufgerufen. Auch
+`match` bestätigt am unvertrauenswürdigen Rejectiongrund keine Plain-Data- oder
+Proxy-free-Eingabeidentität.
+Zulässige Settlementpaare sind:
+
+```text
+fulfilled / not-applicable
+static-redacted-rejection / match
+other-rejection / mismatch
+```
+
+Relative Dauer und Timingstatus folgen ausschließlich der
+JavaScript-Main-World-Clock. Nur die neu konstruierte controller-eigene
+Projektion kann `closedPrimitiveProjectionConfirmed: confirmed` besitzen, auch
+wenn sie wegen Kontextblockierung kein Settlement behauptet. Sie ist ein
+frischer gewöhnlicher geschlossener, tief eingefrorener Recordbaum mit
+ausschließlich primitiven, sofort ohne Inputreferenz kopierten Blattwerten.
+Die Eingabehülle und ihr Graph erhalten dadurch keine Plain-Data-, Proxy-,
+Parser-, Raw-Byte- oder Materialisierungsbestätigung. Die Hülle ist kein
+Remote-Handle; `Runtime.getProperties`,
+`Runtime.releaseObject`, Object-ID-Dereferenzierung und jede Folgeinspektion
+bleiben verboten.
+
+### 17 Integritätschecks und Ableitungsquellen
+
+`integrityChecks` enthält in dieser Reihenfolge exakt:
 
 ```text
 sourceUnmodified
@@ -3642,15 +4230,50 @@ singleTargetAndSessionConfirmed
 singleMainWorldEvaluationConfirmed
 ```
 
-`none-contract-visible-detected` für `interferenceObservation` bedeutet nur,
-dass keine
-vertraglich sichtbare Interferenz festgestellt wurde. Absolute
-Nichtbeeinflussung oder das Verhalten desselben Prozesses ohne Observer wird
-nicht behauptet.
+Jeder Wert ist `confirmed`, `violated` oder `unproven`.
+`confirmed` verlangt die benannte gebundene Quelle, Gegenbeweis ergibt
+`violated`, fehlende oder nicht authentisch zuordenbare Grundlage `unproven`:
 
-### Exaktes targetgebundenes Requestbudget
+| Check | Ableitungsquelle |
+| --- | --- |
+| `sourceUnmodified` | Checkoutbytes, Replaycommit-Blob und Foundationdigest |
+| `instrumentedSourceCopyAbsent` | geschlossene Adapter-/Residueinventur gegen die reale Transportquelle |
+| `compositionSeamsAbsent` | statisches Evaluationprofil und Command-/Capabilityledger |
+| `protocolAllowlistOnly` | vollständiger controllerlokaler Send-Ledger |
+| `runtimeSurfaceMutationAbsent` | statisches Evaluationprofil und zulässiger Main-World-Aktionsledger |
+| `fetchInterceptionAbsent` | Evaluationprofil, Operationsledger und Adapterbindung |
+| `debuggerBreakpointsAndSteppingAbsent` | Operationsledger ohne Debuggerdomain |
+| `profilerAndTracingAbsent` | Operationsledger ohne Profiler-/Tracingdomain |
+| `responseBodyReadAbsent` | Network-Zugriffsledger ohne Bodykommando oder Bodyfeld |
+| `freeRawInspectionAbsent` | descriptorbasierter Own-Data-Zugriffsledger |
+| `additionalNativeFetchAbsent` | Main-World-Counts und Requestbudget |
+| `observerProductEndpointRequestAbsent` | Requestownership und Endpointbudget |
+| `rawPersistenceAbsent` | Capability-/Outputledger und Residueprüfung |
+| `observerDiagnosticDuringRunOutputAbsent` | geschlossener Outputledger bis zum Finalrecord |
+| `closedPrimitiveProjectionConfirmed` | ausschließlich der frisch konstruierte controller-eigene geschlossene, tief eingefrorene v2-Projektionsbaum ohne Inputreferenzen |
+| `singleTargetAndSessionConfirmed` | Targetset, flache Session und Sessionrouting |
+| `singleMainWorldEvaluationConfirmed` | Send-Ledger, Antwortklasse und Evaluationscount |
 
-`requestBudget` besitzt exakt neun Zähleinträge und ein Sequenzfeld:
+`closedPrimitiveProjectionConfirmed` bestätigt ausschließlich die neue
+Outputprojektion, niemals Eingabe-, Proxy-, Parser-, Raw-Byte- oder
+Materialisierungsprovenienz. Die pure Foundation allein kann adapter-,
+prozess- oder residueabhängige Checks nicht bestätigen und keine reale Evidenz
+für `observerGate: PASS` erzeugen. Ein späterer hashgebundener
+Parser-/Adapterpfad muss seine Provenienz intern aus den gebundenen Bytes, dem
+Parser- und dem Capabilityledger ableiten; ein frei gelieferter
+Provenienzboolean ist verboten.
+
+`interferenceObservation` wird total abgeleitet:
+
+- bestätigte vertraglich sichtbare Interferenz:
+  `contract-visible-detected`;
+- alle relevanten Checks bestätigt und keine Verletzung:
+  `none-contract-visible-detected`;
+- sonst `unknown`.
+
+### Exaktes Requestbudget
+
+`requestBudget` besitzt exakt neun Zähler und eine Sequenz:
 
 ```text
 requestBudget = {
@@ -3667,8 +4290,8 @@ requestBudget = {
 }
 ```
 
-Jeder Zähleintrag ist `zero`, `one`, `multiple` oder `unknown`. Gültig sind
-exakt:
+Jeder Zähler ist `zero`, `one`, `multiple` oder `unknown`. Für einen regulären
+Stimulus gilt:
 
 ```text
 defaultTransportCalls = one
@@ -3680,21 +4303,34 @@ observerProductEndpointRequests = zero
 endpointOptions = one
 endpointPosts = one
 endpointOtherMethods = zero
-sequence = OPTIONS-204-POST-200-loadingFinished | other | incomplete | ambiguous
+
+sequence =
+  OPTIONS-204-POST-200-loadingFinished |
+  other |
+  incomplete |
+  ambiguous
 ```
 
-Der browserseitig durch den einzigen Transportaufruf ausgelöste `OPTIONS` und
-`POST` zählt nicht als Observerrequest. Frontend- und Modul-Laderesources
-zählen nicht zum Produktendpointbudget. Ephemere CDP-Request-, Loader-, Frame-
-und Session-IDs dürfen nur im Speicher zur eindeutigen Zuordnung dienen und
-werden vor Recordmaterialisierung verworfen.
+Das Budget gilt nur von `observer-armed` bis zum verarbeiteten `U`, `V` oder
+`C` und behauptet keine Abwesenheit danach. Nach `U` sind Evaluate, Factory,
+Transportstimulus und gegatete Downstreamoperationen `zero`; nicht zuverlässig
+beobachtete Networkzähler bleiben `unknown`, Sequenz ist `incomplete`.
 
-Ein zweiter Transportaufruf, ein zweiter `POST`, ein direkter Diagnose-Fetch
-oder ein Observerrequest zum Produktendpoint ist ein belegter Vertragsbruch.
-Ein zusätzlicher `OPTIONS`, eine andere Methode oder eine eindeutig andere
-Endpointsequenz ist `other`; fehlende oder mehrdeutige Attribution ist
-`incomplete` beziehungsweise `ambiguous` und ohne belegten Verstoß
-`UNPROVEN`.
+Bei einem Stimulus wird Sequenz total abgeleitet:
+
+1. `ambiguous`, sobald Attribution nicht eindeutig ist;
+2. `other`, sobald eine eindeutig beobachtete Methode, Statusklasse,
+   Reihenfolge, Zusatzanforderung oder Terminalklasse abweicht;
+3. `OPTIONS-204-POST-200-loadingFinished` nur bei vollständiger Übereinstimmung;
+4. andernfalls `incomplete`.
+
+Zweiter Transportaufruf, zweiter `POST`, direkter Diagnose-Fetch oder
+Observerrequest am Produktendpoint ist `V/FAIL`. Fehlende oder mehrdeutige
+Attribution ist ohne unabhängige Verletzung `UNPROVEN`. Ein klar abweichender
+Status, `loadingFailed`, zusätzliche produktverursachte `OPTIONS` oder andere
+produktverursachte Methode bildet `other`. Der Transportaufruf ausgelöste
+`OPTIONS` und `POST` zählen nicht als Observerrequest; Frontend- und
+Modulladeresourcen zählen nicht zum Endpointbudget.
 
 ### Öffentliches Settlement
 
@@ -3709,11 +4345,7 @@ publicSettlement = {
   internalStage,
   internalOwner
 }
-```
 
-Die Werte sind geschlossen:
-
-```text
 observationState = observed | not-observed | ambiguous
 outcome = fulfilled | static-redacted-rejection | other-rejection | unknown
 staticProfileResult = match | mismatch | unproven | not-applicable
@@ -3722,43 +4354,13 @@ internalStage = unknown
 internalOwner = unknown
 ```
 
-Davon getrennt besitzt die innerhalb der Main World erzeugte und durch die
-flüchtige Hülle übertragene By-Value-Projektion exakt:
+Nach `U` gilt in Feldreihenfolge:
+`not-observed`, `unknown`, `unproven`, `unknown`, `unknown`, `unknown`.
+Die interne Stage und der First-Terminal-Owner werden niemals behauptet.
 
-```text
-mainWorldSettlementProjection = {
-  outcome,
-  staticProfileResult,
-  relativeMilliseconds,
-  timingState
-}
-```
+### Exakt zehn Stages
 
-Sie enthält genau die drei Paare `fulfilled`/`not-applicable`,
-`static-redacted-rejection`/`match` oder `other-rejection`/`mismatch`.
-`unknown` und `unproven` sind ausschließlich Recordwerte für eine fehlende,
-mehrdeutige oder nicht eindeutig klassifizierbare Antwort und niemals Werte
-der gültigen Main-World-Projektion.
-
-Die Main World darf einen Rejectiongrund nur flüchtig gegen Code
-`BROWSER_SYNC_TRANSPORT_FAILED` und Nachricht
-`Der lokale Browser-SyncTransport ist fehlgeschlagen.` prüfen und muss ihn
-sofort auf `static-redacted-rejection` oder `other-rejection` projizieren.
-Grund, Stack, Preview, Object-ID und ExceptionDetails verlassen die Main World
-nicht. Bei Fulfillment wird ausschließlich `fulfilled` projiziert; der
-Responsewert wird nicht frei inspiziert. Nur die geschlossene Projektion
-verlässt die Main World innerhalb der oben begrenzten flüchtigen
-`Runtime.RemoteObject`-By-Value-Hülle.
-
-`deadline-compatible` ist nur bei einer innerhalb der JavaScript-Main-World-
-Clock gerundeten Settlementdauer von 4.500 bis einschließlich 5.500 ms
-zulässig. Es beweist weder Deadline noch Owner. Außerhalb des Fensters wird
-keine Gegenursache behauptet.
-
-### Exakt zehn externe Stages
-
-`stages` enthält exakt zehn Slots in der folgenden kanonischen Vokabular- und
-Speicherreihenfolge:
+`stages` besitzt exakt zehn Slots in kanonischer Speicherreihenfolge:
 
 ```text
 observer-armed
@@ -3773,8 +4375,7 @@ cleanup-started
 cleanup-completed
 ```
 
-Diese Reihenfolge ist keine globale Zeitordnung. Jeder gewöhnliche Slot
-besitzt exakt:
+Jeder Slot besitzt exakt acht Felder:
 
 ```text
 stage = {
@@ -3789,34 +4390,49 @@ stage = {
 }
 ```
 
-Die Werte sind:
+Geschlossene Werte sind:
 
-- `layer` exakt `controller`, `javascript-main-world`, `browser-network` oder
-  `cleanup`;
-- `observationState` exakt `observed`, `not-observed` oder `ambiguous`;
-- `receiptOrder` positive Ganzzahl oder `null`, ausschließlich ebenenlokal;
-- `result` exakt `match`, `mismatch` oder `unproven`; ein beobachteter anderer
-  Status oder eine andere Methode kann damit von fehlender Beobachtung
-  getrennt werden;
-- `clockDomain` exakt `controller-monotonic`, `javascript-main-world` oder
-  `browser-network`;
-- `relativeMilliseconds` Ganzzahl von `0` bis `60000` oder `null`;
-- `timingState` exakt `measured`, `at-or-above-cap` oder `unavailable`.
+```text
+layer = controller | javascript-main-world | browser-network | cleanup
+observationState = observed | not-observed | ambiguous
+receiptOrder = positive-safe-integer | null
+result = match | mismatch | unproven
+clockDomain =
+  controller-monotonic |
+  javascript-main-world |
+  browser-network
+relativeMilliseconds =
+  null | 0 | 10 | ... | 59990 | 60000
+timingState = measured | at-or-above-cap | unavailable
+```
 
-Der siebte Slot verwendet `stageId: post-loading-finished` oder
-`post-loading-failed`, sobald das terminale Ereignis eindeutig attribuiert
-ist. Fehlt es, ist `stageId: null`, `observationState: not-observed` und
-`result: unproven`; bei Mehrdeutigkeit gilt entsprechend `ambiguous`. `null`
-ist keine zusätzliche Stufe und behauptet kein Terminalereignis.
+Die feste Matrix lautet:
 
-`post-response-200-observed` beschreibt ausschließlich die sanitierte
-Statusbeobachtung der Browsernetzwerkebene und keinen Headerabschluss.
-`Network.loadingFinished`
-beweist weder JavaScript-Stream-EOF noch Reader-, Chunk-, Decode-, Parse- oder
-Korrelationsverhalten. `Network.loadingFailed` wird nur als Eventklasse
-gespeichert; sein Fehlertext bleibt ungelesen.
+| Stage | Layer | Clock |
+| --- | --- | --- |
+| `observer-armed` | `controller` | `controller-monotonic` |
+| `transport-call-dispatched` | `javascript-main-world` | `javascript-main-world` |
+| `preflight-request-observed` | `browser-network` | `browser-network` |
+| `preflight-204-observed` | `browser-network` | `browser-network` |
+| `post-request-observed` | `browser-network` | `browser-network` |
+| `post-response-200-observed` | `browser-network` | `browser-network` |
+| `post-loading-finished` oder `post-loading-failed` | `browser-network` | `browser-network` |
+| `public-promise-settled` | `javascript-main-world` | `javascript-main-world` |
+| `cleanup-started` | `cleanup` | `controller-monotonic` |
+| `cleanup-completed` | `cleanup` | `controller-monotonic` |
 
-### Getrennte Clock-Domänen und Beobachtungsabschluss
+`receiptOrder` wird je Layer lückenlos ab `1` vergeben. Nur eindeutig
+beobachtete Slots erhalten eine positive Zahl; `not-observed` und `ambiguous`
+verwenden `null`. Ein Preflight-`loadingFinished` dient nur flüchtig der
+Korrelation und erzeugt keinen Slot. `post-response-200-observed` behauptet
+keinen Header- oder Streamabschluss. Nach einem späteren `U` bleibt Stage 1
+`observer-armed` als `observed/match` mit `receiptOrder: 1`,
+`relativeMilliseconds: 0` und `timingState: measured` erhalten. Stages 2 bis 8
+sind `not-observed/unproven` mit `receiptOrder: null`,
+`relativeMilliseconds: null` und `timingState: unavailable`; Cleanup verwendet
+weiterhin Slots 9 und 10.
+
+### Timing
 
 `timing` besitzt exakt:
 
@@ -3824,18 +4440,21 @@ gespeichert; sein Fehlertext bleibt ungelesen.
 timing = {
   roundingMilliseconds,
   durationCapMilliseconds,
+  setupWindowMilliseconds,
   captureWindowMilliseconds,
   clockDomains,
   calibration,
-  crossDomainComparison
+  crossDomainComparison,
+  completion
 }
 ```
 
-Die festen Werte lauten:
+Die festen Werte sind:
 
 ```text
 roundingMilliseconds = 10
 durationCapMilliseconds = 60000
+setupWindowMilliseconds = 6000
 captureWindowMilliseconds = 6000
 calibration = none
 crossDomainComparison = forbidden
@@ -3843,58 +4462,75 @@ crossDomainComparison = forbidden
 
 `clockDomains` enthält exakt:
 
-| Domain | feste Quelle | zulässige Aussage |
+| Domain | Quelle | Aussage |
 | --- | --- | --- |
-| `controller-monotonic` | `controller-monotonic-fixed-v1` | nur controller- und cleanup-lokale Empfangsfolge und relative Dauer |
-| `javascript-main-world` | `window.performance.now` | nur transportstimulus- und settlementlokale Folge und relative Dauer |
-| `browser-network` | `cdp-network-monotonic-time` | nur networklokale Empfangsfolge und relative Dauer |
+| `controller-monotonic` | `controller-monotonic-fixed-v1` | nur setup-, controller- und cleanuplokale Folge und Dauer |
+| `javascript-main-world` | `window.performance.now` | nur stimulus- und settlementlokale Folge und Dauer |
+| `browser-network` | `cdp-network-monotonic-time` | nur networklokale Folge und Dauer |
 
-Keine Domain wird mit einer anderen verrechnet. Die Stages begründen keine
-globale Ordnung zwischen JavaScript-, Browsernetzwerk- und Controller- oder
-Cleanup-Ebene.
+Setup- und Observationcontroller verwenden dieselbe Controllerdomäne; es gibt
+keine vierte Clock. `m_setup` ist der rohe controller-monotone Clockursprung
+des Setupfensters; `t_setup = 0` ist ausschließlich dessen persistierter
+relativer Nullpunkt. Die übrigen Nullpunkte sind `observer-armed`, der
+Evaluate-Sendeübergang, unmittelbar vor `sendSyncRequest`, das erste eindeutig
+attribuierte Endpoint-`requestWillBeSent` und `cleanup-started`. Keine
+Clockdomäne wird mit einer anderen verrechnet.
 
-Vor Browser-, Gateway- oder Vite-Stopp endet die Networkbeobachtung mit einem
-eindeutig targetgebundenen `loadingFinished` oder `loadingFailed`, andernfalls
-nach dem festen observerlokalen Capturefenster mit `UNPROVEN`. Erst danach
-werden die Beobachtungen eingefroren und `cleanup-started` gesetzt. Ein durch
-Cleanup ausgelöstes `loadingFailed` ist keine Produktbeobachtung.
-
-Der Controller führt dafür ausschließlich die Zustände `S`, `N` und `C`:
+Für jede rohe ebenenlokale Dauer `d` gilt ohne Koerzierung:
 
 ```text
-S = gültiges und eindeutig korreliertes öffentliches Settlement projiziert
-N = eindeutig dem POST zugeordnetes loadingFinished oder loadingFailed beobachtet
-C = controllerlokales 6.000-ms-Capturefenster erreicht
+d ist keine endliche primitive Zahl oder d < 0
+  => relativeMilliseconds = null
+     timingState = unavailable
 
-observationClosed := (S && N) || C
+0 <= d < 60000
+  => relativeMilliseconds = 10 * floor(d / 10)
+     timingState = measured
+
+d >= 60000
+  => relativeMilliseconds = 60000
+     timingState = at-or-above-cap
 ```
 
-Das Capturefenster beginnt controller-monoton beim Senden des einzigen
-`Runtime.evaluate`-Kommandos. Settlement oder Networkterminal allein startet
-keinen Cleanup. Trifft eines zuerst ein, bleibt die Beobachtung bis zum
-anderen oder bis zum Cap offen. Sind `S` und `N` vor dem Cap wahr, wird der
-Beobachtungszustand unmittelbar atomar geschlossen und eingefroren. Gewinnt
-der Cap, werden alle offenen Slots in demselben Schritt als `not-observed`
-beziehungsweise `unproven` eingefroren. Erst danach beginnt Cleanup.
-
-Späte Evaluate-Antworten und Networkevents werden verworfen. Bei einem
-Ereignis exakt am Cap entscheidet ausschließlich die controllerlokale
-Empfangs- beziehungsweise Timerreihenfolge vor dem atomaren Freeze; eine
-rückwirkende Zuordnung ist verboten. Die Barriere behauptet keine globale
-zeitliche Ordnung zwischen den drei Clock-Domänen. Ein fehlendes `S` oder `N`
-am Cap ergibt ohne bestätigten höherrangigen Verstoß `observerGate: UNPROVEN`
-und `finding: inconclusive`; ein bestätigter Verstoß behält `FAIL`-Präzedenz.
+Die Setupmitgliedschaft verwendet vorher ausschließlich die rohe
+`d_setup < 6000`-Grenze. `deadline-compatible` ist nur bei gültiger gerundeter
+Main-World-Dauer von einschließlich `4500` bis `5500` zulässig. Außerhalb gilt
+`no-causal-classification`, bei unbrauchbarem Timing `unknown`.
 
 ### Cleanup
 
-`cleanup` besitzt exakt `{ observationClosedBeforeCleanup, checks, result,
-recordMaterializedAfterCleanup }`. Die beiden Felder sind boolesch. `false`
-ist eine belegte Ablaufverletzung und erzwingt `cleanup.result: FAIL`,
-`observerGate: FAIL` sowie `finding: observer-invalid`. `result` ist `PASS`,
-`FAIL` oder `UNPROVEN`.
+`cleanup` besitzt exakt vier Felder:
 
-`checks` enthält in dieser Reihenfolge exakt die folgenden 20 IDs mit jeweils
-`confirmed`, `failed` oder `unproven`:
+```text
+cleanup = {
+  observationClosedBeforeCleanup,
+  checks,
+  result,
+  recordMaterializedAfterCleanup
+}
+```
+
+Die beiden Ablauffelder sind boolesch. `result` ist `PASS`, `FAIL` oder
+`UNPROVEN`. Cleanup startet nach `U`, `V` oder `C` aus dem tatsächlich
+erreichten partiellen Setupzustand.
+
+```text
+cleanupWindowMilliseconds = 60000
+cleanupFinalized :=
+  allCleanupStepsTerminal ||
+  cleanupCapProcessed
+```
+
+Der Cleanupcap beginnt bei `cleanup-started`, wird nicht mit dem
+Durationcap gleichgesetzt und verwendet bei Gleichzeitigkeit die
+controllerlokale Verarbeitungsreihenfolge. Offene Checks werden am Cap
+`unproven`; bestätigtes `failed` behält Präzedenz. `cleanupCompleted` bedeutet,
+dass alle Schritte vor dem Cap terminal bewertet wurden, nicht dass sie
+erfolgreich waren. Stage 10 bleibt am Cap ohne vollständige Terminalität
+`not-observed/unproven`. `recordMaterializedAfterCleanup` bedeutet nach
+terminaler Finalisierung, auch bei `FAIL` oder `UNPROVEN`.
+
+`checks` enthält exakt diese 20 IDs:
 
 ```text
 cleanupStarted
@@ -3919,112 +4555,156 @@ observerStorageLogAndTelemetryResidueAbsent
 cleanupCompleted
 ```
 
-Mindestens ein `failed` oder ein falsches boolesches Ablauffeld ergibt
-`cleanup.result: FAIL`; andernfalls ergibt ein `unproven` `UNPROVEN`; nur alle
-`confirmed` und beide booleschen Werte `true` ergeben `PASS`. Nach
-`controllerObservationClosed` besitzt der Controller keine Session, Pipe,
-Browser- oder Produktfähigkeit mehr und hält nur geschlossene primitive Werte.
-Der persistierbare Record darf erst nach `cleanupCompleted` daraus
-materialisiert werden; unmittelbar danach endet der Controllerprozess. Der
-Record behauptet deshalb nicht zirkulär eine vor seiner eigenen
-Materialisierung erfolgte Controllerprozessterminierung.
+Jeder Check ist `confirmed`, `failed` oder `unproven`. Die Quellen sind:
 
-Der atomare Beobachtungsfreeze ist nicht der endgültige Cleanupstatus, sondern
-nur dessen unveränderliche Eingabe. `cleanup.result` wird erst nach Auswertung
-aller 20 Checks festgelegt. Cleanup vor `(S && N) || C`, Übernahme eines
-späten Ereignisses oder Änderung des eingefrorenen Beobachtungszustands ergibt
-`cleanup.result: FAIL`, `observerGate: FAIL` und
-`finding: observer-invalid`.
+| Check | Ableitungsquelle |
+| --- | --- |
+| `cleanupStarted` | interner Übergang nach Frozen Observation-Snapshot |
+| `networkDomainClosed` | korrelierter Disable-Erfolg oder Beweis, dass Enable nie gesendet wurde |
+| `targetSessionClosed` | korrelierter Detach-Erfolg oder Beweis, dass Attach nie gesendet wurde |
+| `debugPipeClosed` | identitätsgebundene irreversible Close-Bestätigung |
+| `controllerObservationClosed` | verworfene Event-/Commandfähigkeiten, nur geschlossene Primitive |
+| `browserStopped` | terminaler Wait-/Terminate-Ausgang des gebundenen Handles |
+| `devServerStopped` | terminaler Wait-/Terminate-Ausgang des gebundenen Handles |
+| `gatewayStopped` | terminaler Wait-/Terminate-Ausgang des gebundenen Handles |
+| `profileRemoved` | Verifikation des exakt gebundenen temporären Profilpfads |
+| `harnessFragmentsRemoved` | Verifikation der allowlisteten temporären Fragmente |
+| `objectGroupsAbsentOrReleased` | bestätigte Abwesenheit; Objectgroup und Release bleiben verboten |
+| `rawEventsDiscarded` | Entleerung der flüchtigen Raw-Eventhaltung |
+| `ephemeralIdentifiersDiscarded` | Entleerung aller flüchtigen IDs |
+| `permissionSiteCacheAndServiceWorkerStateCleared` | gebundene Wegwerfprofilprüfung |
+| `environmentRestored` | Vergleich der geschlossenen Umgebungsbaseline |
+| `portsFree` | Verifikation ausschließlich der gebundenen lokalen Ports |
+| `repositoryAndIndexRestored` | Repository-/Indexprüfung unmittelbar vor Finalrecord |
+| `historicalEvidenceHashUnchanged` | SHA-256 der historischen Evidence-Datei |
+| `observerStorageLogAndTelemetryResidueAbsent` | Residueprüfung unmittelbar vor Finalrecord |
+| `cleanupCompleted` | alle vorherigen Cleanupschritte vor Cap terminal bewertet |
 
-### Statusachsen und geschlossene Ableitung
+Wurde Enable oder Attach möglicherweise ausgeführt, ist die zugehörige
+Fähigkeit aber nicht identifizierbar, bleibt der Close-Check `unproven`; bloße
+Unzugänglichkeit bestätigt keine Schließung. Mindestens ein `failed` oder
+falsches Ablauffeld ergibt `FAIL`; andernfalls ergibt ein `unproven`
+`UNPROVEN`; nur alle `confirmed` und beide booleschen Werte `true` ergeben
+`PASS`.
 
-Die drei Statusachsen sind exakt:
+`Network.disable` und `Target.detachFromTarget` werden vor
+`debugPipeClosed` und `controllerObservationClosed` nur über bereits gebundene
+Fähigkeiten versucht. Danach sind ausschließlich identitätsgebundene
+irreversible Fähigkeiten `wait`, `terminate`, `close`, Entfernung exakt
+gebundener temporärer Artefakte und geschlossene Post-Cleanup-Verifikation
+zulässig. Neue Prozesse, stdin, freie IPC, CDP-/Pipe-Schreiben,
+Browserkommandos, Produktrequests, Wiederöffnung, freie Metadatenabfragen und
+PID-Persistenz sind verboten.
+
+### Statusachsen und fünf Findings
 
 ```text
 observerGate = PASS | FAIL | UNPROVEN
+
 finding =
   static-rejection-reproduced-after-http200 |
   original-failure-not-reproduced |
   network-signature-diverged |
   observer-invalid |
   inconclusive
+
 causeStatus = CAUSE_NOT_PROVEN
 ```
 
-Die Ableitung besitzt folgende Präzedenz:
+Die Ableitung besitzt Präzedenz:
 
-1. Ein verletzter Integritätscheck, eine eindeutig falsche
-   `Runtime.evaluate`-Antwort- oder `Runtime.RemoteObject`-Hüllenform,
-   vorzeitiger Cleanup, Übernahme eines späten Ereignisses, Änderung des
-   eingefrorenen Beobachtungszustands, Sourcekopie oder -instrumentierung,
-   nicht allowlistetes CDP-Kommando, Debugger-/Profiler-/Tracing-Aktivität,
-   Mutation, Fetch-Interception, zweiter Transportaufruf oder `POST`, direkter
-   Diagnose-Fetch, Observerrequest zum Endpoint, Rohpersistenz, Observer-/
-   Diagnoseausgabe während des Laufs oder bestätigter Cleanupfehler ergibt
-   `observerGate: FAIL` und `finding: observer-invalid`.
-2. Fehlt ohne belegte Verletzung eine eindeutige Pflichtbeobachtung,
-   Requestattribution, Integritätsbestätigung, ein `≡R`-Vergleich oder eine
-   Cleanupbestätigung oder ist die Evaluate-Antwort abgeschnitten, doppelt,
-   nicht korrelierbar oder nicht eindeutig klassifizierbar, gilt
-   `observerGate: UNPROVEN` und
-   `finding: inconclusive`.
-3. `static-rejection-reproduced-after-http200` verlangt
-   `observerGate: PASS`, `equivalence.result: EQUIVALENT`, exakt
+1. Bestätigte Integritäts-, Kommando-, Envelope-, Requestbudget-, Freeze-,
+   Ablauf- oder Cleanupverletzung ergibt `FAIL/observer-invalid`.
+2. `U`, fehlende oder mehrdeutige Pflichtbeobachtung, unbestätigter
+   Integritätscheck, unvollständiges Replay oder Cleanup ergibt ohne
+   bestätigte Verletzung `UNPROVEN/inconclusive`.
+3. `static-rejection-reproduced-after-http200` verlangt `PASS`,
+   `EQUIVALENT`, einen Stimulus, exakt
    `OPTIONS-204-POST-200-loadingFinished` und
-   `outcome: static-redacted-rejection`.
+   `static-redacted-rejection/match`.
 4. `original-failure-not-reproduced` verlangt dieselben Voraussetzungen und
-   `outcome: fulfilled`.
-5. Eine eindeutig beobachtete abweichende Endpointsignatur ergibt nur bei
-   `observerGate: PASS` und `equivalence.result: EQUIVALENT`
-   `network-signature-diverged`; sie erklärt den historischen Widerspruch
-   nicht. Ohne vollständig erfülltes `≡R` bleibt der Befund `inconclusive`.
-6. Jede andere Konstellation ergibt `inconclusive`.
+   `fulfilled/not-applicable`.
+5. Eine eindeutig beobachtete abweichende Produktnetzsignatur darf nur bei
+   intaktem Observer, genau einem Stimulus und `EQUIVALENT`
+   `PASS/network-signature-diverged` ergeben.
+6. `other-rejection/mismatch` bei ansonsten erwarteter Netzsequenz bleibt
+   `PASS/inconclusive`.
+7. Jede andere Kombination ist `inconclusive`.
 
-Eine bestätigte Verletzung aus Nummer 1 besitzt stets `FAIL`-Präzedenz vor
-jedem zugleich fehlenden oder unbewiesenen Wert aus Nummer 2. Verbotene
-Feldinhalte werden auch zur Feststellung einer Hüllenverletzung nicht gelesen.
+Jeder `PASS` und jeder nicht-inkonklusive Befund verlangt genau einen
+Stimulus. Ein vor dem Stimulus geschlossener Versuch ist ausschließlich
+`UNPROVEN/inconclusive` oder bei bestätigtem `V`
+`FAIL/observer-invalid`. Nach `U` gelten ohne spätere Verletzung:
 
-`observerGate: PASS` verlangt ein vollständig gebundenes erlaubtes
-Observerprofil, alle Integritäts- und Operationsnachweise, eindeutige
-targetgebundene Beobachtungen, bekannte Requestcounts, keine verbotene
-Requestart und `cleanup.result: PASS`. Eine eindeutig beobachtete abweichende
-Netzsignatur kann bei sonst intaktem Observer `PASS` besitzen; sie wird durch
-`finding` getrennt bewertet. Ein belegter kausaler Replay-`mismatch` macht den
-Observer allein nicht ungültig, verhindert aber jedes historische Finding und
-ergibt `inconclusive`. Ein nicht belegbarer Replayvergleich macht die
-Diagnosebeobachtung unvollständig und ergibt `observerGate: UNPROVEN`.
+```text
+captureWindowState = not-started
+observerGate = UNPROVEN
+finding = inconclusive
+causeStatus = CAUSE_NOT_PROVEN
+mainWorldEvaluationCount = zero
+transportFactoryCallCount = zero
+defaultTransportCalls = zero
+sequence = incomplete
+```
 
-`observerGate` ist ausschließlich ein Vollständigkeits- und Integritätsgate
-für die Diagnose. Reproduktion ist kein Ursachennachweis. `causeStatus` ist in
-jeder Kombination `CAUSE_NOT_PROVEN`, und
-`adr0029OverallGate = { before: "FAIL", after: "FAIL", unchanged: true }`.
+Ein Replay-`mismatch` macht den Observer nicht allein ungültig, verhindert
+aber jedes historische Finding. Reproduktion ist kein Ursachennachweis.
+`adr0029OverallGate` bleibt vor und nach der Diagnose `FAIL`.
 
-### Redaction und Aussagegrenzen
+### Recordgrammatik, Redaction und Materialisierung
 
-Nicht gespeichert werden:
+Alle Records sind gewöhnliche geschlossene Nicht-Array-Records mit
+ausschließlich aufzählbaren Own-Data-Properties. Arrays besitzen feste
+Reihenfolge und Kardinalität. Zahlen sind endlich, nichtnegativ und
+erforderlichenfalls Safe Integers. Symbole, Accessors, Funktionen, BigInts,
+`undefined`, `NaN`, Infinity und `toJSON` sind verboten. Der Finalrecord wird
+frisch erzeugt und tief eingefroren. Die Foundation persistiert oder
+serialisiert ihn nicht.
 
-- Benutzer- oder Rechnername;
-- persönliche Profilpfade, konkrete Profilinstanzkennungen oder Prozess-IDs;
-- vollständiger User-Agent;
-- Debugport, rohe Kommandozeile oder rohe Flags;
-- HAR oder rohe CDP-Ereignisse;
-- die flüchtige `Runtime.evaluate`-Antwort, das Methodenergebnis und die
-  `Runtime.RemoteObject`-Hülle samt nicht projizierten Protokollmetadaten;
-- CDP-Session-, Target-, Frame-, Loader-, Request-, Protokollrequest- oder
-  RemoteObject-IDs;
-- rohe monotone oder Wall-Clock-Zeitpunkte;
-- frei kopierte Header;
-- Request-ID oder Requesttimestamp;
-- Request- oder Responsebody;
-- Fehlergrund, Stack, ExceptionDetails oder Objektpreview;
-- private Netzwerkdetails;
-- GoldenDawn-, Vault- oder Credentialdaten.
+Nicht gespeichert werden insbesondere Benutzer- oder Rechnername,
+persönliche Profilpfade, Profilinstanzkennungen, PIDs, vollständiger
+User-Agent, Debugport, rohe Kommandozeile oder Flags, HAR, rohe CDP-Ereignisse,
+Hüllen- oder Routingmetadaten, Session-, Target-, Frame-, Loader-, Request-,
+Command- oder RemoteObject-IDs, rohe Zeitpunkte, Header, Request-ID,
+Requesttimestamp, Request-/Responsebody, Fehlergrund, Stack,
+Exceptiondetails, Preview, private Netzwerkdetails, GoldenDawn-, Vault- oder
+Credentialdaten.
 
-Ein `observerGate: PASS` bedeutet ausschließlich, dass unter dem gebundenen
-`T_diag` keine vertraglich sichtbare Interferenz festgestellt wurde und die
-geschlossene Diagnosebeobachtung vollständig war. Es beweist keine absolute
-Nichtbeeinflussung, keinen observerfreien Gegenlauf, keine interne Stage,
-keinen First-Terminal-Owner, keine Ursache und kein Runtime-`PASS`.
+Repository-, Index- und Residuechecks erfolgen unmittelbar vor dem
+Finalrecord. Die einzige danach zulässige observererzeugte Ausgabe ist der
+eine sanitierte Finalrecord; sie ist keine Residue. Logs, Rohdaten,
+Zwischenrecords und temporäre Manifeste bleiben verboten.
+
+### Bewusste Adaptergrenze
+
+Die pure Foundation implementiert ausdrücklich kein Debug-Pipe-Framing,
+keinen Byte- oder Messageparser, UTF-8-Decoder, JSON-Parser,
+Duplicate-Key-Nachweis, Prozesslauncher, Browser-, Vite- oder Gatewayadapter,
+Dateisystem- oder Recordwriter. Sie kann ausschließlich ihre frisch
+konstruierte controller-eigene geschlossene Outputprojektion bestätigen, nicht
+den unvertrauenswürdigen Eingabegraphen oder dessen Proxy-, Parser-, Raw-Byte-
+und Materialisierungsprovenienz. Die pure Foundation allein kann keine reale
+`observerGate: PASS`-Evidenz erzeugen. Bounded-`JSON.parse`-, No-Reviver-,
+Raw-Byte-, Duplicate-Key- und Materialisierungsprovenienz bleiben bis zu einem
+späteren hashgebundenen Adapter unbewiesen und müssen dort intern aus
+gebundenem Parser-, Byte- und Capabilityledger abgeleitet werden; ein frei
+gelieferter Provenienzboolean bleibt verboten.
+
+Die Reihenfolge bleibt:
+
+1. ADR 0032 dokumentieren und mergen.
+2. Nur die pure netzwerkfreie effects-as-data-Foundation implementieren und
+   testen.
+3. Raw-Pipe-, Parser-, Queue-, Ressourcen-, Cap-/Timer-, Adapter-, Launcher-
+   und Hashbindung in einem eigenen ADR entscheiden und anschließend
+   netzwerkfrei implementieren.
+4. Erst danach einen sichtbaren Diagnoselauf separat autorisieren.
+5. Anschließend erst über Produktänderung oder einen neuen ADR-0029-Lauf
+   entscheiden.
+
+Vor Schritt 4 darf kein realer `BrowserTransportDiagnosticRecord`
+materialisiert werden. Dieser Vertrag autorisiert keine Runtimeoperation und
+ändert weder `overallGate: FAIL` noch `causeStatus: CAUSE_NOT_PROVEN`.
 
 ## Browser Runtime Evidence Record / ADR 0029
 
@@ -4777,13 +5457,14 @@ besitzt ihr netzwerkfreies `PASS`. ADR 0029 definiert das an `T₀` und die
 allowlisteten Negativdeltas gebundene Runtimegate. Sein einmaliger Chrome-151-
 Lauf bleibt mit Gesamt-`FAIL`, PNA/LNA und den nicht ausgeführten
 Negativvektoren `UNPROVEN` sowie Cleanup `PASS` dokumentiert; die Ursache ist
-`CAUSE_NOT_PROVEN`. ADR 0031 ersetzt ADR 0030 formal, übernimmt dessen
-fortgeltende Regeln und korrigiert ausschließlich die CDP-Envelope- und
-Observation-Completion-Grenze. Als nächster
-Slice folgt nur die vollständig netzwerkfreie Implementierung und Prüfung der
-Diagnosefoundation. Zielbrowser, `T_replay`, Observer, der einzelne Request,
-Benutzerinteraktion und Cleanup benötigen danach eine neue ausdrückliche
-Autorisierung. Browserkomposition und lokaler Browser-End-to-End-`syncTest`
+`CAUSE_NOT_PROVEN`. ADR 0032 ersetzt ADR 0031 formal, übernimmt dessen
+fortgeltende Regeln und totalisiert Capture-, Timing-, Projektions- und
+Setupgrenze. Als nächster Slice folgt nur die reine netzwerkfreie
+effects-as-data-Implementierung und Prüfung der Diagnosefoundation. Danach
+folgen ein eigener Adapter-ADR und dessen getrennte netzwerkfreie
+Implementierung. Zielbrowser, `T_replay`, Observer, der einzelne Request,
+Benutzerinteraktion und Cleanup benötigen erst anschließend eine neue
+ausdrückliche Autorisierung. Browserkomposition und lokaler Browser-End-to-End-`syncTest`
 bleiben bis zu einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`
 geschlossen. Eine angenommene Entscheidung, eine implementierte Policy oder
 die isolierte Transportexistenz öffnet keines dieser Gates automatisch.
@@ -4791,7 +5472,7 @@ die isolierte Transportexistenz öffnet keines dieser Gates automatisch.
 Die folgenden ADR-0027- und ADR-0026-Abschnitte bewahren den damaligen
 Entscheidungs- und Vorimplementierungsstand historisch unverändert.
 
-## Aktueller Browser SyncTransport Contract / ADR 0027
+## Historischer Browser SyncTransport Contract / ADR 0027
 
 [ADR 0027](decisions/0027-browser-sync-transport-proof-boundaries.md) ersetzt
 ADR 0026. Der erste Implementierungsversuch wurde vor jeder Dateiänderung hart
@@ -5010,8 +5691,9 @@ private Requestcap geändert oder entfernt werden soll oder Endpoint,
 Fetchpolicy, Deadline, Responsecap, CORS beziehungsweise Fehlersemantik
 geändert werden sollen.
 
-Als nächster Slice darf ausschließlich die isolierte und netzwerkfreie
-BrowserSyncTransport-Implementierung gemäß ADR 0027 begonnen werden. Reales
+Als damals nächster Slice durfte ausschließlich die isolierte und netzwerkfreie
+BrowserSyncTransport-Implementierung gemäß ADR 0027 begonnen werden; sie ist
+inzwischen umgesetzt und geprüft. Reales
 Fetch, Browser- oder Gatewaystart, PNA-/LNA-/Mixed-Content-Runtimeevidenz,
 Browserkomposition, Browser-End-to-End-`syncTest`, globale Missbrauchs-,
 Parallelitäts-, Queue- und Prozessgrenzen sowie Provider bleiben getrennt und
@@ -6032,12 +6714,12 @@ HTTP-Prozess komponiert.
 Der vorhandene lokale Gatewaypfad übergibt seine akzeptierte defensive
 Projektion nach ADR 0025 synchron höchstens einmal an den Kern. Nur ein exakter
 ADR-0024-Erfolg wird als frische defensive Normalresponse mit HTTP `200`
-ausgegeben. ADR 0027 ersetzt ADR 0026 und entscheidet ausschließlich den
-korrigierten BrowserSyncTransport-Vertrag. Als nächster Slice folgt dessen
-isolierte Implementierung mit
-mutationswirksamer Unit-Suite, weiterhin ohne `src/main.js`-Komposition. Der
-lokale Browser-End-to-End-Fluss folgt getrennt; Provider, externe Datenflüsse
-und weitere Aktionen bleiben spätere Slices.
+ausgegeben. ADR 0027 ersetzte ADR 0026 und entschied ausschließlich den
+korrigierten BrowserSyncTransport-Vertrag. Dessen isolierte Implementierung mit
+mutationswirksamer Unit-Suite ist inzwischen abgeschlossen, weiterhin ohne
+`src/main.js`-Komposition. Der lokale Browser-End-to-End-Fluss bleibt
+geschlossen; Provider, externe Datenflüsse und weitere Aktionen bleiben
+spätere getrennte Slices.
 
 Same-Realm-Reflection und Deep Freeze sind keine Sandbox. Proxy-Traps oder
 manipulierte Intrinsics können vor einer beobachtbaren Ablehnung bereits
@@ -6192,11 +6874,10 @@ Dieser Vertrag ist implementiert. Der frühere statische
 `503 upstreamUnavailable`-Annahmepfad und sein Serverprofil sind entfernt; nur
 der vollständig erfolgreiche komponierte Pfad ergibt HTTP `200`. Sämtliche
 beherrschten Agent-/Responsefehler bleiben beim bestehenden statischen
-`500 gatewayFailed`. ADR 0027 ersetzt ADR 0026 und entscheidet inzwischen
-ausschließlich den korrigierten BrowserSyncTransport-Vertrag. Als Nächstes
-folgen nur die isolierte
-Transportimplementierung und ihre mutationswirksame Unit-Suite; Browser-
-Komposition und End-to-End-Fluss bleiben ein getrennter Folgeslice,
+`500 gatewayFailed`. ADR 0027 ersetzte ADR 0026 und entschied ausschließlich
+den korrigierten BrowserSyncTransport-Vertrag. Die isolierte
+Transportimplementierung und ihre mutationswirksame Unit-Suite sind inzwischen
+abgeschlossen; Browserkomposition und End-to-End-Fluss bleiben geschlossen,
 Betriebsgrenzen und Provider weitere spätere Slices.
 
 Die Phase-0-Einordnung bleibt ausschließlich eine enge vorläufige Nicht-KI-
@@ -8387,10 +9068,12 @@ Kopierprüfung. ADR 0029 operationalisiert den dafür erforderlichen
 Evidence-Record; sein Entscheidungsslice selbst führte keinen Runtimevorgang
 aus. Der danach einmalig autorisierte Chrome-151-Lauf ist mit Gesamt-`FAIL`,
 PNA/LNA und Negativvektoren `UNPROVEN` sowie Cleanup `PASS` dokumentiert; die
-Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0031 ersetzt ADR 0030 formal und
-entscheidet die davon unabhängige korrigierte passive Diagnosegrenze. Als
-Nächstes folgt ausschließlich ihre netzwerkfreie
-Foundationimplementierung und -prüfung. Produktive SyncService-/`src/main.js`-
+Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0032 ersetzt ADR 0031 formal und
+totalisiert die davon unabhängige passive Diagnosegrenze. Als Nächstes folgt
+ausschließlich ihre reine netzwerkfreie effects-as-data-
+Foundationimplementierung und -prüfung; darauf folgen ein eigener Adapter-ADR
+und dessen getrennte netzwerkfreie Implementierung. Erst danach kann ein
+sichtbarer Diagnoselauf gesondert autorisiert werden. Produktive SyncService-/`src/main.js`-
 Komposition und Browser-End-to-End-Fluss fehlen weiterhin und folgen erst nach
 einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`.
 
@@ -8470,10 +9153,11 @@ ADR 0024 implementiert davon den isolierten SyncAgent-Kern:
 Die Schritte 1 bis 4 der lokalen Agentenreihenfolge sind einschließlich der
 durch ADR 0025 entschiedenen Gateway-/SyncAgent-Komposition implementiert. ADR
 0028 ersetzt ADR 0027 formal, übernimmt dessen beide Korrekturen und entscheidet
-die inzwischen implementierte feste v1-Wire-Policy vor der Wirefreigabe. Als
-Nächstes folgt ausschließlich das getrennte reale, kontext- und versionsgebundene
-PNA-/LNA-/Mixed-Content-Browser-Runtimegate; Browserkomposition, Provider- und
-externer Fluss bleiben spätere getrennte Slices.
+die inzwischen implementierte feste v1-Wire-Policy vor der Wirefreigabe. Danach
+folgte das getrennte reale, kontext- und versionsgebundene
+PNA-/LNA-/Mixed-Content-Browser-Runtimegate; sein gebundener Chrome-151-Lauf
+bleibt Gesamt-`FAIL` mit `CAUSE_NOT_PROVEN`. Browserkomposition, Provider- und
+externer Fluss bleiben geschlossen.
 
 Der Browsercaller ist am lokalen Gateway nicht authentisiert und nicht
 vertrauenswürdig. Lokale Konfiguration bestimmt Listener, Route, Origin und
@@ -9366,10 +10050,10 @@ Der isolierte SyncAgent-Kern gilt als implementiert, wenn:
   Deep Freeze keine Sandbox bilden;
 - der Kern nicht in `src/main.js`, aber ausschließlich im lokalen HTTP-Prozess
   für den leeren synthetischen `syncTest` nach ADR 0025 komponiert ist; der
-  BrowserSyncTransport-Vertrag ist durch ADR 0027 als Ersatz für ADR 0026
-  angenommen, während als
-  nächster Slice nur seine isolierte Implementierung mit mutationswirksamer
-  Unit-Suite offen bleibt und die Browserkomposition getrennt folgt;
+  BrowserSyncTransport-Vertrag wurde durch ADR 0027 als Ersatz für ADR 0026
+  angenommen und seine isolierte Implementierung mit mutationswirksamer
+  Unit-Suite ist abgeschlossen, während die Browserkomposition geschlossen
+  bleibt;
 - die relevanten Tests und der Produktions-Build real ausgeführt und erst
   danach mit ihren tatsächlichen Zahlen dokumentiert sind.
 
