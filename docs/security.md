@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0032 angenommen; Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: reine netzwerkfreie effects-as-data-Diagnosefoundation` |
+| Projektphase | `v0.3.0 – ADR 0033 angenommen; Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; Foundationimplementierung als nächster netzwerkfreier Slice` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | Verbindliche Sicherheitsbasis; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR-0025-Gateway-/SyncAgent-Handoff-, Response- und Ownergrenze, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy für den leeren synthetischen `syncTest` implementiert; der einmalige an `chrome-stable-win-t0-01` gebundene Lauf bleibt wegen des Widerspruchs zwischen vollständig beobachteter HTTP-200-Response und statisch zurückgewiesenem Transport-Promise mit `overallGate: FAIL` dokumentiert; Ursache `CAUSE_NOT_PROVEN`, PNA/LNA und nicht ausgeführte Negativkontrollen `UNPROVEN`, Cleanup `PASS`; ADR 0032 ersetzt ADR 0031 formal und entscheidet ausschließlich die totalisierte, noch nicht implementierte und nicht autorisierte Diagnose-Determinismusgrenze; Browserkomposition und Browser-End-to-End-Fluss fehlen; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter nicht implementiert |
-| Letzte Aktualisierung | 2026-09-02 |
+| Status | Verbindliche Sicherheitsbasis einschließlich ADR 0033; ADR 0033 ersetzt ADR 0032 formal und übernimmt alle nicht ausdrücklich korrigierten ADR-0032-Regeln, während ADR 0032 als historische Entscheidungsebene erhalten bleibt; Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; ADR-0025-Gateway-/SyncAgent-Handoff-, Response- und Ownergrenze, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy für den leeren synthetischen `syncTest` implementiert; der einmalige an `chrome-stable-win-t0-01` gebundene Lauf bleibt wegen des Widerspruchs zwischen vollständig beobachteter HTTP-200-Response und statisch zurückgewiesenem Transport-Promise mit `overallGate: FAIL` dokumentiert; Ursache `CAUSE_NOT_PROVEN`, PNA/LNA und nicht ausgeführte Negativkontrollen `UNPROVEN`, Cleanup `PASS`; ADR 0033 schließt ausschließlich das Ein-Port-Effects-Protokoll der weiterhin nicht implementierten Diagnosefoundation; Adapter und Diagnoseruntimelauf sind nicht autorisiert; Browserkomposition und Browser-End-to-End-Fluss fehlen; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter nicht implementiert |
+| Letzte Aktualisierung | 2026-09-03 |
 
 Dieses Dokument definiert die Sicherheits- und Datenschutzgrenzen für
 GoldenDawn OS. Es ergänzt `AGENTS.md`, `docs/architecture.md` und
@@ -295,7 +295,7 @@ oder LichtwaldLog. Der neue HTTP-Handler besitzt keinen externen Upstream und
 ist weder mit Browser noch Cloud komponiert; die lokale SyncAgent-Komposition
 verlässt den Prozess nicht. Deshalb entsteht weiterhin kein externer Datenfluss.
 
-### Durch ADR 0023 bis ADR 0025 und ADR 0028 bis ADR 0032 entschiedene lokale Agenten-, Transport- und Providergrenze
+### Durch ADR 0023 bis ADR 0025, ADR 0028 und ADR 0033 entschiedene lokale Agenten-, Transport- und Providergrenze
 
 ADR 0023 ersetzt ADR 0002 und ADR 0019. Die durch ADR 0020 implementierte
 Raw-Wire-, HTTP-, Origin-, Decoder- und Boundary-Komposition bleibt ebenso
@@ -313,10 +313,11 @@ Provenienz und den öffentlich nicht erreichbaren Requestcap-Grenztest und
 übernimmt den übrigen Vertrag unverändert. Der BrowserSyncTransport ist nach
 dem Merge von ADR 0027 in Isolation implementiert und netzwerkfrei geprüft.
 Das ADR-0029-Runtimegate wurde einmal mit Gesamt-`FAIL` ausgeführt; seine
-Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0032 ersetzt ADR 0031 formal und
-entscheidet ausschließlich die totalisierte separate Diagnose-
-Determinismusgrenze; ADR 0031 bleibt historische Ebene. Foundation, Adapter und
-Lauf sind weder implementiert noch autorisiert. Browserkomposition, Browser-
+Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0033 ersetzt ADR 0032 formal und
+übernimmt alle nicht ausdrücklich korrigierten ADR-0032-Regeln; ADR 0032 bleibt
+als historische Entscheidungsebene erhalten. Die Diagnosefoundation ist noch
+nicht implementiert. Adapter-ADR, Adapterimplementierung und sichtbarer
+Diagnoselauf bleiben nachgelagert und nicht autorisiert. Browserkomposition, Browser-
 End-to-End-Fluss, Provideradapter und die
 übrigen Betriebsmechanismen fehlen. Der SyncAgent-Kern
 ist ausschließlich über den
@@ -580,12 +581,14 @@ Sicherheit, Authentisierung, Datenschutzkonformität oder Runtimefreigabe.
 Der Transport bleibt außerhalb der `SyncService`- und `src/main.js`-
 Komposition; ein Browser-End-to-End-Fluss fehlt.
 
-#### BrowserSyncTransport Diagnostic Capture, Timing and Projection Determinism Boundary / ADR 0032
+#### Historische BrowserSyncTransport Diagnostic Capture, Timing and Projection Determinism Boundary / ADR 0032
 
 ADR 0032 ersetzt ADR 0031 formal und übernimmt alle nicht ausdrücklich
-korrigierten ADR-0030-/ADR-0031-Regeln. ADR 0031 bleibt mit bytegleichem
-Hauptteil ab `## Kontext` historische Ebene; ADR 0030 bleibt durch ADR 0031
-ersetzt. ADR 0020, ADR 0028, ADR 0029 und der historische Evidence-Record
+korrigierten ADR-0030-/ADR-0031-Regeln. ADR 0033 hat ADR 0032 inzwischen formal
+ersetzt und übernimmt alle nicht ausdrücklich korrigierten ADR-0032-Regeln.
+ADR 0032 bleibt ebenso wie ADR 0031 mit bytegleichem Hauptteil ab `## Kontext`
+als historische Ebene erhalten; ADR 0030 bleibt durch ADR 0031 ersetzt. ADR
+0020, ADR 0028, ADR 0029 und der historische Evidence-Record
 bleiben unverändert. Der Diagnosepfad ist weder vierter ADR-0029-Vektor noch
 zusätzliches Runtimegate oder Erweiterung des `BrowserRuntimeEvidenceRecord`.
 Das historische Gesamtgate bleibt vor und nach jeder Diagnose exakt `FAIL`;
@@ -742,10 +745,11 @@ Bodies, Fehlergrund, Stack, Preview, private Netzwerkdetails und GoldenDawn-,
 Vault- oder Credentialdaten bleiben ausgeschlossen.
 
 Dieser Dokumentationsslice erstellt weder Foundation noch Adapter, Test,
-Record, Controller, Harness, Fixture oder Launcher. Als nächster Slice folgt
-ausschließlich das selbständige importinaktive und vollständig netzwerkfreie
-effects-as-data-Foundationmodul mit immutable Command-/Cleanup-Intents und
-untrusted materialisierten In-Memory-Beobachtungen. Debug-Pipe-, Byte-/Message-,
+Record, Controller, Harness, Fixture oder Launcher. Als nächster
+Implementierungsslice ist nach ADR 0033 ausschließlich das selbständige
+importinaktive und vollständig netzwerkfreie effects-as-data-Foundationmodul
+mit immutable Command-/Cleanup-Intents und untrusted materialisierten In-
+Memory-Beobachtungen vorgesehen. Debug-Pipe-, Byte-/Message-,
 UTF-8-, JSON-, Duplicate-Key-, Queue-, Ressourcen-, Cap-/Timer-, Hashbindungs-,
 Launcher-, Browser-, Vite-, Gateway-, Dateisystem- und Recordwriteradapter
 benötigen danach einen eigenen ADR und eine getrennte netzwerkfreie
@@ -753,6 +757,369 @@ Implementierung. Erst nach beiden Slices darf ein sichtbarer Diagnose- oder
 Runtime-Evidence-Lauf neu autorisiert werden. Browserkomposition und Browser-
 End-to-End bleiben bis zu einem späteren vollständig neuen ADR-0029-Gesamt-
 `PASS` geschlossen.
+
+#### BrowserSyncTransport Diagnostic Foundation Effects Protocol Boundary / ADR 0033
+
+[ADR 0033](decisions/0033-browser-sync-transport-diagnostic-foundation-effects-protocol-boundary.md)
+ersetzt ADR 0032 formal und übernimmt alle dortigen Regeln, die er nicht
+ausdrücklich korrigiert. ADR 0032 bleibt als historische Entscheidungsebene
+erhalten. Die Diagnosefoundation ist weiterhin nicht implementiert. Der
+nächste Slice ist ausschließlich ihre getrennte netzwerkfreie
+Effects-as-Data-Implementierung; Adapter-ADR, Adapterimplementierung und
+sichtbarer Diagnoselauf bleiben nachgelagert und nicht autorisiert.
+
+Factoryfehler sind ausschließlich synchrone statische Dependency-`TypeError`s;
+dann entstehen weder API noch Promise oder `FoundationResult`. `runBinding`
+wird vollständig während der Factory geprüft und in begrenzte primitive
+interne Blätter kopiert. Nach erfolgreicher Factory liefert jeder kontrollierte
+`run()`-Pfad ein lokales Promise und wirft nicht synchron. Der erste
+`run()`-Aufruf wechselt synchron vor Arityprüfung von `unused` zu
+`active`, setzt den primitiven Owner-Token `1` und ist alleiniger Owner. Bei
+gültiger Arity transferiert er nicht reentrant beobachtbar
+`capturedExchange -> activeExchange` und löscht den alten Slot. Bei falscher
+Erst-Arity wird ohne Effekt terminalisiert. Zweit-, Parallel- und reentrante
+Nicht-Owner erhalten eigene lokal erzeugte statische Fehler-Promises; sie
+lesen, verändern oder löschen keinen Capabilityslot, berühren weder
+Ownerzustand noch Zähler und starten weder Effekt noch Cleanup.
+
+Die einzige zulässige dauerhafte callerlieferte Referenz ist die private,
+nicht erreichbare und löschbare Capability, zeitlich disjunkt zunächst in
+`capturedExchange`, dann in `activeExchange`. Der
+`effectPort`-Container und seine eigene aufzählbare Data-Property `exchange`
+werden je genau einmal descriptorbasiert geprüft. Nur die ohne Koerzierung
+funktionale exakte Referenz wird gehalten; der Container wird sofort
+verworfen. Der Owner ruft die Capability ausschließlich über die bei
+Modulevaluation
+erfasste Apply-Intrinsic mit `undefined` als Receiver und einem frischen
+gewöhnlichen geschlossenen tief eingefrorenen Intent auf. Sie wird nie
+ausgegeben, serialisiert, eingefroren, persistiert, verglichen oder als
+Provenienz verwendet. Weder Plain-, Native-, Realm- noch Proxyfreiheit werden
+behauptet. Nur der Owner löscht `activeExchange` exakt einmal nach dem letzten
+benötigten Exchange und vor Erfüllung seines öffentlichen Result-Promises. Ein
+ewig pending Exchange darf den Slot benötigen und den Lauf ewig pending halten;
+ein echter Timer oder eine Livenessbehauptung wäre in der Foundation
+unzulässig.
+
+Vier transiente Referenzrollen sind erlaubt: aktueller
+Exchange-Promise-Kandidat; aktueller Fulfillmentgraph jeder Antwortart
+einschließlich Probe-, Clock-, Arm-, Cancel-, Send- und Cleanup-Step-Acks;
+vollständig unreflektierter Dequeuegraph während seines Clock-Samples; und
+ausschließlich synchron benötigte allowlistete Nachfahr-, Descriptor- und
+Prototypreferenzen. Ein Dequeuegraph wechselt ohne Doppelhaltung in seine
+Rolle; währenddessen darf die Fulfillmentrolle nur den Clock-Ack halten. Jede
+andere Überlappung ist verboten. Own-Key-Arrays und Descriptorrecords sind
+foundationeigene temporäre Prüfartefakte, enthaltene fremde Werte bleiben aber
+Inputreferenzen.
+
+Der Exchange-Promise-Kandidat bleibt nach Handlerinstallation ausschließlich
+bis zu seinem Settlement erhalten und wird dann verworfen. Der
+Fulfillmentgraph wird nach unmittelbarer primitiver Projektion, der
+Dequeuegraph nach Clock-Sample und anschließender Prüfung und jede
+Nachfahr-/Descriptor-/Prototypreferenz unmittelbar nach ihrer synchronen
+Prüfung verworfen. Keine Rolle wird eingefroren, mutiert, geloggt, serialisiert
+oder persistiert. Der
+Rejectionhandler ist formal nullstellig und liest weder Parameter,
+`arguments` noch Grund; der erzeugte Folgepromise wird nie gespeichert oder
+inspiziert. Ein zweiter Port, Callback, EventEmitter, Iterator, Generator,
+Stream, `AbortSignal` oder versteckter Seam bleibt verboten.
+
+Die absolute Outputinvariante gilt für Erfolgs- und Fehlerpfade:
+
+```text
+Keine callerlieferte Objekt-, Array-, Promise-, Hüllen-, Capability-
+oder sonstige Eingabereferenz erreicht FoundationResult,
+FoundationProjection, PreCleanupObservationSnapshot oder CleanupLedger.
+```
+
+Factoryoptions und `runBinding` werden descriptorbasiert geschlossen geprüft;
+nur begrenzte primitive Blätter werden in frische interne Deep-Freeze-Records
+kopiert. Caller dürfen keine historischen Werte, Vergleichsergebnisse, Gates,
+Findings, Counts, Completionstatus, Integritätsresultate, Hashgleichheit,
+Provenienzboolesche Werte, IDs oder Evaluationbytes liefern. Die 59
+Replayoperanden sind typ- und längenbegrenzt; Vergleichsbasis und historische
+Werte bleiben privat. Ein Callerhash kann eine syntaktische Abweichung
+fail-closed machen, aber niemals Commit- oder Dateibyteprovenienz bestätigen.
+
+Der einzige Port akzeptiert sieben geschlossene Intents:
+`capability-probe`, `controller-clock-sample`, `cap-arm`, `cap-cancel`,
+`protocol-command-send`, `observation-dequeue`, `cleanup-step`. Höchstens ein
+Kandidat mit bestandenem
+`currently-observable-local-native-promise-profile` darf ausstehen. Intents besitzen
+lückenlose flüchtige IDs und sind frisch, gewöhnlich, geschlossen und tief
+eingefroren. Die Capabilityprobe erlaubt nur Fortsetzung und bestätigt keine
+Adapter-, Pipe-, Parser-, Timer-, Queue- oder Byteprovenienz.
+
+Für jeden Promise-Kandidaten werden unmittelbar vor der einzigen erfassten
+nativen `then`-Anwendung die leeren OwnKeys, der erwartete lokale
+Promiseprototyp sowie
+die unveränderten Livedescriptoren von `Promise.prototype.constructor`,
+`Promise[Symbol.species]` und `Promise.prototype.then` exact-once geprüft.
+Diese Anwendung ist die einzige Brandprobe. Das Profil ist ausschließlich eine
+gegenwärtige Beobachtung und behauptet weder Same-Realm-/Erzeugungsrealm-,
+Constructor-, Subclass-, Native- noch Proxyfreiheit; vollständig verkleidete
+fremde Kandidaten können es bestehen. Beide kontrollierten Handler fangen
+eigene Throws und geben nur primitives `undefined` zurück. Öffentliche
+Run-Promises stammen ausschließlich aus dem erfassten lokalen Konstruktor;
+Reject wird weder gespeichert noch verwendet und Resolve exakt einmal
+aufgerufen. Foundationseitiges `await`, freie `.then`-Auflösung und
+`Promise.resolve|race|all` bleiben verboten. Die Foundation bindet, kopiert,
+serialisiert, persistiert, loggt oder emittiert keinen Rejectiongrund in ihren
+kontrollierten Handlern oder Outputs. Ein bereits oder später abgelehntes
+Promise, dessen Profil vor Handlerinstallation scheitert, kann jedoch einen
+getrennten hostabhängigen `unhandledrejection`-/`unhandledRejection`-Kanal mit
+seinem ursprünglichen Grund auslösen; Eintritt, Zeitpunkt, Häufigkeit, Inhalt,
+Prozessfortsetzung und Unterdrückbarkeit werden nicht garantiert.
+
+Die vollständige Exchange-Lease lautet:
+
+```text
+idle | observable-pending | settlement-unobservable | closed
+```
+
+Nur `idle` erlaubt einen Portaufruf. Erst der Eintritt in einen kontrollierten
+Fulfillment- oder Rejectionhandler ist `observed-settlement` und gibt die Lease
+vor der intent- und zustandsspezifischen Transition zu `idle` frei. Ein gültiges
+dauerhaft pending Promise hält den Run pending. Synchroner `exchange`-Throw,
+malformed Promise-Kandidat, Promiseprofil-Reflectionthrow oder Throw der nativen
+`then`-Anwendung vor Handlerzutritt ist `settlement-unobservable` und setzt mit
+höchster Präzedenz exakt `lease: closed`, `portState: closed`,
+`activeCapability: null`, `affectedCapState: terminal-unknown` und
+`furtherExchangeCount: zero`; `activeExchange` wird gelöscht. Pre-start endet
+portlos statisch, während Observation entstehen sticky `V`, `O0` und portloser
+Cleanup, nach `O0` bleibt der Snapshot bei `cleanupViolation` und
+erforderlichenfalls `cleanup-terminal-failure` unverändert. Cancel, Retry und
+jeder Folge-Exchange sind verboten. Ein erst nach beobachtetem Settlement
+malformed Fulfillment ist davon getrennt.
+
+Wird intern während `observable-pending` ein weiterer Exchange angefordert,
+wird er vor Intent, ID, Zähler und Portaufruf unterdrückt. Das ursprüngliche
+Promise bleibt allein. Bei seinem Settlement wird sein möglicher
+Fulfillmentgraph ungelesen verworfen beziehungsweise kein Rejectiongrund
+gelesen, und die Lease wechselt ohne nutzbares `idle`-Fenster direkt nach
+`closed`. Vor Attemptstart entsteht ein statischer Fehler ohne Snapshot oder
+Ledger, während Observation sticky `V` mit lokalem Cleanup und nach `O0`
+ausschließlich `cleanupViolation` mit Cleanup-Terminalisierung. Bleibt das
+Original pending, bleibt der Run pending; ein möglicherweise enthaltenes
+Send-Ack bleibt `unknown`, niemals `multiple`.
+
+Die erreichbaren kontrollierten Rejectionpfade sind ausschließlich
+`observed-settlement` und geschlossen. Probe und
+Setup-Origin-Clock enden pre-start statisch; ein nach beobachteter Rejection
+oder malformed Ack bei wieder `idle` unklarer Setup-Arm erhält genau einen
+Best-effort-Cancel und endet danach statisch. Ein unobservables Arm-Settlement
+setzt das vollständige Closed-Tupel und endet ohne Cancel oder Exchange. Während Observation
+setzen Setup-Send, Setup-/Capture-Dequeue-Clock, Setup-/Capture-Dequeue und
+Capture-Arm zuerst ihren spezifischen `V`-Zustand; ein gehaltener Dequeuegraph
+bleibt ungelesen. Der bekannte Setup- oder Capturecap wird danach genau einmal
+vor `O0` storniert: exakter Ack führt zu `O0`, beobachteter Fehler oder
+malformed Ack zu `terminal-unknown`, `O0` und initialem `cleanupViolation`,
+unobservables Settlement zum vollständigen Closed-Tupel, `O0` und rein lokalem
+portlosem Cleanup, pending lässt den Run ohne `O0` pending. Eine Rejection des bereits
+laufenden Cancels erzeugt keinen zweiten Cancel. Im Cleanup wirken Clock-,
+Arm-, Dequeue-, finaler Cancel- und Completion-Rejection nach beobachtetem
+Settlement ausschließlich über Ledger und gegebenenfalls
+`cleanup-terminal-failure`; Disable/Detach- und Step-Rejections markieren nur
+bei offenem Port den zugehörigen Check und lassen sichere Folgeschritte zu. Ein
+unobservables Settlement finalisiert portlos. Alle übrigen kontrolliert
+beobachteten Rejection-Tupel sind intern unmöglich; nur sie
+dürfen den allgemeinen Catch-all erreichen.
+
+Davon getrennt setzt ein bereits am Capture-Arm unobservables Settlement das
+vollständige Closed-Tupel, `closeClass: V` und den
+Evaluate-Count `zero`; es gibt dann keinen Cancel und keinen weiteren
+Portaufruf, sondern unmittelbar `O0` und ausschließlich lokalen Cleanup.
+
+Die Startgrenze liegt erst nach gültiger Capability, Clock, sicherer
+Setupdeadline, positivem Setupcap-Arm und eingefrorener Stage 1. Vorherige
+Fehler erzeugen nur das statische Foundationfehlerresultat, niemals Projection,
+Snapshot oder Cleanup. Nach `attemptStarted` und vor `O0` sind bestätigte
+Port-, Ack-, Descriptor-, Envelope-, Reihenfolge- und Budgetverstöße sticky
+`V`; nach `O0` bleiben Snapshot und Observation unverändert und nur der
+Cleanup-Ledger darf sich ändern. Der Capturecap bleibt
+`pending-activation`, bis der einzige positive Evaluate-Ack
+`sent-and-capture-cap-started` Send und Capstart atomar bestätigt. Nur dieser
+Ack ist Send- und Aktivierungsbeweis.
+
+Bei durch den kontrollierten Handler beobachteter Rejection des
+`Runtime.evaluate`-Exchanges liegt `observed-settlement` vor; die Lease wird vor
+dem Übergang `idle`, `closeClass` wird `V` und der Cap
+`activation-unknown`. Der bereits intern gebundene Phase-/Intent-/Cap-Tupel
+besitzt Vorrang vor jedem allgemeinen Rejection-Catch-all. Die konservative
+Projektion lautet vollständig:
+
+```text
+controllerEvaluateIntentCount = one
+Runtime.evaluate.observedCountClass = unknown
+Runtime.evaluate.result = unproven
+mainWorldEvaluationCount = unknown
+transportFactoryCallCount = unknown
+factoryCallCount = unknown
+transportCallCount = unknown
+evaluateReplyCountClass = unknown
+productEvidenceComplete = false
+captureWindowState = truncated
+publicSettlement = null
+```
+
+Damit werden weder Send noch Nichtsenden, Capaktivierung, Auswertung, Factory-,
+Transport- oder späterer Stimulus behauptet. Danach ist genau ein Cancel der
+bekannten `armIntentId` zulässig: exakter Ack setzt `cancelled` und erhält `V`;
+beobachtete Cancel-Rejection oder malformed Ack setzt `terminal-unknown` und
+nach `O0` `cleanupViolation`; unobservables Settlement setzt das vollständige
+Closed-Tupel und führt ausschließlich zu lokalem portlosem Cleanup ohne zweiten
+Cancel oder sonstigen Exchange; ein gültiges
+pending Cancel hält den Run pending. Ein zweites Evaluate und Capture-Dequeue
+sind auf allen vier Pfaden verboten. Capquieszenz kommt vor dem Snapshot; der
+allgemeine Catch-all bleibt nur einem unmöglichen internen Tupel vorbehalten.
+
+Evaluate-Intent, bestätigter Send, Reply, Main-World-Auswertung, Factoryaufruf,
+Transportaufruf und Networkrequest sind getrennt. Controllerabgeleitete
+`factoryCallCount` und `transportCallCount` besitzen jeweils
+`zero|one|unknown`; `zero` ist nur konstruktiv beweisbar, `unknown` niemals
+callerlieferbar.
+
+Jeder Dequeuewert bleibt vor seiner einen phasenpassenden Clockprobe vollständig
+unreflektiert. Für jeden geschlossenen Inputknoten werden OwnKeys, Prototyp und
+jeder erforderliche Descriptor exakt einmal gelesen; Arrays zusätzlich über
+genau einen `length`- und einen Descriptor je erlaubtem Index. Werte stammen
+nur aus gecachten Descriptoren, Rereads sind verboten. Offene CDP-Hüllen
+werden nie vollständig aufgezählt; nur allowlistete Descriptoren werden
+höchstens einmal gelesen. `hasOwn`, `in`, Destructuring, Spread,
+`Object.assign`, freie Propertyauflösung, Iteratoren, JSON-Roundtrip und
+Inputmutation bleiben verboten. Dependency-, Eingabe- oder
+Fulfillmenthüllen-Reflectionthrow nach `observed-settlement` wird an Factory,
+Pre-start, Post-start und Cleanup statisch beziehungsweise sticky totalisiert.
+Promiseprofil-Reflectionthrow vor Handlerzutritt folgt stattdessen immer der
+globalen `settlement-unobservable`-Regel ohne Cancel oder Folge-Exchange.
+
+Für absolute Setup- und Cleanupcaps gewinnt nach dem Clock-Sample
+`m_answer >= deadline` einschließlich Gleichheit vor jeder Envelope-Reflection
+allein aus gebundenem Capzustand und Rohzeit; der Dequeuegraph wird ungelesen
+verworfen. Unterhalb der Deadline ist ein exakt korreliertes Setup- oder
+Cleanup-`cap-fired` ein vorzeitiger Controlverstoß. Capture wird ausschließlich
+durch das korrelierte Capereignis seines atomar aktivierten Arms beendet.
+`targetInfos` ist auf 128, IDs auf 256, CDP-URLs auf 2048,
+HTTP-Methodentokens auf 16 Codeunits und alle Dequeues auf 128 begrenzt.
+
+Das erste irreversible `connection-closed` während Capture ergibt konservativ
+`U/capture-terminal-unproven`, `captureWindowState: truncated` und
+`observationCloseReason: capture-terminal-unproven`. Die durch den exakten
+Evaluate-Ack bereits bestätigte Captureaktivierung bleibt bestehen; der
+Übergang behauptet weder ein Feuern des Caps noch einen regulären
+Captureabschluss. Bei noch live gebundenem Capturecap wird genau ein Cancel vor
+`O0` ausgeführt: exakter Ack erhält `U`, beobachteter Fehler promoviert zu `V`;
+unobservables Settlement promoviert ebenfalls zu `V`, setzt aber das
+vollständige Closed-Tupel und lässt nach `O0` nur portlosen Cleanup ohne
+Folge-Exchange zu. Dauerhaft pending hält den Run pending. Connection-Close und
+Capturecap werden ausschließlich in Dequeue-Reihenfolge entschieden. Dagegen
+erzeugen gewöhnliches Setup-`U|V` und Capture-`V` nur bei Lease `idle` und
+offenem Port zuerst den Frozen Snapshot und quieszenzieren ihren alten Cap
+danach. `S && N` beendet Capture weiterhin
+nicht.
+
+Network erlaubt nur vier Events und nie Header-, Body-, `errorText`-,
+Initiator- oder Redirectdaten. Timestamps werden ausschließlich innerhalb der
+Networkdomäne von Sekunden in Millisekunden umgerechnet. Rücklauf,
+Nichtendlichkeit oder unsicherer Überlauf nach Korrelation ist `V`. Eine
+abweichende Produktnetzsignatur ist dagegen nicht automatisch
+Observerinterferenz. Send- und Replycounts bleiben getrennt.
+
+Die zehn Capzustände lauten exakt
+`absent|arm-pending|armed|pending-activation|active|activation-unknown|cancel-pending|cancelled|fired|terminal-unknown`.
+Arm, aktive oder unbekannte Aktivierung, genau ein Cancel, alle vier
+Cancelausgänge sowie falsche, vorzeitige, späte und doppelte Cap-IDs sind
+geschlossen; es gibt weder Retry noch zweiten Cancel.
+
+Cleanup startet aus einem referenzfreien Frozen Observation-Snapshot `O0` und
+den phasenspezifisch vorgeschriebenen Setup-/Capture-Cancels. Nach `O0` dürfen
+`U`, `V`, `C`, `closeClass`, Stages 1 bis 8, Replay, Settlement,
+Requestbudget, Counts und Observationwerte nicht verändert werden. Ein
+bestätigter Clockverstoß ist vor `O0` sticky `V`; danach wirkt er ausschließlich
+als `cleanupViolation` und gegebenenfalls `cleanup-terminal-failure`, niemals
+rückwirkend als `V`. Cleanupableitung, Stage 9 und Checks entstehen vor
+Cleanup-Origin, Deadline und Arm, damit frühe Controlfehler total bleiben.
+Detach folgt jedem terminalen Disable-Sendeversuch ohne Warten auf die
+Disable-CDP-Antwort; Connection-Close verbietet weitere CDP-Sends, nicht
+weiterhin sichere externe Schritte.
+
+Cleanup dequeuet ausschließlich unter den beiden privaten Purposes
+`await-cleanup-protocol-responses(openCommandIds)` und
+`await-cleanup-fact(checkId)`. Disable wird zuerst gesendet; Detach folgt nach
+seinem terminalen Sendeversuch. Nur ein exakter Send-Ack öffnet eine Command-
+ID; korrelierte Antworten dürfen danach in beliebiger Reihenfolge eintreffen,
+werden aber vollständig vor den externen Fakten abgearbeitet. Eine sicher
+lesbare unbekannte, doppelte oder falsch variantierte ID setzt
+`cleanupViolation`, wird verworfen und niemals zufällig einem Check
+zugeordnet. Unlesbares Routing oder ein unsicherer Identifier beendet die
+reguläre Portverwendung mit `cleanup-terminal-failure`; bleiben Lease nach
+`observed-settlement` `idle`, Port und Cleanupcap beobachtbar, ist genau ein
+Recovery-Cancel die einzige weitere Portverwendung. Ein unobservables
+Settlement setzt sofort das vollständige Closed-Tupel und erlaubt weder Cancel
+noch sonstigen Exchange. Ein erstes Connection-Close macht offene CDP-Checks `unproven`,
+verbietet weitere CDP-Sends und lässt sichere externe Steps fortsetzen; eine
+Dublette setzt `cleanupViolation`.
+
+Externe Cleanup-Schritte liefern nur boolesche Rohfakten. Für alle zwölf gilt
+`false -> failed`, aber `true -> unproven`; callerlieferbare positive Fakten
+authentisieren nichts. Kontrolliert beobachtete Rejection, malformed Ack/Fakt
+nach Fulfillment oder falsche Korrelation folgt ausschließlich den gebundenen
+Purpose- und Checkregeln. Synchroner `exchange`-Throw, malformed
+Promise-Kandidat, Promiseprofil-Reflectionthrow oder native-Then-Throw setzt
+dagegen das globale Closed-Tupel und beendet jeden weiteren Exchange. Nach
+`O0` wirkt jeder solche Ausgang nur über Cleanup-
+Ledger, Checkzustände und Candidateableitung; `cleanupViolation` und
+`cleanup-terminal-failure` entstehen ausschließlich auf den dafür festgelegten
+Pfaden.
+
+Sind Checks 1 bis 19 terminal und kein Purpose offen, folgt bei Lease `idle`
+und offenem Port genau ein abschließender Cleanupcap-Cancel. Nur sein exakter
+Ack erlaubt genau einen
+`controller-clock-sample(cleanup-completion-after-cap-cancel)`. Der Sample
+bestimmt ausschließlich Timing und Receipt Order von Stage 10 und kann die
+bereits entschiedene Deadline nicht rückwirkend ändern. Ein gültiger Sample
+ergibt Check 20 `confirmed`, Stage 10 `observed/match` und
+`all-steps-terminal`. Ein unobservables Cancel-Settlement erlaubt weder diesen
+Sample noch weiteren Exchange. Für jeden nicht vollständig gültigen
+Completion-Sample gelten zwingend `relativeMilliseconds: null` und
+`timingState: unavailable`; kein vorheriger oder provisorischer Timingwert wird
+erhalten, gerundet, projiziert, gehasht oder serialisiert. Eine nach
+Handlerreihenfolge gültige `receiptOrder` bleibt davon getrennt und ist niemals
+gültiges Timing. Ein ungültiger Sample, Cancelfehler oder irreversibler
+Controlfehler ergibt Check 20 `failed`, Stage 10 `observed/mismatch` und
+`cleanup-terminal-failure`. Gewinnt die inklusive Cleanupdeadline, werden
+offene Checks `unproven`, Stage 10 `not-observed/unproven` und der Grund
+`cleanup-cap`. Kein `pending` wird ausgegeben. `cleanup.result` folgt der
+Präzedenz `FAIL` vor `UNPROVEN` vor `PASS`, `cleanupFinalized` entsteht erst
+nach einem dieser drei Abschlüsse, und die reine Foundation kann wegen
+fehlender positiver Adapterprovenienz praktisch kein Cleanup-`PASS` beweisen.
+
+Die Foundation erfüllt nur einen tief eingefrorenen Sieben-Felder-Wrapper mit
+`[[Prototype]] === null` und ohne Own-`then`, mit
+`evidenceStatus: NOT_EVIDENCE`, `runtimeAuthorized: false` und
+`persistenceAuthorized: false`. Seine Projection besitzt 17 Rootfelder,
+`projectionType: browser-transport-diagnostic-foundation-projection`, nur
+`candidateObserverGate` und `candidateFinding`, aber kein `recordType`, echtes
+`observerGate` oder `finding`. `foundationSha256` bleibt `null`; der private
+Evaluationdigest
+`a623ffafee8dfcbc1d2ddc374cc35f0dbf800defd97619a3b58337d972090f7b`
+bestätigt keine tatsächlich gesendeten Bytes. Kein Ergebnis darf persistiert,
+serialisiert oder als Runtimeevidenz verwendet werden.
+
+| Bedrohung | Kontrolle | Verbleibende Grenze |
+| --- | --- | --- |
+| Austausch oder erneutes Lesen des Callerports | einmalige descriptorbasierte Erfassung, atomarer Ownertransfer `capturedExchange -> activeExchange`, Containerverwerfung und ownergebundene Löschung | Capability kann intern feindlich sein; keine Native-/Proxybehauptung |
+| Eingabereferenz-Leak | primitive defensive Kopien, vier geschlossene transiente Rollen mit nur einer erlaubten Clock-Überlappung, keine Referenz in Outputs | Same-Realm ist keine Sandbox |
+| Thenable-/Promise-Manipulation | leere OwnKeys, lokaler Prototyp, exakte Constructor-/Species-/Then-Descriptoren, eine native Brandprobe, `undefined`-Handler und Null-Prototyp-Result | ewig pending und hostabhängiger Rejectionkanal bleiben möglich |
+| Gefälschte Provenienz | Callerstatus verboten; positive Hash-/Cleanupfakten bestätigen keine gebundene Quelle | Parser-, Pipe-, Byte-, Timer- und Adapterprovenienz erst im Folge-ADR |
+| Cap-/Clock-Race | absolute Setup-/Cleanupdeadline einschließlich Gleichheit vor Envelope-Reflection, ungelesener Capwert, zehn Capzustände, höchstens ein Cancel je Arm und atomarer Evaluate-Ack | reale Timer- und Queue-Liveness bleibt Adapteraufgabe |
+| Cleanupdeadlock oder gefälschtes positives Cleanup | Detach nach terminalem Disable-Sendeversuch, `true -> unproven`, sticky Controlverstoß und drei totale Finalisierungsgründe | gültige nie settlende Exchange-Promises bleiben Liveness-Restgrenze |
+| Rohdatenabfluss | geschlossene primitive Projektion, ungelesene Header/Body/Fehlergründe, keine Logs oder Persistenz | unvertrauenswürdige Hüllen können Proxies sein |
+| Vorzeitiger Evidence-Record | `NOT_EVIDENCE`, beide Autorisierungen `false`, Candidatefelder statt echten Statusachsen | realer Record erst nach Adapter-ADR und gesonderter Laufautorisierung |
+
+Der aktuelle nächste Schritt ist ausschließlich die getrennte netzwerkfreie
+Effects-as-Data-Foundationimplementierung. Die Diagnosefoundation ist noch
+nicht implementiert. Adapter-ADR, Adapterimplementierung und sichtbarer
+Diagnose- oder Runtimevorgang bleiben nachgelagert und nicht autorisiert.
 
 #### Aktuelles Local Browser Runtime Evidence Gate / ADR 0029
 
@@ -798,13 +1165,13 @@ Kompatibilität eines anderen Kontexts. Alle selbst gestarteten Prozesse wurden
 kontrolliert beendet, die Ports freigegeben sowie Profil, Harness und
 Fragmente entfernt; `cleanupRedaction` ist `PASS` und der Gesamtcleanup
 bestätigt. Die Ursache bleibt `CAUSE_NOT_PROVEN`. Browserkomposition und
-Browser-E2E bleiben geschlossen. ADR 0032 ersetzt ADR 0031 und entscheidet
-ausschließlich die totalisierte getrennte Diagnose-Determinismusgrenze; es
-ändert diesen historischen Befund und das ADR-0029-Gate nicht. Als nächster
-Slice folgt die reine netzwerkfreie effects-as-data-Diagnosefoundation, danach
-ein eigener Adapter-ADR mit getrennter netzwerkfreier Implementierung. Ein
-sichtbarer Diagnose- oder Runtime-Evidence-Lauf benötigt erst anschließend
-erneut eine ausdrückliche Autorisierung; nur ein späterer vollständig neuer
+Browser-E2E bleiben geschlossen. ADR 0033 ersetzt ADR 0032 formal, übernimmt
+alle nicht ausdrücklich korrigierten ADR-0032-Regeln und erhält ADR 0032 als
+historische Entscheidungsebene. Er ändert diesen historischen Befund oder das
+ADR-0029-Gate nicht. Der nächste Slice ist ausschließlich die getrennte
+netzwerkfreie Effects-as-Data-Foundationimplementierung. Adapter-ADR,
+Adapterimplementierung sowie sichtbarer Diagnose- oder Runtime-Evidence-Lauf
+bleiben nachgelagert und nicht autorisiert; nur ein späterer vollständig neuer
 ADR-0029-Lauf mit Gesamt-`PASS` kann einen weiteren Browserkompositions-
 Entscheidungsslice öffnen.
 
@@ -908,11 +1275,13 @@ Gesamt-`FAIL`. Im damaligen Entscheidungsstand folgte als nächster Slice
 ausschließlich die gesonderte Architekturentscheidung zur positiven
 Transportabweichung; erst ein späteres gebundenes Gesamt-`PASS` durfte die
 weiterhin getrennte Browserkomposition öffnen. Der lokale Browser-End-to-End-
-`syncTest` blieb ein weiterer Folgeslice. Nach ADR 0032 folgt separat als
-aktueller nächster Slice ausschließlich die reine netzwerkfreie
-effects-as-data-Diagnosefoundation. Danach folgen ein eigener Adapter-ADR und
-seine getrennte netzwerkfreie Implementierung; erst anschließend darf ein
-sichtbarer Diagnoselauf gesondert autorisiert werden. Phase 0/Tor A ist anhand
+`syncTest` blieb ein weiterer Folgeslice. ADR 0033 ersetzt ADR 0032 formal und
+übernimmt alle nicht ausdrücklich korrigierten ADR-0032-Regeln; ADR 0032 bleibt
+als historische Entscheidungsebene erhalten. Die Diagnosefoundation ist noch
+nicht implementiert. Als Nächstes folgt ausschließlich ihre getrennte
+netzwerkfreie Effects-as-Data-Implementierung. Adapter-ADR,
+Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und
+nicht autorisiert. Phase 0/Tor A ist anhand
 der tatsächlichen Implementierung erneut bestätigt; Modelle, Inferenz,
 Provider, Credentials, private Inhalts-Payloads, Logs, Storage und Telemetrie
 blieben außerhalb. Es erfolgte kein realer Browser-, externer Netzwerk-,
@@ -1951,7 +2320,7 @@ Telemetrie, Monitoring noch externen Datenfluss. Die Anwendung einzelner
 Prinzipien ist kein vollständiger DSGVO-, AI-Act-, Zero-Trust-,
 Defense-in-Depth- oder sonstiger Compliance-Nachweis.
 
-#### Bedrohungen des durch ADR 0023 bis ADR 0025 sowie ADR 0028 bis ADR 0032 entschiedenen Zielpfads
+#### Bedrohungen des durch ADR 0023 bis ADR 0025, ADR 0028 und ADR 0033 entschiedenen Zielpfads
 
 Die lokalen HTTP-, Origin-, Wire-, Decoder- und Boundary-Schutzschichten, der
 SyncAgent-Kern sowie die durch ADR 0025 entschiedene kontrollierte Handoff-,
@@ -1961,17 +2330,19 @@ Nachweisgrenze sowie die feste v1-Wire-Policy sind isoliert implementiert und
 mutationswirksam regressionsgeprüft. ADR 0029 entscheidet das reale
 Browser-Runtime-Evidence-Gate. Der einmalige Chrome-151-Lauf ist mit
 Gesamt-`FAIL` dokumentiert; Ursache `CAUSE_NOT_PROVEN`, PNA/LNA und die nicht
-ausgeführten Negativkontrollen `UNPROVEN`, Cleanup `PASS`. ADR 0032 ersetzt ADR
-0031 formal und entscheidet die totalisierte unabhängige Diagnose-
-Determinismusgrenze; Foundation, Adapter und Lauf sind weder implementiert noch
-autorisiert. Browserkomposition, Browser-E2E,
+ausgeführten Negativkontrollen `UNPROVEN`, Cleanup `PASS`. ADR 0033 ersetzt
+ADR 0032 formal, übernimmt alle nicht ausdrücklich korrigierten
+ADR-0032-Regeln und erhält ADR 0032 als historische Entscheidungsebene. Die
+Diagnosefoundation ist noch nicht implementiert. Adapter-ADR,
+Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und
+nicht autorisiert. Browserkomposition, Browser-E2E,
 Provideradapter sowie Credential-,
 Rate-Limit-, Replay- und Idempotenzschutz bleiben offen.
 
 | Bedrohung | Betroffene Grenze | Geplante Schutzschichten | Verbleibendes Risiko | Status |
 | --- | --- | --- | --- | --- |
-| Observerinterferenz, Sourceinstrumentierung oder versteckter Zusatzrequest | künftige ADR-0032-Diagnosegrenze | `T_replay ≡R T₀`, 59 totale Replayvergleiche, exakte CDP-Allowlist, globaler Setupcap, ein Target, eine Session, eine Main-World-Auswertung, höchstens ein Transportstimulus, vollständiges Capture bis sticky `V` oder Cap `C`, null Retry und null direkter Diagnose-/Observerrequest; Mutation, Debugger, Interception und Sourcekopie verboten | Attachment, Domainaktivierung und Settlementbeobachtung können beeinflussen; absolute Nichtinterferenz bleibt unbeweisbar | ADR 0032 angenommen; Foundation, Adapter und Lauf nicht implementiert oder autorisiert; `causeStatus: CAUSE_NOT_PROVEN` |
-| Rohdiagnosedaten oder unvollständiger Cleanup | künftiger Diagnose-Record und lokale Wegwerfruntime | geschlossener verschachtelter By-Value-Projektionsbaum über descriptorgeprüfte flüchtige CDP-Hüllen ohne Handle; keine HAR-/CDP-/Header-/Body-/Fehlerrohdaten; `observationClosed := V || U || C`, unveränderlicher Observation-Snapshot vor getrenntem Cleanup-Ledger, exakt 20 Cleanupchecks und eigener 60.000-ms-Cleanupcap; Record erst nach Cleanupfinalisierung | Host- und Browserprofil erzeugen flüchtige technische Artefakte; fehlender Nachweis bleibt `UNPROVEN`, bestätigter Verstoß oder Rest `FAIL`; Foundation allein beweist keine Raw-Pipe-/Parserprovenienz | geschlossener ADR-0032-Vertrag dokumentiert; keine Foundation, Adapter, Recordvorlage oder Runtime erstellt |
+| Observerinterferenz, Sourceinstrumentierung oder versteckter Zusatzrequest | ADR-0033-Diagnosefoundation | `T_replay ≡R T₀`, 59 totale Replayvergleiche, ein erfasster Effectport, exakte Intent-/CDP-Allowlist, globaler Setupcap, ein Target, eine Session, eine Main-World-Auswertung, höchstens ein Transportstimulus, vollständiges Capture bis sticky `V` oder Cap `C`, null Retry und null direkter Diagnose-/Observerrequest; Mutation, Debugger, Interception und Sourcekopie verboten | Attachment, Domainaktivierung und Settlementbeobachtung können beeinflussen; absolute Nichtinterferenz bleibt unbeweisbar | ADR 0033 angenommen; Foundation noch nicht implementiert; Adapter und Lauf nicht autorisiert; `causeStatus: CAUSE_NOT_PROVEN` |
+| Rohdiagnosedaten oder unvollständiger Cleanup | künftiger Diagnose-Record und lokale Wegwerfruntime | geschlossener verschachtelter By-Value-Projektionsbaum ohne Handle; eine zeitlich disjunkte Owner-Capability `capturedExchange -> activeExchange`, vier geschlossene transiente Referenzrollen und keine Inputreferenz in Outputgraphen; keine HAR-/CDP-/Header-/Body-/Fehlerrohdaten; `observationClosed := V \|\| U \|\| C`, unveränderlicher `O0`, exakt 20 Checks, absolute Deadline vor Envelope-Reflection, sticky `cleanupViolation`, zwei zweckgebundene Cleanup-Dequeuepfade und drei totale Finalisierungsgründe | Host- und Browserprofil erzeugen flüchtige technische Artefakte; ein gültiges nie settelndes Exchange-Promise darf den Lauf pending halten; positive externe Fakten bleiben `unproven`; Foundation allein beweist keine Raw-Pipe-/Parser-/Timerprovenienz | ADR 0033 angenommen; keine Foundation, kein Adapter, keine Recordvorlage oder Runtime erstellt; Adapter und Lauf nicht autorisiert |
 | bösartige Webseite | Zone A → B | feste URL `http://127.0.0.1:8787/api/sync-test`, exakte Origin-Allowlist, POST-only, `credentials: "omit"`, geschlossene `syncTest`-Capability | kompromittierter erlaubter Origin; Nicht-Browser umgehen CORS; Loopback und CORS authentisieren den lokalen Prozess nicht | Gateway und isolierter Browsertransport implementiert; ADR-0029-Gesamtgate `FAIL`, Komposition fehlt |
 | manipuliertes fremdes Promise | asynchrone Fetch-, Read- und Cleanup-Grenze | echtes natives Brandprofil, exakter lokaler Promiseprototyp und vollständige Kette, leere Own Keys, unveränderte Constructor-/Species-Descriptoren, ausschließlich erfasstes natives `then`; keine Assimilation oder freie `.then`-Reads | eine historische Erzeugungsrealm oder bereits vollständig verdeckte Subclass-Provenienz ist nach vollständiger Umprototypisierung öffentlich nicht beweisbar; Realm ist kein Vertrauenssignal; getrennter Host-Rejectionkanal bleibt möglich | ADR-0027-Profil isoliert implementiert und einschließlich `node:vm`-/Hostregression geprüft; ADR-0029-Gesamtgate `FAIL`, konkrete Ursache nicht belegt |
 | manipulierter fremder Readerchunk oder Backing-Buffer | Response-Stream und lokale Kopiergrenze | echte Uint8Array-/ArrayBuffer-Brands, für View und Buffer exakte lokale Prototypen und Ketten, kein Shared/growable/resizable/detached Memory, positive Restlänge und sofortige Kopie in eigenen festen Zielbuffer | historische Realm oder vollständig verdeckte Subclass-Provenienz ist nicht beweisbar; vor Modulevaluation kompromittierte Intrinsics bleiben außerhalb der Garantie | ADR-0027-Profil isoliert implementiert und Cross-Realm-Regression geprüft; ADR-0029-Gesamtgate `FAIL`, konkrete Ursache nicht belegt |
@@ -2613,11 +2984,13 @@ isoliert implementiert und netzwerkfrei mutationswirksam geprüft. ADR 0029
 entscheidet das davon getrennte reale und umgebungsgebundene Browser-Runtime-
 Evidence-Gate. Der einmalig autorisierte Chrome-151-Lauf ist mit Gesamt-
 `FAIL`, PNA/LNA und Negativkontrollen `UNPROVEN` sowie Cleanup `PASS`
-dokumentiert; seine Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0032 ersetzt ADR
-0031 formal und entscheidet die totalisierte unabhängige Diagnose-
-Determinismusgrenze, implementiert oder autorisiert sie aber nicht. Als
-nächster Slice folgt ausschließlich die reine netzwerkfreie effects-as-data-
-Diagnosefoundation; danach müssen ein eigener Adapter-ADR und seine getrennte
+dokumentiert; seine Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0033 ersetzt ADR
+0032 formal und übernimmt alle nicht ausdrücklich korrigierten ADR-0032-Regeln;
+ADR 0032 bleibt als historische Entscheidungsebene erhalten. Der aktuelle
+nächste Schritt ist ausschließlich die getrennte netzwerkfreie
+Effects-as-Data-Foundationimplementierung; die Diagnosefoundation ist noch
+nicht implementiert. Danach
+müssen ein eigener Adapter-ADR und seine getrennte
 netzwerkfreie Implementierung folgen. `src/main.js`-, UI- und
 Browserkomposition sowie der lokale
 Browser-End-to-End-Fluss bleiben bis zu einem späteren vollständig neuen ADR-
@@ -3005,7 +3378,7 @@ Umgebungen werden ausdrücklich ausgewählt und sichtbar gekennzeichnet.
 | `v0.2.0` | sichere Textdarstellung, robuste Storage-Validierung, keine Client-Secrets |
 | `v0.2.1` | sichere lokale Inhalts-, Progress-, LearningArtifact- und Mock-Test-UI; einmaliger referenzvalidierter Demo-Erststart nur bei vier fehlenden Keys, bedingter Rollback und leer bleibende Attempt-Historie; deterministische lösungsfreie Testprojektion, flüchtige Sessions, kontrollierter Abbruch und defensive Ergebnis-/Historienprojektion; vollständig geprüft und veröffentlicht |
 | `v0.2.2` | privater allowlist-basierter View-, Controller-, Service- und Storage-Pfad sowie strikt getrennter synthetischer In-Memory-Demo-Stack mit fester Herkunft, Safe DOM, Closure-/Map-isolierten Entry-IDs, defensiver UI-Projektion, flüchtiger Suche/Filterung, DOM-Unmount-Grenze, statisch redigierten Fehlern, ohne Browser-Key oder Fallback; keine Base64-Bilder in `localStorage`, keine externe Übertragung; vollständig geprüft und veröffentlicht |
-| `v0.3.0` | In Arbeit: lokale Contract-, Service-, Boundary-, HTTP-, Bundle-, Evidence- und SyncAgent-Foundations, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy samt mutationswirksamer ADR-0028-Matrix implementiert. Der einmalige Chrome-151-Runtime-Evidence-Lauf bleibt mit Gesamt-`FAIL`, Ursache `CAUSE_NOT_PROVEN`, PNA/LNA und Negativkontrollen `UNPROVEN` sowie Cleanup `PASS` dokumentiert. ADR 0032 ersetzt ADR 0031 formal und entscheidet die totalisierte unabhängige Diagnose-Determinismusgrenze, implementiert oder autorisiert sie aber nicht. Nur der exakte leere synthetische Erfolg ergibt lokal HTTP `200`; Agent-/Responsefehler bleiben statisch `500 gatewayFailed`. Der Transport ist produktiv weder mit dem SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss und Runtimefreigabe fehlen. Als nächster Slice folgt ausschließlich die reine netzwerkfreie effects-as-data-Diagnosefoundation und danach ein eigener Adapter-ADR samt netzwerkfreier Implementierung; Browserkomposition und End-to-End folgen erst nach einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`. n8n Stable OSS und Aktivierung bleiben `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter, Produktcredentials, Autorisierung, Rate Limits, Replay- und Idempotenzschutz bleiben geplant |
+| `v0.3.0` | In Arbeit: lokale Contract-, Service-, Boundary-, HTTP-, Bundle-, Evidence- und SyncAgent-Foundations, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy samt mutationswirksamer ADR-0028-Matrix implementiert. Der einmalige Chrome-151-Runtime-Evidence-Lauf bleibt mit Gesamt-`FAIL`, Ursache `CAUSE_NOT_PROVEN`, PNA/LNA und Negativkontrollen `UNPROVEN` sowie Cleanup `PASS` dokumentiert. ADR 0033 ersetzt ADR 0032 formal, übernimmt alle nicht ausdrücklich korrigierten ADR-0032-Regeln und erhält ADR 0032 als historische Entscheidungsebene. Die Diagnosefoundation ist noch nicht implementiert; als nächster Schritt folgt ausschließlich die getrennte netzwerkfreie Effects-as-Data-Foundationimplementierung. Adapter-ADR, Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und nicht autorisiert. Nur der exakte leere synthetische Erfolg ergibt lokal HTTP `200`; Agent-/Responsefehler bleiben statisch `500 gatewayFailed`. Der Transport ist produktiv weder mit dem SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss und Runtimefreigabe fehlen. Browserkomposition und End-to-End folgen erst nach einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`. n8n Stable OSS und Aktivierung bleiben `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter, Produktcredentials, Autorisierung, Rate Limits, Replay- und Idempotenzschutz bleiben geplant |
 | `v0.4.0` | minimaler Airtable-PAT, Feld-Allowlist, Idempotenz und getrennte Bases |
 | `v0.5.0` | Prompt-Injection-Schutz, strukturierter TestAgent-Output, keine Direktzugriffe |
 | `v0.6.0` | End-to-End-Sicherheitsreview und vollständige Demo-Trennung |
@@ -3089,6 +3462,7 @@ fertig, wenn:
 
 ## Referenzen
 
+- [ADR 0033: BrowserSyncTransport Diagnostic Foundation Effects Protocol Boundary](decisions/0033-browser-sync-transport-diagnostic-foundation-effects-protocol-boundary.md)
 - [ADR 0032: BrowserSyncTransport Diagnostic Capture, Timing and Projection Determinism Boundary](decisions/0032-browser-sync-transport-diagnostic-determinism-boundary.md)
 - [ADR 0031: BrowserSyncTransport Diagnostic Envelope and Observation Completion Boundary](decisions/0031-browser-sync-transport-diagnostic-envelope-and-observation-completion-boundary.md)
 - [ADR 0030: BrowserSyncTransport Runtime Diagnostic Observer Boundary](decisions/0030-browser-sync-transport-runtime-diagnostic-observer-boundary.md)

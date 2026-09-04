@@ -39,7 +39,59 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 | [0029](0029-browser-runtime-evidence-gate.md) | Local Browser Runtime Evidence Gate | Angenommen |
 | [0030](0030-browser-sync-transport-runtime-diagnostic-observer-boundary.md) | BrowserSyncTransport Runtime Diagnostic Observer Boundary | Ersetzt |
 | [0031](0031-browser-sync-transport-diagnostic-envelope-and-observation-completion-boundary.md) | BrowserSyncTransport Diagnostic Envelope and Observation Completion Boundary | Ersetzt |
-| [0032](0032-browser-sync-transport-diagnostic-determinism-boundary.md) | BrowserSyncTransport Diagnostic Capture, Timing and Projection Determinism Boundary | Angenommen |
+| [0032](0032-browser-sync-transport-diagnostic-determinism-boundary.md) | BrowserSyncTransport Diagnostic Capture, Timing and Projection Determinism Boundary | Ersetzt |
+| [0033](0033-browser-sync-transport-diagnostic-foundation-effects-protocol-boundary.md) | BrowserSyncTransport Diagnostic Foundation Effects Protocol Boundary | Angenommen |
+
+ADR 0033 ist am `2026-09-03` angenommen, ersetzt ADR 0032 formal und übernimmt
+alle nicht ausdrücklich korrigierten Regeln. ADR 0032 bleibt mit bytegleichem
+Hauptteil ab `## Kontext` als historische Entscheidungsebene erhalten. Der
+unabhängige Daybreak-Blue-Abschlussreview des tatsächlichen vollständigen
+Working-Tree-Diffs endete mit `PASS – keine Findings`; sämtliche Nach-PASS-
+Prüfungen bestanden. Die Annahme implementiert weder Foundation noch Tests und
+autorisiert weder Adapter noch Runtimevorgang. Als Nächstes folgt
+ausschließlich der getrennte vollständig netzwerkfreie Effects-as-Data-
+Foundationimplementierungsslice; danach bleiben eigener Adapter-ADR,
+getrennte Adapterimplementierung und sichtbarer Lauf separat zu entscheiden
+beziehungsweise zu autorisieren.
+
+Factoryfehler des angenommenen ADR-0033-Modells sind ausschließlich synchrone
+statische Dependency-`TypeError`s ohne API, Promise oder Result; `runBinding`
+wird vollständig in der Factory kopiert. Nach erfolgreicher Factory liefert
+jeder kontrollierte Runpfad ein lokales Promise ohne synchronen Throw. Nur der
+erste Owner erhält den Capabilitytransfer; falsche Erst-Arity terminalisiert
+ohne Effekt, Zweit-, Parallel- und Reentranzaufrufe bleiben inert.
+
+Das angenommene ADR-0033-Modell bindet das
+`currently-observable-local-native-promise-profile` samt offenem
+hostabhängigem Rejectionrest, die Lease `idle | observable-pending |
+settlement-unobservable | closed` und den unterdrückenden Pending-Join. Erst
+kontrollierter Handlerzutritt ist `observed-settlement` und gibt die Lease zu
+`idle` frei. Synchroner `exchange`-Throw, malformed Promise-Kandidat,
+Promiseprofil-Reflectionthrow oder native-Then-Throw vor Handlerzutritt setzt
+mit höchster Präzedenz `lease: closed`, `portState: closed`,
+`activeCapability: null`, `affectedCapState: terminal-unknown` und
+`furtherExchangeCount: zero`; `activeExchange` wird gelöscht, und Cancel,
+Retry sowie jeder Folge-Exchange sind verboten. Das Modell
+totalisiert die intent-spezifische Evaluate-Rejection mit unbekannten Send-,
+Reply-, Main-World-, Factory- und Transportcounts,
+`productEvidenceComplete: false`, `truncated` und `publicSettlement: null`.
+Die controllerabgeleiteten Factory- und Transportdomains lauten
+`zero | one | unknown`; `unknown` ist nie callerlieferbar.
+Danach ist genau ein Cancel zulässig: exakter Ack ergibt `cancelled`,
+beobachtete Rejection oder malformed Ack `terminal-unknown` plus
+`cleanupViolation`, unobservables Settlement das vollständige Closed-Tupel mit
+lokalem portlosem Cleanup ohne zweiten Cancel oder Exchange, und ein gültiges
+pending Cancel hält den Run pending; zweiter Evaluate-Send
+und Capture-Dequeue bleiben verboten. Ebenfalls gebunden sind
+Capture-Connection-Close, der Capzustand `fired`, der nach `O0`
+unveränderliche Observation-Snapshot sowie die getrennten Cleanup-Purposes
+und der Completion-Clock-Sample nach Cap-Cancel. Nur exakter Cancel-Ack erlaubt
+ihn. Jeder nicht vollständig gültige Completion-Sample erzwingt
+`relativeMilliseconds: null` und `timingState: unavailable`; kein provisorisches
+Timing bleibt erhalten, und `receiptOrder` ist kein Timingbeweis. Unverändert bleiben exakt 59
+Replayvergleiche, 20 Cleanup-IDs, `NOT_EVIDENCE`, beide Autorisierungen
+`false`, das ADR-0029-`overallGate: FAIL` und
+`causeStatus: CAUSE_NOT_PROVEN`.
 
 ## ADR-Regeln
 

@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0032 angenommen; gebundenes Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: reine netzwerkfreie effects-as-data-Diagnosefoundation` |
+| Projektphase | `v0.3.0 – ADR 0033 angenommen; gebundenes Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice ausschließlich netzwerkfreie Effects-as-Data-Foundationimplementierung` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,8 +21,8 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy implementiert; der einmalige Schema-1-Lauf `chrome-stable-win-01` bleibt mit `normalSyntheticTransport: FAIL`, `pnaLnaPermission: UNPROVEN`, nicht ausgeführten Negativvektoren und `cleanupRedaction: PASS` dokumentiert; `overallGate: FAIL`, Ursache `CAUSE_NOT_PROVEN`; ADR 0032 ersetzt ADR 0031 formal und totalisiert ausschließlich den separaten passiven Diagnosevertrag, implementiert oder autorisiert aber weder Diagnosefoundation noch Adapter oder Runtimevorgang; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
-| Letzte Aktualisierung | 2026-09-02 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy implementiert; der einmalige Schema-1-Lauf `chrome-stable-win-01` bleibt mit `normalSyntheticTransport: FAIL`, `pnaLnaPermission: UNPROVEN`, nicht ausgeführten Negativvektoren und `cleanupRedaction: PASS` dokumentiert; `overallGate: FAIL`, Ursache `CAUSE_NOT_PROVEN`; ADR 0033 ist angenommen, ersetzt ADR 0032 formal und übernimmt alle nicht ausdrücklich korrigierten Regeln; ADR 0032 bleibt als historische Entscheidungsebene erhalten; die Diagnosefoundation ist nicht implementiert, nächster Slice ist ausschließlich ihre getrennte netzwerkfreie Effects-as-Data-Implementierung; Adapter-ADR, Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und nicht autorisiert; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
+| Letzte Aktualisierung | 2026-09-03 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
@@ -43,9 +43,12 @@ Kompositionsvertrag aus ADR 0025, den durch ADR 0027 korrigierten und
 inzwischen isoliert implementierten Browser SyncTransport Contract sowie die
 mit ADR 0028 implementierte feste Validator-Integritätsgrenze, das durch ADR
 0029 entschiedene und mit Gesamt-`FAIL` ausgeführte Runtimegate sowie den durch
-ADR 0032 als formalen Ersatz für ADR 0031 davon getrennt totalisierten, noch
-nicht implementierten
-`BrowserTransportDiagnosticRecord`. ADR 0028
+ADR 0032 als formalen Ersatz für ADR 0031 davon getrennt totalisierten
+`BrowserTransportDiagnosticRecord` und die durch den angenommenen ADR 0033
+entschiedene, noch nicht implementierte Effects-as-Data-Foundationgrenze. ADR
+0033 ersetzt ADR 0032 formal und übernimmt alle nicht ausdrücklich
+korrigierten Regeln; ADR 0032 bleibt als historische Entscheidungsebene
+erhalten. ADR 0028
 ersetzt ADR 0027 formal, übernimmt dessen
 beide Korrekturen vollständig und ergänzt vor der Wirefreigabe genau eine
 private feste v1-Wire-Policy. Alle nicht ausdrücklich geänderten Regeln aus
@@ -3178,23 +3181,1721 @@ Runtime-, Datenschutz- oder Compliancebeweis.
 Der Transport ist weiterhin weder mit dem SyncService noch in `src/main.js`
 komponiert; ein Browser-End-to-End-`syncTest` existiert nicht. Der einmalig
 ausgeführte ADR-0029-Lauf bleibt mit Gesamt-`FAIL` dokumentiert; seine Ursache
-ist `CAUSE_NOT_PROVEN`. ADR 0032 ersetzt ADR 0031 formal und totalisiert
-ausschließlich den davon unabhängigen passiven Diagnosevertrag. Als Nächstes
-folgt nur dessen reine netzwerkfreie effects-as-data-Foundationimplementierung
-und -prüfung; darauf folgen ein eigener Adapter-ADR und dessen getrennte
-netzwerkfreie Implementierung. Erst danach benötigt ein sichtbarer
-Diagnoselauf eine neue ausdrückliche Autorisierung;
-Browserkomposition und lokaler Browser-End-to-End-`syncTest` bleiben bis zu
-einem späteren vollständig neuen ADR-0029-Gesamt-`PASS` geschlossen.
+ist `CAUSE_NOT_PROVEN`. ADR 0033 ersetzt ADR 0032 formal und übernimmt alle
+nicht ausdrücklich korrigierten Regeln; ADR 0032 bleibt als historische
+Entscheidungsebene erhalten. Die Diagnosefoundation ist weiterhin nicht
+implementiert. Der nächste Slice ist ausschließlich ihre getrennte,
+netzwerkfreie Effects-as-Data-Implementierung; Adapter-ADR,
+Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und
+nicht autorisiert. Browserkomposition und lokaler Browser-End-to-End-`syncTest`
+bleiben bis zu einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`
+geschlossen.
+
+## Browser Transport Diagnostic Foundation Effects Protocol / ADR 0033
+
+[ADR 0033](decisions/0033-browser-sync-transport-diagnostic-foundation-effects-protocol-boundary.md)
+ist `Angenommen – 2026-09-03`, ersetzt ADR 0032 formal und übernimmt dessen
+nicht ausdrücklich korrigierte Regeln. ADR 0032 bleibt als historische
+Entscheidungsebene erhalten. Dieser Living Contract beschreibt den Vertrag der
+späteren reinen, importinaktiven, netzwerkfreien Foundation; sie ist weiterhin
+nicht implementiert. Der nächste Slice ist ausschließlich ihre getrennte
+netzwerkfreie Effects-as-Data-Implementierung. Adapter, Parser, Queue, Timer,
+Browser, CDP, Netzwerk und ein Diagnoselauf sind nicht autorisiert. Das
+ADR-0029-Gesamtgate bleibt `FAIL`, die Ursache `CAUSE_NOT_PROVEN`.
+
+### Öffentliche API, Capability und Referenzinvariante
+
+Der einzige spätere Export besitzt `length === 1` und lautet:
+
+```js
+createBrowserSyncTransportRuntimeDiagnosticObserver({
+  effectPort,
+  runBinding,
+})
+```
+
+Factoryoptions besitzen exakt `{ effectPort, runBinding }`; `effectPort`
+besitzt exakt `{ exchange }`. Die Factory hat keinen Default, führt keinen
+Exchange aus und wirft bei ungültigen Eingaben nur
+`TypeError("invalidBrowserSyncTransportRuntimeDiagnosticObserverDependencies")`.
+Factoryfehler sind ausschließlich dieser synchrone statische Dependency-
+`TypeError`; dabei entstehen weder API noch Promise oder `FoundationResult`.
+Factoryoptions, `effectPort`, das vollständige `runBinding` und jeder
+geschlossene Nachfahr werden vollständig während der Factory genau einmal
+descriptorbasiert geprüft; zulässige primitive Blätter werden nur aus
+gecacheten Descriptoren in frische interne Records kopiert. Keine Prüfung oder
+Kopie des `runBinding` wird bis `run()` aufgeschoben. Die Factory liefert eine
+frische gewöhnliche tief eingefrorene API exakt `{ run }`.
+`run.length === 0` und verwendet privat:
+
+```text
+runState = unused | active | terminal
+activeRunToken = primitive 1 | null
+```
+
+Der erste Aufruf wechselt synchron und vor jeder Arityprüfung von `unused` zu
+`active`, setzt den Token auf `1` und ist alleiniger Owner. Bei gültiger Arity
+erfolgt synchron und nicht reentrant beobachtbar:
+
+```text
+capturedExchange -> activeExchange
+capturedExchange := null
+```
+
+Es existiert genau ein ownerzugänglicher persistenter Capabilityslot; der
+unvermeidliche kurzzeitige Evaluationstackwert beim Transfer wird nicht
+gespeichert. Bei falscher Erst-Arity wird `capturedExchange` gelöscht,
+`activeRunToken` auf `null` gesetzt und der Zustand ohne Exchange terminal.
+Zweit-, Parallel- und reentrante Aufrufe sind Nicht-Owner. Sie erhalten je ein
+eigenes lokal erzeugtes statisch erfülltes Fehler-Promise, greifen auf keinen
+Capabilityslot zu, verändern weder Ownerzustand noch Zähler und starten weder
+Effekt noch Cleanup. Nur der Owner terminalisiert, löscht `activeExchange`
+exakt einmal nach dem letzten benötigten Exchange und vor Promise-Erfüllung und
+setzt den Token auf `null`. Späte Handler prüfen zuerst Token und State; ohne
+aktiven Owner verändern sie nichts und geben nur primitives `undefined` zurück.
+
+Nach erfolgreicher Factory liefert jeder kontrollierte `run()`-Pfad sofort ein
+lokales Promise und wirft nicht synchron. Beherrschte Owner- und
+Nicht-Owner-Fehler erfüllen statisch. In der Foundation-Effectport-/Public-
+Promise-Maschinerie sind freie Thenableassimilation, `await`,
+`Promise.resolve`, `Promise.race` und `Promise.all` verboten; der feste Main-
+World-Evaluationtext bleibt davon unberührt.
+
+Die einzige dauerhaft zulässige callerlieferte Referenz ist die exakte
+Capability, vor dem Run in `capturedExchange` und nach dem synchronen
+Ownertransfer in `activeExchange`. `effectPort` und dessen aufzählbare
+Own-Data-Property `exchange` werden je genau einmal descriptorbasiert gelesen.
+Nur die ohne Koerzierung funktionale Referenz wird im privaten, nicht
+erreichbaren und löschbaren Slot gespeichert; der Container wird verworfen.
+Jeder Owner-Exchange erfolgt nur über die erfasste Apply-Intrinsic, Receiver
+`undefined`, mit genau einem frischen gewöhnlichen geschlossenen tief
+eingefrorenen Intent. Die Capability wird unter keinem Slotnamen ausgegeben,
+serialisiert, eingefroren, persistiert, verglichen oder als Provenienz
+verwendet; Plain-, Native-, Realm- und Proxyfreiheit werden nicht behauptet.
+Der Owner löscht `activeExchange` nach dem letzten benötigten Exchange und vor
+Promise-Erfüllung; bei ewig pending Exchange darf der Slot bis zum Settlement
+bestehen. Nicht-Owner löschen keinen Slot.
+
+Neben dem einen Capabilityslot sind exakt vier transiente Referenzrollen
+zulässig: ein aktueller Exchange-Promise-Kandidat; ein aktueller
+Fulfillmentgraph jeder Antwortart einschließlich Probe-, Clock-, Arm-, Cancel-,
+Send- und Cleanup-Step-Acks; ein vollständig unreflektierter
+Dequeue-Fulfillmentgraph während seines Clock-Samples; sowie ausschließlich
+während derselben synchronen Prüfung benötigte allowlistete Nachfahr-,
+Descriptor- und Prototypreferenzen. Ein Dequeue-Fulfillment wechselt unmittelbar
+und ohne Doppelhaltung aus der generischen Fulfillmentverarbeitung in Rolle 3;
+während Rolle 3 belegt ist, darf Rolle 2 ausschließlich den zugehörigen
+Clock-Ack halten. Jede andere Überlappung ist verboten.
+
+Own-Key-Arrays und Descriptorrecords aus erfassten Reflection-Intrinsics sind
+foundationeigene temporäre Prüfartefakte; darin enthaltene fremde Werte bleiben
+Teil des Eingabegraphslots. Der aktuelle Exchange-Promise-Kandidat bleibt als
+einzige zugehörige transiente Referenz bis zu seinem Settlement erhalten; alle
+anderen Rollen werden nach primitiver Projektion beziehungsweise ihrer
+unmittelbaren synchronen Prüfung verworfen. Keine Rolle wird eingefroren,
+mutiert, geloggt, serialisiert, persistiert oder ausgegeben. Der
+Rejectionhandler ist formal
+nullstellig, hat keinen Parameter und liest weder `arguments` noch Grund.
+Foundationeigene Resolver, kontrollierte Handler und der erzeugte Folgepromise
+sind keine Callerreferenzen; der Folgepromise wird nie gespeichert oder
+inspiziert. Es gibt keinen zweiten Port, Callback, Iterator, Stream oder
+versteckten Seam.
+
+```text
+Keine callerlieferte Objekt-, Array-, Promise-, Hüllen-, Capability-
+oder sonstige Eingabereferenz erreicht FoundationResult,
+FoundationProjection, PreCleanupObservationSnapshot oder CleanupLedger.
+```
+
+### `runBinding` und 59 Replayoperanden
+
+Die geschlossene Own-Key-Reihenfolge ist:
+
+```text
+{
+  diagnosticRunId,
+  observedAt,
+  timeZone,
+  replayContextId,
+  repositoryCommit,
+  profileInstanceObservation,
+  unexplainedCausalDeviationObservation,
+  replayOperands,
+  viteRuntimeVersionObservation
+}
+```
+
+`diagnosticRunId` und `replayContextId` entsprechen `[a-z0-9-]{1,32}`;
+Letzteres unterscheidet sich von `chrome-stable-win-t0-01`. `observedAt` ist
+ein kanonischer 24-stelliger UTC-String mit Rückprojektion, `timeZone` eine
+ASCII-IANA-ID mit 1 bis 64 Codeunits, `repositoryCommit` Lower Hex mit exakt
+40 Zeichen und `viteRuntimeVersionObservation` `null` oder kanonischer
+ASCII-SemVer mit höchstens 32 Codeunits.
+
+```text
+profileInstanceObservation = {
+  newInstanceObserved,
+  historicalInstanceReuseObserved
+}
+
+unexplainedCausalDeviationObservation = {
+  reviewCompleted,
+  deviationObserved
+}
+```
+
+Die Blätter sind Boolean oder `null`. Profil `true/false` wird zu neuer
+Instanz, `false/true` zu Wiederverwendung, sonst zu `unknown`; `true/true` ist
+malformed. Abweichung `true/false` wird zu `confirmed`, `true/true` zu
+`contradicted`, sonst zu `unproven`; `false/true` ist malformed. Das sind
+interne Kandidatenableitungen, keine callerlieferbaren Statuswerte.
+
+`replayOperands` ist ein dichtes gewöhnliches Array mit exakt 59 Einträgen in
+kanonischer Reihenfolge. Jeder Eintrag besitzt exakt
+`{ fieldId, observationState, replayValue }`.
+`observationState = observed | not-observed | ambiguous`; die beiden letzten
+Zustände verlangen `replayValue: null`, `observed` verlangt einen typgültigen
+nichtnullischen primitiven Skalar. Historischer Wert, Vergleichsbasis und
+Resultat sind privat.
+
+Typcodes: `H64` = Lower Hex exakt 64; `A<n>` = nichtleerer sanitierter
+ASCII-String bis `<n>` UTF-16-Codeunits; `S32` = kanonischer ASCII-SemVer bis
+32; `P` = Safe-Integer-Port `0..65535`; `B` = primitiver Boolean. `null` ist
+nur bei `not-observed|ambiguous` erlaubt. Basis `A` =
+`historical-commit-artifact-sha256`, `R` = `historical-record-value`, `D` =
+`historical-record-closed-derivation`, `C` =
+`historical-commit-closed-derivation`.
+
+| Nr. | `fieldId` | Basis | Historischer fester Wert | Typ/Grenze | Ableitung | Invariante |
+| ---: | --- | :---: | --- | --- | --- | --- |
+| 1 | `artifact.transport.src/transports/browserSyncTransport.js.sha256` | A | `3c41b17e1d80e94e4b05e7c76f019d3fd3af281b451e85c8f90d80fd25391c28` | H64 | Vergleich | G, I8 |
+| 2 | `artifact.contract.src/contracts/syncContract.js.sha256` | A | `96ad2c52fb4545d6e587d9b3fd86d76a4a735e8cb33e9b572a3d7d5f4e5a6aeb` | H64 | Vergleich | G, I8 |
+| 3 | `artifact.gateway.server/startLocalSyncGateway.js.sha256` | A | `677be5e9cace926ba0a1f3540e39926f5b5c54dd57440bd1ac53de6f255ca6d5` | H64 | Vergleich | G, I8 |
+| 4 | `artifact.gateway.server/localSyncGatewayRuntimeConfig.js.sha256` | A | `e9a4419666e33b57d1ed5712e00f3d954a5b82c1cc7956b9a7582e0462743836` | H64 | Vergleich | G, I8 |
+| 5 | `artifact.gateway.server/localSyncGatewayHttpServer.js.sha256` | A | `70243e66f85448c23920ea30409a03be7ed349b6868535729f4a798f012fdbb8` | H64 | Vergleich | G, I8 |
+| 6 | `artifact.gateway.src/gateways/syncGatewayRequestBoundary.js.sha256` | A | `b1e55f03283bfdd1d35562951503471b4a812ac61868af0b927a05623e597b79` | H64 | Vergleich | G, I8 |
+| 7 | `artifact.gateway.src/agents/syncAgent.js.sha256` | A | `899e06d3a80925cab8680749d133e9a8d87f30a2fd1d509cf7339eb1c8d65db0` | H64 | Vergleich | G, I8 |
+| 8 | `artifact.frontend.runtime-source-set.sha256` | A | `6f3d5740b043308b4d38df33b6293c9064d8dd1b3f0c5801d50844336c195591` | H64 | Vergleich | G, I8 |
+| 9 | `repository.state` | R | `clean` | `clean\|dirty\|unknown` | `replay.repositoryState` | G |
+| 10 | `hostRuntime.executionClass` | R | `local-disposable` | A64 | gleichnamiger `causalContext`-Pfad | G |
+| 11 | `operatingSystem.family` | R | `windows` | A32 | gleichnamiger Pfad | G |
+| 12 | `operatingSystem.edition` | R | `Windows 11 Home` | A64 | gleichnamiger Pfad | G |
+| 13 | `operatingSystem.architecture` | R | `x64` | A16 | gleichnamiger Pfad | G |
+| 14 | `operatingSystem.version` | R | `25H2` | A64 | gleichnamiger Pfad | G |
+| 15 | `operatingSystem.build` | R | `26200` | A32 | gleichnamiger Pfad | G |
+| 16 | `operatingSystem.patch` | R | `9168` | A32 | gleichnamiger Pfad | G |
+| 17 | `node.version` | R | `24.19.0` | S32 | gleichnamiger Pfad | G |
+| 18 | `browser.product` | R | `chrome` | A32 | gleichnamiger Pfad | G |
+| 19 | `browser.channel` | R | `stable` | A32 | gleichnamiger Pfad | G |
+| 20 | `browser.version` | R | `151.0.7922.174` | A64 | gleichnamiger Pfad | G |
+| 21 | `browser.engine` | R | `blink` | A32 | gleichnamiger Pfad | G |
+| 22 | `browser.engineBuild` | R | `@39c51c70dd5feca6b6aba5bb7997b595011c553d` | A128 | gleichnamiger Pfad | G |
+| 23 | `browser.executionMode` | R | `visible` | A32 | gleichnamiger Pfad | G |
+| 24 | `browser.privateMode` | R | `true` | B | gleichnamiger Pfad | G |
+| 25 | `profile.lifecycle` | R | `fresh-disposable` | A64 | gleichnamiger Pfad | G, I7 |
+| 26 | `profile.extensions` | R | `none` | A64 | gleichnamiger Pfad | G |
+| 27 | `profile.startParameters` | R | `effective-non-bypassing` | A128 | gleichnamiger Pfad | G |
+| 28 | `profile.featureFlags` | R | `none-effective` | A128 | gleichnamiger Pfad | G |
+| 29 | `profile.enterprisePolicies` | R | `none-effective` | A128 | gleichnamiger Pfad | G |
+| 30 | `networkEnvironment.proxy` | R | `inactive` | A32 | gleichnamiger Pfad | G |
+| 31 | `networkEnvironment.vpn` | R | `inactive` | A32 | gleichnamiger Pfad | G |
+| 32 | `initialState.serviceWorker` | R | `absent` | A64 | gleichnamiger Pfad | G |
+| 33 | `initialState.permission` | R | `prompt` | A64 | gleichnamiger Pfad | G |
+| 34 | `initialState.preflightCache` | R | `empty-confirmed` | A64 | gleichnamiger Pfad | G |
+| 35 | `initialState.siteCache` | R | `empty-confirmed` | A64 | gleichnamiger Pfad | G |
+| 36 | `bindingComparisonProfile` | R | `ephemeral-exact-effective-context-comparison-without-retention` | A128 | gleichnamiger Pfad | G |
+| 37 | `frontend.topLevelUrl` | R | `http://127.0.0.1:5173/` | A2048 | gleichnamiger Pfad | G, I1 |
+| 38 | `frontend.serializedOrigin` | R | `http://127.0.0.1:5173` | A2048 | gleichnamiger Pfad | G, I1, I4 |
+| 39 | `frontend.contextKind` | R | `top-level` | A32 | gleichnamiger Pfad | G |
+| 40 | `frontend.isSecureContext` | R | `true` | B | gleichnamiger Pfad | G |
+| 41 | `transportRequest.factoryProfile` | R | `real-default-factory` | A64 | gleichnamiger Pfad | G |
+| 42 | `transportRequest.compositionProfile` | R | `transport-only` | A64 | gleichnamiger Pfad | G |
+| 43 | `transportRequest.requestProfile` | R | `synthetic-v1-syncTest-empty-payload` | A128 | gleichnamiger Pfad | G |
+| 44 | `transportRequest.requestEqualityMethod` | R | `ephemeral-full-value-comparison-without-retention` | A128 | gleichnamiger Pfad | G |
+| 45 | `transportRequest.initialUrl` | R | `http://127.0.0.1:8787/api/sync-test` | A2048 | gleichnamiger Pfad | G, I2, I5 |
+| 46 | `transportRequest.initialScheme` | R | `http` | A16 | gleichnamiger Pfad | G, I2 |
+| 47 | `transportRequest.initialHost` | R | `127.0.0.1` | A256 | gleichnamiger Pfad | G, I2 |
+| 48 | `transportRequest.initialPort` | R | `8787` | P | gleichnamiger Pfad | G, I2, I3 |
+| 49 | `transportRequest.initialPath` | R | `/api/sync-test` | A1024 | gleichnamiger Pfad | G, I2 |
+| 50 | `transportRequest.requestInitProfile` | R | `adr-0028-fixed` | A64 | gleichnamiger Pfad | G |
+| 51 | `gateway.listenerHost` | R | `127.0.0.1` | A256 | gleichnamiger Pfad | G, I3 |
+| 52 | `gateway.listenerPort` | R | `8787` | P | gleichnamiger Pfad | G, I3 |
+| 53 | `gateway.portEnvironmentValue` | R | `"8787"` | A16 | gleichnamiger Pfad | G, I3 |
+| 54 | `gateway.allowedOrigin.value` | R | `http://127.0.0.1:5173` | A2048 | gleichnamiger Pfad | G, I4 |
+| 55 | `gateway.allowedOrigin.relationToFrontend` | R | `matches-frontend-origin` | A64 | gleichnamiger Pfad | G, I4 |
+| 56 | `gateway.endpoint` | R | `http://127.0.0.1:8787/api/sync-test` | A2048 | gleichnamiger Pfad | G, I3, I5 |
+| 57 | `gateway.responderProfile` | R | `production-gateway` | A64 | gleichnamiger Pfad | G |
+| 58 | `gateway.responseProfile` | D | `adr-0020-options204-post200-syncresponse-v1` | A128 | gleichnamiger Pfad | G |
+| 59 | `toolchain.vite.lockfileVersion` | C | `8.1.4` | S32 | `causalContext.toolchain.vite.lockfileVersion` | G, I6 |
+
+`G` verlangt exakt 59 dichte Einträge, kanonische Position und `fieldId`,
+geschlossene Own-Key-Mengen, Symbolverbot, typstrikten Vergleich und
+`not-observed|ambiguous => replayValue:null/result:unproven`. Die pro Zeile
+zugeordneten Cross-Field-Invarianten lauten:
+
+- `I1`: Top-Level-URL und serialized Origin passen ohne Normalisierung
+  syntaktisch und portgenau zusammen.
+- `I2`: `initialUrl` besteht exakt aus Scheme, Host, Port und Path.
+- `I3`: Listenerhost/-port, dezimaler Environmentport und Gatewayendpoint
+  beschreiben dieselbe Loopbackbindung.
+- `I4`: `matches-frontend-origin` gilt genau bei bytegleicher
+  `allowedOrigin.value` und `frontend.serializedOrigin`.
+- `I5`: Transport-Initial-URL und Gatewayendpoint sind bytegleich.
+- `I6`: Lockfile- und `viteRuntimeVersionObservation` bleiben getrennt;
+  `null` ist `unproven`, bestätigte Abweichung `mismatch`. Callerwerte
+  bestätigen keine geladene Runtime.
+- `I7`: `profile.lifecycle` und die separat abgeleitete
+  Profilinstanzbeobachtung widersprechen sich nicht.
+- `I8`: Alle acht Artefaktwerte gehören zum privaten historischen Commit
+  `8001cc7eb7d2fed68c5ca4061514b486a204ac44`; Callerhashes beweisen weder
+  Commit- noch Dateibyteprovenienz.
+
+Die Relation bleibt im angenommenen ADR-0033-Vertrag
+`adr-0032-causal-replay-v2` mit `EQUIVALENT|DIVERGED|UNPROVEN`.
+
+### Effects-as-data-Grammatik
+
+Der einzige Effektvertrag des Owners lautet:
+
+```text
+activeExchange(frozenIntent)
+  -> currently-observable-local-native-promise-profile
+     <untrusted materialized observation>
+```
+
+Das Profil heißt ausschließlich
+`currently-observable-local-native-promise-profile`. Es behauptet weder
+Same-Realm- oder Erzeugungsrealm-Provenienz noch eine bestimmte Constructor-
+Herkunft, Subclassfreiheit, historische native Erzeugung oder Proxyfreiheit.
+Eine passend verkleidete fremde oder Subclass-Instanz kann es beobachtbar
+erfüllen. Bei Modulevaluation werden der lokale Promise-Konstruktor und
+`Promise.prototype`, die native `Promise.prototype.then`-Funktion samt
+vollständigem Descriptor, `Symbol.species`, die vollständigen Promise-/Object-
+Prototypidentitäten, die vollständigen Originaldescriptoren von
+`Promise.prototype.constructor` und `Promise[Symbol.species]` sowie Apply-,
+OwnKeys-, Prototype- und Descriptor-Intrinsics erfasst.
+
+Unmittelbar vor genau einer Anwendung des erfassten nativen `then` werden die
+OwnKeys des Kandidaten genau einmal gelesen und als leer bestätigt, sein
+Prototyp genau einmal mit dem lokalen Promiseprototyp verglichen und die
+Livedescriptoren `Promise.prototype.constructor`, `Promise[Symbol.species]`
+und `Promise.prototype.then` je genau einmal vollständig mit den erfassten
+Originaldescriptoren verglichen. Dann wird ohne fremden Zwischenhook per
+erfasstem Apply mit genau zwei kontrollierten Handlern angewendet. Diese eine
+Anwendung ist die native Brandprüfung; ein Throw ist malformed, eine zweite
+Probe verboten. Beide Handler fangen kontrollierte Throws, geben immer
+primitives `undefined` zurück und liefern keinen fremden Wert an den
+spezifikationsbedingt erzeugten Folgepromise. Der aktuelle
+Exchange-Promise-Kandidat bleibt als einzige zugehörige transiente Referenz bis
+zu seinem Settlement erhalten und wird dann unmittelbar verworfen; der
+Folgepromise wird nie gespeichert oder inspiziert.
+
+Rejectiongründe werden nicht gebunden oder gelesen. Der Rejectionhandler ist
+formal nullstellig, besitzt keinen Parameter und liest `arguments` nicht. Ein
+gültiges ewig pending Promise darf den Lauf ewig pending halten. Verboten sind
+in der Foundation-Promise-Maschinerie `await`, `Promise.resolve`,
+`Promise.race`, `Promise.all`, freie `.then`-Auflösung und ein
+Fulfillmentgraph als Handlerrückgabe. Jedes öffentliche Run-Promise wird nur
+mit dem erfassten lokalen Konstruktor erzeugt; Reject wird weder gespeichert
+noch aufgerufen, Resolve exakt einmal verwendet.
+
+Statische Redaction ist auf Foundation-kontrollierte Resultate und Handler
+begrenzt: Die Foundation bindet, liest, kopiert, serialisiert, persistiert,
+loggt oder emittiert dort keinen fremden Rejectiongrund. Ein bereits oder
+später abgelehntes Promise, dessen Profil vor der Handlerinstallation
+scheitert, kann dennoch einen getrennten hostabhängigen
+`unhandledrejection`-/`unhandledRejection`-Kanal mit seinem ursprünglichen
+Grund auslösen. Eintritt, Zeitpunkt, Häufigkeit, Inhalt, Prozessfortsetzung
+und Unterdrückbarkeit dieses Restkanals werden nicht behauptet.
+
+Die private Exchange-Lease besitzt exakt vier Zustände:
+
+```text
+idle | observable-pending | settlement-unobservable | closed
+```
+
+Nur `idle` erlaubt Intent-ID, Intent, Zählermutation und Portaufruf. Nach
+erfolgreichem Profilcheck und Installation der exakt zwei kontrollierten
+Handler ist die Lease `observable-pending`. Erst der Eintritt in einen
+kontrollierten Fulfillment- oder Rejectionhandler ist ein
+`observed-settlement`; er gibt die Lease vor der intent- und
+zustandsspezifischen Transition zu `idle` frei. Ein erst dort festgestelltes
+malformed Fulfillment ist ebenfalls beobachtet und wird nach der Leasefreigabe
+intent-spezifisch verarbeitet.
+
+Synchroner Throw von `exchange`, malformed Promise-Kandidat,
+Promiseprofil-Reflectionthrow oder Throw der einzigen nativen Then-Anwendung
+vor Eintritt eines kontrollierten Handlers ist `settlement-unobservable`. Diese
+Klasse besitzt vor jeder phasenlokalen Fehler-, Rejection-, Catch-all- oder
+Cancelregel höchste Präzedenz und setzt atomar:
+
+```yaml
+lease: closed
+portState: closed
+activeCapability: null
+affectedCapState: terminal-unknown
+furtherExchangeCount: zero
+```
+
+`activeCapability` bezeichnet nur den privaten `activeExchange`-Slot; dieser
+wird gelöscht. Vor `attemptStarted` folgt ausschließlich der statische
+Foundationabschluss ohne Snapshot, Ledger oder Portzugriff. Während Observation
+setzt der Pfad sticky `V`, friert `O0` und führt Cleanup ausschließlich lokal
+und portlos aus. Nach `O0` bleibt der Snapshot unverändert; allein
+`cleanupViolation: true` und erforderlichenfalls `cleanup-terminal-failure`
+werden abgeleitet. Es folgen niemals `cap-cancel`, Retry oder ein anderer
+Exchange; auch während eines Cancelversuchs entsteht kein zweiter Cancel.
+Normaler Portschluss nach dem letzten regulär beobachteten und verarbeiteten
+Exchange bleibt hiervon getrennt.
+
+Ein intern angeforderter zweiter Exchange bei `observable-pending` wird vor
+Intent, ID, Zähler und Portaufruf unterdrückt. Privat gilt exakt:
+
+```text
+pendingInternalExchangeViolation =
+  false | prestart | observation | cleanup
+
+!attemptStarted                          -> prestart
+attemptStarted && Snapshot nicht frozen -> observation
+Snapshot frozen                         -> cleanup
+```
+
+Das ursprüngliche Promise bleibt alleinige Livenessgrenze. Bleibt es pending,
+bleibt der ganze Run pending. Bei Fulfillment werden Payload und gegebenenfalls
+gehaltener Dequeuegraph vollständig unreflektiert verworfen; bei Rejection
+wird kein Grund gelesen. Ein eventuell enthaltener Send-Ack wird nicht
+gezählt, die Sendklasse bleibt `unknown` und wird niemals wegen der
+unterdrückten Anforderung `multiple`. Beim Settlement wechselt die Lease
+atomar von `observable-pending` zu `closed`, niemals zu `idle`;
+`activeExchange` wird gelöscht, alle live gebliebenen Caps werden
+`terminal-unknown`, und der Port wird nicht erneut aufgerufen. „Live geblieben“
+ist hier exakt
+`arm-pending|armed|pending-activation|active|activation-unknown|cancel-pending`;
+`absent|cancelled|fired|terminal-unknown` bleiben unverändert. `prestart`
+erfüllt statisch ohne Snapshot oder Ledger; `observation` setzt sticky `V`,
+friert den Snapshot und führt ausschließlich lokalen Cleanup aus; `cleanup`
+lässt den Snapshot unverändert, setzt `cleanupViolation`, setzt verbleibende
+Portchecks `unproven` und endet in `cleanup-terminal-failure`. Späte oder
+doppelte Handler sind token- und zustandsgegatete `undefined`-No-ops. Ein
+Exchangeversuch bei `closed` ist unerreichbar und inert; dafür wird keine
+fingierte Joinverletzung erzeugt.
+
+Ausschließlich der Eintritt in einen kontrollierten Rejectionhandler ist ein
+`observed-settlement`. Jeder solche Handler gibt zuerst die Lease zu `idle` frei
+und dispatcht danach nur anhand des bereits intern gebundenen Tupels:
+
+```text
+{ phase, intentKind, intentId, capKind, capState }
+```
+
+Innerhalb dieses beobachteten Settlements gilt zuerst der exakte intent- und
+zustandsspezifische Rejectionübergang, dann die erforderliche Capquieszenz und
+erst danach Snapshot oder Cleanup. Ein
+allgemeiner Catch-all ist ausschließlich für ein unmögliches internes Tupel
+zulässig; er darf keinen spezifischen Probe-, Clock-, Arm-, Send-, Cancel-,
+Dequeue- oder Cleanupübergang überspringen. Er schließt den Port fail-closed,
+löscht `activeExchange`, setzt betroffene live Caps `terminal-unknown` und
+verbietet jeden weiteren Exchange. Vor dem Snapshot ergibt er sticky `V`,
+`O0` und portlosen Cleanup, danach ausschließlich `cleanupViolation` und
+erforderlichenfalls `cleanup-terminal-failure` bei unverändertem `O0`.
+`settlement-unobservable` tritt vor keinem kontrollierten Handler ein, umgeht
+diesen Dispatch samt Catch-all vollständig und folgt nur dem globalen
+Closed-Tupel.
+
+Die Menge der erreichbar kontrollierten Rejection-Tupel ist geschlossen. Die
+`intentId` bindet vor dem Capabilityaufruf unveränderlich auch den erwarteten
+Clockgrund, Command, Cleanup-Purpose und gegebenenfalls die bereits entschiedene
+Closeklasse; der Handler liest dafür weder Rejectiongrund noch fremde Daten.
+Das private Dispatchfeld `capKind` ist exakt
+`null|setup|capture|cleanup`; `null` ist ausschließlich beim
+`capability-probe` mit `capState: absent` zulässig, während
+`setup-origin` bereits `capKind: setup, capState: absent` bindet. Jede
+`cap-cancel`-Intent-ID bindet zusätzlich eindeutig einen nicht callerlieferbaren
+Purpose aus:
+
+```text
+prestart-arm-recovery | setup-ready-transition | rejection-quiescence |
+capture-terminal-quiescence | post-o0-old-cap | cleanup-arm-recovery |
+cleanup-recovery | cleanup-final
+```
+
+Dieser Purpose wird nur über die bereits im
+Tupel enthaltene `intentId` aufgelöst und erweitert den Rejectionhandler um
+keinen fremden Dispatchwert.
+Für jede folgende, durch Eintritt in den kontrollierten Handler beobachtete
+Rejection ist die Lease bereits zu `idle` freigegeben. Keine folgende
+Rejection- oder Cancelmatrix gilt für `settlement-unobservable`:
+
+- `prestart / capability-probe / capKind = null / capState = absent` und
+  `prestart / controller-clock-sample(setup-origin) / capKind = setup /
+  capState = absent` schließen
+  den Port und erfüllen den statischen Foundationfehler ohne Snapshot oder
+  Ledger;
+- `prestart / cap-arm(setup) / cap = arm-pending` setzt den Setupcap
+  `activation-unknown` und versucht für seine bekannte Arm-Intent-ID genau
+  einen Best-effort-Cancel. Exakter Ack setzt `cancelled`; beobachtete
+  Cancel-Rejection oder malformed Ack setzt `terminal-unknown`; unobservables
+  Cancel-Settlement setzt das vollständige globale Closed-Tupel einschließlich
+  `activeCapability: null` und `furtherExchangeCount: zero`. Jeder dieser
+  terminalen Ausgänge erfüllt danach nur den statischen Foundationfehler; nach
+  dem unobservablen Ausgang geschieht dies ausschließlich lokal und portlos.
+  Ein gültiges pending Cancel hält den Run pending. Ein zweiter Cancel ist in
+  jedem Fall ausgeschlossen;
+- `prestart / cap-cancel(setup) / cap = cancel-pending` setzt
+  `terminal-unknown`, schließt danach den Port und erfüllt den statischen
+  Foundationfehler; es gibt weder Retry noch Snapshot oder Ledger;
+- `observation / protocol-command-send(Target.getTargets |
+  Target.attachToTarget | Network.enable) / setup = armed` setzt den
+  betreffenden Sendcount `unknown`, das Operationsergebnis `unproven`, sticky
+  `V` und schließt alle nachfolgenden Setup- und Evaluate-Sends;
+- `observation / controller-clock-sample(setup-dequeue-before-reflection) /
+  setup = armed` verwirft den gehaltenen Dequeuegraph vollständig
+  unreflektiert und setzt sticky `V`;
+- `observation / observation-dequeue(setup) / setup = armed` setzt sticky `V`,
+  ohne eine Antwort oder Queueleere zu erfinden;
+- `observation / cap-cancel(setup) / setup = cancel-pending` setzt den Cap
+  `terminal-unknown`, sticky `V`, verbietet Capturearm und Evaluate und führt
+  ohne zweiten Cancel zu `O0`; der gebundene Cancel-Purpose unterscheidet den
+  normalen `setup-ready-transition` von einer `rejection-quiescence`, und die
+  Cleanupableitung beginnt in beiden Rejectionfällen mit negativer
+  Capbehauptung und `cleanupViolation`;
+- `observation / cap-arm(capture) / capture = arm-pending` setzt zuerst sticky
+  `V`, `Runtime.evaluate` auf `zero` und den Capturecap
+  `activation-unknown`;
+- `observation / protocol-command-send(Runtime.evaluate) / capture =
+  pending-activation` folgt ausschließlich der unten ausgeschriebenen
+  konservativen Evaluate-Rejectionmatrix;
+- `observation / controller-clock-sample(capture-dequeue-before-reflection) /
+  capture = active` verwirft den gehaltenen Dequeuegraph vollständig
+  unreflektiert und setzt sticky `V` sowie `captureWindowState: truncated`;
+- `observation / observation-dequeue(capture) / capture = active` setzt sticky
+  `V` sowie `captureWindowState: truncated`, ohne Reply-, Network- oder
+  Settlementwerte zu erfinden;
+- `observation / cap-cancel(capture) / capture = cancel-pending` setzt
+  `terminal-unknown`, promoviert eine gebundene Closeklasse `U` zu `V` oder
+  erhält das bereits gebundene `V`, führt ohne zweiten Cancel zu `O0` und
+  beginnt Cleanup mit negativer Capbehauptung und `cleanupViolation`;
+- `cleanup / cap-cancel(setup|capture) / cap = cancel-pending` setzt den Cap
+  `terminal-unknown` und `cleanupViolation`, verändert `O0` nicht und setzt nur
+  die weiterhin sichere Cleanupfolge fort;
+- `cleanup / controller-clock-sample(cleanup-origin) / cleanup = absent` setzt
+  `cleanupViolation` und `cleanup-terminal-failure` und finalisiert
+  ausschließlich lokal ohne Cleanupcap;
+- `cleanup / cap-arm(cleanup) / cleanup = arm-pending` setzt den Cleanupcap
+  `activation-unknown`, `cleanupViolation` und `cleanup-terminal-failure` und
+  versucht nach diesem `observed-settlement`, solange Lease `idle` und der Port
+  beobachtbar bleiben, genau einen Cancel. Dessen exakter Ack setzt `cancelled`,
+  beobachtete Rejection oder malformed Ack setzt `terminal-unknown`,
+  unobservables Settlement setzt dagegen das vollständige globale Closed-Tupel
+  und erlaubt danach ausschließlich lokale Terminalisierung, und ein gültiges
+  pending Promise hält den Run pending;
+- `cleanup / protocol-command-send(Network.disable |
+  Target.detachFromTarget) / cleanup = armed` setzt den Sendcount der Operation
+  `unknown`, ihr Resultat `unproven` und nur den zugehörigen Closecheck
+  `failed`; ohne offene Command-ID folgt der nächste weiterhin sichere
+  terminale Sendeversuch beziehungsweise Cleanup-Step;
+- `cleanup / observation-dequeue(cleanup) / cleanup = armed` setzt
+  `cleanupViolation`: Im Purpose
+  `await-cleanup-protocol-responses(openCommandIds)` werden die offenen CDP-
+  Closechecks und alle späteren portabhängigen Checks `unproven`, im Purpose
+  `await-cleanup-fact(checkId)` der aktuelle und alle späteren portabhängigen
+  Checks. Beide ergeben
+  `cleanup-terminal-failure`; ein beobachtbar gebliebener Cleanupcap wird genau
+  einmal storniert, danach wird lokal finalisiert;
+- `cleanup / controller-clock-sample(cleanup-dequeue-before-reflection) /
+  cleanup = armed` verwirft den gehaltenen Dequeuegraph vollständig
+  unreflektiert und hat für den jeweils gebundenen der beiden Purposes dieselbe
+  ausschließlich ledgerlokale Wirkung wie die vorstehende
+  Cleanup-Dequeue-Rejection;
+- `cleanup / cleanup-step / cleanup = armed` setzt genau den durch die Intent-ID gebundenen
+  aktuellen Check `failed` und fährt nur mit einem weiterhin sicheren Schritt
+  fort;
+- `cleanup / cap-cancel(cleanup) / cleanup = cancel-pending` setzt
+  `terminal-unknown`, `cleanupViolation` und `cleanup-terminal-failure`; der
+  Completion-Clock-Sample bleibt geschlossen und es gibt keinen zweiten
+  Cancel;
+- `cleanup / controller-clock-sample(cleanup-completion-after-cap-cancel) /
+  cleanup = cancelled` setzt `cleanupViolation`, Stage 10
+  `observed/mismatch` mit der nächsten lückenlosen Cleanup-Layer-
+  `receiptOrder`, `relativeMilliseconds: null` und `timingState: unavailable`,
+  Check 20 `failed` und
+  `cleanup-terminal-failure` und finalisiert lokal.
+
+Für die drei durch ein `observed-settlement` rejectionbedingten
+Observation-Gruppen mit noch zu quieszierendem Cap – Setup-Send/Setup-Clock/
+Setup-Dequeue, Capture-Arm sowie Capture-Clock/Capture-Dequeue – gilt vor `O0`
+dieselbe vollständige Cancelmatrix: Der Cap wechselt zu `cancel-pending`;
+exakter Ack setzt `cancelled` und führt mit unverändertem `V` zu `O0`;
+beobachtete Cancel-Rejection oder malformed Ack setzt `terminal-unknown`,
+erhält `V` und führt zu `O0` mit initialem `cleanupViolation`; unobservables
+Cancel-Settlement setzt das vollständige globale Closed-Tupel, erhält `V`,
+führt zu `O0` und danach ausschließlich lokaler portloser Cleanup-
+Terminalisierung; ein gültiges pending Cancel hält den Run ohne `O0`
+unbegrenzt pending. Der unobservable Ausgang erlaubt weder einen zweiten
+Cancel noch irgendeinen anderen Exchange. Bei
+Setup-Send, Setup-Clock und Setup-Dequeue wird der Setupcap, bei Capture-Arm,
+Capture-Clock und Capture-Dequeue der Capturecap genau einmal anhand seiner
+bekannten Arm-Intent-ID storniert.
+
+Ein nach einem `observed-settlement` rejectionbedingt erforderlicher
+`cleanup-arm-recovery`- oder `cleanup-recovery`-Cancel besitzt ebenfalls genau
+vier Ausgänge: Exakter Ack setzt `cancelled`; beobachtete Cancel-Rejection oder
+malformed Ack setzt `terminal-unknown`; unobservables Settlement setzt das
+vollständige globale Closed-Tupel und verbietet jeden weiteren Exchange; ein
+gültiges pending Promise hält den Run pending. Jeder der drei
+terminalen Ausgänge behält `cleanupViolation` und
+`cleanup-terminal-failure`, erlaubt keinen Completion-Clock-Sample und
+totalisiert lokal alle noch offenen portabhängigen Checks zu `unproven`, Check
+20 zu `failed` und Stage 10 zu `observed/mismatch` mit nächster lückenloser
+Cleanup-Layer-`receiptOrder`, `relativeMilliseconds: null` und
+`timingState: unavailable`. Dieselbe lokale Terminalprojektion gilt für die
+Rejection von `cleanup-origin` und des finalen Cleanupcap-Cancels; bei der
+Completion-Clock-Rejection ist ihre Handlerreihenfolge selbst die nächste
+Receipt Order. `O0` bleibt in allen Fällen unverändert. Beim unobservablen
+Ausgang geschieht die gesamte Terminalprojektion ausschließlich lokal und ohne
+zweiten Cancel. Alle nicht vorstehend aufgeführten kontrolliert beobachteten
+Rejection-Tupel sind intern unmöglich und nur deshalb dem Catch-all
+vorbehalten.
+
+Foundationerzeugte Intents sind frisch, gewöhnlich, geschlossen und tief
+eingefroren. Unvertrauenswürdige Fulfillments müssen nur das geschlossene
+Descriptor-, Key-, Typ- und Wertprofil erfüllen; Frische, Freeze, Herkunft und
+Proxyfreiheit werden nicht behauptet.
+
+Jedes Intent besitzt exakt `{ intentId, kind, payload }`. IDs sind positive
+Safe Integers ab `1`, lückenlos und nicht persistent. Die sieben Kinds und
+ihre geschlossenen Formen sind:
+
+```text
+capState =
+  absent | arm-pending | armed | pending-activation | active |
+  activation-unknown | cancel-pending | cancelled | fired |
+  terminal-unknown
+```
+
+Setup und Cleanup wechseln nach positivem Arm-Ack zu `armed`, damit live und
+bestätigt scharf. Capture wechselt zu `pending-activation` und erst mit dem
+atomaren Evaluate-Sende-Ack zu `active`. Unklare Arm-/Aktivierungswirkung ist
+`activation-unknown`; Deadline oder zulässiges Capereignis setzt `fired`.
+Jeder Arm hat eine positive flüchtige Intent-ID und höchstens einen
+Cancel-Intent.
+
+Für den Capture-Arm nach `attemptStarted` gilt total: Nur sein exakter Ack setzt
+`pending-activation` und öffnet den einzigen Evaluate-Send. Beobachtete
+Rejection oder ein nach beobachtetem Fulfillment malformed Ack setzt vor jeder
+Quieszenz `closeClass: V`, `controllerEvaluateIntentCount: zero`,
+`Runtime.evaluate.observedCountClass: zero` und den
+Capturecap `activation-unknown`; danach folgt genau ein Cancel nach der oben
+ausgeschriebenen Rejection-Cancelmatrix. Wird bereits das Arm-Settlement durch
+Portthrow, malformed Promisekandidat, Promiseprofil-Reflectionthrow oder
+native-Then-Throw unobservable, wird das vollständige globale Closed-Tupel
+gesetzt, der Capturecap bleibt `terminal-unknown`, `closeClass` wird `V` und
+`controllerEvaluateIntentCount` sowie
+`Runtime.evaluate.observedCountClass` `zero`. Dann gibt es weder Cancel noch
+weiteren Portaufruf; `O0` entsteht unmittelbar und nur lokale Cleanup-
+Terminalisierung bleibt zulässig. Ein gültiges pending Capture-Arm-Promise
+hält den Run unbegrenzt pending.
+
+Auch Setup- und Cleanup-Arm sind total. Beim Setup-Arm vor `attemptStarted`
+setzt nur der exakte Ack `armed`; beobachtete Rejection oder malformed Ack
+setzt `activation-unknown` und verlangt den genau einen Best-effort-Cancel,
+unobservables Arm-Settlement setzt das vollständige globale Closed-Tupel und
+endet ohne Cancel statisch, pending bleibt pending. Beim
+Cleanup-Arm nach `O0` setzt nur der exakte Ack `armed`; beobachtete Rejection
+oder malformed Ack setzt `activation-unknown`, `cleanupViolation` und
+`cleanup-terminal-failure` und verlangt den einmaligen
+`cleanup-arm-recovery`-Cancel. Unobservables Arm-Settlement setzt das
+vollständige globale Closed-Tupel und führt ohne Cancel oder Folge-Exchange nur
+zur lokalen Cleanup-Terminalisierung; ein gültiges pending Arm-Promise hält den Run
+pending. Kein Cleanupausgang verändert `O0`.
+
+| Kind | exakte Payload | exaktes Fulfillment | Phase/Folgezustand |
+| --- | --- | --- | --- |
+| `capability-probe` | `{ profile: "adr-0033-foundation-effect-port-v1" }` | `{ kind: "capability-probe-result", profile: "adr-0033-foundation-effect-port-v1", capabilitySet: "clock-cap-send-dequeue-cleanup-v1" }` | erster Exchange; exakt positives Profil erlaubt `setup-origin` |
+| `controller-clock-sample` | `{ reason }` | `{ kind: "controller-clock-sample-result", reason, monotonicMilliseconds }` | ein phasenpassendes Sample; danach Originberechnung oder Reflection |
+| `cap-arm` Setup | `{ capKind: "setup", mode: "absolute-controller-monotonic", deadlineMilliseconds }` | `{ kind: "cap-arm-result", capKind: "setup", armState: "armed" }` | vor `attemptStarted`; danach Stage 1 |
+| `cap-arm` Capture | `{ capKind: "capture", mode: "pending-send-activation", windowMilliseconds: 6000 }` | `{ kind: "cap-arm-result", capKind: "capture", armState: "pending" }` | nach `setupReady`; Aktivierung nur im Evaluate-Sende-Ack |
+| `cap-arm` Cleanup | `{ capKind: "cleanup", mode: "absolute-controller-monotonic", deadlineMilliseconds }` | `{ kind: "cap-arm-result", capKind: "cleanup", armState: "armed" }` | nach Snapshot und `cleanup-origin` |
+| `cap-cancel` | `{ capKind, armIntentId }` | `{ kind: "cap-cancel-result", capKind, armIntentId, cancelState: "cancelled" }` | exakter Ack wird `cancelled`; jeder andere terminale Ausgang wird `terminal-unknown`, ohne Retry |
+| `protocol-command-send` | `{ commandId, command, sessionId, captureArmIntentId, params }` | `{ kind: "protocol-command-send-result", commandId, sendState }` | `sent`; bei Evaluate atomar `sent-and-capture-cap-started` |
+| `observation-dequeue` | `{ phase }`, Phase `setup\|capture\|cleanup` | eine der vier Dequeuevarianten | Wert unreflektiert halten, dann genau ein Clock-Sample |
+| `cleanup-step` | `{ checkId, action }` | `{ kind: "cleanup-step-result", checkId, stepState: "accepted" }` | danach genau ein passendes boolesches Cleanup-Rohfakt oder Cap/Close |
+
+Clockgründe sind ausschließlich:
+
+```text
+setup-origin
+setup-dequeue-before-reflection
+capture-dequeue-before-reflection
+cleanup-origin
+cleanup-dequeue-before-reflection
+cleanup-completion-after-cap-cancel
+```
+
+`monotonicMilliseconds` ist eine endliche nichtnegative primitive Zahl. Der
+Completion-Sample folgt ausschließlich einem exakten Ack des abschließenden
+Cleanupcap-Cancels, dient nur Stage-10-Timing und Receipt Order und entscheidet
+keine zuvor getroffene Deadlineentscheidung rückwirkend neu.
+Setup- und Cleanupdeadline sind sicher darstellbar und lauten roh
+`m_setup + 6000` beziehungsweise `m_cleanup + 60000`. Der Capturecap bleibt
+pending, bis genau der Evaluate-Ack ihn ohne Send-zu-Arm-Lücke startet.
+Capereignisse korrelieren ausschließlich zur `cap-arm`-Intent-ID. Cancel
+wechselt zunächst zu `cancel-pending`. Kontrolliert beobachtete Rejection oder
+ein nach beobachtetem Fulfillment malformed beziehungsweise falsch korrelierter
+Ack ist `observed-settlement`, gibt die Lease zu `idle` frei und ergibt
+`terminal-unknown`. Synchroner `exchange`-Throw, malformed Promise-Kandidat,
+Promiseprofil-Reflectionthrow oder native-Then-Throw vor Handlerzutritt ist
+`settlement-unobservable` und setzt das vollständige globale Closed-Tupel. Nur
+nach beobachtetem terminalem Ausgang darf ein festgelegter Folgepfad bei offenem
+Port weiterlaufen. Nach unobservablem Ausgang wird ausschließlich lokal und
+portlos finalisiert; zweiter Cancel und jeder andere Exchange sind verboten.
+Ein gültiges niemals settelndes Cancel-Promise darf den Lauf unbegrenzt pending
+halten.
+
+Die Cancelmatrix ist total und jeder Arm erzeugt höchstens genau einen Cancel;
+Retry und zweiter Cancel sind verboten:
+
+- Bei `setupReady` wird der Setupcap vor Capturearm und Evaluate genau einmal
+  storniert. Beobachtete Cancel-Rejection oder malformed Ack setzt `V` und hält
+  beide Downstreamaktionen geschlossen; unobservables Settlement setzt das
+  globale Closed-Tupel und lässt nur lokale portlose Finalisierung zu.
+- Bei nicht aus einer kontrollierten Rejection stammendem gewöhnlichem
+  `U/setup-terminal-unproven`, Setup-`V` und Capture-`V` mit live oder
+  aktivierungsunklarem Cap entsteht nur bei Lease `idle` und offenem Port
+  zuerst der Snapshot und danach genau ein Cancel als erste Cleanup-Control-
+  Aktion.
+- Beim ersten irreversiblen Capture-Connection-Close mit aktivem Capturecap
+  entsteht zunächst `U/capture-terminal-unproven` und `truncated`; genau ein
+  Capture-Cancel erfolgt **vor** dem Snapshot. Nur der exakte Ack bewahrt `U`.
+  Beobachtete Cancel-Rejection oder malformed Ack promoviert vor dem Snapshot
+  zu `V`; unobservables Settlement promoviert ebenfalls zu `V`, setzt aber das
+  globale Closed-Tupel und lässt nach `O0` nur portlosen Cleanup zu. Ein
+  gültiges pending Cancel-Promise hält den Run ohne Snapshot unbegrenzt pending.
+- Bei beobachteter Rejection des `Runtime.evaluate`-Exchange-Promises aus
+  `pending-activation` erfolgt zuerst sein spezifischer sticky-`V`-Übergang,
+  dann genau ein Capture-Cancel für die bekannte Arm-ID und erst nach dessen
+  terminalem Ausgang der Snapshot. Ein pending Cancel hält den Run ohne
+  Snapshot pending.
+- Ein bereits `fired` gesetzter Cap erzeugt keinen Cancel.
+- Nach natürlicher Terminalität der Checks 1 bis 19 wird der Cleanupcap vor
+  Check 20 genau einmal storniert.
+
+Ein nach beobachteter Rejection oder malformed Fulfillment bei wieder `idle`
+nutzbarer Lease unklarer Setup-Arm vor `attemptStarted` erhält mit bekannter
+Arm-ID genau einen Best-effort-Cancel; danach entsteht ausschließlich der
+statische Foundationfehler ohne Projection oder Ledger. Auch hier hält ein
+gültiges pending Cancel-Promise den Run pending. Ist schon das Arm-Settlement
+unobservable, bleiben Lease und Port `closed`, der Cap wird
+`terminal-unknown`, und der statische Fehler folgt ohne Cancel oder weiteren
+Exchange.
+
+Die Commandparameter sind exakt:
+
+```text
+Target.getTargets     -> {}, sessionId null, captureArmIntentId null
+Target.attachToTarget -> { targetId, flatten: true }, sessionId null,
+                         captureArmIntentId null
+Network.enable        -> {}, gebundene sessionId, captureArmIntentId null
+Runtime.evaluate      -> { expression, awaitPromise: true,
+                          returnByValue: true, generatePreview: false },
+                         gebundene sessionId, positive Capture-Arm-ID
+Network.disable       -> {}, gebundene sessionId, captureArmIntentId null
+Target.detachFromTarget -> { sessionId }, äußerer sessionId null,
+                           captureArmIntentId null
+```
+
+Ein Send zählt nur bei gültigem Ack. Antworten ändern Sendcounts nie. Nur für
+`Runtime.evaluate` ist `sendState` exakt
+`sent-and-capture-cap-started`; ausschließlich dieser Ack bestätigt atomar
+Evaluate-Send und Captureaktivierung. Kontrolliert beobachtete Rejection,
+malformed Ack nach beobachtetem Fulfillment oder Dublette folgt nach
+Leasefreigabe vor `attemptStarted` dem statischen Foundationfehler, nach
+`attemptStarted` und vor `O0` sticky `V` und nach `O0` ausschließlich der
+totalen `cleanupViolation`-/`cleanup-terminal-failure`-Matrix. Synchroner
+`exchange`-Throw, malformed Promise-Kandidat, Promiseprofil-Reflectionthrow
+oder native-Then-Throw vor Handlerzutritt folgt dagegen in jeder Phase der
+globalen `settlement-unobservable`-Regel, nie einer generischen `V`- oder
+Cleanupregel. Fremde Gründe bleiben ungelesen.
+
+Eine beobachtete Rejection jedes anderen Send-Intents folgt nach
+Leasefreigabe genau dieser phasen- und intentspezifischen Einordnung. Sie darf
+ebenso wenig durch einen allgemeinen Catch-all an erforderlicher Capquieszenz
+oder Cleanupableitung vorbeigeführt werden.
+
+Die beobachtete Rejection des genau einmal übergebenen
+`Runtime.evaluate`-Exchange-Promises ist ein `observed-settlement`, aber
+weder ein bestätigter Send noch ein bestätigtes Nichtsenden. Nach Freigabe der
+Lease lautet ihr vorrangiger intent- und zustandsspezifischer Übergang exakt:
+
+```yaml
+lease: idle
+closeClass: V
+cap: activation-unknown
+controllerEvaluateIntentCount: one
+Runtime.evaluate.observedCountClass: unknown
+Runtime.evaluate.result: unproven
+mainWorldEvaluationCount: unknown
+transportFactoryCallCount: unknown
+factoryCallCount: unknown
+transportCallCount: unknown
+evaluateReplyCountClass: unknown
+productEvidenceComplete: false
+captureWindowState: truncated
+publicSettlement: null
+```
+
+`truncated` sagt ausschließlich, dass das vorgesehene Capture keinen bestätigt
+regulären Abschluss erreichte; es behauptet keine Capaktivierung. Ohne den
+exakten Ack bleiben tatsächlicher Send, Auswertung, Factoryaufruf,
+Transportaufruf und Capaktivierung unbekannt. Ein möglicherweise später
+ausgeführter Stimulus wird weder ausgeschlossen noch als beobachtet behauptet.
+Danach ist ausschließlich genau ein `cap-cancel` für die bekannte Capture-Arm-
+Intent-ID zulässig. Dessen exakter Ack ergibt `cancelled`, sticky `V` bleibt
+und erst dann entsteht der Snapshot. Beobachtete Cancel-Rejection oder
+malformed Ack ergibt `terminal-unknown`, sticky `V` bleibt, danach Snapshot und
+Cleanup mit initialem `cleanupViolation: true`. Unobservables
+Cancel-Settlement setzt das vollständige globale Closed-Tupel, erzeugt danach
+den Snapshot und erlaubt ausschließlich lokale portlose Cleanup-
+Terminalisierung ohne zweiten Cancel oder sonstigen Exchange. Ein gültiges
+pending Cancel-Promise hält den Run unbegrenzt
+pending. Kein Ausgang erlaubt einen zweiten Evaluate-Send oder ein Capture-
+Dequeue.
+
+Das dazugehörige Requestbudget ist exakt:
+
+```yaml
+defaultTransportCalls: unknown
+retries: zero
+directDiagnosticFetches: zero
+negativeOriginRuns: zero
+redirectRuns: zero
+observerProductEndpointRequests: zero
+endpointOptions: unknown
+endpointPosts: unknown
+endpointOtherMethods: unknown
+sequence: incomplete
+requestBudgetFinalized: true
+```
+
+Die `zero`-Werte betreffen ausschließlich konstruktiv geschlossene Foundation-
+Pfade und behaupten nichts über beliebige Wirkungen der fremden Capability.
+
+Die Dequeue-Union besitzt exakt:
+
+```text
+{ kind: "cdp-message", value }
+{ kind: "cap-fired", capKind, armIntentId }
+{ kind: "connection-closed" }
+{ kind: "cleanup-fact", checkId, fact }
+```
+
+`cleanup-fact` ist nur im Cleanup erlaubt, `fact` nur Boolean und `checkId`
+die aktuell erwartete Step-ID. Es gibt keinen Queue-leer-Wert. Jeder
+Dequeue-Fulfillmentgraph wechselt ohne Doppelhaltung in die unreflektierte
+Referenzrolle; erst nach dem phasenpassenden Clock-Ack darf er gegebenenfalls
+reflektiert werden. Fertige Status- oder Provenienzwerte sind verboten. Für
+Capereignisse gilt:
+
+Vor Setup- und Cleanup-Envelope-Reflection gewinnt die absolute Deadline
+einschließlich Gleichheit. Der vollständige Envelope bleibt dann ungelesen;
+allein gebundener Capzustand und Rohzeit setzen den Cap `fired`. Unterhalb der
+Deadline ist ein korrekt korreliertes Setup- oder Cleanup-`cap-fired`
+vorzeitig: vor dem Snapshot entsteht `V`, nach dem Snapshot ausschließlich
+`cleanupViolation` und erforderlichenfalls `cleanup-terminal-failure`. Nur ein
+exakt korreliertes Ereignis des atomar aktivierten Capture-Arms schließt
+Capture als `C`; ein bereits sticky `V` behält Präzedenz. Falsche Phase oder
+Cap-ID sowie ein vor Aktivierung, nach
+Terminalität oder doppelt erscheinendes Capereignis ist vor dem Snapshot `V`,
+danach ausschließlich `cleanupViolation`; es aktiviert oder reaktiviert keinen
+Cap und erzeugt weder Retry noch zweiten Cancel. Eine sicher lesbare fremde
+Cleanup-Cap-ID lässt den erwarteten Cap `armed` und den aktuellen Purpose
+bestehen; unlesbares Routing oder unlesbare ID ist terminaler Cleanupfehler.
+
+Die Cleanup-Step-Allowlist ist:
+
+```text
+debugPipeClosed                              -> close-debug-pipe
+browserStopped                               -> stop-browser
+devServerStopped                             -> stop-dev-server
+gatewayStopped                               -> stop-gateway
+profileRemoved                               -> remove-profile
+harnessFragmentsRemoved                      -> remove-harness-fragments
+permissionSiteCacheAndServiceWorkerStateCleared -> clear-profile-site-state
+environmentRestored                          -> restore-environment
+portsFree                                    -> verify-bound-ports-free
+repositoryAndIndexRestored                   -> verify-repository-index-restored
+historicalEvidenceHashUnchanged              -> verify-historical-evidence-hash
+observerStorageLogAndTelemetryResidueAbsent  -> verify-observer-residue-absent
+```
+
+Für alle zwölf adapterabhängigen Rohfakten gilt `false -> failed`, aber
+`true -> unproven`. Auch ein positives Hash-, Repository- oder Residuefakt
+authentisiert keinen Cleanup- oder Integritätscheck und keinen späteren Record;
+der identitätsgebundene Adapter muss die Provenienz neu ableiten. Eine
+durch den kontrollierten Handler beobachtete Rejection setzt genau den aktuellen
+Check `failed`; ein eindeutig dem aktuellen Purpose zugeordneter malformed Ack
+beziehungsweise Fakt nach beobachtetem Fulfillment setzt den aktuellen Check
+`failed` und zusätzlich `cleanupViolation`. Danach folgt nur bei offenem Port
+ein weiterhin sicherer Schritt. Eine sicher lesbare fremde oder doppelte
+Check-ID setzt dagegen nur `cleanupViolation`, wird keinem Check zugerechnet
+und lässt den aktuellen Purpose bestehen. Portthrow, malformed
+Promisekandidat, Promiseprofil-Reflectionthrow oder
+Throw der einzigen nativen `then`-Anwendung machen das Settlement
+unbeobachtbar, setzen das vollständige globale Closed-Tupel und führen
+ausschließlich zur lokalen portlosen
+Cleanup-Terminalisierung mit offenen Checks `unproven` und
+`cleanup-terminal-failure`. Ein gültiges pending Promise hält den Run pending.
+Fremde Rejectiongründe bleiben in jedem Fall ungelesen.
+
+### Start-, Cap- und Beobachtungsgrenze
+
+```text
+attemptStarted :=
+  Portprofil bestätigt
+  && Clock- und Capfähigkeit bestätigt
+  && m_setup gültig
+  && setupDeadline sicher darstellbar
+  && Setupcap bestätigt scharf
+  && Stage 1 observer-armed eingefroren
+```
+
+Vor dieser Grenze erfüllen Factory-, Binding-, interne Kopier-, Freeze-,
+Clock- und Deadlinefehler den statischen Foundationfehler ohne Projection,
+Snapshot oder Cleanup. Kontrolliert beobachtete Rejections und malformed Acks
+geben zuerst die Lease frei und folgen einschließlich eines gegebenenfalls
+vorgeschriebenen einmaligen Setup-Arm-Cancels ihrer intent-spezifischen
+Pre-start-Regel. Synchroner `exchange`-Throw, malformed Promise-Kandidat,
+Promiseprofil-Reflectionthrow oder native-Then-Throw setzt dagegen das globale
+Closed-Tupel und endet ohne Cancel oder weiteren Exchange statisch. Nach
+`attemptStarted` und vor `O0` sind nur beobachtete Ack-, Descriptor-, Envelope-,
+Reihenfolge- und Budgetverletzungen sticky `V`; nach `O0` verändern sie weder
+`V` noch andere Snapshotfelder und werden nur nach der geschlossenen
+Cleanupmatrix behandelt. `settlement-unobservable` bleibt davon in jeder Phase
+ausgenommen. Die drei Setupkommandos laufen
+strikt seriell unter einem gemeinsamen absoluten 6.000-ms-Cap. Jeder
+Dequeuewert bleibt zunächst vollständig unreflektiert; danach wird genau ein
+phasenpassendes `m_answer` erfasst. Für Setup gewinnt
+`m_answer >= setupDeadline` einschließlich Gleichheit vor jeder
+Envelope-Reflection allein aus scharfem Capzustand und Rohzeit: Der Cap wird
+`fired`, der Wert ungelesen verworfen und `U/setup-cap` gesetzt. Nur
+`m_answer < setupDeadline` erlaubt Reflection; ein dort korrekt korreliertes
+Setup-`cap-fired` ist vorzeitiges Feuern und setzt den Cap `fired` sowie
+sticky `V`. Ein irreversibles Connection-Close kann eine Antwort ebenfalls als
+fehlend terminalisieren; leere Queue oder bloßes Warten nicht.
+
+`U/setup-terminal-unproven` entsteht bei eindeutig terminalem, aber nicht
+erfolgreichem oder nicht eindeutigem Setupresultat sowie beim ersten
+irreversiblen Setup-Connection-Close. Dann bleiben Evaluate-Intent, bestätigter
+Evaluate-Send, Main-World-Auswertung, Factory und Transportstimulus `zero`;
+gegatete Downstreamkommandos sind `zero/unproven`, nicht zuverlässig
+beobachtete Networkcounts `unknown`, die Sequenz `incomplete` und
+`captureWindowState` `not-started`.
+
+Nach `setupReady` wird zuerst der Setupcap terminal storniert. Nur der exakte
+Cancel-Ack setzt `cancelled` und erlaubt Capturearm und das höchstens einmalige
+`Runtime.evaluate`. Beobachtete Cancel-Rejection oder malformed Ack setzt den
+Setupcap `terminal-unknown`, sticky `V`, hält Capture und Evaluate geschlossen
+und führt zu `O0` mit negativer Capbehauptung und initialem
+`cleanupViolation`. Unobservables Settlement setzt zusätzlich Lease und Port
+`closed` und erlaubt nach `O0` nur lokale Cleanup-Terminalisierung. Ein
+gültiges pending Cancel hält den Run ohne `O0` pending; ein zweiter Cancel ist
+verboten. Der Evaluate-
+Sende-Ack startet Capture atomar. `S && N` vervollständigt nur Produktevidenz;
+Observation endet erst bei `V`, `U` oder dem exakt korrelierten
+Capture-`cap-fired` `C`. Ein pending Exchange besitzt bewusst keine
+Foundation-Livenessgarantie.
+
+Beim ersten irreversiblen Connection-Close im Capture entsteht ohne bereits
+sticky `V` zunächst `U/capture-terminal-unproven`; das Capture ist
+`truncated`, und ein aktiver Capturecap wird genau einmal **vor** dem Snapshot
+storniert. Der exakte Cancel-Ack setzt `cancelled`, bewahrt `U` und führt zu
+`O0` mit regulärem Cleanup. Beobachtete Cancel-Rejection oder malformed Ack
+setzt `terminal-unknown`, promoviert zu sticky `V` und führt zu `O0` mit
+negativer Capbehauptung und initialem `cleanupViolation`. Unobservables
+Settlement setzt Lease und Port `closed`, den Cap `terminal-unknown`,
+promoviert zu `V`, führt zu `O0` und erlaubt danach nur lokale Cleanup-
+Terminalisierung. Ein gültiges pending Cancel-Promise hält den Run ohne `O0`
+pending; kein Ausgang erlaubt einen zweiten Cancel oder ein weiteres Capture-
+Dequeue. Connection-Close und Capturecap konkurrieren ausschließlich über die
+controllerlokale Dequeue-Reihenfolge: zuerst verarbeitetes korreliertes
+Capture-`cap-fired` ergibt `C`; zuerst verarbeitetes Connection-Close schließt
+den Capturepfad, verbietet jedes weitere Capture-Dequeue und behauptet weder
+Capfeuern noch Nichtfeuern.
+
+Die Evaluate-Exchange-Rejection verwendet abweichend ebenfalls die oben
+festgelegte Vor-Snapshot-Quieszenz: zuerst der spezifische `V`-/
+`activation-unknown`-Übergang, dann genau ein Cancel für die bekannte Arm-ID,
+erst danach der Snapshot. Sie fällt nie unmittelbar in den allgemeinen Catch-
+all.
+
+In allen übrigen, nicht aus einer kontrollierten Rejection oder dem besonderen
+Capture-Connection-Close stammenden `U|V|C`-Pfaden wird nur bei Lease `idle` und
+offenem Port zuerst der referenzfreie Frozen Snapshot erzeugt. Danach wird bei
+`U|V` ein live oder aktivierungsunklarer Setupcap und bei `V` zusätzlich ein
+pending, aktiver oder aktivierungsunklarer Capturecap je genau einmal als erste
+Cleanup-Control-Aktion storniert; `fired` wird nie storniert. Anschließend
+werden die private Cleanupableitung, Stage 9 und die internen Checkzustände
+angelegt, bevor Cleanup-Origin, Deadline und Cap hergestellt werden. Dadurch
+führen auch ungültige Cleanup-Clock, unsichere Deadline oder nicht herstellbarer
+Cap total zu `cleanup-terminal-failure` und einer Projection. Jeder
+`settlement-unobservable`-Pfad ist davon ausgeschlossen, erzeugt `O0` nach der
+globalen Phasenregel und finalisiert portlos. Nach dem Snapshot wird `V` nie
+mehr verändert.
+
+### Descriptor-, CDP- und Networkprofil
+
+Konsumierte Eingabefelder sind ausschließlich eigene aufzählbare
+Data-Properties ohne Getter, Setter oder Koerzierung. Für jeden geschlossenen
+unvertrauenswürdigen Knoten werden `Reflect.ownKeys` und `getPrototypeOf` je
+exakt einmal sowie jeder benötigte Own-Descriptor exakt einmal gelesen. Werte
+stammen nur aus gecachten Descriptoren; danach erfolgen keine Property-, Key-,
+Prototyp- oder Descriptor-Rereads. Das gilt für Factoryoptions, `effectPort`,
+`runBinding` samt Nachfahren, alle Replayeinträge, Acks und geschlossenen
+Dequeueprofile. Geschlossene Records verlangen exakte Own-Keyfolge und
+Symbolverbot. Arrays erhalten zusätzlich genau einen `length`-Descriptor und
+genau einen Descriptor je erlaubtem Index.
+
+Offene CDP-Hüllen werden nie vollständig aufgezählt; nur die allowlisteten
+Descriptoren werden höchstens einmal gelesen, alles andere bleibt
+unangetastet. Verboten sind `hasOwn`, `in`, Destructuring, Spread,
+`Object.assign`, freie Propertyauflösung, Iteratoren, JSON-Roundtrip,
+nachträgliche Validierungs-Rereads sowie Freeze oder Mutation des Inputs.
+Reflection verwendet nur bei Modulevaluation erfasste Intrinsics. Ein Throw
+bei der synchronen Factory-Dependencyprüfung wird zum exakten Dependency-
+`TypeError`. Nach Factory und Ownerübernahme gilt die phasenlokale Ableitung nur
+für Dependency-, Eingabe- oder Fulfillmenthüllen-Reflection nach einem
+`observed-settlement`: vor `attemptStarted` statischer Foundationfehler, danach
+bis zum Snapshot sticky `V`; nach dem Snapshot bleibt `V` unverändert, und im
+Cleanup wird ausschließlich `cleanupViolation` gesetzt und zusätzlich der
+betroffene Check `failed` oder bei Control-Reflection die totale
+`cleanup-terminal-failure`-Ableitung verwendet. Promiseprofil-Reflectionthrow
+vor Handlerzutritt ist ausdrücklich ausgenommen und folgt immer dem globalen
+Closed-Tupel ohne Cancel oder Folge-Exchange.
+
+```text
+targetInfosInspectionMaximum = 128
+ephemeralIdentifierCodeUnitsMaximum = 256
+dequeuedObservationsMaximum = 128
+cdpUrlCodeUnitsMaximum = 2048
+httpMethodTokenCodeUnitsMaximum = 16
+```
+
+`targetInfos.length > 128` ist `U` ohne Elementlesung. Bis 128 ist nur ein
+gewöhnliches dichtes Array ohne Hole, Symbol, Zusatzkey oder Accessor erlaubt.
+Alle `page`-Targets mit exakter URL werden unabhängig von `attached` gezählt;
+nur bei genau einem Kandidaten folgen `attached === false` und Target-ID-
+Bindung. Der 129. Dequeue ist nach Start und vor `O0` sticky `V`; nach `O0`
+setzt er ausschließlich `cleanupViolation` und `cleanup-terminal-failure`,
+ohne den Snapshot zu verändern.
+
+Network erlaubt nur `Network.requestWillBeSent`, `Network.responseReceived`,
+`Network.loadingFinished`, `Network.loadingFailed`. Konsumiert werden
+`method`, `sessionId`, `params` sowie je Event nur:
+
+```text
+requestWillBeSent: requestId, request.url, request.method, timestamp
+responseReceived: requestId, response.url, response.status, timestamp
+loadingFinished:  requestId, timestamp
+loadingFailed:    requestId, timestamp
+```
+
+`loadingFailed.errorText`, Header, Body und alle übrigen Metadaten bleiben
+ungelesen. Networkzeit ist Sekunden; ausschließlich networklokal gilt
+`d_ms = (timestamp - firstEndpointRequestTimestamp) * 1000`. Rücklauf,
+Nichtendlichkeit oder unsicherer Überlauf nach eindeutiger Korrelation ist vor
+`O0` sticky `V`; nach `O0` werden Networkevents nicht mehr als Observation
+reflektiert. Andere URL/Methode/Statusfolge oder `loadingFailed` ist eine bekannte
+`other`-Signatur, nicht automatisch Obserververstoß.
+
+Die Zählebenen bleiben disjunkt:
+
+```text
+controllerEvaluateIntentCount = zero | one
+protocolOperations[Runtime.evaluate].observedCountClass =
+  zero | one | multiple | unknown
+evaluateReplyCountClass = zero | one | multiple | unknown
+mainWorldEvaluationCount = zero | one | multiple | unknown
+derivedExecutionCounts.factoryCallCount = zero | one | unknown
+derivedExecutionCounts.transportCallCount = zero | one | unknown
+Networkrequest-Zähler = zero | one | multiple | unknown
+```
+
+Der Intentzähler zählt ausschließlich die controller-eigene Intenterzeugung.
+Die Protokolloperation zählt ausschließlich bestätigte Send-Acks; ein Intent
+ohne beweisbaren Ack ist `unknown`. Der Replyzähler zählt eindeutig
+korrelierbare Evaluate-Antwortkandidaten. Main-World-, Factory- und
+Transportcounts werden nur aus einem akzeptierten Main-World-Wert oder der
+geschlossenen controller-eigenen konservativen Ableitung gewonnen;
+Networkcounts ausschließlich aus korrelierten Networkereignissen. Intent ist
+kein Sendbeweis, POST kein Transportaufrufbeweis und Reply kein
+Sendwiederholungsbeweis. `zero` ist nur bei konstruktiv geschlossenem Pfad
+zulässig. `unknown` ist niemals callerlieferbar. Ein unterdrückter zweiter
+Exchange erzeugt keine dieser Zählungen und keinen `multiple`-Wert.
+
+### Exakter Evaluationstring
+
+Der folgende Codeblockinhalt ist exakt der künftige einzeilige ASCII-Wert von
+`Runtime.evaluate.params.expression`, ohne CR, LF oder abschließenden
+Zeilenumbruch. UTF-8 ohne BOM umfasst 4259 Bytes; SHA-256 ist
+`a623ffafee8dfcbc1d2ddc374cc35f0dbf800defd97619a3b58337d972090f7b`.
+Er wird in diesem Slice nur dokumentiert und gehasht, niemals ausgeführt.
+
+```javascript
+(async()=>{const A=Reflect.apply,K=Reflect.ownKeys,D=Object.getOwnPropertyDescriptor,G=Object.getPrototypeOf,F=Object.isFrozen,H=Object.hasOwn,O=Object.prototype,N=Number.isFinite,L=Math.floor;const c=(f,e)=>{try{return f()===e?"match":"mismatch"}catch{return"unproven"}};const p={url:{contextResult:c(()=>globalThis.location.href,"http://127.0.0.1:5173/")},origin:{contextResult:c(()=>globalThis.location.origin,"http://127.0.0.1:5173")},topLevel:{contextResult:c(()=>globalThis.top===globalThis,true)},secureContext:{contextResult:c(()=>globalThis.isSecureContext,true)}};const o=(d,f,t,s)=>({preTransportContext:p,execution:{factoryCallCount:f,transportCallCount:t,dispatchState:d},settlement:s});if(p.url.contextResult==="mismatch"||p.origin.contextResult==="mismatch"||p.topLevel.contextResult==="mismatch"||p.secureContext.contextResult==="mismatch")return o("blocked-context-mismatch","zero","zero",null);if(p.url.contextResult==="unproven"||p.origin.contextResult==="unproven"||p.topLevel.contextResult==="unproven"||p.secureContext.contextResult==="unproven")return o("blocked-context-unproven","zero","zero",null);const q=(v,n,x)=>{const d=D(v,n);return d!==undefined&&H(d,"value")&&!H(d,"get")&&!H(d,"set")&&d.enumerable===true&&d.writable===false&&d.configurable===false&&d.value===x};const h=()=>{try{const v=globalThis.performance.now();return typeof v==="number"&&N(v)?v:null}catch{return null}};const z=(a,b)=>{if(a===null||b===null)return{relativeMilliseconds:null,timingState:"unavailable"};const d=b-a;if(typeof d!=="number"||!N(d)||d<0)return{relativeMilliseconds:null,timingState:"unavailable"};return d>=60000?{relativeMilliseconds:60000,timingState:"at-or-above-cap"}:{relativeMilliseconds:10*L(d/10),timingState:"measured"}};const e=v=>{try{if(v===null||typeof v!=="object"||G(v)!==O||!F(v))return false;const k=K(v),a=D(v,"code"),b=D(v,"message");return k.length===2&&k[0]==="code"&&k[1]==="message"&&a!==undefined&&b!==undefined&&H(a,"value")&&H(b,"value")&&!H(a,"get")&&!H(a,"set")&&!H(b,"get")&&!H(b,"set")&&a.enumerable===true&&a.writable===false&&a.configurable===false&&b.enumerable===true&&b.writable===false&&b.configurable===false&&a.value==="BROWSER_SYNC_TRANSPORT_FAILED"&&b.value==="Der lokale Browser-SyncTransport ist fehlgeschlagen."}catch{return false}};let fc="zero",tc="zero",pp,start;try{const m=await import("/src/transports/browserSyncTransport.js");const f=m.createBrowserSyncTransport;if(typeof f!=="function")throw 0;fc="one";const t=A(f,undefined,[]),tk=K(t),sd=D(t,"sendSyncRequest");if(t===null||typeof t!=="object"||G(t)!==O||!F(t)||tk.length!==1||tk[0]!=="sendSyncRequest"||sd===undefined||!H(sd,"value")||H(sd,"get")||H(sd,"set")||sd.enumerable!==true||sd.writable!==false||sd.configurable!==false||typeof sd.value!=="function")throw 0;const send=sd.value,cp=globalThis.crypto,rd=cp.randomUUID;if(typeof rd!=="function")throw 0;const id="req_"+A(rd,cp,[]),ts=new Date().toISOString(),payload=Object.freeze({}),r=Object.freeze({version:"1.0",action:"syncTest",source:"goldendawn-os",requestId:id,timestamp:ts,payload}),rk=K(r),pk=K(payload);if(G(r)!==O||G(payload)!==O||G(O)!==null||!F(r)||!F(payload)||rk.length!==6||rk[0]!=="version"||rk[1]!=="action"||rk[2]!=="source"||rk[3]!=="requestId"||rk[4]!=="timestamp"||rk[5]!=="payload"||pk.length!==0||D(r,"toJSON")!==undefined||D(payload,"toJSON")!==undefined||D(O,"toJSON")!==undefined||!q(r,"version","1.0")||!q(r,"action","syncTest")||!q(r,"source","goldendawn-os")||!q(r,"requestId",id)||!q(r,"timestamp",ts)||!q(r,"payload",payload)||typeof id!=="string"||id.length<5||id.length>64||!/^req_[A-Za-z0-9][A-Za-z0-9_-]*$/.test(id)||typeof ts!=="string"||ts.length!==24||new Date(ts).toISOString()!==ts)throw 0;tc="one";start=h();pp=A(send,undefined,[r])}catch{return o("failed-before-public-settlement",fc,tc,null)}let end,outcome,staticProfileResult;try{await pp;end=h();outcome="fulfilled";staticProfileResult="not-applicable"}catch(v){end=h();if(e(v)){outcome="static-redacted-rejection";staticProfileResult="match"}else{outcome="other-rejection";staticProfileResult="mismatch"}}const timing=z(start,end);return o("dispatched","one","one",{outcome,staticProfileResult,relativeMilliseconds:timing.relativeMilliseconds,timingState:timing.timingState})})()
+```
+
+Kontextprüfung geschieht vor dem einzigen dynamischen Import, der
+argumentlosen Factory und dem höchstens einen gültigen synthetischen
+v1-`syncTest`. Es gibt keine callerlieferbare Expression, freie URL, Run-ID,
+persistierte Request-ID, privaten Daten, Log-, Storage-, DOM-Mutations-,
+Debugger-, direkten Fetch- oder Zusatzoperation. Der Digest darf als
+`evaluationSha256` erscheinen; Actual-Send-Bindung bleibt `unproven`.
+
+### FoundationResult und geschlossene FoundationProjection
+
+```text
+FoundationResult = {
+  ok,
+  resultType,
+  evidenceStatus,
+  runtimeAuthorized,
+  persistenceAuthorized,
+  recordProjection,
+  error
+}
+
+resultType = browser-transport-diagnostic-foundation-run-v1
+evidenceStatus = NOT_EVIDENCE
+runtimeAuthorized = false
+persistenceAuthorized = false
+```
+
+Der äußere `FoundationResult` ist ein frischer ordinary ECMAScript-Record mit
+`[[Prototype]] === null`, exakt den sieben Own-Keys in kanonischer Reihenfolge,
+geschlossen, tief eingefroren und ohne Own-Key `then`. Dadurch findet die
+unvermeidliche Promise-Resolution-Prüfung sicher `undefined`, ohne
+Object-Prototype-Manipulations- oder freie Assimilationsgrenze. Die
+verschachtelten Projection- und Errorprofile bleiben unverändert. Das
+öffentliche Promise stammt ausschließlich aus dem erfassten lokalen
+Konstruktor; Reject wird nicht verwendet und Resolve exakt einmal aufgerufen.
+
+`ok: true` verlangt `recordProjection: FoundationProjection` und
+`error: null`. Der einzige Fehler ist `{ code:
+"BROWSER_TRANSPORT_DIAGNOSTIC_FOUNDATION_FAILED", message: "Die
+Browser-Transport-Diagnosefoundation ist fehlgeschlagen." }` bei `ok: false`
+und `recordProjection: null`.
+
+```text
+FoundationProjection = {
+  schemaVersion,
+  projectionType,
+  diagnosticRunId,
+  observedAt,
+  timeZone,
+  historicalEvidence,
+  replay,
+  observer,
+  requestBudget,
+  publicSettlement,
+  stages,
+  timing,
+  cleanup,
+  adr0029OverallGate,
+  candidateObserverGate,
+  candidateFinding,
+  causeStatus
+}
+```
+
+`schemaVersion = 1`, `projectionType =
+browser-transport-diagnostic-foundation-projection`, `causeStatus =
+CAUSE_NOT_PROVEN` und `adr0029OverallGate = { before: "FAIL", after: "FAIL",
+unchanged: true }`. Es gibt kein `recordType`, echtes `observerGate` oder
+echtes `finding`.
+
+Die verschachtelten Speicherformen sind exakt:
+
+```text
+historicalEvidence = {
+  recordPath,
+  recordSha256,
+  measurementRunId,
+  baseContextId,
+  overallGate
+}
+
+replay = {
+  replayContextId,
+  repositoryCommit,
+  repositoryState,
+  profileInstanceBinding,
+  causalContext,
+  equivalence
+}
+
+profileInstanceBinding = {
+  lifecycle,
+  newInstanceConfirmed,
+  historicalInstanceReused
+}
+
+equivalence = {
+  relationId,
+  comparisons,
+  noUnexplainedCausalDeviation,
+  result
+}
+
+comparison = {
+  fieldId,
+  comparisonBasis,
+  observationState,
+  historicalValue,
+  replayValue,
+  result
+}
+
+observer = {
+  deltaProfile,
+  controllerExclusivity,
+  connectionProfile,
+  targetProfile,
+  foundationSha256,
+  evaluationSha256,
+  controllerEvaluateIntentCount,
+  protocolOperations,
+  mainWorldEvaluationCount,
+  transportFactoryCallCount,
+  primitiveProjectionProfile,
+  integrityChecks,
+  interferenceObservation
+}
+
+operation = {
+  command,
+  allowedMaximum,
+  observedCountClass,
+  result
+}
+
+integrityCheck = { checkId, result }
+
+requestBudget = {
+  defaultTransportCalls,
+  retries,
+  directDiagnosticFetches,
+  negativeOriginRuns,
+  redirectRuns,
+  observerProductEndpointRequests,
+  endpointOptions,
+  endpointPosts,
+  endpointOtherMethods,
+  sequence
+}
+
+publicSettlement = null | {
+  observationState,
+  outcome,
+  staticProfileResult,
+  deadlineRelation,
+  internalStage,
+  internalOwner
+}
+
+stage = {
+  stageId,
+  layer,
+  observationState,
+  receiptOrder,
+  result,
+  clockDomain,
+  relativeMilliseconds,
+  timingState
+}
+
+timing = {
+  roundingMilliseconds,
+  durationCapMilliseconds,
+  setupWindowMilliseconds,
+  captureWindowMilliseconds,
+  clockDomains,
+  calibration,
+  crossDomainComparison,
+  completion
+}
+
+clockDomainEntry = { clockDomain, source, comparisonScope }
+
+completion = {
+  productEvidenceComplete,
+  observationCloseReason,
+  observationClosed,
+  captureWindowState,
+  evaluateReplyCountClass,
+  requestBudgetFinalized,
+  cleanupFinalizeReason,
+  cleanupFinalized
+}
+
+cleanup = {
+  observationClosedBeforeCleanup,
+  checks,
+  result,
+  projectionMaterializedAfterCleanup
+}
+
+cleanupFinalizeReason =
+  all-steps-terminal | cleanup-cap | cleanup-terminal-failure
+```
+
+Kardinalität, Reihenfolge und Werte:
+
+- `replay.equivalence.comparisons`: exakt 59 Tabellenwerte;
+- `protocolOperations`: exakt `Target.getTargets`,
+  `Target.attachToTarget`, `Network.enable`, `Runtime.evaluate`,
+  `Network.disable`, `Target.detachFromTarget`; `allowedMaximum: 1`, Count
+  `zero|one|multiple|unknown`, Result `match|mismatch|unproven`;
+- `controllerEvaluateIntentCount`: ausschließlich `zero|one`, wobei `one` nur
+  den erzeugten Evaluate-Intent und keinen Send belegt;
+- `integrityChecks`: exakt die 17 unten im historischen Recordvertrag
+  ausgeschriebenen IDs, Result `confirmed|violated|unproven`;
+- `stages`: exakt zehn Slots in der unten ausgeschriebenen Reihenfolge, wobei
+  Slot 7 zusätzlich `post-loading-terminal` für kein oder mehrdeutiges
+  Terminalereignis zulässt;
+- `timing.clockDomains`: exakt
+  `{controller-monotonic, controller-monotonic-fixed-v1,
+  setup-observation-and-cleanup-only}`,
+  `{javascript-main-world, window.performance.now,
+  transport-dispatch-and-public-settlement-only}` und
+  `{browser-network, cdp-network-monotonic-time,
+  endpoint-network-events-only}`;
+- `cleanup.checks`: exakt die 20 unten ausgeschriebenen IDs, Result
+  `confirmed|failed|unproven`; `pending` bleibt intern;
+- alle Arrays sind dicht, gewöhnlich, ohne Duplikate, geschlossen und tief
+  eingefroren.
+
+`foundationSha256` ist zwingend `null`; Commit-, Dateibyte-, Actual-Send-,
+Parser-, Pipe- und Adapterchecks bleiben `unproven`. Malformed Input wird
+phasenlokal behandelt: während der Factory statisch ohne Output, nach
+`attemptStarted` und vor `O0` als `V`, nach `O0` ausschließlich als
+`cleanupViolation` beziehungsweise nach der Cleanup-Terminalmatrix. Der
+Frozen Snapshot bleibt dabei unverändert. Ohne eigene Outputprojektion bleibt
+`closedPrimitiveProjectionConfirmed` `unproven`; nur eine fehlerhafte eigene
+Projektion ergibt `violated`, nur eine frische referenzfreie geschlossene
+Deep-Freeze-Projektion `confirmed`.
+
+Die Main-World-v2-Form ist exakt `{ preTransportContext, execution,
+settlement }`, wobei der Kontext die vier Ein-Feld-Records `url`, `origin`,
+`topLevel`, `secureContext` mit `contextResult = match|mismatch|unproven`
+besitzt. `execution = { factoryCallCount, transportCallCount, dispatchState }`.
+Die `dispatchState`-Gesamtmatrix ist:
+
+| Bedingung | `dispatchState` | Factory/Transport | Settlement | Invariante |
+| --- | --- | --- | --- | --- |
+| mindestens ein Kontext-`mismatch` | `blocked-context-mismatch` | `zero/zero` | `null` | `mismatch` hat Vorrang; dynamischer Import, Factory und Transport bleiben unerreicht. |
+| kein `mismatch`, mindestens ein `unproven` | `blocked-context-unproven` | `zero/zero` | `null` | Ohne viermal `match` bleiben dynamischer Import, Factory und Transport unerreicht. |
+| viermal `match`, Fehler vor öffentlichem Settlement | `failed-before-public-settlement` | tatsächlich erreichte `zero\|one`-Stufen | `null` | Zulässig sind nur `zero/zero`, `one/zero` und `one/one`; `zero/one` ist verboten, und es wird kein Settlement erfunden. |
+| viermal `match`, Transportpromise erreicht | `dispatched` | `one/one` | nicht `null` | Exakt ein Factory- und ein Transportaufruf sind erreicht; Settlement besitzt ausschließlich eines der drei erlaubten Paare. |
+
+Zulässige Settlementpaare sind nur `fulfilled/not-applicable`,
+`static-redacted-rejection/match` und `other-rejection/mismatch`. Fehlende
+Evaluateprojektion erzeugt keine erfundene Nullprojektion;
+Networkbeobachtungen ersetzen weder Main-World-Counts noch Settlement.
+
+Die `zero|one`-Grammatik der Tabelle gilt ausschließlich für einen vollständig
+akzeptierten zurückgegebenen Main-World-`value`-Graphen. Ein caller- oder
+portgelieferter Wert `unknown` wird dort niemals akzeptiert. Davon getrennt
+führt der Controller privat:
+
+```text
+derivedExecutionCounts = {
+  factoryCallCount,
+  transportCallCount
+}
+
+factoryCallCount = zero | one | unknown
+transportCallCount = zero | one | unknown
+```
+
+Bei beobachteter Evaluate-Exchange-Rejection sind beide Werte `unknown`;
+`acceptedMainWorldValue` und `publicSettlement` sind exakt `null`.
+`factoryCallCount` projiziert auf `observer.transportFactoryCallCount`,
+`transportCallCount` auf `requestBudget.defaultTransportCalls`; zugleich ist
+`observer.mainWorldEvaluationCount = unknown`. Es wird weder ein `value`-Graph
+noch ein `dispatchState` erfunden. Networkereignisse oder ein möglicherweise
+späterer Stimulus dürfen diese Werte nicht überschreiben.
+
+Die geschlossene Domain von `observationCloseReason` ist exakt
+`setup-cap|setup-terminal-unproven|capture-cap|capture-terminal-unproven|confirmed-violation`.
+Beim ersten Capture-Connection-Close bleibt der Grund nach einem erfolgreichen
+vor dem Snapshot ausgeführten Cancel `capture-terminal-unproven`; ein
+beobachtbar oder unobservierbar fehlgeschlagener Cancel promoviert den vor dem
+Snapshot liegenden Close zu `confirmed-violation`.
+
+Für die Evaluate-Exchange-Rejection ist die Observationprojektion eindeutig:
+Stage 1 bleibt `observed/match`, `receiptOrder: 1`,
+`relativeMilliseconds: 0` und `timingState: measured`; Stages 2 bis 8 sind
+`not-observed/unproven` mit `receiptOrder: null`,
+`relativeMilliseconds: null` und `timingState: unavailable`. Dieses
+`not-observed` ist epistemisch und behauptet nicht, dass ein späterer
+Capabilityeffekt unmöglich war. Completion besitzt
+`productEvidenceComplete: false`,
+`observationCloseReason: confirmed-violation`, `observationClosed: true`,
+`captureWindowState: truncated`, `evaluateReplyCountClass: unknown` und
+`requestBudgetFinalized: true`; `publicSettlement` ist `null` und `V` sticky.
+
+### Cleanup, Completion und Candidatewerte
+
+Nach der jeweils vorgeschriebenen Quieszenzreihenfolge wird ein frischer
+referenzfreier Frozen `PreCleanupObservationSnapshot` aus historischen/
+replaybezogenen Werten, Observerbeobachtung, Requestbudget, Settlement, Stages
+1 bis 8, Observationstiming/-completion und sticky Latch erzeugt. Er ist der
+irreversible Observation-Freeze `O0`. Danach bleiben `U`, `V`, `C`,
+`closeClass`, Stages 1 bis 8, Replay, Settlement, Requestbudget, Counts und
+sämtliche Observationwerte byte- und wertidentisch; kein Cleanupereignis darf
+sie verändern. Jeder Post-Snapshot-Clock-, Routing-, Descriptor-, Port- oder
+Capverstoß wirkt ausschließlich über `cleanupViolation` und gegebenenfalls
+`cleanup-terminal-failure`, niemals rückwirkend über `V`.
+
+Die gewöhnlichen, nicht rejectionbedingten Setup-/Capture-Quieszenzpfade
+frieren nur bei Lease `idle` und offenem Port zuerst `O0` und canceln danach
+alte live oder aktivierungsunklare Caps als erste Cleanup-Control-Aktion.
+Ausschließlich die durch `observed-settlement` kontrollierten Rejectionpfade
+während Observation mit erforderlicher Setup- oder
+Capturecapquieszenz sowie der Capture-Connection-Close führen den jeweils
+vorgeschriebenen Cancel dagegen vor `O0` aus; die Evaluate-Rejection ist davon
+der konservativste `activation-unknown`-Fall. Nach den
+erforderlichen alten Cap-Cancels werden private Cleanupableitung, Stage 9 und
+Checkzustände angelegt. Das erst nach Totalisierung eingefrorene
+`CleanupLedger` enthält exakt zwei Cleanupoperationen, Stages 9 bis 10, 20
+Checks, den privaten Boolean `cleanupViolation`, Result,
+`cleanupFinalizeReason` und `cleanupFinalized`. Der Boolean ist kein Feld von
+`FoundationProjection.cleanup`; das Ledger enthält weder
+`projectionMaterializedAfterCleanup` noch `recordMaterializedAfterCleanup`.
+Die finale Projection kopiert primitive Blätter frisch; kein Snapshot- oder
+Ledgercontainer wird öffentlich erreichbar.
+
+Privat ist `cleanupViolation` sticky. Nur wenn Lease und Port nach
+gegebenenfalls erforderlichen Setup-/Capture-Cancels weiterhin beobachtbar
+offen sind, wird die Cleanup-Origin-Clock genau einmal erhoben, die 60.000-ms-
+Deadline sicher berechnet und der Cleanupcap scharf geschaltet. Nach
+`settlement-unobservable` entfallen Cleanup-Origin, Cap und alle weiteren
+Exchanges; die Terminalisierung erfolgt ausschließlich lokal. Bei
+jedem Cleanup-Dequeue bleibt der Wert bis zum einen phasenpassenden Clock-Sample
+unreflektiert. `m_answer >= cleanupDeadline` einschließlich Gleichheit
+verarbeitet den Cap allein aus Zustand und Rohzeit, verwirft den Envelope
+ungelesen und finalisiert `cleanup-cap`. Nur unterhalb der Deadline wird
+reflektiert; ein dort korreliertes Cleanup-`cap-fired` setzt
+`cleanupViolation` und `cleanup-terminal-failure`.
+
+Bei offenem Port wird Disable bei möglicherweise gesendetem Enable und
+gebundener Session versucht. Detach folgt nur einem kontrolliert beobachteten
+terminalen Disable-Sendeversuch, nicht nur dem positiven Ack, und wartet nicht
+auf die Disable-CDP-Antwort. Ein Send-Intent
+wird erst nach exaktem Send-Ack in `openCommandIds` eingetragen. Beobachtete
+Send-Rejection ist recoverable: Der zugehörige Closecheck wird `failed`, und
+ohne offene ID folgt der nächste terminale Sendeversuch. Ein malformed Ack
+setzt zusätzlich `cleanupViolation`. Unobservables Send-Settlement schließt
+den Port nach dem globalen Closed-Tupel, unterdrückt Detach und alle weiteren
+Exchanges und führt ausschließlich lokale Cleanup-Terminalisierung aus; ein
+gültiges pending Send-Promise bleibt die Livenessgrenze.
+
+Nach beiden terminalen Sendeversuchen gelten exakt zwei private, disjunkte
+Cleanup-Dequeue-Purposes:
+
+```text
+await-cleanup-protocol-responses(openCommandIds)
+await-cleanup-fact(checkId)
+```
+
+Ein Dequeue wird nur für den gebundenen Purpose konsumiert. Es gibt keine
+zufällige, heuristische oder nachträgliche Checkzuordnung bei unlesbarem
+Routing, unlesbarer ID, fremder Variante oder unbekannter Korrelation. Erst
+wenn die Map offener bekannter Command-IDs leer oder terminal unentscheidbar
+ist, beginnen die externen Cleanup-Steps.
+
+Im Purpose `await-cleanup-protocol-responses(openCommandIds)` gilt total:
+
+- exakt bekannte ID plus exakt leeres Erfolgsresultat bestätigt den
+  zugeordneten Closecheck und entfernt die ID;
+- exakt bekannte ID plus normales eigenes `error` setzt den Check `failed`,
+  liest den Fehlerwert nicht und entfernt die ID;
+- malformed Profil einer exakt bekannten ID setzt den Check `failed`,
+  `cleanupViolation` und entfernt die ID;
+- eine sicher lesbare bereits abgeschlossene Dubletten-ID setzt ausschließlich
+  `cleanupViolation`, wird keinem Check zugerechnet und lässt Purpose und Map
+  unverändert;
+- eine sicher lesbare unbekannte ID setzt `cleanupViolation`, wird keinem
+  Check zugerechnet und lässt Purpose und Map unverändert;
+- unlesbares Routing, unlesbare ID oder Reflectionthrow setzt
+  `cleanupViolation`, `cleanup-terminal-failure` und alle offenen Checks
+  `unproven`;
+- eine sicher lesbare `cleanup-fact`-Variante im falschen Purpose setzt
+  `cleanupViolation`, erhält Purpose und Map aber ohne Attribution;
+- erstes `connection-closed` setzt offene CDP-Closechecks `unproven`, leert
+  die Map, schließt die CDP-Seite und lässt sichere externe Cleanup-Steps zu;
+  eine Dublette setzt zusätzlich `cleanupViolation`;
+- Cap, Clock, Deadline, beobachtete Dequeue-Rejection, malformed oder
+  unobservables Dequeue-Settlement folgen den unten festgelegten Terminal-
+  regeln; ein gültiges pending Dequeue bleibt die Livenessgrenze.
+
+Im Purpose `await-cleanup-fact(checkId)` gilt total:
+
+- der exakt aktuelle Check wird bei `fact: false` `failed`, bei `fact: true`
+  mangels Adapterprovenienz `unproven`; danach folgt der nächste sichere Step;
+- ein malformed Fakt für die exakt lesbare aktuelle ID setzt diesen Check
+  `failed` und `cleanupViolation`; danach folgt der nächste sichere Step;
+- eine sicher lesbare andere oder bereits abgeschlossene Check-ID setzt
+  `cleanupViolation`, wird nicht zugerechnet und lässt den aktuellen Purpose
+  pending;
+- eine sichere CDP-Nachricht im falschen Purpose setzt `cleanupViolation`,
+  wird verworfen und lässt den Purpose bestehen;
+- erstes `connection-closed` schließt nur die CDP-Seite und lässt den externen
+  Faktpurpose bestehen; eine Dublette setzt zusätzlich `cleanupViolation`;
+- unlesbares Routing, Reflectionthrow, beobachtete Dequeue-Rejection oder ein
+  terminales malformed Fulfillment setzt `cleanupViolation`, den aktuellen und
+  alle verbleibenden Portchecks `unproven` sowie
+`cleanup-terminal-failure`. Sind Lease durch `observed-settlement` wieder
+`idle` und Cleanupcap sowie
+Port beobachtbar, bleibt genau ein `cleanup-recovery`-Cancel die einzige
+  weitere Portverwendung; nach seinem terminalen Ausgang wird lokal
+  finalisiert. Ein unobservables Settlement setzt sofort das globale Closed-
+  Tupel, erlaubt keinen Cancel oder sonstigen Exchange und finalisiert
+  ausschließlich lokal; ein gültiges
+  pending Dequeue hält den Run pending.
+
+Sicher nie aktivierte Ressourcen ergeben Operation `zero/match` und
+Closecheck `confirmed`; möglicherweise aktive, aber nicht bindbare Ressourcen
+bleiben `unknown/unproven`. Für alle zwölf externen Rohfakten gilt
+`false -> failed`, aber `true -> unproven`. Nur ein durch beobachtete Rejection
+oder malformed Fulfillment terminal fehlgeschlagener Setup-/Capture-Cancel nach
+dem Snapshot setzt `cleanupViolation` und lässt bei offenem Port unter einer
+sicheren eigenen Cleanupdeadline weitere sichere Schritte zu. Ein
+unobservables Cancel-Settlement erlaubt ausschließlich lokale Terminalisierung.
+
+Die Cleanupcap-Matrix ist total: Bei `m_answer >= cleanupDeadline`
+einschließlich Gleichheit wird der Cap allein aus Rohzeit und Zustand `fired`,
+der Envelope bleibt ungelesen, offene Checks werden `unproven`, und der Grund
+ist `cleanup-cap`. Ein exakt korreliertes Cleanup-`cap-fired` unterhalb der
+Deadline ist vorzeitig und setzt `fired`, `cleanupViolation` sowie
+`cleanup-terminal-failure`. Eine sicher lesbare fremde Cap-ID lässt den
+erwarteten Cap `armed`, setzt `cleanupViolation` und erhält den Purpose.
+Unsicheres Routing oder unlesbare Cap-ID, ungültige, rückläufige oder werfende
+Cleanupclock, die 129. Dequeuehülle sowie beobachtete Dequeue-Rejection setzen
+`cleanupViolation` und `cleanup-terminal-failure`; soweit beobachtbar, wird ein
+live gebliebener Cap nur bei Lease `idle` und offenem Port genau einmal
+storniert. Nach `settlement-unobservable` erfolgt kein Cancel. Keiner dieser
+Post-`O0`-Pfade verändert `V` oder den Snapshot.
+
+Die unveränderten 20 Cleanup-IDs stehen in exakt dieser Reihenfolge:
+
+```text
+cleanupStarted
+networkDomainClosed
+targetSessionClosed
+debugPipeClosed
+controllerObservationClosed
+browserStopped
+devServerStopped
+gatewayStopped
+profileRemoved
+harnessFragmentsRemoved
+objectGroupsAbsentOrReleased
+rawEventsDiscarded
+ephemeralIdentifiersDiscarded
+permissionSiteCacheAndServiceWorkerStateCleared
+environmentRestored
+portsFree
+repositoryAndIndexRestored
+historicalEvidenceHashUnchanged
+observerStorageLogAndTelemetryResidueAbsent
+cleanupCompleted
+```
+
+Interne Checkzustände sind `pending|confirmed|failed|unproven`; `pending` wird
+nie ausgegeben. Sind Checks 1 bis 19 terminal, kein Purpose offen, der
+Cleanupcap live, Lease `idle` und der Port offen, folgt genau ein abschließender
+`cap-cancel`. Nur sein exakter Ack setzt `cancelled` und erlaubt genau einen
+`controller-clock-sample(cleanup-completion-after-cap-cancel)`. Dieser Sample
+ist reine Stage-10-Zeitprojektion und entscheidet keine Deadline rückwirkend
+neu. Ein gültiges pending Cancel hält den Run pending. Beobachtete Rejection
+oder malformed Ack ergibt `cleanup-terminal-failure`. Unobservables Settlement
+setzt das globale Closed-Tupel und ergibt denselben Grund ausschließlich lokal;
+Completion-Sample, zweiter Cancel und jeder sonstige Exchange sind verboten.
+
+Check 20 und Stage 10 sind total:
+
+```text
+Checks 1..19 terminal, Cleanupcap erfolgreich cancelled und
+Completion-Clock gültig:
+  cleanupCompleted = confirmed
+  Stage 10 = observed/match
+  receiptOrder = nächste lückenlose Cleanup-Layer-Order
+  Timing = ausschließlich rohe Differenz zur m_cleanup-Origin
+  cleanupFinalizeReason = all-steps-terminal
+
+Cleanupdeadline gewinnt:
+  verbleibende Checks 1..19 = unproven
+  cleanupCompleted = unproven
+  Stage 10 = not-observed/unproven
+  cleanupFinalizeReason = cleanup-cap
+
+Irreversibler Cleanup-Controlfehler einschließlich ungültiger
+Completion-Clock nach erfolgreichem Cancel:
+  verbleibende Checks 1..19 = unproven
+  cleanupCompleted = failed
+  Stage 10 = observed/mismatch
+  receiptOrder = nächste lückenlose Cleanup-Layer-Order
+  relativeMilliseconds = null
+  timingState = unavailable
+  cleanupFinalizeReason = cleanup-terminal-failure
+```
+
+Ein ungültiger, rückläufiger oder werfender Completion-Sample setzt
+`cleanupViolation`, Check 20 `failed`, Stage 10 `observed/mismatch` mit der
+nächsten lückenlosen Cleanup-Layer-`receiptOrder`,
+`relativeMilliseconds: null`, `timingState: unavailable` und den Terminalgrund.
+Dies gilt zwingend für jeden nicht vollständig gültigen Completion-Clock-
+Sample. Kein zuvor, teilweise oder provisorisch berechneter Timingwert wird
+erhalten, gerundet, projiziert, gehasht oder serialisiert. Die bestehenden
+Werte für `observationState`, `result`, `receiptOrder`, `cleanupCompleted` und
+`cleanupFinalizeReason` bleiben erhalten; insbesondere ist eine gültige
+`receiptOrder` niemals ein gültiges Timing oder dessen Ersatz.
+Bei `cleanup-cap` bleibt Stage 10
+`not-observed/unproven`; bei bereits geschlossenem Port erfolgt nur lokale
+Terminalisierung: Stage 9 `observed/match` mit der nächsten Cleanup-Layer-
+`receiptOrder`, `relativeMilliseconds: null` und `timingState: unavailable`,
+Stage 10 `observed/mismatch` mit der darauf folgenden lückenlosen
+`receiptOrder`, `relativeMilliseconds: null` und `timingState: unavailable`,
+offene Portchecks `unproven`, Check
+20 `failed` und Grund `cleanup-terminal-failure`.
+
+`all-steps-terminal` ist auch bei terminalen `failed`- oder `unproven`-Checks
+zulässig. Cleanup ist `FAIL` bei
+`observationClosedBeforeCleanup !== true`, `cleanupViolation === true`
+oder irgendeinem `failed`; sonst `UNPROVEN` bei irgendeinem `unproven`, nur
+mit 20 `confirmed` und ohne Control-Verstoß `PASS`. Weil externe positive
+Fakten keine Provenienz erhalten, kann die Foundation allein praktisch kein
+Cleanup-`PASS` beweisen. Kein `pending` wird ausgegeben;
+`projectionMaterializedAfterCleanup` ist erst in der frischen Projection immer
+`true`.
+
+Jede Projection hat `observationClosed`, `requestBudgetFinalized` und
+`cleanupFinalized` exakt `true`. `U` ergibt Setupgrund, `not-started`, Reply
+`zero`; `V` vor Evaluate `confirmed-violation/not-started/zero`; `V` danach
+`confirmed-violation/truncated` und tatsächliche Replyklasse; `C`
+`capture-cap/elapsed` und tatsächliche Replyklasse. `productEvidenceComplete`
+ist nur `S && N`.
+
+```text
+candidateObserverGate =
+  FAIL bei V, bestätigtem Ablauf-/Integritäts-/Freeze-/Operations-/
+       Budgetverstoß oder cleanup.result FAIL
+  UNPROVEN sonst bei U, Replay UNPROVEN, erforderlichem unproven,
+           Cleanup UNPROVEN oder unbewiesener Pflichtbeobachtung
+  PASS sonst
+```
+
+Candidate-Findings sind exakt `observer-invalid` bei `FAIL`, `inconclusive`
+bei `UNPROVEN`, bei `PASS + EQUIVALENT + genau einem Stimulus` entweder
+`static-rejection-reproduced-after-http200`,
+`original-failure-not-reproduced` oder bei bekannter anderer Netzsignatur
+`network-signature-diverged`; sonst `inconclusive`. `DIVERGED` ist kein
+Observerfehler, verhindert aber Reproduktion. Auch Candidate-`PASS` bleibt
+wegen `NOT_EVIDENCE` ohne Beweis- oder Freigabewirkung.
+
+### Verbindliche spätere Foundation-Testmatrix
+
+Ein später gesondert autorisierter netzwerkfreier Implementierungsslice muss
+mindestens prüfen:
+
+- Factory-, Port-, Binding-, API-, Referenz- und Freezeform einschließlich
+  Owner-Latch, `unused|active|terminal`, Capabilitytransfer
+  `capturedExchange -> activeExchange`, exakte Slotlöschung und absolute
+  Outputinvariante;
+- falsche Factory- und Run-Arity, Erst-, Zweit-, Parallel- und reentrante
+  Aufrufe, Nicht-Owner-Isolation sowie späte Handler-No-ops;
+- `idle|observable-pending|settlement-unobservable|closed`, höchstens einen
+  ausstehenden Exchange und die Pending-Join-Regel in Pre-start, Observation
+  und Cleanup jeweils bei Fulfillment, Rejection und forever pending, ohne
+  zweites Intent, ID, Count oder Portaufruf; für jedes unobservable Settlement
+  das exakte Closed-Tupel mit gelöschtem `activeExchange`,
+  `affectedCapState: terminal-unknown`, `furtherExchangeCount: zero` und ohne
+  Cancel oder Folge-Exchange;
+- das exakte `currently-observable-local-native-promise-profile`, hostile
+  Thenables, beobachtbar fremde und passend verkleidete Cross-Realm-/Subclass-
+  Kandidaten, Constructor-/Species-/Then-Mutation, einzige Brandprobe,
+  nullstellige Rejectionhandler, kontrollierte Redaction und offenen Hostrest;
+- lokale Public-Promises ohne Rejectnutzung, Resolve exakt einmal,
+  Null-Prototyp-FoundationResult ohne Own-`then` und Assimilationsangriffe;
+- alle sieben Intentarten, exakte Payload-/Ackformen, Dubletten, IDs,
+  Rejectiontupel und den nur für unmögliche interne Tupel erreichbaren Catch-
+  all;
+- sämtliche Pre-start-Abbrüche ohne Projection, Snapshot oder Ledger;
+- Setup-, Capture- und Cleanupdeadline einschließlich Gleichheit,
+  vollständig ungelesene Envelopes am Cap, vorzeitige, falsche, späte und
+  doppelte Cap-IDs, nur eventgeschlossenes Capture und atomaren Evaluate-Ack;
+- erstes Capture-Connection-Close vor und nach einem möglicherweise
+  gleichzeitig eingereihten Capturecap, `U/capture-terminal-unproven`, die
+  besondere Cancel-vor-Snapshot-Reihenfolge und kein späteres Capture-Dequeue;
+- alle zehn Capzustände, höchstens einen Cancel je Arm, kein Retry und für
+  Setup, Capture sowie Cleanup jeweils exakten Ack, beobachtete Rejection,
+  malformed Ack, unobservables Settlement und forever pending; dabei sind
+  Cancel-Rejectionpfade ausdrücklich `observed-settlement`, während ein
+  unobservables Cancel-Settlement weder zweiten Cancel noch Exchange erlaubt;
+- Evaluate-Exchange-Rejection vor und nach einem möglicherweise tatsächlichen
+  Send, intent-spezifische Präzedenz, alle konservativen `unknown`-Counts,
+  `truncated`, `publicSettlement: null`, exakte Stages 1 bis 8, alle vier
+  Cancel-Ausgänge, keinen zweiten Evaluate-Send und kein Capture-Dequeue;
+- getrennte Evaluate-Intent-, bestätigte Send-, Reply-, Main-World-, Factory-,
+  Transport- und Networkcounts, `unknown` als nur intern abgeleiteten Wert und
+  keine `multiple`-Aufwertung beim Pending-Join;
+- `targetInfos` bei 128/129, sparse Arrays, Symbole, Accessors, Zusatzkeys,
+  primitive ID-/URL-/Methodengrenzen, Dequeue 128/129 und Reflectionthrows;
+- Network-Sekunden/Millisekunden, Rücklauf, `NaN`, Infinity, unsicheren
+  Überlauf, Cross-Domain-Verbot und alle vier Stage-7-Ausgänge;
+- vollständige v2-Kontext-, Factory-, Dispatch- und Settlementmatrix;
+- jedes erreichbare kontrollierte Rejection-Tupel der geschlossenen Pre-start-,
+  Observation- und Cleanupmatrix, `capKind: null` nur beim Probe-Tupel, alle
+  acht intent-ID-gebundenen Cancel-Purposes, Leasefreigabe vor Dispatch,
+  unreflektiertes Verwerfen gehaltener Dequeuegraphen, exakte Count-/Check-
+  Ableitungen, jede während Observation erforderliche Cancel-vor-`O0`-
+  Quieszenz, vier erst nach `O0` liegende Cleanup-Recovery-Cancelausgänge und den
+  Catch-all ausschließlich als Gegenprobe für unmögliche interne Tupel;
+- beide Cleanup-Purposes mit bekannten, unbekannten, doppelten und unlesbaren
+  IDs, falschen Varianten, beliebiger Disable-/Detach-Antwortreihenfolge,
+  Connection-Close-Dublette, Purposeerhalt ohne Checkattribution sowie
+  Portschluss mit ausschließlich lokaler Terminalisierung;
+- Disable/Detach bei Erfolg, terminalem Sendefehler, Dublette, fehlender
+  Antwort, Connection-Close und partiellem Setup sowie alle zwölf externen
+  Fakten mit `false -> failed` und `true -> unproven`;
+- `cleanupViolation`, Check-20-Präzedenz, `all-steps-terminal`, `cleanup-cap`
+  und `cleanup-terminal-failure`, abschließenden Cap-Cancel, Completion-Clock,
+  Stage 10, Receipt Order und Projectionmaterialisierung; für jeden nicht
+  vollständig gültigen Completion-Sample zwingend `relativeMilliseconds: null`
+  und `timingState: unavailable`, ohne Timing-Retention, -Rundung, -Projektion,
+  -Hash oder -Serialisierung und ohne Gleichsetzung gültiger `receiptOrder` mit
+  gültigem Timing;
+- jede Clock-, Routing-, Reflection-, Dequeue- und Cleanup-Gegenbeispielspur
+  vor und nach `O0`; nach `O0` dürfen niemals `U`, `V`, `C`, `closeClass`,
+  Stages 1 bis 8, Replay, Settlement, Budget, Counts oder Observationwerte
+  mutieren;
+- alle 59 Replayvergleiche, 17 Integritätschecks, exakt 20 Cleanupchecks,
+  Candidate-/Findingpräzedenz, Lower-/Upper-Hex- und Hashlängenfälle;
+- `NOT_EVIDENCE`, `runtimeAuthorized: false`,
+  `persistenceAuthorized: false`, `overallGate: FAIL`,
+  `causeStatus: CAUSE_NOT_PROVEN` und die Abwesenheit von Browser, CDP, Timer,
+  Queue, Dateisystem, Netzwerk und echtem Record.
 
 <a id="browser-transport-diagnostic-record--adr-0030"></a>
 
-## Browser Transport Diagnostic Record / ADR 0032
+## Historischer Browser Transport Diagnostic Record / ADR 0032
 
-ADR 0032 ersetzt ADR 0031 formal und übernimmt alle nicht ausdrücklich
-geänderten Regeln. ADR 0030 bleibt als bereits durch ADR 0031 ersetzte
-historische Ebene erhalten. Dieser Living Contract beschreibt ausschließlich
-den künftigen passiven Diagnose-Record; er autorisiert weder Foundation,
+ADR 0033 ersetzt ADR 0032 formal und übernimmt dessen nicht ausdrücklich
+geänderte Recordregeln. ADR 0032 bleibt ebenso wie der bereits durch ADR 0031
+ersetzte ADR 0030 als historische Entscheidungsebene erhalten.
+Dieser Abschnitt beschreibt ausschließlich den künftigen passiven
+Diagnose-Record; er autorisiert weder Foundation,
 Adapter noch einen Browser-, CDP-, Debug-Pipe-, Vite-, Gateway-, Netzwerk- oder
 Diagnoselauf.
 
@@ -3627,7 +5328,9 @@ Vergleichskardinalität bleibt unverändert bei 59.
 
 ### Observerprofil
 
-`observer` besitzt exakt zwölf Felder:
+Der angenommene ADR-0033-Endvertrag erweitert den weiterhin
+schema-1-fähigen `observer` mangels Implementierung oder persistierter Instanz
+auf exakt 13 Felder:
 
 ```text
 observer = {
@@ -3637,6 +5340,7 @@ observer = {
   targetProfile,
   foundationSha256,
   evaluationSha256,
+  controllerEvaluateIntentCount,
   protocolOperations,
   mainWorldEvaluationCount,
   transportFactoryCallCount,
@@ -3660,6 +5364,9 @@ connectionProfile =
 
 targetProfile =
   single-goldendawn-top-level | other | unknown
+
+controllerEvaluateIntentCount =
+  zero | one
 
 mainWorldEvaluationCount =
   zero | one | multiple | unknown
@@ -3761,7 +5468,7 @@ setupDeadline := m_setup + 6000
 setupReady := alle drei Setupantworten sind eindeutig korreliert,
               erfolgreich und vollständig validiert
 
-U := Setup ist vor Runtime.evaluate terminal nicht beweisbar
+U := Setup oder Capture ist terminal nicht beweisbar
 V := sticky bestätigte Observer-, Hüllen-, Request- oder Ablaufverletzung
 C := verarbeiteter controllerlokaler Capturecap nach gesendetem
      Runtime.evaluate
@@ -3847,7 +5554,10 @@ Dublette erst während des Capturefensters verarbeitet, bleibt ihr tatsächliche
 Antwortcount `multiple`; der Send-Ledger-Count bleibt davon unverändert. Das
 betroffene Operationsergebnis wird `unproven`. Die Dublette erzeugt allein kein
 `V`, hält den endgültigen Ausgang aber bis `C` `UNPROVEN/inconclusive`. Eine
-malformed Dublette ist jederzeit `V`.
+malformed Dublette ist nach `attemptStarted` und vor `O0` `V`; nach `O0` wird
+sie nicht mehr als Observation verarbeitet, verändert den Frozen Snapshot
+nicht und folgt bei einem Cleanup-Purpose ausschließlich dessen Routing- und
+`cleanupViolation`-Regeln.
 
 `timing.completion` besitzt im Finalrecord exakt:
 
@@ -3867,18 +5577,23 @@ observationCloseReason =
   setup-cap |
   setup-terminal-unproven |
   capture-cap |
+  capture-terminal-unproven |
   confirmed-violation
 
 captureWindowState = not-started | elapsed | truncated
 evaluateReplyCountClass = zero | one | multiple | unknown
-cleanupFinalizeReason = all-steps-terminal | cleanup-cap
+cleanupFinalizeReason =
+  all-steps-terminal | cleanup-cap | cleanup-terminal-failure
 ```
 
 Die Ableitung ist:
 
-- `U`: entsprechender Setupgrund, `not-started`, `zero`,
+- Setup-`U`: entsprechender Setupgrund, `not-started`, `zero`,
   `productEvidenceComplete: false`, `observationClosed: true` und
   `requestBudgetFinalized: true`;
+- Capture-Connection-Close vor einem regulären Captureabschluss:
+  `capture-terminal-unproven`, `truncated`; der aktive Capturecap wird gemäß
+  ADR-0033-Matrix vor dem Snapshot genau einmal storniert;
 - `C`: `capture-cap`, `elapsed`;
 - `V` vor Evaluate-Send: `confirmed-violation`, `not-started`;
 - `V` nach Evaluate-Send: `confirmed-violation`, `truncated`.
@@ -3886,10 +5601,19 @@ Die Ableitung ist:
 Regulärer `PASS` verlangt `capture-cap`, `elapsed`, genau eine gültige
 Evaluate-Antwort, einen Stimulus und ein finalisiertes Requestbudget. Null oder
 mehrere ansonsten gültige Evaluate-Antworten sind `UNPROVEN`; eine eindeutig
-korrelierte malformed Hülle ist `V`.
+korrelierte malformed Hülle ist vor `O0` `V`. Nach `O0` darf keine solche
+Hülle Observation, Counts, Stages, Completion oder Closeklasse mehr ändern;
+bei einem Cleanup-Purpose gelten allein die Cleanup-Routingregeln.
 
-Bei `U`, `V` oder `C` wird zuerst ein frischer tief eingefrorener
-Pre-Cleanup-Observation-Snapshot erzeugt. Er enthält Replay- und Hashbindungen,
+Bei gewöhnlichem, nicht aus einer kontrollierten Rejection oder dem besonderen
+Capture-Connection-Close stammendem `U`, `V` oder `C` wird zuerst ein frischer
+tief eingefrorener Pre-Cleanup-Observation-Snapshot erzeugt. Der angenommene
+ADR-0033-Vertrag nimmt die ausdrücklich beschriebenen Observation-Rejections
+von Setup-Send, Setup-Dequeue-Clock, Setup-Dequeue, Capture-Arm,
+Evaluate-Send, Capture-Dequeue-Clock und Capture-Dequeue sowie den
+Capture-Connection-Close aus: Dort erfolgt der jeweils vorgeschriebene
+einmalige Setup- oder Capture-Cancel vor dem Snapshot. Dieser enthält Replay-
+und Hashbindungen,
 Observer-/Evaluationzustand, die ersten vier Operationen, Requestbudget,
 Settlement, Stages 1 bis 8, Timing, die sechs observationsseitigen
 Completionwerte und den sticky `FAIL`-Latch.
@@ -3939,10 +5663,13 @@ Zählklasse und Parameterprofil:
   oder mehrdeutiger Antwort nicht beweisbares Setupprofil: `one/unproven`;
 - nach `U` oder `V` bewusst gegatetes Downstreamkommando:
   `zero/unproven`, nie `zero/mismatch`;
-- falsche Parameter, Überschreitung oder Allowlistverletzung:
-  `mismatch` und `V`;
+- falsche Parameter, Überschreitung oder Allowlistverletzung eines Setup- oder
+  Evaluate-Kommandos nach `attemptStarted` und vor `O0`: `mismatch` und `V`;
 - `Network.disable` und `Target.detachFromTarget`: `zero` oder `one` abhängig
-  von der tatsächlich verfügbaren identitätsgebundenen Cleanupfähigkeit.
+  von der tatsächlich verfügbaren identitätsgebundenen Cleanupfähigkeit;
+  ihre post-`O0`-Fehler verändern `O0` nie und werden ausschließlich dem
+  betroffenen Cleanupcheck beziehungsweise `cleanupViolation`/
+  `cleanup-terminal-failure` zugeordnet.
 
 Die Parameterprofile sind exakt:
 
@@ -4087,9 +5814,13 @@ Nur konsumierte erforderliche Feldwerte werden descriptorbasiert über die bei
 Modulevaluation erfassten Intrinsics gelesen. Jedes davon muss eine eigene
 aufzählbare Data-Property ohne Getter oder Setter und mit dem erforderlichen
 primitiven Wertprofil sein. Geerbte oder frei aufgelöste Properties bleiben
-verboten. Accessor, Reflection-Throw, falscher Descriptor oder malformed
-erforderlicher Wert ist nach eindeutiger Korrelation
-`V/FAIL/observer-invalid`. Geschlossene Own-Key- beziehungsweise Own-Presence-
+verboten. Vor `O0` ist ein Accessor, Reflection-Throw, falscher Descriptor oder
+malformed erforderlicher Wert nach eindeutiger Korrelation
+`V/FAIL/observer-invalid`. Nach `O0` gilt diese Ableitung nicht: Eine
+Cleanup-Hülle folgt ausschließlich ihrem gebundenen Purpose und wirkt über
+`cleanupViolation`, Checkstatus und gegebenenfalls
+`cleanup-terminal-failure`, niemals rückwirkend über `V`. Geschlossene
+Own-Key- beziehungsweise Own-Presence-
 Prüfungen dürfen ausschließlich die benannten Vertrags- und Verbotsfelder
 klassifizieren; zusätzliche Feldwerte bleiben ungelesen und werden nie
 übernommen oder persistiert.
@@ -4156,6 +5887,16 @@ settlement = null | {
   timingState
 }
 ```
+
+Die `zero|one`-Counts in dieser Hüllengrammatik gelten ausschließlich für
+einen vollständig akzeptierten Main-World-`value`. Der Controller führt davon
+getrennt `derivedExecutionCounts` mit
+`factoryCallCount|transportCallCount = zero|one|unknown`; `unknown` ist nie
+callerlieferbar. Bei beobachteter Evaluate-Exchange-Rejection sind beide
+abgeleiteten Counts, `mainWorldEvaluationCount`,
+`transportFactoryCallCount`, `Runtime.evaluate.observedCountClass` und
+`evaluateReplyCountClass` `unknown`, während der akzeptierte Main-World-Wert
+und `publicSettlement` `null` bleiben.
 
 Jedes der vier Kontextfelder enthält nur einen `contextResult`, niemals reale
 abweichende URL- oder Originwerte. Die vier Prüfungen erfolgen innerhalb
@@ -4312,9 +6053,17 @@ sequence =
 ```
 
 Das Budget gilt nur von `observer-armed` bis zum verarbeiteten `U`, `V` oder
-`C` und behauptet keine Abwesenheit danach. Nach `U` sind Evaluate, Factory,
-Transportstimulus und gegatete Downstreamoperationen `zero`; nicht zuverlässig
-beobachtete Networkzähler bleiben `unknown`, Sequenz ist `incomplete`.
+`C` und behauptet keine Abwesenheit danach. Nach Setup-`U` sind Evaluate,
+Factory, Transportstimulus und gegatete Downstreamoperationen `zero`; nicht
+zuverlässig beobachtete Networkzähler bleiben `unknown`, Sequenz ist
+`incomplete`.
+
+Im ADR-0033-Evaluate-Exchange-Rejectionpfad sind dagegen
+`defaultTransportCalls`, `endpointOptions`, `endpointPosts` und
+`endpointOtherMethods` `unknown`; nur die konstruktiv geschlossenen Foundation-
+Pfade `retries`, `directDiagnosticFetches`, `negativeOriginRuns`,
+`redirectRuns` und `observerProductEndpointRequests` sind `zero`. Die Sequenz
+ist `incomplete` und das Budget finalisiert.
 
 Bei einem Stimulus wird Sequenz total abgeleitet:
 
@@ -4324,8 +6073,11 @@ Bei einem Stimulus wird Sequenz total abgeleitet:
 3. `OPTIONS-204-POST-200-loadingFinished` nur bei vollständiger Übereinstimmung;
 4. andernfalls `incomplete`.
 
-Zweiter Transportaufruf, zweiter `POST`, direkter Diagnose-Fetch oder
-Observerrequest am Produktendpoint ist `V/FAIL`. Fehlende oder mehrdeutige
+Ein vor `O0` bestätigter zweiter Transportaufruf, zweiter `POST`, direkter
+Diagnose-Fetch oder Observerrequest am Produktendpoint ist `V/FAIL`. Nach
+`O0` bleibt das eingefrorene Requestbudget unverändert; eine entsprechende
+fremde Hülle im Cleanup-Purpose wirkt ausschließlich über dessen
+`cleanupViolation`-Regeln. Fehlende oder mehrdeutige
 Attribution ist ohne unabhängige Verletzung `UNPROVEN`. Ein klar abweichender
 Status, `loadingFailed`, zusätzliche produktverursachte `OPTIONS` oder andere
 produktverursachte Methode bildet `other`. Der Transportaufruf ausgelöste
@@ -4334,10 +6086,10 @@ Modulladeresourcen zählen nicht zum Endpointbudget.
 
 ### Öffentliches Settlement
 
-`publicSettlement` besitzt exakt:
+`publicSettlement` ist `null` oder besitzt exakt:
 
 ```text
-publicSettlement = {
+publicSettlement = null | {
   observationState,
   outcome,
   staticProfileResult,
@@ -4354,9 +6106,13 @@ internalStage = unknown
 internalOwner = unknown
 ```
 
-Nach `U` gilt in Feldreihenfolge:
+Falls ein anderer `U`-Pfad einen nichtnullischen Record projiziert, gilt in
+Feldreihenfolge:
 `not-observed`, `unknown`, `unproven`, `unknown`, `unknown`, `unknown`.
 Die interne Stage und der First-Terminal-Owner werden niemals behauptet.
+Im ADR-0033-Evaluate-Rejectionpfad ist
+`publicSettlement` zwingend `null`; Networkereignisse oder ein möglicherweise
+später ausgeführter Stimulus dürfen keinen Settlementrecord erfinden.
 
 ### Exakt zehn Stages
 
@@ -4425,12 +6181,18 @@ Die feste Matrix lautet:
 beobachtete Slots erhalten eine positive Zahl; `not-observed` und `ambiguous`
 verwenden `null`. Ein Preflight-`loadingFinished` dient nur flüchtig der
 Korrelation und erzeugt keinen Slot. `post-response-200-observed` behauptet
-keinen Header- oder Streamabschluss. Nach einem späteren `U` bleibt Stage 1
+keinen Header- oder Streamabschluss. Nach einem späteren Setup-`U` bleibt Stage 1
 `observer-armed` als `observed/match` mit `receiptOrder: 1`,
 `relativeMilliseconds: 0` und `timingState: measured` erhalten. Stages 2 bis 8
 sind `not-observed/unproven` mit `receiptOrder: null`,
 `relativeMilliseconds: null` und `timingState: unavailable`; Cleanup verwendet
 weiterhin Slots 9 und 10.
+
+Dieselbe Stage-1-bis-8-Projektion gilt im angenommenen ADR-0033-Vertrag für
+die beobachtete Evaluate-Exchange-Rejection, ohne tatsächliches Nichtsenden zu
+behaupten. Ein Capture-Connection-Close erhält dagegen alle vor dem Close
+bereits gültig beobachteten Slots unverändert und totalisiert nur die noch
+unbeobachteten Slots.
 
 ### Timing
 
@@ -4517,18 +6279,26 @@ erreichten partiellen Setupzustand.
 ```text
 cleanupWindowMilliseconds = 60000
 cleanupFinalized :=
-  allCleanupStepsTerminal ||
-  cleanupCapProcessed
+  cleanupFinalizeReason = all-steps-terminal ||
+  cleanupFinalizeReason = cleanup-cap ||
+  cleanupFinalizeReason = cleanup-terminal-failure
 ```
 
 Der Cleanupcap beginnt bei `cleanup-started`, wird nicht mit dem
 Durationcap gleichgesetzt und verwendet bei Gleichzeitigkeit die
 controllerlokale Verarbeitungsreihenfolge. Offene Checks werden am Cap
-`unproven`; bestätigtes `failed` behält Präzedenz. `cleanupCompleted` bedeutet,
-dass alle Schritte vor dem Cap terminal bewertet wurden, nicht dass sie
-erfolgreich waren. Stage 10 bleibt am Cap ohne vollständige Terminalität
-`not-observed/unproven`. `recordMaterializedAfterCleanup` bedeutet nach
-terminaler Finalisierung, auch bei `FAIL` oder `UNPROVEN`.
+`unproven`; bestätigtes `failed` behält Präzedenz. `all-steps-terminal`
+verlangt zusätzlich zur Terminalität der Checks 1 bis 19 den exakten
+abschließenden Cleanupcap-Cancel und einen gültigen Completion-Clock-Sample;
+die Checks müssen dafür nicht erfolgreich sein. Stage 10 ist dann
+`observed/match`. Am Cleanupcap bleibt Stage 10
+`not-observed/unproven`; bei irreversiblem Cleanup-Controlfehler ist sie
+`observed/mismatch`, zwingend mit `relativeMilliseconds: null` und
+`timingState: unavailable`. Kein zuvor, teilweise oder provisorisch berechneter
+Timingwert bleibt erhalten, wird gerundet, projiziert, gehasht oder serialisiert;
+eine gültige `receiptOrder` ist davon getrennt und kein Timingbeweis.
+`recordMaterializedAfterCleanup` bedeutet nach terminaler Finalisierung, auch
+bei `FAIL` oder `UNPROVEN`.
 
 `checks` enthält exakt diese 20 IDs:
 
@@ -4578,7 +6348,7 @@ Jeder Check ist `confirmed`, `failed` oder `unproven`. Die Quellen sind:
 | `repositoryAndIndexRestored` | Repository-/Indexprüfung unmittelbar vor Finalrecord |
 | `historicalEvidenceHashUnchanged` | SHA-256 der historischen Evidence-Datei |
 | `observerStorageLogAndTelemetryResidueAbsent` | Residueprüfung unmittelbar vor Finalrecord |
-| `cleanupCompleted` | alle vorherigen Cleanupschritte vor Cap terminal bewertet |
+| `cleanupCompleted` | Checks 1 bis 19 terminal plus erfolgreicher abschließender Cleanupcap-Cancel und gültiger Completion-Clock-Sample; am Cap `unproven`, bei Controlfehler `failed` |
 
 Wurde Enable oder Attach möglicherweise ausgeführt, ist die zugehörige
 Fähigkeit aber nicht identifizierbar, bleibt der Close-Check `unproven`; bloße
@@ -4692,17 +6462,15 @@ gelieferter Provenienzboolean bleibt verboten.
 
 Die Reihenfolge bleibt:
 
-1. ADR 0032 dokumentieren und mergen.
-2. Nur die pure netzwerkfreie effects-as-data-Foundation implementieren und
-   testen.
-3. Raw-Pipe-, Parser-, Queue-, Ressourcen-, Cap-/Timer-, Adapter-, Launcher-
+1. Die pure netzwerkfreie Effects-as-Data-Foundation in einem getrennten Slice
+   implementieren und testen.
+2. Raw-Pipe-, Parser-, Queue-, Ressourcen-, Cap-/Timer-, Adapter-, Launcher-
    und Hashbindung in einem eigenen ADR entscheiden und anschließend
    netzwerkfrei implementieren.
-4. Erst danach einen sichtbaren Diagnoselauf separat autorisieren.
-5. Anschließend erst über Produktänderung oder einen neuen ADR-0029-Lauf
-   entscheiden.
+3. Erst danach einen sichtbaren Diagnoselauf separat autorisieren und später
+   über Produktänderung oder einen neuen ADR-0029-Lauf entscheiden.
 
-Vor Schritt 4 darf kein realer `BrowserTransportDiagnosticRecord`
+Vor Schritt 3 darf kein realer `BrowserTransportDiagnosticRecord`
 materialisiert werden. Dieser Vertrag autorisiert keine Runtimeoperation und
 ändert weder `overallGate: FAIL` noch `causeStatus: CAUSE_NOT_PROVEN`.
 
@@ -5457,14 +7225,15 @@ besitzt ihr netzwerkfreies `PASS`. ADR 0029 definiert das an `T₀` und die
 allowlisteten Negativdeltas gebundene Runtimegate. Sein einmaliger Chrome-151-
 Lauf bleibt mit Gesamt-`FAIL`, PNA/LNA und den nicht ausgeführten
 Negativvektoren `UNPROVEN` sowie Cleanup `PASS` dokumentiert; die Ursache ist
-`CAUSE_NOT_PROVEN`. ADR 0032 ersetzt ADR 0031 formal, übernimmt dessen
-fortgeltende Regeln und totalisiert Capture-, Timing-, Projektions- und
-Setupgrenze. Als nächster Slice folgt nur die reine netzwerkfreie
-effects-as-data-Implementierung und Prüfung der Diagnosefoundation. Danach
-folgen ein eigener Adapter-ADR und dessen getrennte netzwerkfreie
-Implementierung. Zielbrowser, `T_replay`, Observer, der einzelne Request,
-Benutzerinteraktion und Cleanup benötigen erst anschließend eine neue
-ausdrückliche Autorisierung. Browserkomposition und lokaler Browser-End-to-End-`syncTest`
+`CAUSE_NOT_PROVEN`. ADR 0033 ersetzt ADR 0032 formal und übernimmt dessen nicht
+ausdrücklich korrigierte Regeln; ADR 0032 bleibt als historische
+Entscheidungsebene erhalten. Die Diagnosefoundation ist weiterhin nicht
+implementiert; nächster Slice ist ausschließlich ihre getrennte netzwerkfreie
+Effects-as-Data-Implementierung. Adapter-ADR, Adapterimplementierung und
+Runtimevorgang bleiben nachgelagert und nicht autorisiert. Zielbrowser,
+`T_replay`, Observer, der einzelne Request, Benutzerinteraktion und Cleanup
+benötigen auch danach eine eigene ausdrückliche Autorisierung.
+Browserkomposition und lokaler Browser-End-to-End-`syncTest`
 bleiben bis zu einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`
 geschlossen. Eine angenommene Entscheidung, eine implementierte Policy oder
 die isolierte Transportexistenz öffnet keines dieser Gates automatisch.
@@ -9068,12 +10837,13 @@ Kopierprüfung. ADR 0029 operationalisiert den dafür erforderlichen
 Evidence-Record; sein Entscheidungsslice selbst führte keinen Runtimevorgang
 aus. Der danach einmalig autorisierte Chrome-151-Lauf ist mit Gesamt-`FAIL`,
 PNA/LNA und Negativvektoren `UNPROVEN` sowie Cleanup `PASS` dokumentiert; die
-Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0032 ersetzt ADR 0031 formal und
-totalisiert die davon unabhängige passive Diagnosegrenze. Als Nächstes folgt
-ausschließlich ihre reine netzwerkfreie effects-as-data-
-Foundationimplementierung und -prüfung; darauf folgen ein eigener Adapter-ADR
-und dessen getrennte netzwerkfreie Implementierung. Erst danach kann ein
-sichtbarer Diagnoselauf gesondert autorisiert werden. Produktive SyncService-/`src/main.js`-
+Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0033 ersetzt ADR 0032 formal und
+übernimmt dessen nicht ausdrücklich korrigierte Regeln; ADR 0032 bleibt als
+historische Entscheidungsebene erhalten. Die Diagnosefoundation ist weiterhin
+nicht implementiert; als Nächstes folgt ausschließlich ihre getrennte,
+netzwerkfreie Effects-as-Data-Implementierung. Adapter-ADR,
+Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und
+nicht autorisiert. Produktive SyncService-/`src/main.js`-
 Komposition und Browser-End-to-End-Fluss fehlen weiterhin und folgen erst nach
 einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`.
 
