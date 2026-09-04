@@ -2,7 +2,7 @@
 
 ## Status
 
-Angenommen – 2026-09-02
+Ersetzt durch [ADR 0033](0033-browser-sync-transport-diagnostic-foundation-effects-protocol-boundary.md) – 2026-09-03
 
 ## Kontext
 
