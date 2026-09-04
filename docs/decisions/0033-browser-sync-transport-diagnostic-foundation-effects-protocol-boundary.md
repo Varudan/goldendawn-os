@@ -2,7 +2,7 @@
 
 ## Status
 
-Angenommen – 2026-09-03
+Ersetzt durch [ADR 0034](0034-browser-sync-transport-diagnostic-foundation-grammar-derivation-and-testability-boundary.md) – 2026-09-04
 
 ## Kontext
 
