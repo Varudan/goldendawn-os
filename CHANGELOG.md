@@ -6,9 +6,68 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0033 angenommen; Chrome-Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0034 angenommen; Chrome-Runtimegate FAIL
 
-### BrowserSyncTransport Diagnostic Foundation Effects Protocol Boundary – Entscheidung / ADR 0033
+### BrowserSyncTransport Diagnostic Foundation Grammar, Derivation and Testability Boundary – Entscheidung / ADR 0034
+
+- ADR 0034 am `2026-09-04` angenommen. Er ersetzt ADR 0033 formal und übernimmt
+  alle nicht ausdrücklich korrigierten Regeln aus ADR 0033 und ADR 0032; ADR
+  0034 ersetzt keinen weiteren ADR. ADR 0033 bleibt mit bytegleichem Hauptteil
+  ab `## Kontext` als historische Entscheidungsebene erhalten.
+- Schema, API und Kardinalitäten bleiben unverändert:
+  `createBrowserSyncTransportRuntimeDiagnosticObserver({ effectPort,
+  runBinding })`, `schemaVersion: 1`, 17 Rootfelder der
+  `FoundationProjection`, 59 Replayvergleiche, sieben Effects-Intents, sechs
+  Protocol Operations, 17 Integrity Checks, zehn Stages, zehn Capzustände, 20
+  Cleanupchecks und ein öffentlicher Export.
+- ADR 0034 totalisiert die geschlossenen lokalen Prototyp-,
+  Frische- und Deep-Freeze-Grammatiken, `printable-ascii-v1`,
+  `iana-shaped-ascii-time-zone-v1`, Core-SemVer sowie die privaten I1–I8-,
+  Replay-, Observerfeld-, Protocol-Operation-, Integrity-, Stage-, Hash- und
+  Cleanupableitungen.
+- Operations- und Ressourcenstatus werden sendzustandsabhängig getrennt: Ein
+  fehlender Intent ergibt nur bei konstruktiv sicher nie aktivierter Ressource
+  `zero/match`, sonst `zero/unproven`; ein Intent ohne belegbaren Sendestatus
+  ergibt `unknown/unproven`, exakt ein gültiger Sende-Ack `one/match` und
+  mindestens zwei bestätigte Sende-Acks `multiple/mismatch`. Eine fehlende
+  Session-ID beweist nach möglicherweise oder bestätigt gesendetem
+  `Target.attachToTarget` niemals eine geschlossene Session. Nur
+  sicher nie gesendetes Attach erlaubt `targetSessionClosed: confirmed` und
+  Detach `zero/match`; ohne bindbare Session bleiben beide unbewiesen, ein
+  korrelierter exakter Detach-Erfolg bestätigt den Abschluss. Connection-Close
+  ohne diesen Erfolg bestätigt ihn nicht. Dieselbe epistemische Trennung gilt
+  symmetrisch für `Network.enable`, `Network.disable` und
+  `networkDomainClosed`: Sicher nie gesendetes Enable bestätigt den
+  Domainabschluss mit Disable `zero/match`; möglicherweise oder bestätigt
+  gesendetes Enable bleibt ohne korrelierten
+  exakten Disable-Erfolg unbewiesen. Bei gebundener Session und sicher nie
+  gesendetem Enable bleibt der Detachversuch erforderlich.
+- `candidateObserverGate: PASS` und PASS-spezifische Findings bleiben über die
+  unveränderte öffentliche API konstruktiv unerreichbar; öffentliche
+  Foundationresultate können nur `FAIL/observer-invalid` oder
+  `UNPROVEN/inconclusive` enthalten. Die vollständigen privaten hypothetischen
+  PASS-Ableitungen dürfen später ausschließlich über die beschlossene
+  temporäre Kopie der exakten Produktionsquellbytes geprüft werden. Ein exakt
+  einmal passender lexikalischer Anker darf nur testlokale Exports ergänzen;
+  ausschließlich diese Kopie wird seriell importiert, im `finally` entfernt
+  und ihre Entfernung bestätigt. Kopie und Ergebnisse bleiben `NOT_EVIDENCE`,
+  permanente Testexports oder manipulierte öffentliche PASS-Projections
+  unzulässig; die öffentliche Original-API muss die PASS-Unerreichbarkeit
+  zusätzlich black-box belegen.
+- Netzwerkfreiheit gilt für Foundationmodul, neue fokussierte Tests, Effects
+  und jeden Diagnoselauf dieses Slices. Nur die unveränderte vollständige
+  Repository-Regressionsprüfung darf ihre bestehenden kurzlebigen
+  Loopback-Fixtures `tests/localSyncGatewayHttpServer.test.js` und
+  `tests/n8nCloudIngressProbe.test.js` ausführen; neue, externe oder
+  diagnostische Netzwerkaktivität bleibt verboten.
+- ADR 0034 implementiert oder autorisiert weder Foundation, Tests, Adapter noch
+  Runtimevorgang. ADR 0029, sein Evidence-Record, `overallGate: FAIL` und
+  `causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert. Die Foundation ist
+  weiterhin nicht implementiert. Als nächster Slice folgt ausschließlich ihre
+  getrennte netzwerkfreie Implementierung; Adapter-ADR, Adapterimplementierung
+  und sichtbarer Diagnoselauf bleiben nachgelagert.
+
+### Historischer Stand: BrowserSyncTransport Diagnostic Foundation Effects Protocol Boundary – Entscheidung / ADR 0033
 
 - ADR 0033 am `2026-09-03` als reinen Dokumentations- und Entscheidungsslice
   angenommen. Er ersetzt ADR 0032 formal und übernimmt alle dortigen Regeln,
@@ -200,9 +259,11 @@ Release.
   `CAUSE_NOT_PROVEN` bleiben zwingend.
 - Weder Foundationmodul noch Tests, Adapter, Parser, Queue, Timer, Browser,
   CDP, Netzwerk, Gateway, Request oder echter Record erstellt oder ausgeführt.
-  Die Annahme autorisiert keinen Adapter oder Diagnoseruntimevorgang. Als
-  nächster Slice folgt ausschließlich die getrennte netzwerkfreie
-  Effects-as-Data-Foundationimplementierung; Adapter-ADR,
+  Die damalige Annahme autorisierte keinen Adapter oder
+  Diagnoseruntimevorgang. ADR 0034 hat ADR 0033 inzwischen formal ersetzt; ADR
+  0033 bleibt mit bytegleichem Hauptteil ab `## Kontext` historische
+  Entscheidungsebene. Als nächster Slice folgt ausschließlich die getrennte
+  netzwerkfreie Effects-as-Data-Foundationimplementierung; Adapter-ADR,
   Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert.
 
 ### BrowserSyncTransport Diagnostic Capture, Timing and Projection Determinism Boundary – Entscheidung / ADR 0032
@@ -306,9 +367,12 @@ Release.
   `CAUSE_NOT_PROVEN`. Im damaligen ADR-0032-Stand sollte als Nächstes die reine
   netzwerkfreie effects-as-data-Foundation folgen. ADR 0033 hat ADR 0032
   inzwischen formal ersetzt und behält dessen nicht ausdrücklich korrigierte
-  Regeln bei; als nächster Slice folgt nun ausschließlich die getrennte
-  netzwerkfreie Effects-as-Data-Foundationimplementierung. Adapter-ADR,
-  Adapterimplementierung und sichtbarer Lauf bleiben nachgelagert.
+  Regeln bei. ADR 0034 hat ADR 0033 inzwischen formal ersetzt und übernimmt
+  alle nicht ausdrücklich korrigierten Regeln aus ADR 0033 und ADR 0032; ADR
+  0033 bleibt historische Entscheidungsebene. Als nächster Slice folgt
+  ausschließlich die getrennte netzwerkfreie Effects-as-Data-
+  Foundationimplementierung. Adapter-ADR, Adapterimplementierung und sichtbarer
+  Lauf bleiben nachgelagert und geschlossen.
 
 ### Historischer Stand: BrowserSyncTransport Diagnostic Envelope and Observation Completion Boundary – Entscheidung / ADR 0031
 

@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0033 angenommen; gebundenes Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice ausschließlich netzwerkfreie Effects-as-Data-Foundationimplementierung` |
+| Projektphase | `v0.3.0 – ADR 0034 angenommen; ADR 0033 historische Entscheidungsebene; gebundenes Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: getrennte netzwerkfreie Foundationimplementierung` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,8 +21,8 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy implementiert; der einmalige Schema-1-Lauf `chrome-stable-win-01` bleibt mit `normalSyntheticTransport: FAIL`, `pnaLnaPermission: UNPROVEN`, nicht ausgeführten Negativvektoren und `cleanupRedaction: PASS` dokumentiert; `overallGate: FAIL`, Ursache `CAUSE_NOT_PROVEN`; ADR 0033 ist angenommen, ersetzt ADR 0032 formal und übernimmt alle nicht ausdrücklich korrigierten Regeln; ADR 0032 bleibt als historische Entscheidungsebene erhalten; die Diagnosefoundation ist nicht implementiert, nächster Slice ist ausschließlich ihre getrennte netzwerkfreie Effects-as-Data-Implementierung; Adapter-ADR, Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und nicht autorisiert; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
-| Letzte Aktualisierung | 2026-09-03 |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy implementiert; der einmalige Schema-1-Lauf `chrome-stable-win-01` bleibt mit `normalSyntheticTransport: FAIL`, `pnaLnaPermission: UNPROVEN`, nicht ausgeführten Negativvektoren und `cleanupRedaction: PASS` dokumentiert; `overallGate: FAIL`, Ursache `CAUSE_NOT_PROVEN`; ADR 0034 ist angenommen, ersetzt ADR 0033 formal und übernimmt alle nicht ausdrücklich korrigierten ADR-0033-/ADR-0032-Regeln; ADR 0033 bleibt mit bytegleichem Hauptteil und ADR 0032 als historische Entscheidungsebenen erhalten; die Diagnosefoundation und ihre Tests sind nicht implementiert, ihr nächster Slice ist ausschließlich die getrennte netzwerkfreie Implementierung; Adapter-ADR, Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und nicht autorisiert; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
+| Letzte Aktualisierung | 2026-09-04 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
@@ -3181,27 +3181,29 @@ Runtime-, Datenschutz- oder Compliancebeweis.
 Der Transport ist weiterhin weder mit dem SyncService noch in `src/main.js`
 komponiert; ein Browser-End-to-End-`syncTest` existiert nicht. Der einmalig
 ausgeführte ADR-0029-Lauf bleibt mit Gesamt-`FAIL` dokumentiert; seine Ursache
-ist `CAUSE_NOT_PROVEN`. ADR 0033 ersetzt ADR 0032 formal und übernimmt alle
-nicht ausdrücklich korrigierten Regeln; ADR 0032 bleibt als historische
-Entscheidungsebene erhalten. Die Diagnosefoundation ist weiterhin nicht
-implementiert. Der nächste Slice ist ausschließlich ihre getrennte,
-netzwerkfreie Effects-as-Data-Implementierung; Adapter-ADR,
-Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und
-nicht autorisiert. Browserkomposition und lokaler Browser-End-to-End-`syncTest`
-bleiben bis zu einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`
-geschlossen.
+ist `CAUSE_NOT_PROVEN`. ADR 0034 ersetzt ADR 0033 formal und übernimmt alle
+nicht ausdrücklich korrigierten ADR-0033-/ADR-0032-Regeln; ADR 0033 bleibt mit
+bytegleichem Hauptteil und ADR 0032 als historische Entscheidungsebenen
+erhalten. Die Diagnosefoundation ist weiterhin nicht implementiert; ihr
+nächster Slice ist ausschließlich die getrennte netzwerkfreie
+Effects-as-Data-Implementierung. Adapter-ADR, Adapterimplementierung und
+sichtbarer Diagnoselauf bleiben nachgelagert und geschlossen.
+Browserkomposition und lokaler Browser-End-to-End-`syncTest` bleiben bis zu
+einem späteren vollständig neuen ADR-0029-Gesamt-`PASS` geschlossen.
 
-## Browser Transport Diagnostic Foundation Effects Protocol / ADR 0033
+## Historischer Browser Transport Diagnostic Foundation Effects Protocol / ADR 0033
 
 [ADR 0033](decisions/0033-browser-sync-transport-diagnostic-foundation-effects-protocol-boundary.md)
-ist `Angenommen – 2026-09-03`, ersetzt ADR 0032 formal und übernimmt dessen
-nicht ausdrücklich korrigierte Regeln. ADR 0032 bleibt als historische
-Entscheidungsebene erhalten. Dieser Living Contract beschreibt den Vertrag der
-späteren reinen, importinaktiven, netzwerkfreien Foundation; sie ist weiterhin
-nicht implementiert. Der nächste Slice ist ausschließlich ihre getrennte
-netzwerkfreie Effects-as-Data-Implementierung. Adapter, Parser, Queue, Timer,
-Browser, CDP, Netzwerk und ein Diagnoselauf sind nicht autorisiert. Das
-ADR-0029-Gesamtgate bleibt `FAIL`, die Ursache `CAUSE_NOT_PROVEN`.
+ist durch ADR 0034 formal ersetzt. Er ersetzte ADR 0032 formal und übernahm
+dessen nicht ausdrücklich korrigierte Regeln; ADR 0033 bleibt mit bytegleichem
+Hauptteil und ADR 0032 als historische Entscheidungsebenen erhalten. Dieser
+Living Contract beschreibt den fortgeltenden Vertrag der späteren reinen,
+importinaktiven, netzwerkfreien Foundation; sie ist weiterhin nicht
+implementiert. Als Nächstes folgt ausschließlich ihre getrennte netzwerkfreie
+Effects-as-Data-Implementierung.
+Adapter, Parser, Queue, Timer, Browser, CDP, Netzwerk und ein Diagnoselauf sind
+nicht autorisiert. Das ADR-0029-Gesamtgate bleibt `FAIL`, die Ursache
+`CAUSE_NOT_PROVEN`.
 
 ### Öffentliche API, Capability und Referenzinvariante
 
@@ -4887,6 +4889,381 @@ mindestens prüfen:
   `causeStatus: CAUSE_NOT_PROVEN` und die Abwesenheit von Browser, CDP, Timer,
   Queue, Dateisystem, Netzwerk und echtem Record.
 
+## Totalisierung des Foundationvertrags / ADR 0034
+
+[ADR 0034](decisions/0034-browser-sync-transport-diagnostic-foundation-grammar-derivation-and-testability-boundary.md)
+besitzt den Status `Angenommen – 2026-09-04` und ersetzt ADR 0033 formal. Alle
+nicht ausdrücklich korrigierten Regeln aus ADR 0033 und ADR 0032 gelten fort;
+ADR 0033 bleibt mit bytegleichem Hauptteil als historische Entscheidungsebene
+erhalten. ADR 0034 implementiert oder autorisiert weder Foundation, Tests,
+Adapter noch Runtimevorgang und ersetzt keinen weiteren ADR. ADR 0029, sein
+historischer Evidence-Record, `overallGate: FAIL` und
+`causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert.
+
+Diese Kardinalitäten bleiben unverändert:
+
+```text
+schemaVersion:             1
+FoundationProjection:     17 Rootfelder
+Replay:                    59 Vergleiche
+Effects-Intents:            7
+Protocol Operations:        6
+Integrity Checks:          17
+Stages:                    10
+Capzustände:               10
+Cleanupchecks:             20
+öffentliche Exports:       1
+```
+
+### Prototyp-, Frische- und Freezegrammatik
+
+Jeder geschlossene unvertrauenswürdige Recordknoten wird exakt einmal und in
+dieser Reihenfolge geprüft:
+
+1. primitiver `typeof`-/Nulltest;
+2. die bei Modulevaluation erfasste `Array.isArray`-Intrinsik einmal mit
+   Ergebnis `false`;
+3. `getPrototypeOf` einmal;
+4. direkter Prototyp exakt der erfasste lokale `Object.prototype`;
+5. `Reflect.ownKeys` einmal;
+6. jeder erforderliche Descriptor einmal;
+7. keine erneute Property-, Key-, Prototyp-, Brand- oder Descriptorlesung.
+
+Die Own-Key-Folge muss codeunitgenau der knotenspezifischen geschlossenen
+String-Key-Folge entsprechen; Symbole, Zusatzkeys, fehlende Keys und eine
+andere Reihenfolge sind unzulässig. Jeder erforderliche Key muss eine
+eigene aufzählbare Data-Property ohne Getter oder Setter besitzen. Sein Wert
+darf nur dem einmal gelesenen und danach gecachten Descriptor entnommen
+werden.
+
+Das erfasst mindestens Factoryoptions, `effectPort`, `runBinding`, dessen
+geschlossene Nachfahren, Replayeinträge, geschlossene Ackprofile und den
+geschlossenen Main-World-v2-Graphen. Für jedes geschlossene
+unvertrauenswürdige Array gelten stattdessen exakt einmal `Array.isArray` mit
+Ergebnis `true`, exakt einmal `getPrototypeOf`, der direkte Vergleich mit dem
+erfassten lokalen `Array.prototype` und danach exakt die bereits beschlossene
+Dense-, Length-, Key- und Descriptorprüfung. Das erfasst mindestens
+`replayOperands`, `targetInfos` und jeden weiteren ausdrücklich geschlossenen
+Arrayknoten.
+
+Diese Arrayprüfung verlangt bei Länge `n` exakt die Own-Key-Folge
+`"0", ..., String(n - 1), "length"`, bei `n === 0` nur `"length"`.
+Der eigene native `length`-Data-Descriptor muss eine nichtnegative
+Safe-Integer-Länge `n` tragen; Holes, Symbole und Zusatzkeys sind verboten.
+Jeder Indexdescriptor muss genau einmal in aufsteigender Reihenfolge gelesen
+werden und eine eigene aufzählbare Data-Property ohne Getter oder Setter sein;
+auch Elementwerte dürfen nur den gecachten Descriptoren entnommen werden.
+
+Promise-Kandidaten verwenden ausschließlich das bestehende Promiseprofil.
+Offene CDP-Hüllen und offene `targetInfos`-Einträge geben nur
+allowlistete Descriptoren preis und erhalten keine Record-, Array-, Realm-,
+Plain-Data- oder Proxyklassifikation. Functions und Capabilities
+werden weder traversiert noch eingefroren. `FoundationResult` bleibt der
+einzige ausdrücklich festgelegte Null-Prototyp-Root; foundationeigene
+gewöhnliche Records und Arrays verwenden durch Konstruktion die erfassten
+lokalen Object- beziehungsweise Arrayprototypen.
+
+`fresh` bedeutet exakt: an dieser Vertragsstelle neu durch die
+Foundation erzeugt, nicht referenzidentisch mit einem caller- oder
+portgelieferten Knoten und nicht mit einem anderen separat frisch verlangten
+Container geteilt. Ein frischer Baum verlangt Frische jedes enthaltenen
+Containers. Frische kann nur konstruktiv hergestellt, nie aus
+unbeschränkter Fremdgraphtraversierung abgeleitet werden. `deep frozen`
+erfasst nur foundationeigene, durch Own-Data-Kanten erreichbare Record- und
+Arrayknoten. Der endliche azyklisch konstruierte Baum muss von den
+Blättern zum Root eingefroren werden. Danach muss für jeden erreichbaren
+Record- und Arrayknoten `Object.isFrozen === true`, ausschließlich eigene
+Data-Properties und die geschlossene knotenspezifische Keyfolge gelten;
+enthaltene Record- und Arraywerte müssen dieselbe Regel rekursiv erfüllen.
+Prototypen, Promises, Functions, Capabilities und fremde Eingabegraphen werden
+weder eingefroren noch verfolgt. Keine Prüfung beweist Proxy-, Realm-, Parser-
+oder Pipeprovenienz.
+
+### Geschlossene Stringgrammatiken
+
+`printable-ascii-v1` beziehungsweise `A<n>` verlangt einen primitiven String
+mit Länge `1..n` UTF-16-Codeunits, wobei jede Codeunit zwischen `U+0020` und
+`U+007E` einschließlich liegt. Koerzierung, Normalisierung, Trimmung,
+Case-Faltung und Unicodeabbildung sind verboten. Führende oder
+abschließende U+0020 bleiben typgültig und können beim exakten Vergleich
+regulär `mismatch` ergeben. Speziellere Grammatiken wie H64, IDs und
+HTTP-tchar bleiben vorrangig.
+
+`iana-shaped-ascii-time-zone-v1` bezeichnet genau folgende reine Syntaxklasse:
+
+```text
+exakt "UTC"
+oder
+mindestens zwei durch "/" getrennte, nichtleere Komponenten;
+jede Komponente beginnt mit ASCII A-Z oder a-z;
+danach nur ASCII-Buchstaben, Ziffern, ".", "_", "+" oder "-";
+Gesamtlänge 1..64 UTF-16-Codeunits; case-sensitive.
+```
+
+Leere Komponenten, Unicode, Backslash und Whitespace bestehen nicht.
+Die Syntax bestätigt weder IANA-Mitgliedschaft noch Kanonizität, Aliasauflösung
+oder TZDB-Version; Foundationabfragen über `Intl`, Host oder
+Netzwerk bleiben verboten. `Europe/Berlin`, `Etc/GMT+1` und
+`America/Argentina/Buenos_Aires` bestehen.
+
+`S32` bezeichnet ausschließlich Core-SemVer nach folgender Grammatik:
+
+```regex
+^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$
+```
+
+Zusätzlich gelten eine Länge von `1..32` ASCII-Codeunits und die ausschließlich
+lexikalisch-codeunitgenaue Prüfung. Numerische Konvertierung,
+`v`-Präfix, Vorzeichen, Whitespace, führende Nullen außer der einzelnen `0`,
+Prerelease und Buildsuffix bestehen nicht. Die historischen Werte
+`24.19.0` und `8.1.4` bestehen.
+
+### I1–I8- und Replaytotalisierung
+
+Shape-, Descriptor- und Typfehler von `runBinding` bleiben synchrone
+Factory-`TypeError`s. Semantische Cross-Field-Abweichungen werden keine
+Factoryfehler. Privat besitzt jedes I1–I7-Ergebnis
+`match|mismatch|unproven`: Sobald ein benötigter Operand
+`not-observed` oder `ambiguous` ist, ist das Ergebnis `unproven`; sind alle
+Operanden beobachtet und erfüllen die exakte Relation, ist es `match`, sonst
+`mismatch`. Die 59 öffentlichen Comparisonresults bleiben unabhängig davon
+unverändert.
+
+| Invariante | Exakte Relation ohne URL-Parser |
+| --- | --- |
+| I1 | `frontend.topLevelUrl === frontend.serializedOrigin + "/"` |
+| I2 | `initialUrl` ist codeunitgenau `initialScheme + "://" + initialHost + ":" + canonicalDecimal(initialPort) + initialPath`; `canonicalDecimal` ist die eindeutige Dezimaldarstellung des Safe-Integer-Ports ohne Vorzeichen, Whitespace oder führende Null, außer `0` selbst |
+| I3 | Initialhost und Listenerhost sind exakt `127.0.0.1`; Initial- und Listenerport sind gleich; `gateway.portEnvironmentValue === "\"" + canonicalDecimal(listenerPort) + "\""`; `gateway.endpoint` ist codeunitgenau `initialScheme + "://" + listenerHost + ":" + canonicalDecimal(listenerPort) + initialPath` |
+| I4 | `gateway.allowedOrigin.relationToFrontend === "matches-frontend-origin"` und zugleich `gateway.allowedOrigin.value === frontend.serializedOrigin` codeunitgenau |
+| I5 | `transportRequest.initialUrl === gateway.endpoint` codeunitgenau |
+| I6 | `viteRuntimeVersionObservation === null` oder Row 59 nicht beobachtet ergibt `unproven`; zwei beobachtete, nichtnullische und codeunitgleiche Werte ergeben `match`; zwei beobachtete ungleiche Werte `mismatch` |
+| I7 | Nur beobachtetes `profile.lifecycle === "fresh-disposable"` zusammen mit eindeutig abgeleiteter neuer Profilinstanz ergibt `match`; eine vollständig beobachtete widersprüchliche Kombination ergibt `mismatch`; jeder andere Fall `unproven` |
+| I8 | Die acht historischen Digests und Comparison-Basen bleiben privat fest; Callerwerte können nur Werte vergleichen und niemals Commit- oder Dateibyteprovenienz bestätigen; I8 erzeugt kein sechzigstes Feld und geht nicht als Authentizitätsersatz in `EQUIVALENT` ein; `sourceUnmodified` bleibt ohne Adapterbindung `unproven` |
+
+Die totale Relation lautet exakt:
+
+```text
+DIVERGED :=
+  mindestens ein Row-mismatch
+  || mindestens ein I1–I7-mismatch
+  || noUnexplainedCausalDeviation = contradicted
+
+UNPROVEN :=
+  kein DIVERGED-Grund
+  && (
+    mindestens ein Row-unproven
+    || mindestens ein I1–I7-unproven
+    || noUnexplainedCausalDeviation = unproven
+  )
+
+EQUIVALENT :=
+  alle 59 Rows match
+  && I1–I7 jeweils match
+  && noUnexplainedCausalDeviation = confirmed
+```
+
+Die privaten I-Ergebnisse werden nicht projiziert und überschreiben die 59
+Zeilenergebnisse nicht.
+
+### Observer- und Operationstotalisierung
+
+Die bislang offenen Observerfelder werden wie folgt abgeleitet:
+
+| Feld | Quelle und positiver Wert | Gegenfall | unbekannter Fall |
+| --- | --- | --- | --- |
+| `controllerExclusivity` | in der reinen Foundation nicht positiv ableitbar | in der reinen Foundation nicht klassifizierbar | stets `unknown` |
+| `connectionProfile` | in der reinen Foundation nicht positiv ableitbar | in der reinen Foundation nicht klassifizierbar | stets `unknown` |
+| `targetProfile` | vollständig gültige, eindeutig korrelierte Targetbeobachtung mit genau einem passenden `page`-Target, gebundener URL und `attached === false` ergibt `single-goldendawn-top-level` | vollständig lesbares, typgültiges und eindeutig auswertbares Gegenprofil einschließlich null passender Targets oder genau eines passenden Targets mit `attached === true` ergibt `other` | fehlend, malformed, mehrdeutig, unkorrelierbar, nicht ausgeführt oder mehrere passende Targets ergibt `unknown` |
+| `foundationSha256` | keine Foundationquelle | kein Callerwert darf einen Gegenbeweis ersetzen | ausnahmslos `null` |
+| `evaluationSha256` | fester Soll-Digest nur nach exakt beobachtetem gültigem `Runtime.evaluate`-Sende-Ack `sent-and-capture-cap-started` | kein fremder Digest wird übernommen | kein Intent, Rejection, malformed oder unobservables Ack und unbekannter Sendestatus ergeben `null` |
+| `controllerEvaluateIntentCount` | nach Erzeugung des einzigen Evaluate-Intents exakt `one` | `multiple` ist produktiv unerreichbar und ein interner Verstoß | vor Intent exakt `zero` |
+| `mainWorldEvaluationCount` | genau ein vollständig akzeptierter Main-World-v2-Reply ergibt `one` | mindestens zwei korrelierbare Replykandidaten ergeben `multiple` | konstruktiv gegatetes Evaluate `zero`, sonst ohne akzeptierten eindeutigen Wert `unknown` |
+| `transportFactoryCallCount` | nur der vollständig akzeptierte Main-World-v2-Wert darf `zero\|one` liefern | ein nicht akzeptierbarer oder widersprüchlicher Graph wird nicht als Count verwendet | konstruktiv gegatetes Evaluate `zero`, nach Evaluate ohne akzeptierten Wert `unknown` |
+
+Network-, Send- oder Ackdaten dürfen Main-World- und Factorycounts niemals
+ersetzen. Für jede der sechs `protocolOperations` gilt die folgende
+sendzustandsabhängige Matrix:
+
+| Bedingung | `observedCountClass` | `result` |
+| --- | --- | --- |
+| kein Intent, weil die zugehörige Ressource konstruktiv sicher nie aktiviert wurde | `zero` | `match` |
+| kein Intent, obwohl die Ressource möglicherweise aktiv wurde oder ihr Zustand nicht beweisbar ist | `zero` | `unproven` |
+| Intent erzeugt, Sendestatus nicht belegbar | `unknown` | `unproven` |
+| exakt ein gültiger Sende-Ack | `one` | `match` |
+| mindestens zwei bestätigte Sende-Acks | `multiple` | `mismatch` |
+
+`observedCountClass: zero` allein bestimmt kein Ergebnis;
+Antwortdubletten zählen niemals als zusätzlicher Send-Ack.
+Bestätigte protokollspezifische Verstöße behalten ihre sticky-`V`- und
+Cleanupfolgen.
+
+### Partielle Target-/Session-/Networkmatrix
+
+Die Ressourcenableitung schließt nicht aus einer fehlenden Session-ID auf eine
+geschlossene Session:
+
+| Setup-/Cleanupzustand | Closecheck und Folgeoperation |
+| --- | --- |
+| `Target.attachToTarget` sicher nie gesendet | `targetSessionClosed = confirmed`; `Target.detachFromTarget` nicht senden; Detach-Operation `zero/match` |
+| Attach möglicherweise oder bestätigt gesendet, aber keine Session-ID sicher bindbar | `targetSessionClosed = unproven`; keine Session-ID erfinden; keinen Detach senden; Detach-Operation `zero/unproven` |
+| Session sicher gebunden und korrelierter exakter Detach-Erfolg | `targetSessionClosed = confirmed`; Detach-Sendcount aus der Operationsmatrix |
+| Session sicher gebunden, Detach nicht sicher erfolgreich | bestehende `failed\|unproven\|cleanupViolation`-Regeln aus ADR 0033 |
+| `Network.enable` sicher nie gesendet | `networkDomainClosed = confirmed`; `Network.disable` nicht senden; Disable-Operation `zero/match` |
+| Enable möglicherweise oder bestätigt gesendet, aber nicht sicher deaktivierbar | `networkDomainClosed = unproven`; falls kein Disable möglich, Disable-Operation `zero/unproven`; bei Intent ohne belegbaren Sendestatus `unknown/unproven` |
+| korrelierter exakter Disable-Erfolg | `networkDomainClosed = confirmed`; Disable-Sendcount aus der Operationsmatrix |
+
+Keines der folgenden Ereignisse beweist jemals
+`targetSessionClosed = confirmed`: Attach-Sendeintent mit fehlendem
+oder unbekanntem Send-Ack; beobachtete Attach-Senderejection; malformed oder
+unobservables Attach-Send-Settlement; bestätigter Attach-Send ohne bindbare
+korrelierte Erfolgsantwort; fehlende, malformed, doppelte oder
+unkorrelierbare Attach-Antwort; Connection-Close ohne korrelierten
+Detach-Erfolg. Symmetrisch kann ein möglicherweise oder bestätigt gesendetes
+Enable ohne korrelierten Disable-Erfolg keine geschlossene Networkdomain
+beweisen. Bei sicher gebundener Session und sicher nie gesendetem Enable
+wird kein Disable erzeugt, Detach aber nach der Sessionmatrix versucht.
+
+### 17-zeilige Integritymatrix
+
+Jeder Check besitzt genau `confirmed|violated|unproven`. Die Spalte
+Foundation-v1 beschreibt ausschließlich die Reichweite der reinen Foundation;
+ein späterer Adapter darf nur identitätsgebundene eigene Fakten ergänzen.
+
+| `checkId` | `confirmed` genau wenn | `violated` genau wenn | `unproven` genau wenn | Foundation-v1-Reichweite |
+| --- | --- | --- | --- | --- |
+| `sourceUnmodified` | später gebundene Checkoutbytes, Commit-Blobs und Foundationdigest stimmen exakt | dieselbe gebundene Quelle weicht ab | keine solche Provenienzbindung vorliegt | nur `unproven`; Callerhash-Mismatch ist Replay-, kein Sourcebeweis; `violated` produktiv unerreichbar |
+| `instrumentedSourceCopyAbsent` | gebundene Adapter-/Residueinventur schließt jede Laufzeitkopie aus | dieselbe Inventur weist eine verwendete instrumentierte Kopie nach | Inventur oder Bindung fehlt | nur `unproven`; `violated` produktiv unerreichbar |
+| `compositionSeamsAbsent` | gebundene Evaluation-, Command- und Capabilityledger schließen Zusatzseams aus | ein gebundener Ledger weist einen Zusatzseam nach | Ledgerprovenienz fehlt | nur `unproven`; fremde positive Portdaten reichen nicht, `violated` produktiv unerreichbar |
+| `protocolAllowlistOnly` | jeder foundationeigene Intent und Command gehört vollständig zur geschlossenen Allowlist | der controllerlokale Ledger enthielte einen nicht allowlisteten eigenen Intent oder Command | der eigene Ledger vor Projection nicht total ist | bei `ok:true` `confirmed` by construction; ein interner Konstruktionsverstoß endet statisch, daher ist ausgegebenes `violated` produktiv unerreichbar |
+| `runtimeSurfaceMutationAbsent` | spätere authentisch gebundene Evaluationbytes und Runtimeledger Mutationsfreiheit bestätigen | dieselbe authentische Bindung eine Observermutation belegt | Actual-Send-, Ausführungs- oder Aktionsprovenienz fehlt | ausschließlich `unproven`; ein produktiver Foundation-Gegenpfad existiert nicht |
+| `fetchInterceptionAbsent` | spätere authentische Runtime-, Operations- und Adapterledger Interception ausschließen | derselbe authentische Ledger Observer-Interception belegt | authentische Vollständigkeit fehlt | ausschließlich `unproven`; `violated` ist ohne Adapter produktiv unerreichbar |
+| `debuggerBreakpointsAndSteppingAbsent` | ein späterer vollständiger authentischer CDP-/Adapterledger die Abwesenheit der Debuggerdomain, Breakpoints und Stepping belegt | derselbe Ledger eine solche Operation belegt | nur der geschlossene Foundationledger ohne Vollständigkeit der realen Verbindung vorliegt | ausschließlich `unproven`; eine Debuggeroperation ist über den Foundationport nicht erzeugbar |
+| `profilerAndTracingAbsent` | ein späterer vollständiger authentischer CDP-/Adapterledger Profiler und Tracing ausschließt | derselbe Ledger eine solche Operation belegt | reale Verbindungsvollständigkeit fehlt | ausschließlich `unproven`; der Gegenpfad ist produktiv unerreichbar |
+| `responseBodyReadAbsent` | ein späterer authentischer Command- und Feldzugriffsledger Bodykommando und Bodylesen vollständig ausschließt | derselbe Ledger einen Bodyread belegt | Parser-, Pipe- oder Adaptervollständigkeit fehlt | ausschließlich `unproven`; zusätzliche Hüllenfelder beweisen kein Lesen |
+| `freeRawInspectionAbsent` | ein späterer authentischer Parser-, Pipe-, Queue- und Descriptorledger vollständig nur allowlistete Reads belegt | derselbe Ledger freie Rohinspektion belegt | die Foundation nur ihre eigenen Descriptorreads, nicht den vorgelagerten Rohpfad kennt | ausschließlich `unproven`; Proxy- oder Hüllendaten dürfen nicht bestätigen oder verletzen |
+| `additionalNativeFetchAbsent` | spätere authentische Main-World- und Requestownership-Ledger exakt den erlaubten Transportpfad und keinen Zusatzfetch belegen | dieselben Ledger einen zusätzlichen nativen Fetch belegen | Main-World-v2-Counts oder Networkdaten ohne authentische Ownership vorliegen | ausschließlich `unproven`; ein zweiter Endpointrequest ist Budgetgegenpfad, aber ohne Ownership kein `violated` dieses Checks |
+| `observerProductEndpointRequestAbsent` | spätere authentische Requestownership und vollständiges Endpointbudget keinen Observerrequest belegen | dieselben Quellen mindestens einen observereigenen Produktendpointrequest belegen | Requestownership oder Vollständigkeit fehlt | ausschließlich `unproven`; Foundation-Networkdaten allein authentifizieren Ownership nicht |
+| `rawPersistenceAbsent` | gebundene Capability-, Output- und Residueledger schließen Persistenz aus | gebundene Residueinventur weist Rohpersistenz nach | Residuebindung fehlt | nur `unproven`; `violated` produktiv unerreichbar |
+| `observerDiagnosticDuringRunOutputAbsent` | gebundener vollständiger Outputledger schließt Ausgabe bis zum Endrecord aus | eindeutig attribuierte Diagnoseausgabe während des Laufs wird beobachtet | Vollständigkeit oder Bindung fehlt | nur `unproven`; `violated` produktiv unerreichbar |
+| `closedPrimitiveProjectionConfirmed` | die erfolgreiche Projection frisch, referenzfrei, geschlossen und auf allen foundationeigenen Own-Data-Kanten tief eingefroren ist | eine fehlerhafte Projection materialisiert würde | Selbstprüfung nicht abschließbar ist | bei `ok:true` `confirmed` by construction; sonst statischer Foundationfehler, daher ist ausgegebenes `violated` produktiv unerreichbar |
+| `singleTargetAndSessionConfirmed` | spätere Adapterprovenienz genau ein Target und genau eine flache gebundene Session bestätigt | ein bereits definierter eindeutig beobachteter Mehrfach-/Widerspruchspfad vorliegt | nur positive Portdaten oder unvollständige Attribution vorliegen | positiv nur `unproven`; bestehender klarer Mehrfach-/Widerspruchspfad `violated` |
+| `singleMainWorldEvaluationConfirmed` | spätere Adapterprovenienz genau einen Send und eine korrelierte Antwort bestätigt | ein bereits definierter eindeutig korrelierter Mehrfach-/Widerspruchspfad vorliegt | nur positive Portdaten oder unvollständige Attribution vorliegen | positiv nur `unproven`; bestehender Mehrfach-/Widerspruchspfad `violated` |
+
+`interferenceObservation` ergibt `contract-visible-detected` bei mindestens
+einem relevanten `violated`, `none-contract-visible-detected` nur bei allen
+relevanten `confirmed` und keinem `violated`, sonst `unknown`. Diese
+Ableitung darf einen gewöhnlichen `U`-Pfad nicht zu `FAIL` umklassifizieren.
+
+### Zehnzeilige Stagetotalisierung
+
+Allgemein ergibt genau eine gültige eindeutig attribuierte Beobachtung
+`observed`, kein bis `O0` akzeptierter Kandidat
+`not-observed/unproven/null/unavailable`, mehrere oder widersprüchliche
+Kandidaten `ambiguous/unproven/null/unavailable` und genau ein eindeutig
+attribuierter bekannter Gegenwert `observed/mismatch`.
+`receiptOrder` wird nur für `observed` je Layer lückenlos vergeben; Timing
+stammt nur aus einem gültigen ebenenlokalen Sample. Eine gültige Order kann
+fehlendes Timing nicht ersetzen.
+
+| Stage | einzige Quelle | `observed/match` | `observed/mismatch` | `not-observed` | `ambiguous` |
+| --- | --- | --- | --- | --- | --- |
+| 1 `observer-armed` | lokaler Übergang nach positivem Setupcap-Arm und vor `attemptStarted` | auf jeder `ok:true`-Projection Order 1 und `0/measured` | produktiv unerreichbar; fehlerhafter Übergang ergibt den statischen Foundationfehler | produktiv bei `ok:true` unerreichbar | produktiv bei `ok:true` unerreichbar |
+| 2 `transport-call-dispatched` | `execution.transportCallCount` eines genau einmal akzeptierten Main-World-v2-Werts | exakt `one`; `0/measured` nur, wenn das akzeptierte Settlement desselben v2-Werts einen gültigen Main-World-Startsample belegt, sonst `null/unavailable` | exakt `zero` als eindeutig bekannter Gegenwert, mit `null/unavailable` | kein akzeptierter v2-Wert oder kein akzeptierter Ausführungswert bis `O0` | mindestens zwei korrelierbare Replies oder widersprüchliche akzeptable Ausführungswerte |
+| 3 `preflight-request-observed` | erster eindeutig attribuierter Produkt-`Network.requestWillBeSent` | exakte Endpoint-URL und Methode `OPTIONS`; als erster eindeutiger Produktrequest `0/measured` | eindeutig attribuierter erster Produktrequest mit anderer URL oder Methode | kein akzeptierter Kandidat bis `O0` | mehrere oder widersprüchliche Kandidaten für den ersten Produktrequest |
+| 4 `preflight-204-observed` | `Network.responseReceived` für exakt die gebundene Stage-3-Request-ID | exakte Endpoint-URL und ganzzahliger Status `204` | andere URL oder anderer endlicher nichtnegativer Integerstatus | keine akzeptierte korrelierte Response bis `O0` | mehrere oder widersprüchliche korrelierbare Responses |
+| 5 `post-request-observed` | nächster vom Preflight verschiedener eindeutig attribuierter Produkt-`Network.requestWillBeSent` | exakte Endpoint-URL und Methode `POST` | eindeutig attribuierter zweiter Produktrequest mit anderer URL oder Methode | kein akzeptierter zweiter Kandidat bis `O0` | mehrere oder widersprüchliche Kandidaten für diesen Slot |
+| 6 `post-response-200-observed` | `Network.responseReceived` für exakt die gebundene Stage-5-Request-ID | exakte Endpoint-URL und ganzzahliger Status `200` | andere URL oder anderer endlicher nichtnegativer Integerstatus | keine akzeptierte korrelierte Response bis `O0` | mehrere oder widersprüchliche korrelierbare Responses |
+| 7 `post-loading-finished / post-loading-failed / post-loading-terminal` | Terminalereignis für exakt die Stage-5-Request-ID | genau ein `Network.loadingFinished` ergibt `post-loading-finished/observed/match` | genau ein `Network.loadingFailed` ergibt `post-loading-failed/observed/mismatch` | kein Terminalereignis ergibt `post-loading-terminal/not-observed/unproven` | beide Varianten oder mindestens zwei korrelierte Terminalkandidaten ergeben `post-loading-terminal/ambiguous/unproven` |
+| 8 `public-promise-settled` | Settlement eines genau einmal akzeptierten Main-World-v2-Werts | genau ein Pair `static-redacted-rejection/match`; Timing nur aus dessen Main-World-Dauer | genau ein Pair `fulfilled/not-applicable` oder `other-rejection/mismatch` als bekannter Gegenwert zur historischen Reproduktion | `settlement: null`, kein akzeptierter v2-Wert oder kein Settlement bis `O0` | mindestens zwei korrelierbare oder widersprüchliche Settlementkandidaten |
+| 9 `cleanup-started` | lokale Anlage von Ledger und Stage nach tief eingefrorenem `O0` | auf jeder `ok:true`-Projection Cleanup-Order 1; bei gültigem `m_cleanup` `0/measured`, sonst `null/unavailable` | produktiv unerreichbar; nicht herstellbare lokale Anlage ergibt den statischen Foundationfehler | produktiv bei `ok:true` unerreichbar | produktiv bei `ok:true` unerreichbar |
+| 10 `cleanup-completed` | ausschließlich terminale ADR-0033-Cleanupfinalisierung | Checks 1..19 terminal, Cleanupcap exakt storniert und gültiger Completion-Sample ergeben `observed/match` unabhängig von einzelnen terminalen `failed\|unproven`-Checks | irreversibler Cleanup-Controlfehler, ungültiger Completion-Sample, portlose Terminalisierung oder terminal fehlgeschlagener Abschluss ergeben `observed/mismatch` | Gewinn der Cleanupdeadline ergibt `not-observed/unproven` | produktiv unerreichbar; ein interner Mehrfach-/Widerspruchszustand ist ein irreversibler Cleanup-Controlfehler und damit `observed/mismatch` |
+
+Stages 3 bis 7 verwenden ausschließlich Networkereignisse; Stage 8
+ausschließlich Main-World-Settlement. Networkdaten dürfen Stage 2 oder 8
+nicht ersetzen.
+
+### Cleanupabschlussprädikate
+
+Bei jeder erfolgreichen `ok:true`-Projection werden diese fünf rein
+foundationeigenen Checks nach lokalem Abschluss `confirmed`:
+
+| Check | Abschlussprädikat |
+| --- | --- |
+| `cleanupStarted` | `O0` ist tief eingefroren; Cleanup-Ledger und Stage 9 sind lokal angelegt |
+| `controllerObservationClosed` | `O0` wurde vor jedem Cleanupwert irreversibel erstellt und keine Observation kann ihn danach verändern |
+| `objectGroupsAbsentOrReleased` | es wurde kein Object-Group-Intent erzeugt, und jeder foundationeigene Object-Group-Zustand ist geschlossen; Handle und Object-Group-Operation bleiben verboten |
+| `rawEventsDiscarded` | alle gehaltenen Dequeue-, Ack-, offenen Hüllen-, Own-Key-, Descriptor- und transienten Nachfahrreferenzen wurden verworfen |
+| `ephemeralIdentifiersDiscarded` | Target-, Session-, Request-, Command-, Cap- und Intentbindungen wurden vor Projectionmaterialisierung aus allen erreichbaren Outputs entfernt |
+
+Kann ein foundationeigener Abschluss nicht hergestellt werden, entsteht der
+statische Foundationfehler und keine `ok:true`-Projection. Für
+alle externen Cleanupfacts bleibt `false -> failed` und `true -> unproven`.
+Check 20, Cleanupresultat und die drei Finalisierungsgründe bleiben
+unverändert. `settlement-unobservable` schließt den Port weiterhin und
+verbietet jeden Folge-Exchange.
+
+### Candidate-PASS- und Testbarkeitsgrenze
+
+Über die unveränderte öffentliche Foundation-API sind im Foundationslice
+`candidateObserverGate: PASS` und alle PASS-spezifischen Findings konstruktiv
+unerreichbar. Öffentliche Foundationresultate können daher nur
+`FAIL/observer-invalid` oder `UNPROVEN/inconclusive` enthalten. Die private
+reine Gate-/Findingableitung enthält dennoch die FAIL-Präzedenz, die
+UNPROVEN-Präzedenz, `DIVERGED`, alle drei hypothetischen PASS-Findings
+`static-rejection-reproduced-after-http200`,
+`original-failure-not-reproduced`, `network-signature-diverged` und den
+PASS-Fallback `inconclusive`.
+
+Der spätere Implementierungsslice darf diese privaten reinen Funktionen nur
+so testen:
+
+1. exakte Produktionsquellbytes in ein betriebssystemseitiges
+   Temporärverzeichnis kopieren;
+2. an einem exakt einmal passenden lexikalischen Anker ausschließlich
+   testlokale Exports der privaten reinen Gate-/Findingfunktionen ergänzen;
+3. Funktionskörper, Konstanten, Inputs und produktive Call-Sites unverändert
+   lassen;
+4. nur die temporäre Kopie seriell importieren;
+5. die vollständige Wahrheitstabelle prüfen;
+6. die Kopie im `finally` entfernen und die Entfernung bestätigen.
+
+Permanenter `__test`-Export, Environment-/Debugschalter, weitere Produktdatei,
+bedingter Export, manipulierte öffentliche PASS-Projection und Nutzung als
+Runtimeevidenz bleiben verboten. Kopie und Resultate bleiben stets
+`NOT_EVIDENCE`; die unveränderte Original-API muss black-box nachweisen,
+dass PASS und PASS-Findings unerreichbar bleiben.
+
+Die späteren Pflichttests müssen getrennt Attach sicher nie gesendet,
+Attach-Intent mit unbekanntem Sendestatus, beobachtete Attach-Senderejection,
+exakten Attach-Sende-Ack ohne Antwort, malformed, doppelte und
+unkorrelierbare Attach-Antwort, gebundene Session mit korreliertem
+Detach-Erfolg, gebundene Session mit Detachfehler, Connection-Close ohne
+Detach-Erfolg sowie `zero/match` gegen `zero/unproven` abdecken. Kein Fall
+darf aus einer fehlenden Session-ID auf eine geschlossene Session schließen.
+Dieselbe epistemische Trennung wird symmetrisch für Enable und Disable geprüft.
+
+### Netzwerk-/Regressionsgrenze
+
+`vollständig netzwerkfrei` bezeichnet ausschließlich das neue Foundationmodul,
+dessen neue fokussierte Tests und Effects sowie jeden Diagnoselauf dieses
+Slices. Die unveränderte vollständige Repositoryregression darf
+allein ihre zwei bereits bestehenden kurzlebigen Loopback-Fixtures ausführen:
+
+```text
+tests/localSyncGatewayHttpServer.test.js
+tests/n8nCloudIngressProbe.test.js
+```
+
+Die Ausnahme erlaubt keine neue Foundation-Netzwerkfixture, keine Änderung
+dieser Dateien, keine Foundationtest-Abhängigkeit davon, keine externe
+Verbindung oder DNS-Auflösung, keinen manuellen Listener, Browser-, CDP-,
+Vite- oder Diagnoseprozess und keinen neuen Childprozess außerhalb der
+bestehenden Fixtures. Die bestehenden Cleanup- und
+Portfreigabeprüfungen müssen bestehen. Ein späterer Bericht darf deshalb
+nur festhalten: Kein neues, externes oder diagnostisches Netzwerk; nur die
+zwei unveränderten etablierten Loopback-Regressionsfixtures liefen durch die
+vorgeschriebenen bestehenden Suites.
+
 <a id="browser-transport-diagnostic-record--adr-0030"></a>
 
 ## Historischer Browser Transport Diagnostic Record / ADR 0032
@@ -6462,8 +6839,8 @@ gelieferter Provenienzboolean bleibt verboten.
 
 Die Reihenfolge bleibt:
 
-1. Die pure netzwerkfreie Effects-as-Data-Foundation in einem getrennten Slice
-   implementieren und testen.
+1. Die pure netzwerkfreie Effects-as-Data-Foundation
+   in einem getrennten Slice implementieren und testen.
 2. Raw-Pipe-, Parser-, Queue-, Ressourcen-, Cap-/Timer-, Adapter-, Launcher-
    und Hashbindung in einem eigenen ADR entscheiden und anschließend
    netzwerkfrei implementieren.
@@ -7225,10 +7602,11 @@ besitzt ihr netzwerkfreies `PASS`. ADR 0029 definiert das an `T₀` und die
 allowlisteten Negativdeltas gebundene Runtimegate. Sein einmaliger Chrome-151-
 Lauf bleibt mit Gesamt-`FAIL`, PNA/LNA und den nicht ausgeführten
 Negativvektoren `UNPROVEN` sowie Cleanup `PASS` dokumentiert; die Ursache ist
-`CAUSE_NOT_PROVEN`. ADR 0033 ersetzt ADR 0032 formal und übernimmt dessen nicht
-ausdrücklich korrigierte Regeln; ADR 0032 bleibt als historische
-Entscheidungsebene erhalten. Die Diagnosefoundation ist weiterhin nicht
-implementiert; nächster Slice ist ausschließlich ihre getrennte netzwerkfreie
+`CAUSE_NOT_PROVEN`. ADR 0034 ersetzt ADR 0033 formal und übernimmt alle nicht
+ausdrücklich korrigierten ADR-0033-/ADR-0032-Regeln; ADR 0033 bleibt mit
+bytegleichem Hauptteil und ADR 0032 als historische Entscheidungsebenen
+erhalten. Die Diagnosefoundation ist weiterhin nicht implementiert; ihr
+nächster Slice ist ausschließlich die getrennte netzwerkfreie
 Effects-as-Data-Implementierung. Adapter-ADR, Adapterimplementierung und
 Runtimevorgang bleiben nachgelagert und nicht autorisiert. Zielbrowser,
 `T_replay`, Observer, der einzelne Request, Benutzerinteraktion und Cleanup
@@ -10837,10 +11215,11 @@ Kopierprüfung. ADR 0029 operationalisiert den dafür erforderlichen
 Evidence-Record; sein Entscheidungsslice selbst führte keinen Runtimevorgang
 aus. Der danach einmalig autorisierte Chrome-151-Lauf ist mit Gesamt-`FAIL`,
 PNA/LNA und Negativvektoren `UNPROVEN` sowie Cleanup `PASS` dokumentiert; die
-Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0033 ersetzt ADR 0032 formal und
-übernimmt dessen nicht ausdrücklich korrigierte Regeln; ADR 0032 bleibt als
-historische Entscheidungsebene erhalten. Die Diagnosefoundation ist weiterhin
-nicht implementiert; als Nächstes folgt ausschließlich ihre getrennte,
+Ursache bleibt `CAUSE_NOT_PROVEN`. ADR 0034 ersetzt ADR 0033 formal und
+übernimmt alle nicht ausdrücklich korrigierten ADR-0033-/ADR-0032-Regeln; ADR
+0033 bleibt mit bytegleichem Hauptteil und ADR 0032 als historische
+Entscheidungsebenen erhalten. Die Diagnosefoundation ist weiterhin nicht
+implementiert; ihr nächster Slice ist ausschließlich die getrennte
 netzwerkfreie Effects-as-Data-Implementierung. Adapter-ADR,
 Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und
 nicht autorisiert. Produktive SyncService-/`src/main.js`-

@@ -40,28 +40,73 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 | [0030](0030-browser-sync-transport-runtime-diagnostic-observer-boundary.md) | BrowserSyncTransport Runtime Diagnostic Observer Boundary | Ersetzt |
 | [0031](0031-browser-sync-transport-diagnostic-envelope-and-observation-completion-boundary.md) | BrowserSyncTransport Diagnostic Envelope and Observation Completion Boundary | Ersetzt |
 | [0032](0032-browser-sync-transport-diagnostic-determinism-boundary.md) | BrowserSyncTransport Diagnostic Capture, Timing and Projection Determinism Boundary | Ersetzt |
-| [0033](0033-browser-sync-transport-diagnostic-foundation-effects-protocol-boundary.md) | BrowserSyncTransport Diagnostic Foundation Effects Protocol Boundary | Angenommen |
+| [0033](0033-browser-sync-transport-diagnostic-foundation-effects-protocol-boundary.md) | BrowserSyncTransport Diagnostic Foundation Effects Protocol Boundary | Ersetzt |
+| [0034](0034-browser-sync-transport-diagnostic-foundation-grammar-derivation-and-testability-boundary.md) | BrowserSyncTransport Diagnostic Foundation Grammar, Derivation and Testability Boundary | Angenommen |
 
-ADR 0033 ist am `2026-09-03` angenommen, ersetzt ADR 0032 formal und übernimmt
-alle nicht ausdrücklich korrigierten Regeln. ADR 0032 bleibt mit bytegleichem
+ADR 0034 ist am `2026-09-04` angenommen und ersetzt ADR 0033 formal. Alle
+nicht ausdrücklich korrigierten Regeln aus ADR 0033 und ADR 0032 gelten fort;
+ADR 0033 bleibt mit bytegleichem Hauptteil ab `## Kontext` historische
+Entscheidungsebene.
+ADR 0034 ersetzt keinen weiteren ADR. Prototyp-, ASCII-, Zeitzonen- und
+Core-SemVer-Grammatiken sowie I1–I8-, Replay-, Observerfeld-, Operation-,
+Integrity-, Stage-, Hash- und Cleanupableitungen sind geschlossen und
+totalisiert.
+
+Die einzige öffentliche API, `schemaVersion: 1` und alle Kardinalitäten bleiben
+unverändert: 17 `FoundationProjection`-Rootfelder, 59 Replayvergleiche, sieben
+Effects-Intents, sechs Protocol Operations, 17 Integrity Checks, zehn Stages,
+zehn Capzustände, 20 Cleanupchecks und ein öffentlicher Export. Ein fehlender
+Intent ergibt nur bei sicher nie aktivierter Ressource `zero/match`, sonst
+`zero/unproven`; ein Intent ohne belegbaren Sendestatus ergibt
+`unknown/unproven`, ein gültiger Sende-Ack `one/match` und mindestens zwei
+bestätigte Sende-Acks `multiple/mismatch`. Insbesondere beweist eine fehlende
+Session-ID nach möglicherweise oder bestätigt gesendetem Attach keine
+geschlossene Session; auch Connection-Close ohne korrelierten Detach-Erfolg ist
+kein Closure-Beweis. Diese sendzustandsabhängige Trennung gilt symmetrisch für
+Attach/Detach und Network.enable/Network.disable.
+
+`candidateObserverGate: PASS` und PASS-spezifische Findings bleiben über die
+öffentliche Foundation-API konstruktiv unerreichbar; öffentliche
+Foundationresultate können nur `FAIL/observer-invalid` oder
+`UNPROVEN/inconclusive` enthalten. Private hypothetische PASS-Ableitungen dürfen
+im späteren Implementierungsslice ausschließlich über die beschlossene
+temporäre Kopie der exakten Produktionsquellbytes geprüft werden. Ein exakt
+einmal passender lexikalischer Anker darf nur testlokale Exports ergänzen; die
+Kopie wird seriell importiert, im `finally` entfernt und ihre Entfernung
+bestätigt. Sie bleibt `NOT_EVIDENCE`; die öffentliche Original-API muss die
+PASS-Unerreichbarkeit zusätzlich black-box belegen. Das Foundationmodul ist
+weiterhin nicht implementiert. Der nächste Slice ist ausschließlich seine
+getrennte vollständig netzwerkfreie Effects-as-Data-Foundationimplementierung;
+eigener Adapter-ADR, getrennte Adapterimplementierung und sichtbarer
+Diagnoselauf bleiben nachgelagert. ADR 0029, sein Evidence-Record,
+`overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert.
+
+ADR 0033 wurde am `2026-09-03` angenommen, ersetzte ADR 0032 formal und ist am
+`2026-09-04` durch ADR 0034 ersetzt worden. Sein bytegleicher Hauptteil ab
+`## Kontext` bleibt historische Entscheidungsebene; seine durch ADR 0034 nicht
+ausdrücklich korrigierten Regeln gelten fort. ADR 0032 bleibt mit bytegleichem
 Hauptteil ab `## Kontext` als historische Entscheidungsebene erhalten. Der
 unabhängige Daybreak-Blue-Abschlussreview des tatsächlichen vollständigen
 Working-Tree-Diffs endete mit `PASS – keine Findings`; sämtliche Nach-PASS-
-Prüfungen bestanden. Die Annahme implementiert weder Foundation noch Tests und
-autorisiert weder Adapter noch Runtimevorgang. Als Nächstes folgt
-ausschließlich der getrennte vollständig netzwerkfreie Effects-as-Data-
-Foundationimplementierungsslice; danach bleiben eigener Adapter-ADR,
-getrennte Adapterimplementierung und sichtbarer Lauf separat zu entscheiden
-beziehungsweise zu autorisieren.
+Prüfungen bestanden. Die damalige Annahme implementierte weder Foundation noch
+Tests und autorisierte weder Adapter noch Runtimevorgang. Im damaligen
+ADR-0033-Stand sollte als Nächstes der getrennte vollständig netzwerkfreie
+Effects-as-Data-Foundationimplementierungsslice folgen. Nach der Annahme von
+ADR 0034 ist dieser Foundationimplementierungsslice nun der nächste Schritt.
+Eigener
+Adapter-ADR, getrennte Adapterimplementierung und sichtbarer Lauf bleiben bis
+zu ihrer jeweiligen späteren Entscheidung beziehungsweise Autorisierung
+geschlossen.
 
-Factoryfehler des angenommenen ADR-0033-Modells sind ausschließlich synchrone
-statische Dependency-`TypeError`s ohne API, Promise oder Result; `runBinding`
+Factoryfehler des durch ADR 0034 fortgeltenden ADR-0033-Modells sind
+ausschließlich synchrone statische Dependency-`TypeError`s ohne API, Promise
+oder Result; `runBinding`
 wird vollständig in der Factory kopiert. Nach erfolgreicher Factory liefert
 jeder kontrollierte Runpfad ein lokales Promise ohne synchronen Throw. Nur der
 erste Owner erhält den Capabilitytransfer; falsche Erst-Arity terminalisiert
 ohne Effekt, Zweit-, Parallel- und Reentranzaufrufe bleiben inert.
 
-Das angenommene ADR-0033-Modell bindet das
+Das durch ADR 0034 fortgeltende ADR-0033-Modell bindet das
 `currently-observable-local-native-promise-profile` samt offenem
 hostabhängigem Rejectionrest, die Lease `idle | observable-pending |
 settlement-unobservable | closed` und den unterdrückenden Pending-Join. Erst
