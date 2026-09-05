@@ -41,13 +41,89 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 | [0031](0031-browser-sync-transport-diagnostic-envelope-and-observation-completion-boundary.md) | BrowserSyncTransport Diagnostic Envelope and Observation Completion Boundary | Ersetzt |
 | [0032](0032-browser-sync-transport-diagnostic-determinism-boundary.md) | BrowserSyncTransport Diagnostic Capture, Timing and Projection Determinism Boundary | Ersetzt |
 | [0033](0033-browser-sync-transport-diagnostic-foundation-effects-protocol-boundary.md) | BrowserSyncTransport Diagnostic Foundation Effects Protocol Boundary | Ersetzt |
-| [0034](0034-browser-sync-transport-diagnostic-foundation-grammar-derivation-and-testability-boundary.md) | BrowserSyncTransport Diagnostic Foundation Grammar, Derivation and Testability Boundary | Angenommen |
+| [0034](0034-browser-sync-transport-diagnostic-foundation-grammar-derivation-and-testability-boundary.md) | BrowserSyncTransport Diagnostic Foundation Grammar, Derivation and Testability Boundary | Ersetzt |
+| [0035](0035-browser-sync-transport-diagnostic-foundation-join-and-internal-transition-testability-boundary.md) | BrowserSyncTransport Diagnostic Foundation Join and Internal Transition Testability Boundary | Angenommen |
 
-ADR 0034 ist am `2026-09-04` angenommen und ersetzt ADR 0033 formal. Alle
+ADR 0035 ist am `2026-09-05` angenommen, ersetzt ADR 0034 formal und keinen
+weiteren ADR. ADR 0034 bleibt mit bytegleichem Hauptteil ab `## Kontext` als
+historische Entscheidungsebene erhalten. Sämtliche durch ADR 0035 nicht
+ausdrücklich korrigierten Regeln aus ADR 0034, ADR 0033 und ADR 0032 gelten
+fort.
+
+ADR 0035 adressiert den verbliebenen Testbarkeitswiderspruch des privaten
+Pending-Joins mit der geschlossenen Testkopie v2. Genau eine zusätzliche
+Exportdeklaration der bytegenauen, eindeutig benannten temporären `.mjs`-Kopie
+öffnet nur die reinen Arity-1-Ableitungen `deriveCandidateObserverGate` und
+`deriveCandidateFinding`, den produktiv verwendeten zustandsbehafteten
+Arity-1-Konstruktor
+`createBrowserSyncTransportRuntimeDiagnosticRunMachine` und die
+zustandsbehaftete Arity-2-Grenze
+`requestBrowserSyncTransportRuntimeDiagnosticExchange`, durch die alle sieben
+Intents laufen. Damit prüft dieselbe Run-Machine ihre aktive Lease ohne
+fünften Inspector-, Debug- oder Produktionsseam. Bei
+`lease: observable-pending` stoppt die Grenze den zweiten internen Exchange vor
+jeder Intent-, ID-, Count-, Ledger-, Cap-, Snapshot-, Cleanup-, Port- oder
+Capabilitymutation beziehungsweise -anwendung. Originalmodul und öffentliche
+API behalten exakt einen Export; die Kopie wird seriell über ihre kanonische
+`file:`-URL importiert. Kopien und Ergebnisse bleiben `NOT_EVIDENCE` und
+werden im `finally` entfernt.
+
+Die spätere dynamische Matrix prüft `prestart`, `observation` und `cleanup`
+jeweils gegen genau einen ausstehenden Exchange. Delta-Assertions belegen null
+zusätzliche Intents, IDs, Port-, Send- und Capabilityaufrufe; nur
+`pendingInternalExchangeViolation` erhält die Phase. Der finite Teil umfasst
+exakt 18 Fälle: drei Maschinenphasen mal `fulfillment|rejection` mal
+`pre-invocation|synchronous-post-invocation|observable-pending`. Ein bereits
+vor dem Capabilityaufruf gesetteltes, unmittelbar nach dem ersten Rücksprung
+gesetteltes oder bis nach dem zweiten Aufruf pending gehaltenes Promise wird
+jeweils ohne Yield synchron vor Handlerzutritt mit dem zweiten Boundaryaufruf
+verbunden; Settlement allein verändert die Lease nicht. Danach schließen die
+Handler Lease und Port ohne Lesen von Payload oder Grund und leiten die
+phasengenauen Prestart-, Observation- und Cleanupfolgen ab. Das davon getrennte
+Forever-pending wird ausschließlich aus einer endlichen Präfixprobe mit exakt drei
+Microtask-Checkpoints und einer vollständigen Transitionstabelle geschlossen;
+das ist kein empirischer Unendlichkeitsbeweis und verwendet weder Uhr, Timer,
+Timeout noch `Promise.race`. Getrennte kontrollierte Mutanten müssen unter
+anderem einen entfernten oder verspäteten Guard, zweite Port- oder
+Capabilityaufrufe, künstliches Settlement, vorzeitiges `O0` oder Cleanup,
+verlorene Phasenklassifikation und die Mutation des eingefrorenen `O0`
+aufdecken, ohne den Produktionssource zu verändern.
+
+Ebenfalls verbindlich für den späteren Implementierungsslice sind drei über
+den öffentlichen Effects-as-Data-Port prüfbare Regressionen: Die mit dem ersten
+Endpoint-Request initialisierte Network-Clock prüft über
+`lastValidBrowserNetworkTimestamp` vor jeder Stage-, Count-, Timing- oder
+Sequenzmutation Endlichkeit, Nichtnegativität, sichere Umrechnung und Monotonie,
+erlaubt Gleichheit und
+erkennt insbesondere `10 → 12 → 11`; `NaN`, `Infinity` und unsicherer
+Millisekundenüberlauf sind Pflichtfälle. Eine unkorrelierte Endpoint-Response
+bei gebundener Session und exakter URL lässt nach fehlender
+Request-ID-Korrelation keine unnötigen Status-, Timestamp-, Header- oder
+Bodylesevorgänge zu, erfindet weder Count noch ID und hält Attribution sowie
+`requestBudget.sequence` ohne künstliches `V` sticky `ambiguous`; eine spätere
+korrelierte Response heilt dies nicht. Eine wohlgeformte doppelte
+`Target.getTargets`-Antwort verändert weder den einzigen Send-Ack noch dessen
+Operationsergebnis `one/match`: vor Evaluate folgt
+`U/setup-terminal-unproven`, während Capture bleibt der Candidate bis `C`
+`UNPROVEN/inconclusive`; nur eine malformed routbare Dublette vor `O0` bleibt
+`V/FAIL/observer-invalid`.
+
+ADR 0035 implementiert oder autorisiert weder Foundation noch Tests, Adapter
+oder Runtimevorgang; neue Tests wurden nicht ergänzt. Der nächste Schritt ist
+ausschließlich die getrennte netzwerkfreie Effects-as-Data-
+Foundationimplementierung samt fokussierter Tests. Adapter-ADR,
+Adapterimplementierung und sichtbarer Diagnoselauf bleiben geschlossen und
+nachgelagert. ADR 0029, sein Evidence-Record, `overallGate: FAIL` und
+`causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert. Schema, öffentliche API
+und bestehende Kardinalitäten bleiben ebenfalls unverändert; öffentlich
+bleiben nur `FAIL/observer-invalid` und `UNPROVEN/inconclusive` erreichbar,
+Candidate-`PASS` und PASS-spezifische Findings unerreichbar.
+
+ADR 0034 wurde am `2026-09-04` angenommen und ersetzte ADR 0033 formal. Alle
 nicht ausdrücklich korrigierten Regeln aus ADR 0033 und ADR 0032 gelten fort;
 ADR 0033 bleibt mit bytegleichem Hauptteil ab `## Kontext` historische
 Entscheidungsebene.
-ADR 0034 ersetzt keinen weiteren ADR. Prototyp-, ASCII-, Zeitzonen- und
+ADR 0034 ersetzte keinen weiteren ADR. Prototyp-, ASCII-, Zeitzonen- und
 Core-SemVer-Grammatiken sowie I1–I8-, Replay-, Observerfeld-, Operation-,
 Integrity-, Stage-, Hash- und Cleanupableitungen sind geschlossen und
 totalisiert.
@@ -75,9 +151,12 @@ einmal passender lexikalischer Anker darf nur testlokale Exports ergänzen; die
 Kopie wird seriell importiert, im `finally` entfernt und ihre Entfernung
 bestätigt. Sie bleibt `NOT_EVIDENCE`; die öffentliche Original-API muss die
 PASS-Unerreichbarkeit zusätzlich black-box belegen. Das Foundationmodul ist
-weiterhin nicht implementiert. Der nächste Slice ist ausschließlich seine
-getrennte vollständig netzwerkfreie Effects-as-Data-Foundationimplementierung;
-eigener Adapter-ADR, getrennte Adapterimplementierung und sichtbarer
+weiterhin nicht implementiert. Im angenommenen ADR-0034-Stand sollte
+ausschließlich seine getrennte vollständig netzwerkfreie Effects-as-Data-
+Foundationimplementierung folgen; ADR 0035 hat zuvor die interne Join-
+Testbarkeit adressiert und ADR 0034 inzwischen formal ersetzt. ADR 0034 bleibt
+mit bytegleichem Hauptteil ab `## Kontext` historische Entscheidungsebene.
+Eigener Adapter-ADR, getrennte Adapterimplementierung und sichtbarer
 Diagnoselauf bleiben nachgelagert. ADR 0029, sein Evidence-Record,
 `overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert.
 
@@ -91,9 +170,10 @@ Working-Tree-Diffs endete mit `PASS – keine Findings`; sämtliche Nach-PASS-
 Prüfungen bestanden. Die damalige Annahme implementierte weder Foundation noch
 Tests und autorisierte weder Adapter noch Runtimevorgang. Im damaligen
 ADR-0033-Stand sollte als Nächstes der getrennte vollständig netzwerkfreie
-Effects-as-Data-Foundationimplementierungsslice folgen. Nach der Annahme von
-ADR 0034 ist dieser Foundationimplementierungsslice nun der nächste Schritt.
-Eigener
+Effects-as-Data-Foundationimplementierungsslice folgen. Auch im angenommenen
+ADR-0034-Stand war dieser Foundationimplementierungsslice der vorgesehene
+nächste Schritt; ADR 0035 hat zuvor die verbliebene Testbarkeitslücke
+adressiert und ADR 0034 inzwischen formal ersetzt. Eigener
 Adapter-ADR, getrennte Adapterimplementierung und sichtbarer Lauf bleiben bis
 zu ihrer jeweiligen späteren Entscheidung beziehungsweise Autorisierung
 geschlossen.

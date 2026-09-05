@@ -2,7 +2,7 @@
 
 ## Status
 
-Angenommen – 2026-09-04
+Ersetzt durch [ADR 0035](0035-browser-sync-transport-diagnostic-foundation-join-and-internal-transition-testability-boundary.md) – 2026-09-05
 
 ## Kontext
 
