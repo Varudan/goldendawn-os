@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0035 angenommen – 2026-09-05; ADR 0034 historische Ebene; gebundenes Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: getrennte netzwerkfreie Effects-as-Data-Foundationimplementierung samt fokussierter Tests` |
+| Projektphase | `v0.3.0 – ADR 0035 angenommen – 2026-09-05; ADR 0034 historische Ebene; Effects-as-Data-Foundation netzwerkfrei implementiert und mit 422/422 fokussierten Tests geprüft; gebundenes Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: getrennter Adapter-ADR` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,7 +21,7 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport und feste transportlokale v1-Wire-Policy implementiert; der einmalige Schema-1-Lauf `chrome-stable-win-01` bleibt mit `normalSyntheticTransport: FAIL`, `pnaLnaPermission: UNPROVEN`, nicht ausgeführten Negativvektoren und `cleanupRedaction: PASS` dokumentiert; `overallGate: FAIL`, Ursache `CAUSE_NOT_PROVEN`; ADR 0035 ist angenommen, ersetzt ADR 0034 formal und führt alle nicht ausdrücklich korrigierten ADR-0034-/ADR-0033-/ADR-0032-Regeln fort; ADR 0034 bleibt mit bytegleichem Hauptteil historische Entscheidungsebene; die Diagnosefoundation und ihre Tests sind nicht implementiert, der nächste Slice ist ausschließlich ihre getrennte netzwerkfreie Effects-as-Data-Implementierung samt fokussierter Tests; Adapter-ADR, Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und nicht autorisiert; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
+| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport, feste transportlokale v1-Wire-Policy und die getrennte netzwerkfreie Effects-as-Data-Diagnosefoundation implementiert; ihre fokussierte Suite besteht mit 422/422 Tests, die vollständige serielle Suite mit 2177/2177; der einmalige Schema-1-Lauf `chrome-stable-win-01` bleibt mit `normalSyntheticTransport: FAIL`, `pnaLnaPermission: UNPROVEN`, nicht ausgeführten Negativvektoren und `cleanupRedaction: PASS` dokumentiert; `overallGate: FAIL`, Ursache `CAUSE_NOT_PROVEN`; ADR 0035 ist angenommen, ersetzt ADR 0034 formal und führt alle nicht ausdrücklich korrigierten ADR-0034-/ADR-0033-/ADR-0032-Regeln fort; ADR 0034 bleibt mit bytegleichem Hauptteil historische Entscheidungsebene; der nächste Slice ist ausschließlich der getrennte Adapter-ADR; Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und nicht autorisiert; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
 | Letzte Aktualisierung | 2026-09-05 |
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
@@ -44,8 +44,9 @@ inzwischen isoliert implementierten Browser SyncTransport Contract sowie die
 mit ADR 0028 implementierte feste Validator-Integritätsgrenze, das durch ADR
 0029 entschiedene und mit Gesamt-`FAIL` ausgeführte Runtimegate sowie den durch
 ADR 0032 als formalen Ersatz für ADR 0031 davon getrennt totalisierten
-`BrowserTransportDiagnosticRecord` und die durch den angenommenen ADR 0033
-entschiedene, noch nicht implementierte Effects-as-Data-Foundationgrenze. ADR
+`BrowserTransportDiagnosticRecord` und die durch ADR 0035 korrigierte,
+inzwischen getrennt netzwerkfrei implementierte Effects-as-Data-
+Foundationgrenze. ADR
 0033 ersetzt ADR 0032 formal und übernimmt alle nicht ausdrücklich
 korrigierten Regeln; ADR 0032 bleibt als historische Entscheidungsebene
 erhalten. ADR 0028
@@ -3185,9 +3186,11 @@ ist `CAUSE_NOT_PROVEN`. ADR 0035 ist angenommen, ersetzt ADR 0034 formal und
 führt alle nicht ausdrücklich korrigierten ADR-0034-/ADR-0033-/ADR-0032-Regeln
 fort. ADR 0034 bleibt mit bytegleichem Hauptteil und zusammen mit ADR 0033 und
 ADR 0032 als historische Entscheidungsebene erhalten. Die Diagnosefoundation
-und ihre Tests sind weiterhin nicht implementiert. Ihr nächster Slice ist
-ausschließlich die getrennte netzwerkfreie Effects-as-Data-
-Foundationimplementierung samt fokussierter Tests; Adapter-ADR,
+und ihre 422/422 fokussierten Tests sind im getrennten netzwerkfreien Slice
+implementiert. Die unveränderten Regressionen bestehen mit 423/423, 466/466
+und 735/735 Tests; die vollständige serielle Suite mit 2177/2177. Build und
+n8n-Bundlecheck bleiben bei exakt 46 Modulen beziehungsweise driftfrei. Als
+Nächstes folgt ausschließlich der getrennte Adapter-ADR;
 Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und
 geschlossen.
 Browserkomposition und lokaler Browser-End-to-End-`syncTest` bleiben bis zu
@@ -3199,14 +3202,13 @@ einem späteren vollständig neuen ADR-0029-Gesamt-`PASS` geschlossen.
 ist durch ADR 0034 formal ersetzt. Er ersetzte ADR 0032 formal und übernahm
 dessen nicht ausdrücklich korrigierte Regeln; ADR 0033 bleibt mit bytegleichem
 Hauptteil und ADR 0032 als historische Entscheidungsebenen erhalten. Dieser
-Living Contract beschreibt den fortgeltenden Vertrag der späteren reinen,
-importinaktiven, netzwerkfreien Foundation; sie ist weiterhin nicht
-implementiert. ADR 0035 ist als enge Korrektur ihrer internen Join-Testbarkeit
+Living Contract beschreibt den fortgeltenden Vertrag der reinen,
+importinaktiven, netzwerkfreien Foundation; sie ist inzwischen getrennt
+implementiert und geprüft. ADR 0035 ist als enge Korrektur ihrer internen Join-Testbarkeit
 angenommen, ersetzt ADR 0034 formal und führt dessen nicht ausdrücklich
 korrigierte Regeln fort; ADR 0034 bleibt mit bytegleichem Hauptteil historische
-Entscheidungsebene. Als Nächstes folgt ausschließlich die getrennte
-netzwerkfreie Effects-as-Data-Foundationimplementierung samt fokussierter
-Tests. Adapter, Parser,
+Entscheidungsebene. Als Nächstes folgt ausschließlich der getrennte
+Adapter-ADR. Adapterimplementierung, Parser,
 Queue, Timer, Browser, CDP, Netzwerk und ein Diagnoselauf sind nicht
 autorisiert. Das ADR-0029-Gesamtgate bleibt `FAIL`, die Ursache
 `CAUSE_NOT_PROVEN`.
@@ -5292,6 +5294,25 @@ hypothetische PASS-Fallback bleiben konstruktiv unerreichbar. Jede Testkopie
 und jedes Testergebnis bleibt `NOT_EVIDENCE`; `overallGate: FAIL` und
 `causeStatus: CAUSE_NOT_PROVEN` ändern sich nicht.
 
+### Implementierungsstatus des getrennten Foundation-Slices
+
+Die öffentliche Foundation ist nun in
+`scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js`
+implementiert; sie besitzt genau einen Export und bleibt importinaktiv. Die
+fokussierte Suite in
+`tests/browserSyncTransportRuntimeDiagnosticObserver.test.js` besteht mit
+422/422 Tests und erzeugt außerhalb ihrer vorgeschriebenen temporären
+Sourcekopien keine Dateisystem- oder Hostwirkung. Die unveränderten
+Bestandssuites bestehen mit 423/423, 466/466 und 735/735 Tests; die
+vollständige serielle Suite mit 2177/2177, exakt `1755 + 422`, jeweils ohne
+Fehlschlag, Cancellation, Skip oder Todo. Der Build transformiert weiterhin
+exakt 46 Module, der n8n-Bundlecheck bleibt driftfrei und alle historischen
+Hashbindungen einschließlich 51-Pfade-/5606-Byte-Frontendmanifest,
+Evidence-Record und 4259-Byte-Evaluationstring sind unverändert. Für diesen
+Slice wurde kein Browser-, CDP-, Gateway-, Vite-, Netzwerk- oder Diagnoselauf
+ausgeführt und keine Evidenz persistiert. Drei unabhängige read-only
+Daybreak-xhigh-Reviews meldeten keinen belegten Befund.
+
 ### Testkopie v2 und vier private Bindings
 
 Die späteren Tests müssen die Produktionsbytes zunächst byte- und
@@ -5549,8 +5570,7 @@ Export. Damit ist die historische `one/unproven`-Antwortregel ausdrücklich
 durch die ADR-0034-Operationsmatrix überholt: Antwortdubletten ändern niemals
 einen bestätigten Send-Ack oder dessen Operationsergebnis.
 
-Der nächste zulässige Slice ist ausschließlich die getrennte netzwerkfreie
-Effects-as-Data-Foundationimplementierung samt fokussierter Tests. Adapter-ADR,
+Der nächste zulässige Slice ist ausschließlich der getrennte Adapter-ADR.
 Adapterimplementierung, sichtbarer Diagnoselauf, Browserkomposition und
 Browser-End-to-End bleiben nachgelagert und geschlossen.
 
@@ -7904,10 +7924,10 @@ bytegleichem Hauptteil und ADR 0032 als historische Entscheidungsebenen
 erhalten. ADR 0035 ist als enge Testbarkeitskorrektur angenommen, ersetzt ADR
 0034 formal und führt dessen nicht ausdrücklich korrigierte Regeln fort; ADR
 0034 bleibt mit bytegleichem Hauptteil historische Entscheidungsebene. Die
-Diagnosefoundation und ihre Tests sind weiterhin nicht implementiert; als
-Nächstes folgt ausschließlich ihre getrennte netzwerkfreie Effects-as-Data-
-Implementierung samt fokussierter Tests. Adapter-ADR, Adapterimplementierung
-und Runtimevorgang bleiben nachgelagert und nicht autorisiert. Zielbrowser,
+getrennte netzwerkfreie Diagnosefoundation ist implementiert und mit 422/422
+fokussierten Tests geprüft; als Nächstes folgt ausschließlich der getrennte
+Adapter-ADR. Adapterimplementierung und Runtimevorgang bleiben nachgelagert und
+nicht autorisiert. Zielbrowser,
 `T_replay`, Observer, der einzelne Request, Benutzerinteraktion und Cleanup
 benötigen auch danach eine eigene ausdrückliche Autorisierung.
 Browserkomposition und lokaler Browser-End-to-End-`syncTest`

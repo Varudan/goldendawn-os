@@ -6,7 +6,51 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0035 angenommen; ADR 0034 ersetzt; Chrome-Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR-0035-Foundation implementiert; Chrome-Runtimegate FAIL
+
+### BrowserSyncTransport Diagnostic Effects-as-Data Foundation – Implementierung
+
+- Die getrennte, importinaktive und vollständig netzwerkfreie Foundation ist
+  in `scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js`
+  implementiert. Das Produktionsmodul besitzt genau den öffentlichen Export
+  `createBrowserSyncTransportRuntimeDiagnosticObserver({ effectPort,
+  runBinding })`, sieben geschlossene Effects-as-Data-Intents, sechs
+  Protocol Commands und keine lokale oder relative Implementierungsdependency.
+- Die öffentliche Factory, Owner-/Lease-Zustandsmaschine, 59
+  Replayvergleiche, Setup-/Capture-/Cleanup-Caps, der tief eingefrorene
+  Pre-Cleanup-Snapshot `O0`, exakt 20 Cleanupchecks sowie die geschlossene
+  17-Felder-`FoundationProjection` sind umgesetzt. Öffentliche Resultate
+  bleiben auf `FAIL/observer-invalid` oder `UNPROVEN/inconclusive` begrenzt;
+  `NOT_EVIDENCE`, `runtimeAuthorized: false`, `persistenceAuthorized: false`,
+  ADR-0029-`overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben
+  unverändert.
+- Die getrennte Testdatei
+  `tests/browserSyncTransportRuntimeDiagnosticObserver.test.js` besteht mit
+  422/422 Tests. Sie prüft unter anderem die exakte 18-Fälle-Join-Matrix, das
+  zweiteilige Forever-pending-Oracle, elf disjunkte Joinmutanten, die
+  byteidentische temporäre Testkopie v2, alle sieben Intentarten, Cap- und
+  Cancelmatrizen, Network-/Routingregressionen, `O0`-Irreversibilität,
+  Completion/Stage 10 und die öffentliche PASS-Unerreichbarkeit.
+- Die unveränderten Regressionen bestehen mit 423/423 BrowserSyncTransport-
+  Tests, 466/466 gemeinsamen SyncService-/Transporttests und 735/735 Tests der
+  sechs seriellen Sync-Suites. Die vollständige serielle Suite besteht mit
+  2177/2177, exakt `1755 + 422`, bei jeweils 0 Fehlschlägen, Cancellations,
+  Skips und Todos. Der Produktions-Build transformiert weiterhin exakt 46
+  Module; `bundle:n8n:check` bleibt driftfrei.
+- Der abschließende rohe Hashaudit bestätigt den historischen Commit, alle
+  acht gebundenen Artefakthashes, das 51-Pfade-/5606-Byte-Frontendmanifest,
+  den historischen Evidence-Record sowie den 4259-Byte-Evaluationstring mit
+  SHA-256
+  `a623ffafee8dfcbc1d2ddc374cc35f0dbf800defd97619a3b58337d972090f7b`
+  unverändert. Drei unabhängige read-only Daybreak-xhigh-Reviews meldeten
+  keinen belegten Befund.
+- Foundationmodul und fokussierte Tests starteten weder Browser, CDP,
+  Gateway, Vite, Netzwerk, Timer, Childprozess noch Diagnoselauf und erzeugten
+  weder Evidence, Persistenz, Logs noch Telemetrie. Nur die vollständige
+  Bestandssuite verwendete ihre zwei unveränderten Loopback-Fixtures. Der
+  nächste Slice ist ausschließlich der getrennte Adapter-ADR;
+  Adapterimplementierung und sichtbarer Diagnoselauf bleiben separat und nicht
+  autorisiert.
 
 ### BrowserSyncTransport Diagnostic Foundation Join and Internal Transition Testability Boundary – Entscheidung / ADR 0035
 
