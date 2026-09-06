@@ -10,7 +10,17 @@
 
 **Current release:** `v0.2.2 — LichtwaldLog Local MVP complete, verified, and published`
 
-**Current development:** `v0.3.0 – in progress – isolated BrowserSyncTransport implemented and verified without network access; separate context- and version-bound PNA/LNA/mixed-content runtime gate next`
+**Current development:** `v0.3.0 – in progress – ADR-0035 Effects-as-Data diagnostic foundation implemented and verified network-free; Chrome-151 runtime gate remains FAIL with CAUSE_NOT_PROVEN; separate adapter ADR next`
+
+The standalone diagnostic foundation now lives in
+`scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js`; its
+focused suite passes 422/422 tests. Existing regression counts remain 423/423,
+466/466, and 735/735, while the complete serial suite passes 2177/2177
+(`1755 + 422`). The production build still transforms exactly 46 modules and
+the n8n bundle drift check passes. This slice started no browser, CDP,
+Gateway, Vite, network, or diagnostic run and produced no evidence record.
+Candidate `PASS` remains publicly unreachable, `overallGate` remains `FAIL`,
+and `causeStatus` remains `CAUSE_NOT_PROVEN`.
 
 The `v0.2.0` implementation is complete, verified with the automated test
 suite and production build, and published as tag `v0.2.0` with its
@@ -1130,12 +1140,11 @@ or Gateway access, and no browser or UI composition was added.
 ## Development principles
 
 - Build in small, stable, and verifiable steps.
-- Follow the current sequence: **accepted ADR 0027 Browser SyncTransport proof
-  boundaries → completed isolated BrowserSyncTransport implementation and
-  network-free mutation-oriented unit suite → separate environment-bound real-browser
-  CORS/PNA/LNA/mixed-content evidence gate → separate browser composition and
-  local end-to-end `syncTest` → local abuse, concurrency, time, and resource
-  limits → separately decided providers**.
+- Follow the current sequence: **completed network-free ADR-0035
+  Effects-as-Data diagnostic foundation → separate adapter ADR → separately
+  authorized network-free adapter implementation → separately authorized
+  visible diagnostic run → only then any evidence-based product decision or
+  later browser composition**.
 - Keep every `v0.2.x` milestone local; `v0.3.0` prepares the external boundary
   through a strict contract, transport-neutral service, and materialized-string
   request boundary. ADR 0020 implements the separately started local HTTP and
@@ -1167,15 +1176,17 @@ or Gateway access, and no browser or UI composition was added.
 - Node HTTP Local SyncGateway with controlled in-process SyncAgent composition
 - Isolated synchronous model-free `syncTest` SyncAgent core
 - Isolated ADR-0027 BrowserSyncTransport with a network-free mutation suite
+- Isolated ADR-0035 Effects-as-Data diagnostic foundation with a network-free
+  conformance and mutation suite
 - Deterministic standalone n8n Boundary bundle generation
 - Network-inactive n8n Cloud ingress/runtime evidence tooling
 - Git and GitHub
 
 ### Planned integrations
 
-- separate environment-bound real-browser CORS/PNA/LNA/mixed-content evidence
-  gate, followed only after `PASS` by BrowserSyncTransport composition and the
-  local browser end-to-end `syncTest`
+- separate diagnostic adapter ADR, followed by a separately authorized
+  network-free adapter implementation and only then a separately authorized
+  visible diagnostic run
 - optional capability-specific ModelProvider adapters for OpenAI or a local
   model, only after separate decisions
 - an optional capability-specific WorkflowProvider adapter for n8n, only after
@@ -1200,7 +1211,7 @@ non-binding; see the roadmap for details.
 | v0.2.0 | Command Center and PromptVault Local MVP | Complete, verified, and published |
 | v0.2.1 | LearningHub Local MVP | Complete, verified, and published |
 | v0.2.2 | LichtwaldLog Local MVP | Complete, verified, and published |
-| v0.3.0 | Local SyncAgent and Transport Foundation | In progress: local foundations, the isolated model-free `syncTest` core, the ADR-0025 local Gateway/SyncAgent composition, and the isolated ADR-0027 BrowserSyncTransport are implemented; the separate context- and version-bound browser runtime gate is next, browser composition remains absent, provider adapters remain unauthorized, and the original n8n activation remains `FAIL`/`UNPROVEN` and closed |
+| v0.3.0 | Local SyncAgent and Transport Foundation | In progress: local foundations, the isolated model-free `syncTest` core, ADR-0025 local Gateway/SyncAgent composition, ADR-0027 BrowserSyncTransport, and the network-free ADR-0035 Effects-as-Data diagnostic foundation are implemented; the separate adapter ADR is next, browser composition remains absent, provider adapters remain unauthorized, and the original n8n activation remains `FAIL`/`UNPROVEN` and closed |
 | v0.4.0 | DataAgent and Airtable | Planned controlled Airtable read and write flow through the DataAgent |
 | v0.5.0 | TestAgent and learning tests | Planned routed tests and free-text evaluation through the SyncAgent |
 | v0.6.0 | Integration | Planned integration and verification of the previously introduced local and external components |
@@ -1218,14 +1229,14 @@ the isolated, synchronous, model-free `syncTest` core. ADR 0025 implements the
 exact local in-process composition contract. ADR 0027 replaces ADR 0026,
 retains every unaffected fixed BrowserSyncTransport rule, and corrects only
 the Realm-provenance and public request-cap proof claims. The transport and its
-network-free mutation-oriented unit suite are now implemented in isolation,
-still without `src/main.js` composition. No Cloud request has occurred. The next
-mandatory slice is exclusively a separate environment-bound real-browser gate
-that must prove the fixed path's CORS/preflight, Private/Local Network Access,
-permissions, secure-context/mixed-content, redirect, exposed-header, final-URL,
-blocked-header, browser-difference, required-user-approval, and response-type
-behavior. A pass remains context- and version-bound, not a general browser
-guarantee. The local browser end-to-end flow follows only after that gate;
+network-free mutation-oriented unit suite, followed by the ADR-0035
+Effects-as-Data diagnostic foundation and its 422-test focused suite, are now
+implemented in isolation, still without `src/main.js` composition. No Cloud
+request occurred in this slice. The next mandatory slice is exclusively the
+separate diagnostic adapter ADR. Adapter implementation and a visible
+diagnostic run each remain separate later authorizations. Any runtime result
+remains context- and version-bound, not a general browser guarantee. The local
+browser end-to-end flow follows only after the required later gates;
 operational limits begin only after that end-to-end path, and
 providers remain later ordered slices. n8n, OpenAI, and a local
 model remain unauthorized. Before any preparation or execution of a new n8n tenant
@@ -1234,9 +1245,10 @@ evidence-schema version decided. Schema-1 has no `overallGate`, and
 its fixed `activationDecision: "FAIL"` remains unchanged.
 Additional patch or minor versions may be inserted when needed without
 reordering these milestones. The current implementation sequence remains
-**accepted ADR 0027 proof boundaries → completed isolated BrowserSyncTransport
-implementation → environment-bound real-browser CORS/PNA/LNA/mixed-content evidence → separate
-browser composition and local end-to-end `syncTest` → local operational limits
+**completed ADR-0035 Effects-as-Data foundation → separate adapter ADR →
+separate network-free adapter implementation → separately authorized visible
+diagnostic run → evidence-based product decision → later runtime gate and
+browser composition → local end-to-end `syncTest` → local operational limits
 → separately decided providers**.
 
 ## Getting started
