@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0035 angenommen – 2026-09-05; ADR 0034 historische Ebene; Effects-as-Data-Foundation netzwerkfrei implementiert und mit 422/422 fokussierten Tests geprüft; gebundenes Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN; nächster Slice: getrennter Adapter-ADR` |
+| Projektphase | `v0.3.0 – ADR 0035 und ADR-0037-D_K4-Delta angenommen – 2026-09-08; Foundation weiterhin mit Ein-Feld-Port und 422/422 bisherigen fokussierten Tests; Notification noch nicht implementiert oder getestet; ADR 0036 nicht annahmereif; Implementierung und Diagnoselauf nicht autorisiert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,8 +21,52 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | Paketversion `0.2.2`; neuestes veröffentlichtes Release und Tag `v0.2.2`; lokale Foundations, modellfreier `syncTest`-SyncAgent-Kern, ADR-0025-In-Process-Komposition, isolierter BrowserSyncTransport, feste transportlokale v1-Wire-Policy und die getrennte netzwerkfreie Effects-as-Data-Diagnosefoundation implementiert; ihre fokussierte Suite besteht mit 422/422 Tests, die vollständige serielle Suite mit 2177/2177; der einmalige Schema-1-Lauf `chrome-stable-win-01` bleibt mit `normalSyntheticTransport: FAIL`, `pnaLnaPermission: UNPROVEN`, nicht ausgeführten Negativvektoren und `cleanupRedaction: PASS` dokumentiert; `overallGate: FAIL`, Ursache `CAUSE_NOT_PROVEN`; ADR 0035 ist angenommen, ersetzt ADR 0034 formal und führt alle nicht ausdrücklich korrigierten ADR-0034-/ADR-0033-/ADR-0032-Regeln fort; ADR 0034 bleibt mit bytegleichem Hauptteil historische Entscheidungsebene; der nächste Slice ist ausschließlich der getrennte Adapter-ADR; Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und nicht autorisiert; BrowserSyncTransport weiterhin weder mit SyncService noch in `src/main.js` komponiert; Browser-End-to-End-Fluss fehlt; n8n Stable OSS und Aktivierung `FAIL`, Tenant-, Provider-/Execution- und Production-Evidenz `UNPROVEN`; Provideradapter weiterhin nicht autorisiert |
-| Letzte Aktualisierung | 2026-09-05 |
+| Status | ADR 0037 ist nach unabhängigem dokumentarischem Review durch Jan angenommen und ergänzt ADR 0035 gezielt. Die bestehende Foundation bleibt unverändert beim Ein-Feld-Port; Notification, neue Tests und Nachweise fehlen. ADR 0036 bleibt vorgeschlagen und nicht annahmereif. |
+| Letzte Aktualisierung | 2026-09-08 |
+
+## Aktuelle Foundationentscheidung / ADR 0037
+
+Der unabhängige Astra-Review hat die R1–R4-Dokumentkorrektur von ADR 0036
+im eng begrenzten Dokumentationsscope mit PASS abgeschlossen. Er gilt nur für
+die dort gebundenen Rohbytes, nicht für ausgeführte Adapter-/Testkopiennachweise.
+ADR 0036 bleibt vorgeschlagen und nicht annahmereif. Der unabhängige
+dokumentarische Review von ADR 0037 ist ohne Befund mit PASS abgeschlossen;
+Jan hat ADR 0037 am 2026-09-08 ausdrücklich angenommen.
+
+[ADR 0037](decisions/0037-browser-sync-transport-diagnostic-foundation-observation-close-notification.md)
+entscheidet `D_K4` als gezielte Ergänzung von ADR 0035 und ersetzt keinen ADR
+formal. Die angenommene Sollgrenze ergänzt den Effectport um die synchrone
+Notification `observationClosed()` nach `O0` und vor Cleanup. Die vorhandene
+Foundation implementiert weiterhin nur den Ein-Feld-Port; die Notification ist
+weder implementiert noch getestet, und die bisherige 422/422-Suite belegt sie
+nicht.
+
+Der angenommene, noch nicht implementierte Vertragsunterschied ist exakt
+`effectPort = { exchange, observationClosed }` in dieser Own-Key-Reihenfolge.
+Beide Felder wären erforderlich und einmalig descriptorbasiert zu erfassen;
+für die Notification wäre ein eigener nicht aufzählbarer Data-`length`-
+Descriptor mit Wert `0` erforderlich. Der Aufruf hätte null Argumente,
+`undefined` als Receiver und nur synchron `undefined` als zulässiges Ergebnis.
+Die alte Ein-Feld-Form hat in der angenommenen Sollgrenze keinen No-op-Fallback.
+Heute bleibt sie dagegen die unverändert implementierte ADR-0035-Baseline.
+
+Angenommen, aber noch nicht implementiert, ist außerdem das private produktive `RunMachineInput`
+`{ activeExchange, activeObservationClosed, runBinding }`. Die bestehende
+temporäre Testkopie behielte Factory plus vier private Exports, insgesamt fünf
+Namen. Drei zusätzliche produktive Maschinenwerte würden den konsumierten
+Notification-Slot, dessen Zustand und eine sticky Verletzung beobachtbar machen;
+kein neuer Inspector oder Output wäre zulässig. Ein Callbackfehler nach `O0`
+würde ausschließlich die Cleanupverletzung latchen, niemals `O0` umschreiben.
+Schema, sieben Intents, sechs Commands und 17 Projectionrootfelder blieben
+unverändert. Diese Sollregeln ändern die implementierte ADR-0035-Baseline noch
+nicht.
+
+Als Nächstes folgt ausschließlich die gesondert zu beauftragende netzwerkfreie
+Foundationanpassung samt vorhandenen Tests, Deadline-Proxytrap-Nachweis,
+Regressionen, Mutanten, Hashaudit und unabhängigem Implementierungsreview.
+Danach muss ADR 0036 gegen die tatsächlich neue Foundation, ihre Rohhashes und
+Testverträge abgeglichen und erneut unabhängig geprüft werden, bevor Jan über
+seine Annahme entscheidet. Adapter-, Lauf- und Git-Schritte bleiben geschlossen.
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
 PromptVault, LearningHub-Inhalte, LearningHub-Fortschritt, LearningArtifacts,
@@ -3190,9 +3234,14 @@ und ihre 422/422 fokussierten Tests sind im getrennten netzwerkfreien Slice
 implementiert. Die unveränderten Regressionen bestehen mit 423/423, 466/466
 und 735/735 Tests; die vollständige serielle Suite mit 2177/2177. Build und
 n8n-Bundlecheck bleiben bei exakt 46 Modulen beziehungsweise driftfrei. Als
-Nächstes folgt ausschließlich der getrennte Adapter-ADR;
-Adapterimplementierung und sichtbarer Diagnoselauf bleiben nachgelagert und
-geschlossen.
+rein dokumentarische Grenze ist ADR 0036 nach R1–R4 korrigiert vorgeschlagen,
+aber nicht angenommen. Seine K2-Konstruktion ist im begrenzten
+R1–R4-Dokumentationsscope geprüft. Die für K4 notwendige synchrone
+Foundationnotification `effectPort.observationClosed()` ist durch ADR 0037
+angenommen, aber noch nicht implementiert oder getestet. Der nächste zulässige
+Schritt ist die gesondert beauftragte Foundationanpassung samt Nachweisen und
+unabhängigem Implementierungsreview; Adapterimplementierung, Adaptertests und
+sichtbarer Diagnoselauf bleiben geschlossen.
 Browserkomposition und lokaler Browser-End-to-End-`syncTest` bleiben bis zu
 einem späteren vollständig neuen ADR-0029-Gesamt-`PASS` geschlossen.
 
@@ -3207,8 +3256,13 @@ importinaktiven, netzwerkfreien Foundation; sie ist inzwischen getrennt
 implementiert und geprüft. ADR 0035 ist als enge Korrektur ihrer internen Join-Testbarkeit
 angenommen, ersetzt ADR 0034 formal und führt dessen nicht ausdrücklich
 korrigierte Regeln fort; ADR 0034 bleibt mit bytegleichem Hauptteil historische
-Entscheidungsebene. Als Nächstes folgt ausschließlich der getrennte
-Adapter-ADR. Adapterimplementierung, Parser,
+Entscheidungsebene. ADR 0036 ist als nach R1–R4 korrigierte dokumentarische
+Adaptergrenze vorgeschlagen; seine K2-Konstruktion ist im begrenzten
+R1–R4-Dokumentationsscope geprüft. Die `D_K4`-Foundationentscheidung ist durch
+ADR 0037 angenommen, ihre Umsetzung und Nachweise fehlen jedoch. Als Nächstes
+ist nur die gesondert beauftragte Foundationanpassung samt Nachweisen und
+unabhängigem Implementierungsreview zulässig. Adapterimplementierung,
+Adaptertests, Parser,
 Queue, Timer, Browser, CDP, Netzwerk und ein Diagnoselauf sind nicht
 autorisiert. Das ADR-0029-Gesamtgate bleibt `FAIL`, die Ursache
 `CAUSE_NOT_PROVEN`.
@@ -5570,9 +5624,388 @@ Export. Damit ist die historische `one/unproven`-Antwortregel ausdrücklich
 durch die ADR-0034-Operationsmatrix überholt: Antwortdubletten ändern niemals
 einen bestätigten Send-Ack oder dessen Operationsergebnis.
 
-Der nächste zulässige Slice ist ausschließlich der getrennte Adapter-ADR.
-Adapterimplementierung, sichtbarer Diagnoselauf, Browserkomposition und
-Browser-End-to-End bleiben nachgelagert und geschlossen.
+ADR 0036 ist als ausschließlich dokumentarische Adaptergrenze vorgeschlagen.
+Der nach R1–R4 korrigierte Vorschlag arbeitet K2 konstruktiv aus und hat den
+begrenzten R1–R4-Dokumentreview bestanden. Die K4-Foundationentscheidung ist
+durch ADR 0037 angenommen, ihre Umsetzung und Nachweise fehlen jedoch; deshalb
+ist ADR 0036 ausdrücklich nicht annahmereif.
+Foundationänderung,
+Adapterimplementierung, Adaptertests,
+sichtbarer Diagnoselauf, Browserkomposition und Browser-End-to-End bleiben
+geschlossen.
+
+<a id="browser-sync-transport-runtime-diagnostic-adapter--adr-0036"></a>
+
+## Vorgeschlagener Runtime Diagnostic Adaptervertrag / ADR 0036
+
+[ADR 0036](decisions/0036-browser-sync-transport-runtime-diagnostic-adapter-boundary.md)
+ergänzt ADR 0035 und ersetzt keinen ADR. Sein Status ist
+`Vorgeschlagen – 2026-09-06`. Er implementiert und autorisiert nichts.
+
+Der künftige Adapterpfad und seine einzige öffentliche API sind:
+
+```text
+scripts/browser/browserSyncTransportRuntimeDiagnosticAdapter.js
+
+createBrowserSyncTransportRuntimeDiagnosticAdapter() -> frozen { run }
+Factory.length = 0
+run.length = 0
+```
+
+Import und Factory bleiben inaktiv; jeder erste `run`-Aufruf latcht den
+One-shot-Owner vor der Argumentauswertung. Nur der argumentlose Erstaufruf darf
+wirken; ein argumentbehafteter Erstaufruf verbraucht den Owner ohne Wirkung und
+rejected statisch. Es existieren keine callerlieferbaren Optionen,
+Capabilities, `runBinding`-, Gate-, Finding-, Digest-, Provenienz-, Cleanup-
+oder Writerwerte. K2 verwendet genau zwei disjunkte, niemals kombinierte
+Kopieprofile aus denselben vor Instrumentierung längen- und hashgeprüften
+Produktionsbytes:
+
+```text
+derivation-conformance (exakt vier Exports)
+  createBrowserSyncTransportRuntimeDiagnosticAdapter
+  deriveBrowserSyncTransportRuntimeDiagnosticRecordGate       // length 1
+  deriveBrowserSyncTransportRuntimeDiagnosticRecordFinding    // length 1
+  finalizeBrowserSyncTransportRuntimeDiagnosticRecord         // length 1
+
+virtual-runtime-conformance (exakt vier Exports)
+  createBrowserSyncTransportRuntimeDiagnosticAdapter
+  createBrowserSyncTransportRuntimeDiagnosticAdapterOwner     // length 1
+  enqueueBrowserSyncTransportRuntimeDiagnosticAdapterEvent    // length 2
+  installBrowserSyncTransportRuntimeDiagnosticVirtualCapabilities // length 1
+```
+
+Der produktive Owner akzeptiert nur das vollständige tief eingefrorene Profil
+`adr-0036-runtime-capabilities-v1`, erzeugt ohne Capabilityaufruf dieselbe
+`{run}`-API und wird von der öffentlichen Factory tatsächlich verwendet. Die
+zweistellige Eventgrenze ist der einzige produktive Eingang aller rohen Pipe-,
+Timer-, Child- und Ressourcenrückläufe in den Ownerdispatcher. Erst danach
+führen der produktive Parser beziehungsweise die Timer-/Child-/
+Ressourcenübergänge erlaubte Werte in FIFO oder Ledger; der Parser ist kein
+externer Producer. Nur die instrumentierte Kopie besitzt den
+einmaligen Installer; sein nicht exportierter Arity-0-Consumer ersetzt exakt
+den einmaligen produktiven Capabilityselector. Virtuelle Fähigkeiten liefern
+nur niedrigstufige Rohwerte, niemals IDs, Replayoperanden, Digests,
+Effect-Acks, Checks, Gate, Finding oder Record.
+
+`derivation-conformance` fügt am einmaligen
+`ADR-0036-ADAPTER-TESTCOPY-EXPORT-ANCHOR-V1` genau seine private Arity-0-Sperre
+`rejectBrowserSyncTransportRuntimeDiagnosticDerivationCapabilities` und die
+feste Exportdeklaration ein. Die Sperre wirft ausschließlich synchron den
+frischen statisch redigierten
+`TypeError("browserSyncTransportRuntimeDiagnosticAdapterFailed")`. Dieses
+Profil ersetzt sowohl `const adapterEvidenceEligible = true` durch `false` als
+auch exakt die einmalige Selector-RHS von der realen Nodefactory auf die
+Sperre. Deshalb erzeugt selbst ein versehentlicher öffentlicher Factoryaufruf
+weder Owner, API noch Promise und erreicht vor dem Throw keine Entropie-,
+Clock-, Environment-, Datei-, Timer-, Pipe-, Prozess- oder andere Hostquelle;
+die drei reinen Ableitungen bleiben erreichbar.
+
+`virtual-runtime-conformance` fügt am Anchor genau einen festen Block aus
+kopielokalem Slot, Installer, nicht exportiertem Consumer und seiner festen
+Exportdeklaration ein. Es ersetzt dieselbe Evidencekonstante durch `false` und
+dieselbe Selector-RHS ausschließlich durch den Consumer. Beide
+Selectorvarianten bleiben disjunkt; `adapterEvidenceEligible:false` ist nur
+Evidenzdemotion und sperrt den virtuellen produktiven Owner nicht. Null-,
+Mehrfachtreffer oder weitere Byteabweichung brechen vor Import ab. Jede Kopie
+liegt außerhalb des Repositorys, wird seriell als `.mjs` importiert und im
+`finally` samt Temproot nachweislich entfernt. Reine Ableitung darf
+hypothetisches `PASS` prüfen; Testfinalisierung ergibt bei bestätigter
+Verletzung `FAIL`, sonst höchstens `UNPROVEN`, immer
+`evidenceStatus:NOT_EVIDENCE`, `runtimeRecord:null` und Writercount null. Die
+reale Capabilityfactory ist in beiden Profilen unerreichbar. Die spätere
+Gegenprobe `derivation-no-host-selector-poison` ersetzt im Ableitungsprofil
+genau diese RHS durch einen inline benannten nullstelligen Sentinelthrow; sie
+muss einen entfernten Schutz vor tatsächlichem I/O töten. Eine
+Sourcestrukturprüfung verwirft jede Rückkehr zur realen Nodefactory. Die bestehende
+ADR-0035-Foundationkopie mit vier privaten und insgesamt fünf Exports bleibt
+unverändert und wird nie kombiniert.
+
+Das Capabilityroot besitzt exakt und in Reihenfolge
+`{profile,entropy,clock,runtime,scheduler,pipe,launcher,resources}`. `entropy`
+hält die zwei Arity-0-Funktionen
+`readDiagnosticRunIdEntropyBytes -> Uint8Array(17)` und
+`readReplayContextIdEntropyBytes -> Uint8Array(15)`; real entsprechen sie zwei
+unabhängigen einmaligen `crypto.randomBytes`-Reads, deren Bufferresultate sofort
+in gewöhnliche frische `Uint8Array`-Views normalisiert und verworfen werden.
+`clock` hält
+`readControllerNanoseconds`, `readWallMilliseconds` und `readTimeZone`.
+`runtime` hält exakt `readProcessPlatform`, `readProcessArchitecture`,
+`readProcessVersion`, `readProcessExecutablePath`,
+`readProcessExecArguments`, `readProcessEnvironmentMatches(name)` und
+`readWorkingDirectory`. Die zwölf case-insensitiven Environmentabfragen sind
+auf `NODE_OPTIONS` plus die elf Child-Allowlistnamen begrenzt. Pro Abfrage
+dürfen höchstens 256 begrenzte Own-Namen enumeriert, aber nur Werte passender
+Namen gelesen werden; fremde Werte und das gesamte Environment bleiben
+unlesbar. Die R0-Reihenfolge, String-/Arraycaps und statischen
+Fehler stehen vollständig in ADR 0036 Abschnitt 1; wiederholte Pfad-/Handle-/
+Bytesprüfungen sind getrennte Ressourcenoperationen und keine zweiten
+R0-Messungen.
+
+`scheduler` hält `armTimer(callback,milliseconds)` und `cancelTimer(handle)`;
+`pipe` hält `openDebugPipe(childHandle,producerSink)`,
+`writeDebugPipe(pair,bytes,completionSink)` und `closeDebugPipe(pair)`;
+`launcher` hält `spawnChild(profile,producerSink)`, `terminateChild(handle)`
+und `closeChild(handle)`; `resources` hält
+`performResourceOperation(operation,producerSink)` und
+`closeResource(handle,producerSink)`. Spawnprofile sowie die zehn geschlossenen
+Ressourcenvarianten für Canonicalize, Path-/Open-Identity, Open, Read,
+Directoryliste, exklusives Temp-/Directory-/File-Create und passive
+TCP-Listener besitzen die in ADR 0036 festgelegten exakten Shapes, Caps und
+Rohresultate. Keine Teilcapability, Calleroption oder Environmentauswahl ist
+zulässig; direkter Hostfallback außerhalb dieser Gruppen ist verboten.
+
+Capabilityroot und -container werden tief eingefroren;
+Ressourcenoperationsroot und gewöhnliche Inputcontainer selektiv bis vor
+Typed-Array- und Handleblättern. Ein Entropieresultat wird unmittelbar nach
+Capabilityrückkehr, jedes Pipe-/Child-/Ressourcenbyte synchron beim
+Sinkeintritt defensiv kopiert und danach freigegeben. Outbound-Versuchviews
+liegen bis Completion oder Pairclose als read-only Loan bei der
+Pipecapability; der Adapter hält währenddessen keinen mutable Alias. Timer-,
+Pipe-, Child-, Ressourcen- und Operationhandles bleiben undurchsichtige
+identitäts- und generationsgebundene Blätter und werden nie reflektiert,
+gefreezt oder ausgegeben. `ProducerEventProfile` ist exakt
+`{profile,producer,producerHandle,generation,event}` und geschlossen auf
+Scheduler-Fire, Pipe-Chunk/EOF/Readerror/Drain/Writeerror/Writecompletion,
+Child-stdout/-stderr/-exit/-close/-error und Ressourcencompletion. Owner,
+Handle und Generation werden vor Payloadreflection geprüft; ein fremder Owner
+rejected statisch ohne Mutation, unbekannte Handles oder zukünftige
+Generationen verletzen, bekannte stale/späte/doppelte Terminalcallbacks bleiben
+inert, malformed aktive Ereignisse führen statisch redigiert in Cleanup.
+Ownergebundene Timer-, Raw- und Completion-Closures dürfen erst nach
+Capabilityrückkehr und Handle-/Tokenbindung eintreten; ein früher synchroner
+Callback oder Sink verletzt, ohne ein Producerevent zu erzeugen. Alle drei
+Closurearten geben auch bei intern gelatchtem Fehler nur `undefined` zurück.
+Streamseitiges Pipe-Writeerror bleibt
+vom writegebundenen Completion-Sink unabhängig; eine zweite Completion
+derselben Writegeneration ist stale.
+
+Die tief eingefrorene Fixture-API ist exakt `{dispatch,snapshot}` mit Arity
+`1/0`. `dispatch` akzeptiert nur geskriptete Entropie-/Clock-/Runtimewerte oder
+-throws, den nächsten effectful Capabilitythrow, synchrone Pipewritergebnisse
+einschließlich Partial-/Backpressurefällen sowie timer-, pipe-, child- und
+ressourcenbezogene Rawereignisse über fixturelokale Ordinale. Resource-opened
+und -created minten Handles ausschließlich fixtureintern; Caller liefern sie
+nicht. Je Pipe ist höchstens ein synchrones Writergebnis und eine aktive
+Writegeneration erlaubt; Completion adressiert nur über das Pipeordinal den
+gebundenen aktiven Write. Ein Writergebnis und ein Failurearm für
+`writeDebugPipe` sind gegenseitig ausgeschlossen; ein fehlendes oder zweites
+Script scheitert als Fixturezustandsfehler. Die Fixture akzeptiert weder
+`ProducerEventProfile` noch
+Foundationwerte. `snapshot` liefert nur die
+geschlossene primitive Zähler-/Ordinalprojektion
+`{profile,dispatchCount,pendingSourceResultCount,
+pendingCapabilityFailureArmCount,pendingPipeWriteResultCount,callCounts,
+liveOrdinals,producerTurnCount,fixtureOwnedByteLength}`, nie Handles, Bytes, Pfade, Acks oder
+Checks. `timer-fire` adressiert die Timerclosure, Writecompletion den
+Completion-Sink und die übrigen asynchronen Varianten ihren Raw-Sink. Nur
+erfolgreich übernommene Dispatches zählen; Ordinale werden erst an
+produktiven Erfolgsübergängen live und an korrelierten Terminalübergängen
+einschließlich Timercancel entfernt, Producerturns erst nach Raw-Sink-Rückkehr
+gezählt und gehaltene Bytes
+nach Capability- beziehungsweise Sinkrückkehr ausgebucht. R0-Quellen gehen
+unmittelbar in defensive Ownerprojektion und lokale Ableitung. Der effectful
+Pfad bleibt: Capabilityrückkehr und Handle-/Tokenbindung -> spätere Timer-,
+Raw- oder Completion-Closure -> produktiver `ProducerEventProfile` ->
+Owner-/Generationsguard -> Parser oder Timer-/Child-/Ressourcenübergang ->
+Ledger; nur ein erlaubter Foundation-Dequeuewert erreicht danach die einzige
+FIFO und `effectPort.exchange`.
+
+Base32, ISO-Rückprojektion, SHA-256, UTF-8/Scanner/JSON, Git-Object-/Packdecode,
+Pfad-/URL-Ableitung und `vm.SourceTextModule` sind ausschließlich lokale
+deterministische Verarbeitung bereits gebundener Bytes oder Primitive. Sie
+öffnen keine Hostquelle; `process.*`, Environment, Entropie, Clock,
+Filesystem, Timer, Pipe, Child und passive Portquelle sind nur über das
+ausgewählte Capabilityprofil erreichbar.
+
+Die Foundation wird aus einem einmalig gelesenen, fatal UTF-8-dekodierten und
+gegen Commit-Blob sowie festen SHA-256 geprüften Bytesnapshot byte-owned als
+`vm.SourceTextModule` mit kanonischer File-URL, null Imports und genau einem
+Export geladen. Standardimport plus Vorher-/Nachherhash ist wegen TOCTOU/ABA
+kein gültiger Identitätsnachweis. Adapterquelle und Foundationpfad werden
+realpath-, Parent-, File-/Volumen-ID-, Symlink-, Junction- und
+reparsegebunden; ein Pfadtausch demotiert oder verletzt.
+Der Adapterprozess verlangt exakt `--experimental-vm-modules` und danach
+`--no-warnings`. Letzteres verhindert den standardmäßigen VM-Warnwrite, ist
+aber kein Stillenachweis; ohne unabhängigen Owner von Adapter-stdout/-stderr
+bleibt `observerDiagnosticDuringRunOutputAbsent` `unproven`.
+
+Der heutige `effectPort.exchange(intent)` bleibt total für exakt die bestehenden
+sieben Intents und Antworten. Das durch ADR 0037 angenommene, noch nicht
+implementierte `D_K4` ergänzt die Sollgrenze um exakt die synchrone,
+argumentlose Notification `observationClosed()`; sie ist kein Intent. Die
+vorhandene 422/422-Suite belegt sie nicht. Jeder Exchange erhält ein adaptereigenes natives
+Same-Realm-Promise; nur Dequeue darf auf ein späteres Ereignis warten. Es gibt
+höchstens einen offenen Exchange und genau einen Dequeue-Resolver, keinen
+Leerwert, kein Polling, `Promise.race` oder Ersatzcap. Send-Ack bedeutet nur
+vollständige lokale Annahme eines einzelnen NUL-Frames durch
+`Writable.write`, nicht Callback, Flush oder Browserempfang. Cleanup-Ack
+bedeutet nur Annahme; das Resultat folgt separat als FIFO-`cleanup-fact`.
+Der dreistufige Adapterzustand wird total abgebildet: `failed -> false`,
+`confirmed|unproven -> true`. `true` bleibt in der Foundation stets
+`unproven`; nur der terminale Adapterledger darf den Finalrecord später auf
+`confirmed` setzen. Nach verarbeitetem Cleanupcap bleibt ein spätes Fact inert.
+
+Der Windows-Pipeparser verwendet allein `--remote-debugging-pipe`, die
+erbbaren Handles 3/4, einen NUL-Akkumulator, fatalen UTF-8-Decode, einen
+generischen lexikalischen Duplicate-Key-Scanner einschließlich escape-
+äquivalenter Namen und danach exakt einen nativen `JSON.parse` ohne Reviver.
+Die Caps sind:
+
+```text
+Readchunk                   65_536 Bytes
+Frame                      262_144 Bytes
+Akkumulator                262_145 Bytes
+Text                       262_144 UTF-16-Codeunits
+JSON-Tiefe                      32
+JSON-Knoten                  4_096
+Member                       8_192
+ein String                 131_072 UTF-16-Codeunits
+FIFO-Einträge                 256
+FIFO-Materialbytes       1_048_576 Bytes
+Inboundmessages                512
+stdout/stderr              je 65_536 Bytes Inspektionscap
+Outboundframe inkl. NUL         65_536 Bytes
+ausstehende Outboundframes           1
+ausstehende Outboundbytes       65_536 Bytes
+```
+
+Alle CDP-Messages, Capereignisse, Connection-Close- und Cleanupfacts teilen
+eine einzige controllerlokale FIFO. Es gibt keine Vorfilterung,
+Deduplizierung oder Umordnung. Evaluate-Frameannahme, Aktivierung des pending
+Capturearms und Ack bilden einen nicht reentranten Commit. Die drei
+Clockdomänen bleiben getrennt; Setup/Capture/Cleanup bleiben exakt
+6.000/6.000/60.000 ms. `observation-dequeue` liest keine Clock, sondern liefert
+nur den ältesten Envelope. Die Foundation hält ihn unreflektiert und fordert
+danach ihren phasengenauen `controller-clock-sample`; erst dessen Bearbeitung
+liest exakt einmal und speist denselben primitiven Wert in Adapterledger und
+Foundationresultat. Setup und Cleanup verwenden inklusiv
+`sample >= deadline`; Capture schließt ausschließlich durch das korrelierte
+FIFO-`cap-fired`, niemals numerisch. Der 129. Dequeue-Aufruf rejected vor
+Entnahme und Clockread. Jeder Arm hat höchstens einen Cancel und ein `fired`
+wird nie `cancelled`.
+
+Auf dem Wire werden ausschließlich die sechs bestehenden Commands als
+`{id,method,params}` beziehungsweise bei gebundener Session exakt als
+`{id,method,params,sessionId}` materialisiert. `params` ist bei jedem Command
+vorhanden; `sessionId` ist, falls erlaubt, stets das vierte Rootfeld.
+Foundation-`commandId` wird zu `id`, `command` zu `method`.
+`captureArmIntentId` ist rein controllerlokal und erscheint nie auf dem Wire.
+Exakt ein `JSON.stringify`, UTF-8-Encoding und ein abschließendes NUL-Byte
+erzeugen den einzelnen Frame.
+
+Der Adapter baut die neun `runBinding`-Felder und alle 59 Replayoperanden aus
+gebundenen Quellen selbst. Eindeutig gemessen wird `observed`, fehlend
+`not-observed/null`, widersprüchlich `ambiguous/null`. Insbesondere bleiben
+`repository.state`, Windowsarchitektur/-edition/-version/-build/-patch,
+Chromeprodukt/-channel/-version/-engine/-engineBuild und die vor der Factory
+noch nicht tatsächlich beobachtbaren Kontextoperanden 37 bis 40
+`not-observed/null`. Globale Portfreiheit und effektive Proxy-/VPN-/Policy-/
+Extension-/Permission-/Service-Worker-/Cachewerte bleiben ohne eigene
+authentische Quelle ebenfalls unbewiesen. Es gibt keinen siebten CDP-Command
+und keinen Probe-Listener.
+
+Der an Own-Data und Gatewayspawn gebundene rohe
+`GOLDENDAWN_SYNC_GATEWAY_PORT`-Wert ist exakt der Vier-Codeunit-String `8787`
+mit `[56,55,56,55]` und enthält keine Quotezeichen. Ausschließlich Operand 53
+erhält danach die separate `adr-0034-I3-contract-projection`: U+0022, dieselben
+vier Codeunits, U+0022, also Länge 6 und
+`[34,56,55,56,55,34]`. Trimmen, Typkonvertierung, Double-Wrap,
+Child-Environment-Quotes und Normalisierung einer geänderten Ziffer sind
+verboten; Abweichung stoppt vor Spawn oder bleibt `mismatch/DIVERGED`.
+
+Node Core besitzt in dieser Grenze weder einen handlegebundenen Windows-Job-
+Object-/Prozessbaumowner noch eine handle-relative, nicht folgende
+Deleteprimitive. Nach einem möglichen Browser-, Vite- oder Gatewayspawn
+bestätigt deshalb ein Root-Childexit keinen vollständigen Stop; nach einem
+möglichen Profil-/Fragmentcreate ist pfadbasiertes Löschen verboten. Die
+betroffenen Checks bleiben `unproven`, sofern nicht ein sicher nie versuchtes
+Create/Spawn `confirmed` oder ein authentisch aktiver Rest `failed` belegt.
+Der Setup- beziehungsweise Cleanupcap behält Präzedenz vor jeder
+Envelope-Reflection, sobald das erst im nachgelagerten Foundation-
+`controller-clock-sample` einmalig gelesene `m_answer >= deadline` ist.
+
+Der spätere Adaptertest belegt diese Integration nur über
+Raw-`Uint8Array` -> produktiven Parser -> gewöhnlichen gefrorenen Own-Data-Graph
+-> FIFO, mit Setup und Cleanup jeweils an `deadline-1`, `deadline` und
+`deadline+1`; er prüft null Clockreads im Dequeue, das eine gemeinsame
+Folgesample und Materialfreigabe. Capture bleibt ausschließlich
+`cap-fired`-ereignisbasiert. Getter-/Proxy-Envelopes entstehen aus diesem
+unveränderten JSON-Pfad nicht. Der bestehende Foundationtest
+`entscheidet Setup- und Cleanup-Caps unterhalb, exakt und oberhalb roh vor
+Reflection` belegt bei `=`/`>` null Aufrufe eines gewöhnlichen Accessorgetters,
+nicht null Descriptor- oder Proxytraps. Die vorhandenen Proxytests am
+Pending-Join und am 129.-Dequeue-Guard betreffen andere Grenzen. Ein expliziter
+Foundationtest mit jeweils null `get`-, `getPrototypeOf`-, `ownKeys`- und
+`getOwnPropertyDescriptor`-Traps am Setup-/Cleanupdeadlineguard fehlt; die
+422er-Suite oder eine spätere grüne Adapter-Wiringsuite darf diese konkrete
+Lücke nicht als geschlossen ausgeben.
+
+Ein einzelnes Cancelpayload und eine spätere
+`confirmed-violation`-Projection tragen keine `O0`-Phasenbindung. Die
+vollständige öffentliche Intent-, Exchange-, Producer- und
+Foundationresultathistorie enthält zusätzliche geordnete Fakten; aus gleichen
+Payloads oder Endprojektionen folgt daher weder ihre Injektivität noch ihre
+Nicht-Injektivität, und beides wird nicht behauptet. Der beschlossene bounded
+syntaktische Tracker darf keine CDP-Semantik spiegeln, Projection rückdatieren
+oder aus fehlenden Intents Positives ableiten. Unter genau dieser Grenze kann
+er nicht für jeden Pfad einen gespeicherten Cancelcheckpoint als authentischen
+Zeitpunkt unmittelbar nach `O0` und vor Cleanup auswählen. Auch
+`cleanup-origin` ist zu spät, weil die Foundation zuvor bereits ihr
+Cleanup-Ledger initialisiert. Ein Promisezaun läuft nach der atomaren
+Foundationreaktion und damit nach möglicher Old-Cap-Wirkung oder portlosem
+Foundationcleanup; er darf nichts rückdatieren.
+
+Der unter den bestehenden Architekturgrenzen als minimale eindeutige
+Phasenbindung gewählte Vertrag `D_K4` erweitert den heute exakt einfeldrigen
+Effectport um genau
+`observationClosed.length === 0`. Die Foundation hielte die Identität bei
+Factorykonstruktion und riefe sie pro Lauf genau einmal mit null Argumenten
+synchron unmittelbar nach dem tiefen Freeze von `O0`, aber vor Phasenwechsel,
+Old-Cap-Scan und jeder regulären oder portlosen Cleanupwirkung auf. Die
+Adapterfunktion friert `A_obs` vor ihrer Rückgabe `undefined`. Sie trägt weder
+Purpose noch Closegrund und ist kein achter Intent, Command, Promise, Timer,
+Clockread, Request oder Recordfeld. Die Auswahl behauptet weder einen
+Injektivitätsbeweis noch die informationstheoretische Notwendigkeit dieses
+Designs.
+
+Der gebundene Adaptertracker ist exakt
+`PREATTEMPT -> OBSERVATION_NO_AOBS -> AOBS_BOUND -> CLEANUP ->
+TERMINAL_ELIGIBLE|TERMINAL_NO_RECORD`. Ein früher, fehlender, reentranter,
+doppelter oder verspäteter Marker ist bestätigte Verletzung/no-record; ein
+früheres authentisches `A_obs` wird bei portlosem Cleanupfehler nie ersetzt.
+Die sieben Klassen folgen der tatsächlichen Foundationreihenfolge: Setup-ready-
+und Rejection-Quieszenz-Cancel liegen vor `O0`; Old-Cap scannt nach `O0`
+zuerst Setup, dann Capture; regulärer Cleanup initialisiert sein Ledger vor
+`cleanup-origin`; portlose Observationfehler schließen den Port vor `O0` und
+finalisieren erst danach; Prestart bildet kein `O0`; portlose Cleanupfehler
+verwenden das bereits vorhandene `O0` und Ledger. Die Sollgrenze ist durch die
+Annahme von ADR 0037 total entschieden; Implementierung und Nachweise fehlen
+weiterhin. Bis zur Umsetzung bleiben abhängige positive Claims `unproven`, und
+ohne früheres authentisches `A_obs` ist ein Record verboten. Die Änderung
+benötigt einen getrennten Implementierungsslice; bis dahin ist ADR 0036 nicht
+annahmereif.
+
+Nach terminalem Cleanup wird ein neuer referenzdisjunkter Record mit exakt den
+bestehenden 17 Rootfeldern materialisiert. `projectionType` wird zu
+`recordType`; Candidate-Gate/Finding werden als echtes Gate/Finding neu
+abgeleitet. `observer.controllerExclusivity`, `connectionProfile`,
+`foundationSha256`, alle 17 Integritywerte und deren
+`interferenceObservation` sowie alle 20 Cleanupwerte, `cleanup.result` und die
+cleanupseitigen Completionwerte werden aus dem identitätsgebundenen finalen
+Ledger frisch neu berechnet. Dasselbe gilt für `evaluationSha256`, alle sechs
+`protocolOperations` mit Foundation-/Wire-Kreuzvalidierung und die neun
+Requestbudgetcounter plus Sequenz aus Capability-, Launch-, Main-World- und
+Networkledger. Konstruktive Foundationplatzhalter werden nicht kopiert.
+`FAIL > UNPROVEN > PASS`; Foundation-`FAIL` bleibt sticky. Bestätigte
+Foundation- oder Adapterverletzung ergibt zuerst `FAIL/observer-invalid`, bei
+jedem Stimuluszustand `zero|unknown|multiple|one`. Nur ohne Verletzung führen
+fehlende Evidenzfähigkeit oder ein unbewiesenes Blatt zu
+`UNPROVEN/inconclusive`; erst danach ist `PASS` möglich. Exakt ein Stimulus ist
+ausschließlich für PASS und die drei Produktfindings erforderlich. Die
+`FoundationProjection` bleibt unverändert `NOT_EVIDENCE`. Ein Writer ist ein
+getrennter späterer Owner und darf einen finalisierten Record nie
+rückwirkend mutieren.
 
 <a id="browser-transport-diagnostic-record--adr-0030"></a>
 
@@ -7925,9 +8358,15 @@ erhalten. ADR 0035 ist als enge Testbarkeitskorrektur angenommen, ersetzt ADR
 0034 formal und führt dessen nicht ausdrücklich korrigierte Regeln fort; ADR
 0034 bleibt mit bytegleichem Hauptteil historische Entscheidungsebene. Die
 getrennte netzwerkfreie Diagnosefoundation ist implementiert und mit 422/422
-fokussierten Tests geprüft; als Nächstes folgt ausschließlich der getrennte
-Adapter-ADR. Adapterimplementierung und Runtimevorgang bleiben nachgelagert und
-nicht autorisiert. Zielbrowser,
+fokussierten Tests geprüft. ADR 0036 ist als nach R1–R4 korrigierte
+dokumentarische Adaptergrenze vorgeschlagen; seine K2-Konstruktion ist im
+begrenzten R1–R4-Dokumentationsscope geprüft. Die
+`D_K4`-Foundationnotification ist durch ADR 0037 angenommen, aber noch nicht
+implementiert oder getestet; deshalb bleibt ADR 0036 nicht annahmereif. Als
+Nächstes ist nur die gesondert beauftragte Foundationanpassung samt Nachweisen
+und unabhängigem Implementierungsreview zulässig. Adapterimplementierung,
+Adaptertests und Runtimevorgang bleiben geschlossen.
+Zielbrowser,
 `T_replay`, Observer, der einzelne Request, Benutzerinteraktion und Cleanup
 benötigen auch danach eine eigene ausdrückliche Autorisierung.
 Browserkomposition und lokaler Browser-End-to-End-`syncTest`
@@ -11541,10 +11980,14 @@ Entscheidungsebenen erhalten. ADR 0035 ist als enge Pending-Join-
 Testbarkeitskorrektur angenommen, ersetzt ADR 0034 formal und führt dessen
 nicht ausdrücklich korrigierte Regeln fort; ADR 0034 bleibt mit bytegleichem
 Hauptteil historische Entscheidungsebene. Die Diagnosefoundation und ihre
-Tests sind weiterhin nicht implementiert; als Nächstes folgt ausschließlich
-ihre getrennte netzwerkfreie Effects-as-Data-Implementierung samt fokussierter
-Tests. Adapter-ADR, Adapterimplementierung und sichtbarer Diagnoselauf bleiben
-nachgelagert und nicht autorisiert. Produktive SyncService-/`src/main.js`-
+Tests sind inzwischen getrennt netzwerkfrei implementiert und mit 422/422
+fokussierten Tests geprüft. ADR 0036 schlägt ausschließlich die nach R1–R4
+korrigierte dokumentarische Adaptergrenze vor; seine K2-Konstruktion ist im
+begrenzten R1–R4-Dokumentationsscope geprüft. Die
+`D_K4`-Foundationentscheidung ist durch ADR 0037 angenommen, ihre Umsetzung und
+Nachweise fehlen jedoch; deshalb bleibt ADR 0036 nicht annahmereif.
+Foundationänderung, Adapterimplementierung, Adaptertests und sichtbarer
+Diagnoselauf bleiben geschlossen. Produktive SyncService-/`src/main.js`-
 Komposition und Browser-End-to-End-Fluss fehlen weiterhin und folgen erst nach
 einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`.
 
