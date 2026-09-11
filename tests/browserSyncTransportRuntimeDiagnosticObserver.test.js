@@ -269,10 +269,19 @@ function createRootVariant(key, value) {
   return runBinding
 }
 
+function createNotificationProbe() {
+  const calls = []
+  function observationClosed() {
+    calls.push({ receiver: this, argumentCount: arguments.length })
+  }
+  return { calls, observationClosed }
+}
+
 function createObserverOptions(runBinding = createValidRunBinding(), exchange) {
   return {
     effectPort: {
       exchange: exchange ?? (() => new Promise(() => {})),
+      observationClosed: createNotificationProbe().observationClosed,
     },
     runBinding,
   }
@@ -485,6 +494,9 @@ async function withTemporaryDiagnosticObserverCopy({
     }
 
     await writeFile(copyPath, instrumentedBytes)
+    const importBytes = await readFile(copyPath)
+    assert.equal(sha256(importBytes), sha256(instrumentedBytes))
+    assert.deepEqual(importBytes, instrumentedBytes)
     const namespace = await import(pathToFileURL(copyPath).href)
     assert.deepEqual(
       Object.keys(namespace),
@@ -600,6 +612,9 @@ function createInternalRunBinding() {
 
 function snapshotJoinState(machine, receivedIntents, capabilityCalls) {
   return {
+    activeObservationClosed: machine.activeObservationClosed,
+    observationNotificationState: machine.observationNotificationState,
+    observationNotificationViolation: machine.observationNotificationViolation,
     capabilityCallCount: machine.capabilityCallCount,
     capabilityCalls,
     cleanupLedger: machine.cleanupLedger,
@@ -618,6 +633,9 @@ function snapshotJoinState(machine, receivedIntents, capabilityCalls) {
 }
 
 function assertOnlyJoinClassificationChanged(before, after, phase) {
+  assert.equal(after.activeObservationClosed, before.activeObservationClosed)
+  assert.equal(after.observationNotificationState, before.observationNotificationState)
+  assert.equal(after.observationNotificationViolation, before.observationNotificationViolation)
   assert.equal(after.intentCount - before.intentCount, 0)
   assert.equal(after.nextIntentId - before.nextIntentId, 0)
   assert.equal(after.portCallCount - before.portCallCount, 0)
@@ -753,6 +771,7 @@ function prepareJoinFixture(namespace, handlerPairs, phase, timing, outcome) {
 
   const calls = []
   let capabilityCalls = 0
+  const notificationProbe = createNotificationProbe()
   const machine =
     namespace.createBrowserSyncTransportRuntimeDiagnosticRunMachine({
       activeExchange(intent) {
@@ -763,6 +782,7 @@ function prepareJoinFixture(namespace, handlerPairs, phase, timing, outcome) {
         calls.push({ deferred, intent })
         return deferred.promise
       },
+      activeObservationClosed: notificationProbe.observationClosed,
       runBinding: createInternalRunBinding(),
     })
   namespace.requestBrowserSyncTransportRuntimeDiagnosticExchange(
@@ -799,6 +819,7 @@ function prepareJoinFixture(namespace, handlerPairs, phase, timing, outcome) {
     capabilityCalls: () => capabilityCalls,
     fulfillmentValue,
     machine,
+    notificationProbe,
     rejectionReason,
     targetCallIndex,
     targetDeferred,
@@ -927,11 +948,13 @@ function createFullRunEffectController({
   captureTailPending = false,
   captureMessages,
   mainWorldValue = createMainWorldValue(),
+  onObservationClosed,
   settlementForIntent,
   setupMessages: suppliedSetupMessages,
   targetInfos,
 } = {}) {
   const intents = []
+  const notificationCalls = []
   const protocolCommands = []
   const responses = []
   const cleanupStepIds = []
@@ -1153,6 +1176,16 @@ function createFullRunEffectController({
       exchangeDepth -= 1
       return candidate
     },
+    observationClosed() {
+      notificationCalls.push({
+        intentCount: intents.length,
+        receiver: this,
+        argumentCount: arguments.length,
+      })
+      if (typeof onObservationClosed === 'function') {
+        return Reflect.apply(onObservationClosed, undefined, [])
+      }
+    },
   }
 
   return {
@@ -1161,6 +1194,7 @@ function createFullRunEffectController({
     captureTailReached,
     effectPort,
     intents,
+    notificationCalls,
     maxExchangeDepth: () => maxExchangeDepth,
     protocolCommands,
     responses,
@@ -1173,6 +1207,840 @@ function createFullRunEffectController({
     },
   }
 }
+
+async function assertPublicNotificationCapture(namespace) {
+  let calls = 0
+  let replacements = 0
+  const reflection = { get: 0, getPrototypeOf: 0, ownKeys: 0, descriptors: [] }
+  function callback() { calls += 1 }
+  const observed = new Proxy(callback, {
+    get(target, key, receiver) { reflection.get += 1; return Reflect.get(target, key, receiver) },
+    getPrototypeOf(target) { reflection.getPrototypeOf += 1; return Reflect.getPrototypeOf(target) },
+    ownKeys(target) { reflection.ownKeys += 1; return Reflect.ownKeys(target) },
+    getOwnPropertyDescriptor(target, key) {
+      reflection.descriptors.push(key)
+      return Reflect.getOwnPropertyDescriptor(target, key)
+    },
+  })
+  const controller = createFullRunEffectController()
+  const options = {
+    effectPort: { exchange: controller.effectPort.exchange, observationClosed: observed },
+    runBinding: createValidRunBinding(),
+  }
+  const api = namespace.createBrowserSyncTransportRuntimeDiagnosticObserver(options)
+  assert.equal(calls, 0, 'notification-factory-inactive')
+  assert.deepEqual(reflection, { get: 0, getPrototypeOf: 0, ownKeys: 0, descriptors: ['length'] },
+    'notification-exact-length-descriptor')
+  Object.defineProperty(callback, 'length', { value: 17 })
+  options.effectPort.observationClosed = function replacement() { replacements += 1 }
+  const result = await api.run()
+  assert.equal(result.ok, true, 'notification-captured-owner-result')
+  assert.equal(calls, 1, 'notification-captured-identity')
+  assert.equal(replacements, 0, 'notification-no-late-container-read')
+  assert.deepEqual(reflection, { get: 0, getPrototypeOf: 0, ownKeys: 0, descriptors: ['length'] },
+    'notification-length-not-rechecked')
+}
+
+test('ADR0037 erzwingt die gesamte Required-Port- und length-Descriptorgrammatik', async (t) => {
+  let invocations = 0
+  let accessorCalls = 0
+  const exchange = () => { invocations += 1 }
+  const notification = () => { invocations += 1 }
+  function withLength(descriptor) {
+    const callback = () => { invocations += 1 }
+    Object.defineProperty(callback, 'length', descriptor)
+    return callback
+  }
+  const absentLength = () => { invocations += 1 }
+  Reflect.deleteProperty(absentLength, 'length')
+  const accessorPort = { exchange }
+  Object.defineProperty(accessorPort, 'observationClosed', {
+    enumerable: true, get() { accessorCalls += 1; return notification },
+  })
+  const hiddenPort = { exchange, observationClosed: notification }
+  Object.defineProperty(hiddenPort, 'observationClosed', { enumerable: false })
+  const inputs = [
+    ['legacy', { exchange }],
+    ['missing-exchange', { observationClosed: notification }],
+    ['reversed', { observationClosed: notification, exchange }],
+    ['extra', { exchange, observationClosed: notification, extra: true }],
+    ['symbol', { exchange, observationClosed: notification, [Symbol('extra')]: true }],
+    ['accessor', accessorPort], ['hidden', hiddenPort],
+    ...[undefined, null, false, 0, {}, 'callback'].map((value, index) =>
+      [`nonfunction-${index}`, { exchange, observationClosed: value }]),
+    ['arity-one', { exchange, observationClosed(value) { invocations += 1 } }],
+    ['length-absent', { exchange, observationClosed: absentLength }],
+    ['length-enumerable', { exchange, observationClosed: withLength({ value: 0, enumerable: true }) }],
+    ['length-boxed', { exchange, observationClosed: withLength({ value: Object(0) }) }],
+    ['length-string', { exchange, observationClosed: withLength({ value: '0' }) }],
+    ['length-accessor', { exchange, observationClosed: withLength({
+      get() { accessorCalls += 1; return 0 },
+    }) }],
+    ['length-reflectionthrow', { exchange, observationClosed: new Proxy(notification, {
+      getOwnPropertyDescriptor() { throw 'private-length-sentinel' },
+    }) }],
+    ['port-reflectionthrow', new Proxy({ exchange, observationClosed: notification }, {
+      getOwnPropertyDescriptor() { throw 'private-port-sentinel' },
+    })],
+  ]
+  for (const [name, effectPort] of inputs) {
+    await t.test(name, () => {
+      assertFactoryDependencyError(() => createBrowserSyncTransportRuntimeDiagnosticObserver({
+        effectPort, runBinding: createValidRunBinding(),
+      }))
+    })
+  }
+  for (const writable of [false, true]) {
+    for (const configurable of [false, true]) {
+      const callback = withLength({ value: 0, enumerable: false, writable, configurable })
+      const before = Object.getOwnPropertyDescriptor(callback, 'length')
+      const api = createBrowserSyncTransportRuntimeDiagnosticObserver({
+        effectPort: { exchange, observationClosed: callback }, runBinding: createValidRunBinding(),
+      })
+      assertFrozenOrdinaryRecord(api, ['run'])
+      assert.deepEqual(Object.getOwnPropertyDescriptor(callback, 'length'), before)
+      assert.equal(Object.isFrozen(callback), false)
+    }
+  }
+  for (const callback of [function () {}, () => {}, (function () {}).bind(null),
+    async function () {}, function* () {}, class ZeroArity {}]) {
+    assertFrozenOrdinaryRecord(createBrowserSyncTransportRuntimeDiagnosticObserver({
+      effectPort: { exchange, observationClosed: callback }, runBinding: createValidRunBinding(),
+    }), ['run'])
+  }
+  assert.equal(invocations, 0)
+  assert.equal(accessorCalls, 0)
+})
+
+test('ADR0037 erfasst die Notificationidentitaet und ihren length-Descriptor nur einmal', async () => {
+  await assertPublicNotificationCapture(diagnosticObserverModule)
+})
+
+async function assertNotificationWrongRunArity(namespace) {
+  const probe = createNotificationProbe()
+  let exchanges = 0
+  const api = namespace.createBrowserSyncTransportRuntimeDiagnosticObserver({
+    effectPort: {
+      exchange() { exchanges += 1; return new Promise(() => {}) },
+      observationClosed: probe.observationClosed,
+    },
+    runBinding: createValidRunBinding(),
+  })
+  let first
+  let second
+  assert.doesNotThrow(() => { first = api.run(undefined) }, 'wrong-first-run-must-not-throw')
+  assert.doesNotThrow(() => { second = api.run() }, 'nonowner-must-not-throw')
+  assert.equal(probe.calls.length, 0, 'wrong-first-run-no-marker')
+  assert.equal(exchanges, 0, 'wrong-first-run-no-exchange')
+  assert.notEqual(first, second)
+  for (const promise of [first, second]) {
+    const result = await promise
+    assertFoundationResult(result)
+    assert.equal(result.ok, false)
+  }
+}
+
+test('ADR0037 verwirft beide Rollen bei falscher erster Runarity ohne Notification', async () => {
+  await assertNotificationWrongRunArity(diagnosticObserverModule)
+})
+
+test('ADR0037 prueft private Konstruktorrollen ohne erneute oeffentliche length-Pruefung', { concurrency: false }, async () => {
+  await withTemporaryDiagnosticObserverCopy({ anchor: PRIVATE_EXPORT_ANCHOR }, async ({ namespace }) => {
+    let reads = 0
+    let calls = 0
+    const notification = new Proxy(function (notPublicArity) { calls += 1 }, {
+      getOwnPropertyDescriptor() { reads += 1; throw 'private-constructor-length-read' },
+    })
+    const exchange = () => { calls += 1 }
+    const input = { activeExchange: exchange, activeObservationClosed: notification, runBinding: createInternalRunBinding() }
+    const machine = namespace.createBrowserSyncTransportRuntimeDiagnosticRunMachine(input)
+    assert.equal(machine.activeObservationClosed, notification)
+    assert.equal(machine.observationNotificationState, 'armed')
+    assert.equal(machine.observationNotificationViolation, false)
+    assert.equal(reads, 0)
+    assert.equal(calls, 0)
+    for (const value of [
+      { activeExchange: exchange, runBinding: input.runBinding },
+      { ...input, activeObservationClosed: undefined },
+      { ...input, activeExchange: undefined },
+      { activeObservationClosed: notification, activeExchange: exchange, runBinding: input.runBinding },
+      { ...input, extra: true },
+    ]) assert.throws(() => namespace.createBrowserSyncTransportRuntimeDiagnosticRunMachine(value),
+      { name: 'TypeError', message: 'invalidRunMachineInput' })
+    assert.throws(() => namespace.createBrowserSyncTransportRuntimeDiagnosticRunMachine(), TypeError)
+    assert.throws(() => namespace.createBrowserSyncTransportRuntimeDiagnosticRunMachine(input, undefined), TypeError)
+    assert.equal(reads, 0)
+    assert.equal(calls, 0)
+  })
+})
+
+function notificationFlowDefinition(id) {
+  const command = (name) => (intent) => intent.kind === 'protocol-command-send' &&
+    intent.payload.command === name
+  const cancel = (capKind) => (intent) => intent.kind === 'cap-cancel' &&
+    intent.payload.capKind === capKind
+  const definitions = {
+    'setup-ready': { target: cancel('setup'), preO0: true },
+    'rejection-setup': {
+      target: cancel('setup'), trigger: command('Target.getTargets'), preO0: true,
+    },
+    'rejection-capture': {
+      target: cancel('capture'), trigger: command('Runtime.evaluate'), preO0: true,
+    },
+    'capture-terminal': {
+      target: cancel('capture'), preO0: true,
+      options: { captureMessages: [{ kind: 'connection-closed' }] },
+    },
+    'old-setup': {
+      target: cancel('setup'), preO0: false, oldCap: true,
+      options: { setupMessages: [{ kind: 'connection-closed' }] },
+    },
+    'old-capture': {
+      target: cancel('capture'), preO0: false, oldCap: true,
+      options: { captureMessages: [{ kind: 'cap-fired', capKind: 'setup', armIntentId: 1 }] },
+    },
+    regular: {
+      target: (intent) => intent.kind === 'controller-clock-sample' &&
+        intent.payload.reason === 'cleanup-origin',
+      preO0: false,
+    },
+    'portless-observation': { target: command('Target.getTargets'), preO0: true },
+    prestart: { target: (intent) => intent.kind === 'capability-probe', preO0: true, prestart: true },
+    'prestart-arm': {
+      target: (intent) => intent.kind === 'cap-arm' && intent.payload.capKind === 'setup',
+      preO0: true, prestart: true,
+    },
+    'portless-cleanup': {
+      target: (intent) => intent.kind === 'cleanup-step', preO0: false,
+    },
+  }
+  return definitions[id]
+}
+
+// This driver supplies synthetic settlements to the real controlled handlers.
+// Every native deferred is settled with undefined, never with an adversarial graph.
+function driveNotificationFlow(namespace, handlerPairs, {
+  id = 'regular', mode = 'exact', publicPath = false,
+  notificationBehavior, aliasRoles = false, controllerOptions = {},
+} = {}) {
+  const definition = notificationFlowDefinition(id)
+  const calls = []
+  const markers = []
+  const events = []
+  let machine = null
+  let api = null
+  let targetCall = null
+  let triggered = false
+  let savedProfile = null
+  const nonOwnerPromises = []
+  function notification() {
+    const marker = {
+      receiver: this,
+      argumentCount: arguments.length,
+      intentCount: controller.intents.length,
+      snapshot: machine?.preCleanupObservationSnapshot,
+      snapshotValues: machine?.preCleanupObservationSnapshot === null
+        ? null : cloneTree(machine?.preCleanupObservationSnapshot),
+      ledger: machine?.cleanupLedger,
+      phase: machine?.phase,
+      slot: machine?.activeObservationClosed,
+      state: machine?.observationNotificationState,
+      port: machine?.portState,
+      exchange: machine?.activeExchange,
+      freezeError: null,
+    }
+    if (machine !== null) {
+      try {
+        assert.notEqual(marker.snapshot, null)
+        assertDeepFrozenGraph(marker.snapshot)
+      } catch (error) {
+        marker.freezeError = error
+      }
+    }
+    markers.push(marker)
+    events.push({ kind: 'marker' })
+    if (publicPath) {
+      nonOwnerPromises.push(api.run(), api.run('not-owner'))
+    }
+    if (notificationBehavior !== undefined) {
+      return notificationBehavior({ machine, namespace, savedProfile, marker })
+    }
+  }
+  const controller = createFullRunEffectController({
+    ...definition.options,
+    ...controllerOptions,
+    onObservationClosed: notification,
+    settlementForIntent(intent, response) {
+      const event = {
+        kind: 'intent', intent,
+        snapshot: machine?.preCleanupObservationSnapshot,
+        ledger: machine?.cleanupLedger,
+      }
+      events.push(event)
+      let outcome = 'exact'
+      if (!triggered && definition.trigger?.(intent)) {
+        triggered = true
+        outcome = 'rejection'
+      }
+      const isTarget = targetCall === null && definition.target(intent)
+      if (isTarget) outcome = mode
+      const call = { deferred: createCleanDeferred(), intent, response, outcome, event }
+      calls.push(call)
+      if (isTarget) targetCall = call
+      if (outcome === 'unobservable') {
+        return { type: 'throw', reason: 'unobserved-notification-flow-sentinel' }
+      }
+      return { type: 'candidate', promise: call.deferred.promise }
+    },
+  })
+  function aliasedCapability() {
+    return arguments.length === 0
+      ? Reflect.apply(controller.effectPort.observationClosed, undefined, [])
+      : Reflect.apply(controller.effectPort.exchange, undefined, [arguments[0]])
+  }
+  const activeExchange = aliasRoles ? aliasedCapability : controller.effectPort.exchange
+  const activeObservationClosed = aliasRoles
+    ? aliasedCapability : controller.effectPort.observationClosed
+  let runPromise
+  if (publicPath) {
+    api = namespace.createBrowserSyncTransportRuntimeDiagnosticObserver({
+      effectPort: { exchange: activeExchange, observationClosed: activeObservationClosed },
+      runBinding: createValidRunBinding(),
+    })
+    assert.equal(markers.length, 0, 'factory-marker')
+    runPromise = api.run()
+    nonOwnerPromises.push(api.run())
+  } else {
+    machine = namespace.createBrowserSyncTransportRuntimeDiagnosticRunMachine({
+      activeExchange, activeObservationClosed, runBinding: createInternalRunBinding(),
+    })
+    savedProfile = machine.nextExchangeRequestProfile
+    runPromise = machine.ownerRunPromise
+    namespace.requestBrowserSyncTransportRuntimeDiagnosticExchange(machine, savedProfile)
+  }
+  // A finite deterministic drain of already issued test exchanges, no scheduler.
+  let driven = 0
+  for (let index = 0; index < calls.length; index += 1) {
+    assert.ok(index < 160, 'finite-notification-fixture-bound')
+    const call = calls[index]
+    if (call.outcome === 'pending') break
+    if (call.outcome === 'unobservable') continue
+    const pair = capturedHandlerPair(handlerPairs, call)
+    if (call.outcome === 'rejection') {
+      assert.equal(pair.onRejected(), undefined)
+    } else {
+      assert.equal(pair.onFulfilled(call.outcome === 'malformed' ? {} : call.response), undefined)
+    }
+    call.deferred.resolve(undefined)
+    driven += 1
+  }
+  return {
+    machine, controller, markers, events, calls, driven, targetCall,
+    runPromise, nonOwnerPromises, activeExchange, activeObservationClosed,
+    definition, id, mode, publicPath,
+  }
+}
+
+function assertNotificationFlow(scenario) {
+  const { machine, markers, events, definition, mode, targetCall, publicPath } = scenario
+  assert.notEqual(targetCall, null, 'flow-target-reached')
+  const noO0 = definition.prestart || (mode === 'pending' && definition.preO0)
+  assert.equal(markers.length, noO0 ? 0 : 1, 'notification-cardinality')
+  for (const marker of markers) {
+    assert.equal(marker.receiver, undefined, 'notification-receiver')
+    assert.equal(marker.argumentCount, 0, 'notification-arguments')
+    if (!publicPath) {
+      assert.equal(marker.freezeError, null, 'notification-after-deep-freeze')
+      assert.equal(marker.ledger, null, 'notification-before-ledger')
+      assert.notEqual(marker.phase, 'cleanup', 'notification-before-phase')
+      assert.equal(marker.slot, null, 'notification-slot-consumed-before-call')
+      assert.equal(marker.state, 'invoking', 'notification-invoking-state')
+      assert.equal(machine.preCleanupObservationSnapshot, marker.snapshot, 'notification-o0-identity')
+      assert.deepEqual(machine.preCleanupObservationSnapshot, marker.snapshotValues, 'notification-o0-values')
+      if (mode === 'unobservable' && definition.preO0) {
+        assert.equal(marker.port, 'closed', 'portless-marker-port')
+        assert.equal(marker.exchange, null, 'portless-marker-exchange')
+      }
+    }
+  }
+  if (markers.length === 1) {
+    const markerIndex = events.findIndex((event) => event.kind === 'marker')
+    const targetIndex = events.indexOf(targetCall.event)
+    assert.equal(markerIndex > targetIndex, definition.preO0, 'notification-intent-order')
+  }
+  if (publicPath) return
+  assert.equal(machine.intentCount, scenario.controller.intents.length, 'notification-not-an-intent')
+  assert.equal(machine.nextIntentId, machine.intentCount + 1, 'notification-no-intent-id')
+  assert.equal(machine.portCallCount, machine.intentCount, 'notification-no-port-count')
+  assert.equal(machine.capabilityCallCount, machine.intentCount, 'notification-no-capability-count')
+  if (mode === 'pending') {
+    assert.equal(machine.runSettlementCount, 0, 'notification-pending-no-settlement')
+    assert.equal(machine.lease, 'observable-pending', 'notification-pending-lease')
+    assert.equal(machine.currentExchangeCount, 1, 'notification-pending-exchange')
+    assert.equal(machine.activeObservationClosed, noO0 ? scenario.activeObservationClosed : null,
+      'notification-pending-reference')
+    assert.equal(machine.observationNotificationState, noO0 ? 'armed' : 'consumed',
+      'notification-pending-state')
+    if (definition.oldCap) assert.equal(machine.cleanupLedger, null, 'old-cap-pending-no-ledger')
+  } else {
+    assert.equal(machine.runSettlementCount, 1, 'notification-terminal-settlement')
+    assert.equal(machine.activeExchange, null, 'notification-terminal-exchange-clear')
+    assert.equal(machine.activeObservationClosed, null, 'notification-terminal-slot-clear')
+    assert.equal(machine.observationNotificationState, noO0 ? 'discarded' : 'consumed',
+      'notification-terminal-state')
+  }
+  if (noO0) {
+    assert.equal(machine.preCleanupObservationSnapshot, null, 'notification-no-invented-o0')
+    assert.equal(machine.cleanupLedger, null, 'notification-prestart-no-cleanup')
+  }
+}
+
+test('ADR0037 bindet alle sieben Ablaufklassen privat und black-box an denselben Marker', { concurrency: false }, async (t) => {
+  await withCapturedControlledPromiseHandlers(async (handlerPairs) => {
+    await withTemporaryDiagnosticObserverCopy({ anchor: PRIVATE_EXPORT_ANCHOR }, async ({ namespace }) => {
+      const cases = [
+        ...['setup-ready', 'rejection-setup', 'rejection-capture', 'capture-terminal',
+          'old-setup', 'old-capture'].flatMap((id) =>
+          ['exact', 'rejection', 'malformed', 'unobservable', 'pending'].map((mode) => ({ id, mode }))),
+        { id: 'regular', mode: 'exact' },
+        { id: 'regular', mode: 'pending' },
+        { id: 'portless-observation', mode: 'unobservable' },
+        { id: 'portless-cleanup', mode: 'unobservable' },
+        ...['prestart', 'prestart-arm'].flatMap((id) =>
+          ['rejection', 'malformed', 'unobservable', 'pending'].map((mode) => ({ id, mode }))),
+      ]
+      for (const vector of cases) {
+        for (const publicPath of [false, true]) {
+          await t.test(`${vector.id}/${vector.mode}/${publicPath ? 'public' : 'private'}`, async () => {
+            const scenario = driveNotificationFlow(namespace, handlerPairs, { ...vector, publicPath })
+            assertNotificationFlow(scenario)
+            if (vector.mode === 'pending') {
+              const before = scenario.machine === null ? null : snapshotJoinState(
+                scenario.machine, scenario.controller.intents, scenario.machine.capabilityCallCount)
+              const markerCount = scenario.markers.length
+              const intentCount = scenario.controller.intents.length
+              let settlements = 0
+              scenario.runPromise.then(() => { settlements += 1 })
+              for (let checkpoint = 0; checkpoint < 3; checkpoint += 1) {
+                await new Promise((resolve) => queueMicrotask(resolve))
+                assert.equal(settlements, 0)
+                assert.equal(scenario.markers.length, markerCount)
+                assert.equal(scenario.controller.intents.length, intentCount)
+                assertNotificationFlow(scenario)
+                if (before !== null) assert.deepEqual(snapshotJoinState(
+                  scenario.machine, scenario.controller.intents, scenario.machine.capabilityCallCount), before)
+              }
+            } else {
+              const result = await scenario.runPromise
+              assertFoundationResult(result)
+              assert.equal(result.ok, !scenario.definition.prestart)
+              assertNotificationFlow(scenario)
+            }
+            for (const promise of scenario.nonOwnerPromises) {
+              assert.equal((await promise).ok, false)
+            }
+          })
+        }
+      }
+    })
+  })
+})
+
+function createNotificationReturnVector(kind) {
+  const traps = { get: 0, getPrototypeOf: 0, ownKeys: 0, getOwnPropertyDescriptor: 0, thenCalls: 0 }
+  let value
+  if (kind === 'thenable') {
+    value = Object.defineProperty({}, 'then', {
+      get() { traps.get += 1; return () => { traps.thenCalls += 1 } },
+    })
+  } else if (kind === 'proxy' || kind === 'throw') {
+    value = new Proxy({}, Object.fromEntries(
+      ['get', 'getPrototypeOf', 'ownKeys', 'getOwnPropertyDescriptor'].map((trap) => [trap,
+        (...args) => { traps[trap] += 1; return Reflect[trap](...args) }])
+    ))
+  } else if (kind === 'promise') {
+    value = normalizePromise(Promise.resolve('already-fulfilled'))
+  } else {
+    value = kind
+  }
+  return {
+    traps,
+    behavior() {
+      if (kind === 'throw') throw value
+      return value
+    },
+  }
+}
+
+function assertNotificationFailure(scenario, vector) {
+  assertNotificationFlow(scenario)
+  assert.deepEqual(vector.traps,
+    { get: 0, getPrototypeOf: 0, ownKeys: 0, getOwnPropertyDescriptor: 0, thenCalls: 0 },
+    'notification-return-not-reflected-or-assimilated')
+  assert.equal(scenario.machine.observationNotificationViolation, true, 'notification-violation-sticky')
+  assert.equal(scenario.machine.cleanupInitialViolation, true, 'notification-cleanup-initial-violation')
+  assert.equal(scenario.machine.preCleanupObservationSnapshot.stickyViolation, false, 'notification-no-retroactive-v')
+  assert.equal(scenario.machine.preCleanupObservationSnapshot.observationCompletion.observationCloseReason,
+    'capture-cap', 'notification-original-close-reason')
+  if (scenario.mode !== 'pending') {
+    assert.equal(scenario.machine.cleanupLedger.result, 'FAIL', 'notification-fail-precedence')
+    assert.equal(scenario.machine.cleanupLedger.cleanupViolation, true, 'notification-ledger-violation')
+    assert.equal(scenario.controller.cleanupStepIds.length, 12, 'notification-ordered-cleanup')
+  }
+}
+
+test('ADR0037 behandelt Throw und jeden fremden Return ohne Reflection oder Assimilation', { concurrency: false }, async (t) => {
+  await withCapturedControlledPromiseHandlers(async (handlerPairs) => {
+    await withTemporaryDiagnosticObserverCopy({ anchor: PRIVATE_EXPORT_ANCHOR }, async ({ namespace }) => {
+      for (const kind of [null, false, true, 0, 1, NaN, '', 'text', 0n, Symbol('invalid'),
+        'thenable', 'proxy', 'promise', 'throw']) {
+        await t.test(String(kind), async () => {
+          const vector = createNotificationReturnVector(kind)
+          const scenario = driveNotificationFlow(namespace, handlerPairs, { notificationBehavior: vector.behavior })
+          assertNotificationFailure(scenario, vector)
+          const result = await scenario.runPromise
+          assertFoundationResult(result)
+          assert.equal(result.ok, true)
+          assert.equal(result.recordProjection.candidateObserverGate, 'FAIL')
+          assert.equal(result.recordProjection.candidateFinding, 'observer-invalid')
+          assert.equal(result.recordProjection.cleanup.checks[19].result, 'confirmed')
+          assertNotificationFailure(scenario, vector)
+        })
+      }
+      const vector = createNotificationReturnVector('throw')
+      const pending = driveNotificationFlow(namespace, handlerPairs, {
+        id: 'regular', mode: 'pending', notificationBehavior: vector.behavior,
+      })
+      for (let checkpoint = 0; checkpoint < 3; checkpoint += 1) {
+        await new Promise((resolve) => queueMicrotask(resolve))
+        assertNotificationFailure(pending, vector)
+      }
+    })
+  })
+})
+
+test('ADR0037 erhaelt FAIL bei jeder Stimulusklasse und spaeterem Cleanupcap', { concurrency: false }, async (t) => {
+  await withCapturedControlledPromiseHandlers(async (handlerPairs) => {
+    await withTemporaryDiagnosticObserverCopy({ anchor: PRIVATE_EXPORT_ANCHOR }, async ({ namespace }) => {
+      for (const stimulus of ['zero', 'unknown', 'one']) {
+        await t.test(stimulus, async () => {
+          let baselineSnapshot
+          for (const invalidReturn of [false, true]) {
+            let cleanupOrigin
+            const vector = createNotificationReturnVector('proxy')
+            const scenario = driveNotificationFlow(namespace, handlerPairs, {
+              notificationBehavior: invalidReturn ? vector.behavior : undefined,
+              controllerOptions: {
+                ...(stimulus === 'zero' ? { targetInfos: [] } :
+                  stimulus === 'unknown' ? { captureMessages: [] } : {}),
+                clockForReason(reason, current) {
+                  if (reason === 'cleanup-origin') cleanupOrigin = current + 10
+                  return reason === 'cleanup-dequeue-before-reflection'
+                    ? cleanupOrigin + 60000 : current + 10
+                },
+              },
+            })
+            assertNotificationFlow(scenario)
+            const result = await scenario.runPromise
+            assertFoundationResult(result)
+            assert.equal(result.ok, true)
+            const projection = result.recordProjection
+            assert.equal(projection.requestBudget.defaultTransportCalls, stimulus)
+            assert.equal(projection.timing.completion.cleanupFinalizeReason, 'cleanup-cap')
+            assert.equal(projection.cleanup.checks[19].result, 'unproven')
+            assert.equal(projection.candidateObserverGate, invalidReturn ? 'FAIL' : 'UNPROVEN')
+            assert.equal(projection.candidateFinding, invalidReturn ? 'observer-invalid' : 'inconclusive')
+            assert.equal(scenario.machine.observationNotificationViolation, invalidReturn)
+            assert.equal(scenario.machine.cleanupLedger.cleanupViolation, invalidReturn)
+            assert.equal(scenario.machine.preCleanupObservationSnapshot.stickyViolation, false)
+            assert.equal(scenario.controller.cleanupStepIds.length, stimulus === 'zero' ? 1 : 0)
+            assert.deepEqual(vector.traps,
+              { get: 0, getPrototypeOf: 0, ownKeys: 0, getOwnPropertyDescriptor: 0, thenCalls: 0 })
+            if (invalidReturn) {
+              assert.deepEqual(scenario.machine.preCleanupObservationSnapshot, baselineSnapshot)
+            } else {
+              baselineSnapshot = scenario.machine.preCleanupObservationSnapshot
+            }
+          }
+        })
+      }
+    })
+  })
+})
+
+function createNotificationReentrancyVector(profileKind) {
+  const observations = []
+  const traps = { get: 0, getPrototypeOf: 0, ownKeys: 0, getOwnPropertyDescriptor: 0 }
+  return {
+    observations, traps,
+    behavior({ machine, namespace, savedProfile }) {
+      const before = snapshotJoinState(machine, [], machine.capabilityCallCount)
+      const profile = profileKind === 'saved' ? savedProfile : new Proxy({}, Object.fromEntries(
+        Object.keys(traps).map((trap) => [trap, (...args) => {
+          traps[trap] += 1
+          return Reflect[trap](...args)
+        }])
+      ))
+      let thrown = null
+      const results = []
+      try {
+        // Invalid arity and foreign identity are still inert before the new guard.
+        results.push(namespace.requestBrowserSyncTransportRuntimeDiagnosticExchange(machine))
+        results.push(namespace.requestBrowserSyncTransportRuntimeDiagnosticExchange({}, profile))
+        const beforeActualCall = machine.observationNotificationViolation
+        results.push(namespace.requestBrowserSyncTransportRuntimeDiagnosticExchange(machine, profile))
+        results.push(namespace.requestBrowserSyncTransportRuntimeDiagnosticExchange(machine, profile))
+        observations.push({ beforeActualCall })
+      } catch (error) { thrown = error }
+      observations.push({
+        before, after: snapshotJoinState(machine, [], machine.capabilityCallCount), thrown, results,
+        state: machine.observationNotificationState,
+        nextProfile: machine.nextExchangeRequestProfile,
+      })
+    },
+  }
+}
+
+function assertNotificationReentrancy(scenario, vector) {
+  assertNotificationFlow(scenario)
+  assert.deepEqual(vector.traps,
+    { get: 0, getPrototypeOf: 0, ownKeys: 0, getOwnPropertyDescriptor: 0 },
+    'notification-reentrancy-before-profile-reflection')
+  assert.equal(vector.observations.length, 2, 'notification-reentrancy-completed')
+  assert.equal(vector.observations[0].beforeActualCall, false, 'notification-invalid-identity-inert')
+  const observation = vector.observations[1]
+  assert.equal(observation.thrown, null, 'notification-reentrancy-no-throw')
+  assert.deepEqual(observation.results, [undefined, undefined, undefined, undefined])
+  assert.equal(observation.state, 'invoking', 'notification-invoking-until-return')
+  assert.equal(observation.nextProfile, null, 'notification-no-new-profile-required')
+  assert.deepEqual(observation.after, { ...observation.before, observationNotificationViolation: true },
+    'notification-reentrancy-only-violation')
+  assert.equal(scenario.machine.observationNotificationViolation, true, 'notification-reentrancy-sticky')
+  assert.equal(scenario.machine.cleanupLedger.result, 'FAIL', 'notification-reentrancy-fail')
+  assert.equal(scenario.machine.preCleanupObservationSnapshot.stickyViolation, false)
+  assert.equal(scenario.controller.cleanupStepIds.length, 12)
+}
+
+test('ADR0037 sperrt echte interne Reentranz vor gespeichertem und Proxyprofil', { concurrency: false }, async (t) => {
+  await withCapturedControlledPromiseHandlers(async (handlerPairs) => {
+    await withTemporaryDiagnosticObserverCopy({ anchor: PRIVATE_EXPORT_ANCHOR }, async ({ namespace }) => {
+      for (const profileKind of ['saved', 'proxy']) {
+        await t.test(profileKind, async () => {
+          const vector = createNotificationReentrancyVector(profileKind)
+          const scenario = driveNotificationFlow(namespace, handlerPairs, { notificationBehavior: vector.behavior })
+          assertNotificationReentrancy(scenario, vector)
+          const result = await scenario.runPromise
+          assert.equal(result.recordProjection.candidateObserverGate, 'FAIL')
+          assert.equal(result.recordProjection.candidateFinding, 'observer-invalid')
+        })
+      }
+    })
+  })
+})
+
+test('ADR0037 konsumiert aliasierte Rollen getrennt und behaelt keine terminale Referenz', { concurrency: false }, async () => {
+  await withCapturedControlledPromiseHandlers(async (handlerPairs) => {
+    await withTemporaryDiagnosticObserverCopy({ anchor: PRIVATE_EXPORT_ANCHOR }, async ({ namespace }) => {
+      for (const publicPath of [false, true]) {
+        const scenario = driveNotificationFlow(namespace, handlerPairs, { aliasRoles: true, publicPath })
+        assertNotificationFlow(scenario)
+        if (!publicPath) assert.equal(scenario.markers[0].exchange, scenario.activeObservationClosed)
+        assert.equal((await scenario.runPromise).ok, true)
+        assert.equal(scenario.controller.cleanupStepIds.length, 12)
+      }
+    })
+  })
+})
+
+function assertNotificationSourceTransitions(source) {
+  assert.equal(countOccurrences(source, 'capturedReflectApply(observationClosed, undefined, [])'), 1,
+    'notification-single-apply-callsite')
+  assert.equal(countOccurrences(source, 'capturedObservationClosed = null'), 2,
+    'notification-factory-slots-discarded-and-transferred')
+  assert.equal(countOccurrences(source, "machine.observationNotificationState = 'invoking'"), 1)
+  assert.equal(countOccurrences(source, "machine.observationNotificationState = 'consumed'"), 1)
+  assert.equal(countOccurrences(source, "machine.observationNotificationState = 'discarded'"), 1)
+  assert.equal(countOccurrences(source, 'observationNotificationViolation: false'), 1)
+  assert.equal(countOccurrences(source, 'observationNotificationViolation = false'), 0,
+    'notification-violation-never-demoted')
+  const freezer = source.slice(source.indexOf('function freezeObservationSnapshot(machine) {'),
+    source.indexOf('function createCleanupCheckMap() {'))
+  assert.ok(freezer.indexOf('machine.preCleanupObservationSnapshot = deepFreezeGenerated(snapshot)') <
+    freezer.indexOf('capturedReflectApply(observationClosed, undefined, [])'))
+  assert.equal(/\b(?:prepareExchange|invokePreparedExchange|requestCapCancel|initializeCleanupLedger|settleMachineWith\w+)\(/u.test(freezer), false,
+    'notification-freezer-no-autonomous-progress')
+  assert.match(source, /const activeExchange = capturedExchange\n    const activeObservationClosed = capturedObservationClosed\n    capturedExchange = null\n    capturedObservationClosed = null/u,
+    'notification-synchronous-owner-transfer')
+  assert.match(source, /machine\.observationNotificationState === 'invoking'\) \{\n    machine\.observationNotificationViolation = true\n    return undefined\n  \}\n\n  if \(machine\.lease === LEASE_OBSERVABLE_PENDING/u,
+    'notification-guard-before-join')
+}
+
+test('ADR0037 schliesst Notificationtransitions ohne neue Fortschrittsquelle strukturell', async () => {
+  assertNotificationSourceTransitions((await readFile(PRODUCTION_MODULE_URL)).toString('utf8'))
+})
+
+test('ADR0037 toetet disjunkte Notificationmutanten am jeweils identischen Oracle', { concurrency: false }, async (t) => {
+  const call = 'capturedReflectApply(observationClosed, undefined, [])'
+  const guard = [
+    "  if (machine.observationNotificationState === 'invoking') {",
+    '    machine.observationNotificationViolation = true',
+    '    return undefined',
+    '  }',
+  ].join('\n')
+  const notificationBlock = (bytes) => {
+    const source = bytes.toString('utf8')
+    const start = source.indexOf('  // ADR 0037: consume the separate role after O0, before any cleanup transition.')
+    const end = source.indexOf('\n}\n\nfunction createCleanupCheckMap()', start)
+    assert.ok(start > 0 && end > start)
+    return source.slice(start, end)
+  }
+  function moveBlock(bytes, replace, destination, after) {
+    const block = notificationBlock(bytes)
+    const removed = replace(bytes, block, '', 'remove-notification-block-for-single-move')
+    return replace(removed, destination,
+      after ? destination + '\n' + block : block + '\n' + destination,
+      'place-notification-block-for-single-move')
+  }
+  const definitions = [
+    { id: 'removed-callsite', mutate: (b, r) => r(b, notificationBlock(b), '', 'removed-callsite') },
+    { id: 'before-o0', mutate(b, r) {
+      return moveBlock(b, r, '  machine.preCleanupObservationSnapshot = deepFreezeGenerated(snapshot)', false)
+    } },
+    { id: 'after-phase', mutate(b, r) {
+      return moveBlock(b, r, "  freezeObservationSnapshot(machine)\n  machine.phase = 'cleanup'", true)
+    } },
+    { id: 'after-ledger', mutate(b, r) {
+      return moveBlock(b, r, [
+        '  initializeCleanupLedger(machine)',
+        "  if (machine.portState === 'open') {",
+        '    startCleanupController(machine)',
+      ].join('\n'), true)
+    } },
+    { id: 'after-old-cap', vector: { id: 'old-setup' }, mutate(b, r) {
+      const block = notificationBlock(b)
+      const removed = r(b, block, '', 'remove-notification-block-for-single-move')
+      const branch = "  if (context.purpose === 'post-o0-old-cap') {\n    continuePostSnapshotOldCapCancels(machine)"
+      return r(removed, branch,
+        "  if (context.purpose === 'post-o0-old-cap') {\n" + block + '\n    continuePostSnapshotOldCapCancels(machine)',
+        'place-notification-after-old-cap')
+    } },
+    { id: 'duplicate-callsite', search: call, replacement: `(${call}, ${call})` },
+    { id: 'premature-port-discard', vector: { id: 'portless-observation', mode: 'unobservable' },
+      search: 'function closePortAndLease(machine) {',
+      replacement: 'function closePortAndLease(machine) {\n  machine.activeObservationClosed = null' },
+    { id: 'missing-consumption',
+      search: '  let observationClosed = machine.activeObservationClosed\n  machine.activeObservationClosed = null',
+      replacement: '  let observationClosed = machine.activeObservationClosed' },
+    { id: 'missing-prestart-discard', vector: { id: 'prestart', mode: 'malformed' },
+      search: 'function clearEphemeralMachineState(machine) {\n  if (machine.activeObservationClosed !== null) {\n    machine.activeObservationClosed = null\n  }',
+      replacement: 'function clearEphemeralMachineState(machine) {' },
+    { id: 'missing-slot', fault: true,
+      search: '    activeObservationClosed: inputValues[1],', replacement: '    activeObservationClosed: null,' },
+    { id: 'impossible-consumption-state', fault: true,
+      search: "    observationNotificationState: 'armed',", replacement: "    observationNotificationState: 'consumed'," },
+    { id: 'cleanup-error-demotion', returnKind: 'proxy',
+      search: '  if (machine.observationNotificationViolation) {\n    machine.cleanupInitialViolation = true\n  }',
+      replacement: '  if (machine.observationNotificationViolation) {\n    machine.cleanupInitialViolation = false\n  }' },
+    { id: 'ignored-throw', returnKind: 'throw',
+      search: '    } catch {\n      machine.observationNotificationViolation = true\n    }\n  }\n  observationClosed = null',
+      replacement: '    } catch {\n      machine.observationNotificationViolation = false\n    }\n  }\n  observationClosed = null' },
+    { id: 'ignored-return', returnKind: 'proxy',
+      search: `${call} !== undefined`, replacement: `(${call}, false)` },
+    { id: 'return-assimilation', returnKind: 'thenable',
+      search: `${call} !== undefined`, replacement: `CapturedPromise.resolve(${call}) !== undefined` },
+    { id: 'removed-reentrancy-guard', profileKind: 'saved', search: guard, replacement: '' },
+    { id: 'late-reentrancy-guard', profileKind: 'proxy',
+      search: guard, replacement: '  if (machine.observationNotificationState === \'invoking\') {\n    profile.phase\n    machine.observationNotificationViolation = true\n    return undefined\n  }' },
+    { id: 'guard-after-profile-identity', profileKind: 'saved', mutate(b, r) {
+      const removed = r(b, guard, '', 'move-reentrancy-guard')
+      return r(removed, '  const phase = profile.phase', guard + '\n\n  const phase = profile.phase', 'late-profile-identity-guard')
+    } },
+    { id: 'post-marker-pending-progress', vector: { id: 'old-setup', mode: 'pending' },
+      search: '  machine.activeExchangePromiseCandidate = candidate',
+      replacement: "  machine.activeExchangePromiseCandidate = candidate\n  if (machine.observationNotificationState === 'consumed') {\n    forceControlledHandlerFailure(machine)\n    return undefined\n  }" },
+    { id: 'factory-marker', oracle: 'factory',
+      search: '    capturedObservationClosed = portValues[1]',
+      replacement: '    capturedObservationClosed = portValues[1]\n    capturedReflectApply(capturedObservationClosed, undefined, [])' },
+    { id: 'second-length-read', oracle: 'factory',
+      search: "    const notificationLength = capturedGetOwnPropertyDescriptor(portValues[1], 'length')",
+      replacement: "    capturedGetOwnPropertyDescriptor(portValues[1], 'length')\n    const notificationLength = capturedGetOwnPropertyDescriptor(portValues[1], 'length')" },
+    { id: 'late-free-notification-read', oracle: 'factory',
+      search: '    const activeObservationClosed = capturedObservationClosed',
+      replacement: '    const activeObservationClosed = options.effectPort.observationClosed' },
+    { id: 'prestart-marker', oracle: 'wrong-arity',
+      search: '    if (arguments.length !== 0) {\n      capturedExchange = null',
+      replacement: '    if (arguments.length !== 0) {\n      capturedReflectApply(capturedObservationClosed, undefined, [])\n      capturedExchange = null' },
+    { id: 'nonowner-marker', oracle: 'nonowner',
+      search: "    if (runState !== 'unused') {",
+      replacement: "    if (runState !== 'unused') {\n      capturedReflectApply(capturedObservationClosed, undefined, [])" },
+    { id: 'retained-factory-slot', oracle: 'structure',
+      search: '    capturedExchange = null\n    capturedObservationClosed = null',
+      replacement: '    capturedExchange = null' },
+    { id: 'required-field-bypass', oracle: 'required-field',
+      search: "    const portValues = readClosedRecord(\n      optionValues[0],\n      ['exchange', 'observationClosed'],\n      visited\n    )",
+      replacement: "    const portValues = [readOwnDataDescriptor(optionValues[0], 'exchange'), function () {}]" },
+    { id: 'length-value-bypass', oracle: 'invalid-length',
+      search: '      notificationLength.value !== 0', replacement: '      false' },
+  ]
+  async function executeOracle(namespace, handlerPairs, definition, source, expectKill) {
+    const vector = definition.returnKind !== undefined ? createNotificationReturnVector(definition.returnKind)
+      : definition.profileKind !== undefined ? createNotificationReentrancyVector(definition.profileKind) : null
+    // Fixture/driver failures cannot count as an oracle kill.
+    const scenario = definition.oracle === undefined ? driveNotificationFlow(namespace, handlerPairs, {
+      ...definition.vector, notificationBehavior: vector?.behavior,
+    }) : null
+    if (expectKill && definition.fault) {
+      // Check fail-closed fault handling outside the expected conformance failure.
+      assert.equal(scenario.markers.length, 0)
+      assert.equal(scenario.machine.activeObservationClosed, null)
+      assert.equal(scenario.machine.observationNotificationState, 'consumed')
+      assert.equal(scenario.machine.observationNotificationViolation, true)
+      assert.equal(scenario.machine.cleanupLedger.result, 'FAIL')
+      assert.equal(scenario.controller.cleanupStepIds.length, 12)
+    }
+    const oracle = async () => {
+      if (definition.oracle === 'factory') return assertPublicNotificationCapture(namespace)
+      if (definition.oracle === 'wrong-arity' || definition.oracle === 'nonowner') {
+        return assertNotificationWrongRunArity(namespace)
+      }
+      if (definition.oracle === 'structure') return assertNotificationSourceTransitions(source)
+      if (definition.oracle === 'required-field' || definition.oracle === 'invalid-length') {
+        const effectPort = { exchange() {} }
+        if (definition.oracle === 'invalid-length') effectPort.observationClosed = function (one) {}
+        assertFactoryDependencyError(() => namespace.createBrowserSyncTransportRuntimeDiagnosticObserver({
+          effectPort, runBinding: createValidRunBinding(),
+        }))
+        return
+      }
+      if (definition.returnKind !== undefined) assertNotificationFailure(scenario, vector)
+      else if (definition.profileKind !== undefined) assertNotificationReentrancy(scenario, vector)
+      else assertNotificationFlow(scenario)
+    }
+    if (expectKill) await assert.rejects(oracle, (error) => error?.code === 'ERR_ASSERTION')
+    else await oracle()
+  }
+  await withCapturedControlledPromiseHandlers(async (handlerPairs) => {
+    for (const definition of definitions) {
+      await t.test(definition.id, async () => {
+        let baselineBytes
+        await withTemporaryDiagnosticObserverCopy({ anchor: PRIVATE_EXPORT_ANCHOR }, async ({ namespace, productionBytes, productionSource }) => {
+          baselineBytes = productionBytes
+          await executeOracle(namespace, handlerPairs, definition, productionSource, false)
+        })
+        await withTemporaryDiagnosticObserverCopy({
+          anchor: PRIVATE_EXPORT_ANCHOR, kind: `adr0037-mutant-${definition.id}`,
+          mutate(bytes, replace) {
+            return definition.mutate ? definition.mutate(bytes, replace)
+              : replace(bytes, definition.search, definition.replacement, definition.id)
+          },
+        }, async ({ namespace, productionBytes, instrumentedSource }) => {
+          assert.deepEqual(productionBytes, baselineBytes, 'same-production-bytes-for-mutant')
+          await executeOracle(namespace, handlerPairs, definition, instrumentedSource, true)
+        })
+      })
+    }
+  })
+})
 
 test('bindet den öffentlichen Modulvertrag importinaktiv und ohne zusätzliche Exports', () => {
   assert.deepEqual(Object.keys(diagnosticObserverModule), [PUBLIC_EXPORT_NAME])
@@ -1307,6 +2175,7 @@ test('erzwingt gewöhnliche Factory-, Port- und RunBinding-Knoten mit exakter Ke
     value() {},
     writable: true,
   })
+  reversedPort.observationClosed = createNotificationProbe().observationClosed
   const rootWithSymbol = cloneTree(validRunBinding)
   rootWithSymbol[Symbol('extra')] = true
   const replayWithSymbol = cloneTree(validRunBinding)
@@ -1343,7 +2212,7 @@ test('erzwingt gewöhnliche Factory-, Port- und RunBinding-Knoten mit exakter Ke
     Object.assign(Object.create(null), validOptions),
     [validOptions.effectPort, validRunBinding],
     { effectPort: reversedPort, runBinding: validRunBinding },
-    { effectPort: { exchange() {}, extra: true }, runBinding: validRunBinding },
+    { effectPort: { exchange() {}, observationClosed() {}, extra: true }, runBinding: validRunBinding },
     { effectPort: Object.create(null), runBinding: validRunBinding },
     { effectPort: reflectionThrow, runBinding: validRunBinding },
     { effectPort: validOptions.effectPort, runBinding: rootWithSymbol },
@@ -1368,7 +2237,10 @@ test('liest jeden geschlossenen Factoryknoten descriptorbasiert exakt einmal und
     observations
   )
   const effectPort = createDescriptorObservationTree(
-    { exchange() { return new Promise(() => {}) } },
+    {
+      exchange() { return new Promise(() => {}) },
+      observationClosed: createNotificationProbe().observationClosed,
+    },
     'effectPort',
     observations
   )
@@ -1398,7 +2270,10 @@ test('liest jeden geschlossenen Factoryknoten descriptorbasiert exakt einmal und
 
 test('verändert oder friert Factoryeingaben nicht ein', () => {
   const runBinding = cloneTree(createValidRunBinding())
-  const effectPort = { exchange() { return new Promise(() => {}) } }
+  const effectPort = {
+    exchange() { return new Promise(() => {}) },
+    observationClosed: createNotificationProbe().observationClosed,
+  }
   const options = { effectPort, runBinding }
 
   createBrowserSyncTransportRuntimeDiagnosticObserver(options)
@@ -1629,6 +2504,7 @@ test('erzeugt eine frische eingefrorene API ohne Factoryeffect', () => {
       exchangeCalls += 1
       return new Promise(() => {})
     },
+    observationClosed: createNotificationProbe().observationClosed,
   }
   const runBinding = createValidRunBinding()
 
@@ -1657,6 +2533,7 @@ test('liefert beim falschen ersten Runaufruf einen lokalen erfüllten Fehler ohn
         exchangeCalls += 1
         return Promise.resolve(undefined)
       },
+      observationClosed: createNotificationProbe().observationClosed,
     },
     runBinding: createValidRunBinding(),
   })
@@ -1700,6 +2577,7 @@ test('latcht den Owner vor reentrantem Portzugriff und isoliert alle Nicht-Owner
       reentrantPromise = observer.run()
       return exchangePromise
     },
+    observationClosed: createNotificationProbe().observationClosed,
   }
 
   observer = createBrowserSyncTransportRuntimeDiagnosticObserver({
@@ -1794,6 +2672,7 @@ test('erzeugt die rohe ADR-0035-Konformitaetskopie mit exakt vier privaten Bindi
     const machine =
       namespace.createBrowserSyncTransportRuntimeDiagnosticRunMachine({
         activeExchange,
+        activeObservationClosed: createNotificationProbe().observationClosed,
         runBinding: internalRunBinding,
       })
 
@@ -1867,6 +2746,7 @@ test('loescht den privaten activeExchange-Slot auf jedem Terminalpfad exakt einm
             calls += 1
             return undefined
           },
+          activeObservationClosed: createNotificationProbe().observationClosed,
           runBinding: createInternalRunBinding(),
         })
       const observed = instrumentActiveExchange(machine)
@@ -1893,6 +2773,7 @@ test('loescht den privaten activeExchange-Slot auf jedem Terminalpfad exakt einm
             receivedIntent = intent
             return deferred.promise
           },
+          activeObservationClosed: createNotificationProbe().observationClosed,
           runBinding: createInternalRunBinding(),
         })
       const observed = instrumentActiveExchange(machine)
@@ -1923,6 +2804,7 @@ test('loescht den privaten activeExchange-Slot auf jedem Terminalpfad exakt einm
       const machine =
         namespace.createBrowserSyncTransportRuntimeDiagnosticRunMachine({
           activeExchange: controller.effectPort.exchange,
+          activeObservationClosed: createNotificationProbe().observationClosed,
           runBinding: createInternalRunBinding(),
         })
       const observed = instrumentActiveExchange(machine)
@@ -1958,6 +2840,7 @@ test('haelt nur den aktuellen gueltigen Exchange-Promisekandidaten bis Settlemen
                 receivedIntent = intent
                 return deferred.promise
               },
+              activeObservationClosed: createNotificationProbe().observationClosed,
               runBinding: createInternalRunBinding(),
             })
           assert.equal(machine.activeExchangePromiseCandidate, null)
@@ -2008,6 +2891,7 @@ test('haelt nur den aktuellen gueltigen Exchange-Promisekandidaten bis Settlemen
             activeExchange() {
               return malformedCandidate
             },
+            activeObservationClosed: createNotificationProbe().observationClosed,
             runBinding: createInternalRunBinding(),
           })
         namespace.requestBrowserSyncTransportRuntimeDiagnosticExchange(
@@ -2144,6 +3028,7 @@ test('bindet den zentralen Join vor Profilreflexion, Intent, ID, Ledger und Capa
           receivedIntents.push(intent)
           return deferred.promise
         },
+        activeObservationClosed: createNotificationProbe().observationClosed,
         runBinding: createInternalRunBinding(),
       })
     const profile = machine.nextExchangeRequestProfile
@@ -2220,6 +3105,7 @@ test('totalisiert exakt 18 Pending-Join-Faelle ueber Phase, Outcome und Zeitlage
               targetDeferred,
             } = fixture
             const snapshotBeforeJoin = machine.preCleanupObservationSnapshot
+            assert.equal(fixture.notificationProbe.calls.length, phase === 'cleanup' ? 1 : 0)
             const before = snapshotJoinState(
               machine,
               calls.map((call) => call.intent),
@@ -2275,6 +3161,10 @@ test('totalisiert exakt 18 Pending-Join-Faelle ueber Phase, Outcome und Zeitlage
 
             assert.equal(machine.lease, 'closed')
             assert.equal(machine.activeExchange, null)
+            assert.equal(machine.activeObservationClosed, null)
+            assert.equal(fixture.notificationProbe.calls.length, phase === 'prestart' ? 0 : 1)
+            assert.equal(machine.observationNotificationState,
+              phase === 'prestart' ? 'discarded' : 'consumed')
             assert.equal(machine.portState, 'closed')
             assert.equal(machine.furtherExchangeCount, 'zero')
             assert.equal(machine.currentExchangeCount, 0)
@@ -2401,6 +3291,7 @@ test('laesst Pending-Joins auf Cleanup-Sends keinen bestaetigten Send-Ack erfind
               }
               return controller.effectPort.exchange(intent)
             },
+            activeObservationClosed: createNotificationProbe().observationClosed,
             runBinding: createInternalRunBinding(),
           })
 
@@ -2478,6 +3369,7 @@ test('belegt je Phase den endlichen Drei-Checkpoint-Praefix eines forever-pendin
             'fulfillment'
           )
           const { calls, capabilityCalls, machine } = fixture
+          assert.equal(fixture.notificationProbe.calls.length, phase === 'cleanup' ? 1 : 0)
           let ownerFulfillments = 0
           let ownerRejections = 0
           machine.ownerRunPromise.then(
@@ -2530,6 +3422,7 @@ test('belegt je Phase den endlichen Drei-Checkpoint-Praefix eines forever-pendin
             })
           }
           assert.equal(checkpointCount, 3)
+          assert.equal(fixture.notificationProbe.calls.length, phase === 'cleanup' ? 1 : 0)
           assert.equal(machine.runState, 'active')
           assert.equal(machine.activeRunToken, 1)
           assert.equal(machine.lease, 'observable-pending')
@@ -2677,6 +3570,7 @@ test('schliesst die Lease-Transitionstabelle strukturell ohne autonomen Schedule
       [
         'machine = createBrowserSyncTransportRuntimeDiagnosticRunMachine({',
         '        activeExchange,',
+        '        activeObservationClosed,',
         '        runBinding: internalRunBinding,',
         '      })',
       ].join('\n')
@@ -3581,6 +4475,7 @@ test('haelt alle Prestart-Abbrueche vor O0 und Cleanup', { concurrency: false },
               }
               return candidate('normal', intent)
             },
+            activeObservationClosed: createNotificationProbe().observationClosed,
             runBinding: createInternalRunBinding(),
           })
         namespace.requestBrowserSyncTransportRuntimeDiagnosticExchange(
@@ -4028,6 +4923,7 @@ test('totalisiert purposegebundene Cancelsettlements bis forever-pending', { con
           machine =
             namespace.createBrowserSyncTransportRuntimeDiagnosticRunMachine({
               activeExchange: controller.effectPort.exchange,
+              activeObservationClosed: createNotificationProbe().observationClosed,
               runBinding: createInternalRunBinding(),
             })
           namespace.requestBrowserSyncTransportRuntimeDiagnosticExchange(
@@ -4164,6 +5060,7 @@ test('erzwingt das lokale native Port-Promiseprofil und failt unobservable stati
             calls += 1
             return candidate
           },
+          observationClosed: createNotificationProbe().observationClosed,
         },
         runBinding: createValidRunBinding(),
       })
@@ -4218,7 +5115,10 @@ test('erzwingt das lokale native Port-Promiseprofil und failt unobservable stati
       )
       const candidate = normalizePromise(new Promise(() => {}))
       const observer = createBrowserSyncTransportRuntimeDiagnosticObserver({
-        effectPort: { exchange() { return candidate } },
+        effectPort: {
+          exchange() { return candidate },
+          observationClosed: createNotificationProbe().observationClosed,
+        },
         runBinding: createValidRunBinding(),
       })
       let ownerPromise
@@ -4272,6 +5172,7 @@ test('behandelt einen Throw der einmaligen nativen then-Anwendung als unobservab
               portCalls += 1
               return normalizePromise(new Promise(() => {}))
             },
+            observationClosed: createNotificationProbe().observationClosed,
           },
           runBinding: createValidRunBinding(),
         })
@@ -4287,6 +5188,7 @@ test('behandelt einen Throw der einmaligen nativen then-Anwendung als unobservab
           activeExchange() {
             return candidate
           },
+          activeObservationClosed: createNotificationProbe().observationClosed,
           runBinding: createInternalRunBinding(),
         })
       namespace.requestBrowserSyncTransportRuntimeDiagnosticExchange(
@@ -7469,4 +8371,266 @@ test('schliesst ungueltige Controllerclocks und Deadlineueberlauf phasengerecht'
       }
     })
   }
+})
+
+async function runDeadlineProxyScenario(namespace, handlerPairs, definition) {
+  const calls = []
+  const trapCounts = {
+    get: 0,
+    getPrototypeOf: 0,
+    ownKeys: 0,
+    getOwnPropertyDescriptor: 0,
+  }
+  const descriptorKeys = []
+  let markerCount = 0
+  let cleanupCheckId = null
+  let envelopeDelivered = false
+  let selectedClockCallIndex = null
+  let selectedObservation = null
+  let countsBeforeClock = null
+  const machine =
+    namespace.createBrowserSyncTransportRuntimeDiagnosticRunMachine({
+      activeExchange(intent) {
+        const deferred = createCleanDeferred()
+        calls.push({ deferred, intent })
+        return deferred.promise
+      },
+      activeObservationClosed() {
+        markerCount += 1
+      },
+      runBinding: createInternalRunBinding(),
+    })
+  namespace.requestBrowserSyncTransportRuntimeDiagnosticExchange(
+    machine,
+    machine.nextExchangeRequestProfile
+  )
+
+  // This bounded, synchronous driver processes existing controlled handlers.
+  // It neither polls a Promise nor introduces a clock, timer or scheduler race.
+  let processedCallCount = 0
+  for (let callIndex = 0; callIndex < 64 && callIndex < calls.length; callIndex += 1) {
+    const call = calls[callIndex]
+    const intent = call.intent
+    let value
+    if (intent.kind === 'cleanup-step') {
+      cleanupCheckId = intent.payload.checkId
+    }
+    if (intent.kind === 'observation-dequeue') {
+      const envelope = intent.payload.phase === 'setup'
+        ? createCdpMessage({ id: 1, result: { targetInfos: [] } })
+        : {
+            kind: 'cleanup-fact',
+            checkId: cleanupCheckId,
+            fact: true,
+          }
+      if (!envelopeDelivered && intent.payload.phase === definition.phase) {
+        if (definition.phase === 'cleanup') {
+          assert.equal(cleanupCheckId, 'debugPipeClosed')
+        }
+        envelopeDelivered = true
+        selectedClockCallIndex = callIndex + 1
+        value = new Proxy(envelope, {
+          get(target, key, receiver) {
+            trapCounts.get += 1
+            return Reflect.get(target, key, receiver)
+          },
+          getPrototypeOf(target) {
+            trapCounts.getPrototypeOf += 1
+            return Reflect.getPrototypeOf(target)
+          },
+          ownKeys(target) {
+            trapCounts.ownKeys += 1
+            return Reflect.ownKeys(target)
+          },
+          getOwnPropertyDescriptor(target, key) {
+            trapCounts.getOwnPropertyDescriptor += 1
+            descriptorKeys.push(key)
+            return Reflect.getOwnPropertyDescriptor(target, key)
+          },
+        })
+      } else {
+        value = envelope
+      }
+    } else if (intent.kind === 'controller-clock-sample') {
+      const reason = intent.payload.reason
+      let monotonicMilliseconds = reason === 'setup-origin' ? 100 : 7000
+      if (reason === 'setup-dequeue-before-reflection') {
+        monotonicMilliseconds = 6100
+      } else if (reason === 'cleanup-dequeue-before-reflection') {
+        monotonicMilliseconds = 70000
+      }
+      if (callIndex === selectedClockCallIndex) {
+        assert.equal(reason, `${definition.phase}-dequeue-before-reflection`)
+        countsBeforeClock = { ...trapCounts }
+        monotonicMilliseconds =
+          (definition.phase === 'setup' ? 6100 : 67000) + definition.delta
+      }
+      value = {
+        kind: 'controller-clock-sample-result',
+        reason,
+        monotonicMilliseconds,
+      }
+    } else {
+      value = normalFulfillmentForIntent(intent)
+    }
+
+    // Resolving with the proxy would itself read its `then` outside the
+    // Foundation. Deliver directly, then settle only with primitive undefined.
+    const pair = capturedHandlerPair(handlerPairs, call)
+    assert.equal(pair.onFulfilled(value), undefined)
+    call.deferred.resolve(undefined)
+    processedCallCount += 1
+    if (callIndex === selectedClockCallIndex) {
+      selectedObservation = {
+        counts: { ...trapCounts },
+        descriptorKeys: [...descriptorKeys],
+        markerCount,
+        snapshot: machine.preCleanupObservationSnapshot,
+      }
+    }
+  }
+  assert.equal(envelopeDelivered, true)
+  assert.notEqual(selectedObservation, null)
+  assert.equal(processedCallCount, calls.length)
+  assert.equal(machine.runSettlementCount, 1)
+  const result = await machine.ownerRunPromise
+  assertFoundationResult(result)
+  assert.equal(result.ok, true)
+  return {
+    calls,
+    countsBeforeClock,
+    countsAfterSettlement: { ...trapCounts },
+    markerCount,
+    result,
+    selectedObservation,
+    finalSnapshot: machine.preCleanupObservationSnapshot,
+  }
+}
+
+function assertDeadlineProxyScenarioConforms(scenario, definition) {
+  const unreadCounts = {
+    get: 0,
+    getPrototypeOf: 0,
+    ownKeys: 0,
+    getOwnPropertyDescriptor: 0,
+  }
+  assert.deepEqual(scenario.countsBeforeClock, unreadCounts)
+  const expectedCounts = definition.delta < 0
+    ? {
+        get: 0,
+        getPrototypeOf: 1,
+        ownKeys: 1,
+        getOwnPropertyDescriptor: definition.phase === 'setup' ? 2 : 3,
+      }
+    : unreadCounts
+  assert.deepEqual(
+    scenario.selectedObservation.counts,
+    expectedCounts,
+    'ADR-0037 deadline envelope reflection must follow the inclusive guard'
+  )
+  assert.deepEqual(scenario.countsAfterSettlement, expectedCounts)
+  assert.deepEqual(
+    scenario.selectedObservation.descriptorKeys,
+    definition.delta < 0
+      ? (definition.phase === 'setup' ? ['kind', 'value'] : ['kind', 'checkId', 'fact'])
+      : []
+  )
+  assert.equal(scenario.selectedObservation.markerCount, 1)
+  assert.equal(scenario.markerCount, 1)
+  assert.equal(scenario.finalSnapshot, scenario.selectedObservation.snapshot)
+  assertDeepFrozenGraph(scenario.finalSnapshot)
+  const projection = scenario.result.recordProjection
+  assert.equal(projection.candidateObserverGate, 'UNPROVEN')
+  assert.equal(projection.candidateFinding, 'inconclusive')
+  assert.equal(
+    projection.timing.completion.observationCloseReason,
+    definition.phase === 'setup' && definition.delta < 0
+      ? 'setup-terminal-unproven'
+      : 'setup-cap'
+  )
+  assert.equal(projection.timing.completion.cleanupFinalizeReason, 'cleanup-cap')
+  assert.equal(projection.timing.completion.captureWindowState, 'not-started')
+  assert.equal(
+    scenario.calls.some(({ intent }) =>
+      intent.kind === 'protocol-command-send' &&
+      intent.payload.command === 'Runtime.evaluate'),
+    false
+  )
+  assert.equal(
+    scenario.calls.filter(({ intent }) => intent.kind === 'cleanup-step').length,
+    definition.phase === 'cleanup' && definition.delta < 0 ? 2 : 1
+  )
+  const arm = scenario.calls.find(({ intent }) =>
+    intent.kind === 'cap-arm' && intent.payload.capKind === definition.phase)
+  assert.notEqual(arm, undefined)
+  assert.equal(
+    arm.intent.payload.deadlineMilliseconds,
+    definition.phase === 'setup' ? 6100 : 67000
+  )
+}
+
+test('beweist ADR-0037-Deadlinegrenzen mit vier getrennten Envelope-Proxytraps und kausalen Mutanten', { concurrency: false }, async (t) => {
+  await withCapturedControlledPromiseHandlers(async (handlerPairs) => {
+    let baselineProductionBytes
+    await withTemporaryDiagnosticObserverCopy({
+      anchor: PRIVATE_EXPORT_ANCHOR,
+      kind: 'adr-0037-deadline-proxy-baseline',
+    }, async ({ namespace, productionBytes }) => {
+      baselineProductionBytes = productionBytes
+      for (const phase of ['setup', 'cleanup']) {
+        for (const delta of [-1, 0, 1]) {
+          let baselinePassed = false
+          await t.test(`baseline-${phase}-deadline${delta < 0 ? '-1' : delta === 0 ? '' : '+1'}`, async () => {
+            const definition = { phase, delta }
+            const scenario = await runDeadlineProxyScenario(namespace, handlerPairs, definition)
+            assertDeadlineProxyScenarioConforms(scenario, definition)
+            baselinePassed = true
+          })
+          assert.equal(baselinePassed, true, 'All deadline baselines must pass before mutation probes')
+        }
+      }
+    })
+
+    for (const phase of ['setup', 'cleanup']) {
+      const deadlineField = phase === 'setup' ? 'setupDeadline' : 'cleanupDeadline'
+      const guard = `if (value >= machine.${deadlineField}) {`
+      const phaseGuard = `if (phase === '${phase}') {\n    ${guard}`
+      const mutations = [
+        {
+          id: `${phase}-exclusive-deadline`,
+          search: guard,
+          replacement: `if (value > machine.${deadlineField}) {`,
+          deltas: [0],
+        },
+        {
+          id: `${phase}-envelope-before-deadline-guard`,
+          search: phaseGuard,
+          replacement: `if (phase === '${phase}') {\n    readAckEnvelope(held)\n    ${guard}`,
+          deltas: [0, 1],
+        },
+      ]
+      for (const mutation of mutations) {
+        await t.test(`mutant-${mutation.id}`, async () => {
+          await withTemporaryDiagnosticObserverCopy({
+            anchor: PRIVATE_EXPORT_ANCHOR,
+            kind: `adr-0037-deadline-${mutation.id}`,
+            mutate(bytes, replace) {
+              return replace(bytes, mutation.search, mutation.replacement, mutation.id)
+            },
+          }, async ({ namespace, productionBytes }) => {
+            assert.deepEqual(productionBytes, baselineProductionBytes)
+            for (const delta of mutation.deltas) {
+              const definition = { phase, delta }
+              const scenario = await runDeadlineProxyScenario(namespace, handlerPairs, definition)
+              assert.throws(
+                () => assertDeadlineProxyScenarioConforms(scenario, definition),
+                (error) => error?.code === 'ERR_ASSERTION' &&
+                  error.message.includes('ADR-0037 deadline envelope reflection')
+              )
+            }
+          })
+        })
+      }
+    }
+  })
 })

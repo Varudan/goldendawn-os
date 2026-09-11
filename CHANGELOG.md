@@ -6,9 +6,9 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0037 angenommen; ADR 0036 nicht annahmereif; Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0037 implementiert; Implementierungsreview ausstehend; ADR 0036 nicht annahmereif; Runtimegate FAIL
 
-### Foundation Observation-Close Notification – ADR 0037 angenommen
+### Foundation Observation-Close Notification – ADR 0037 implementiert, unabhängiger Review ausstehend
 
 Der unabhängige Astra-Review hat die R1–R4-Dokumentkorrektur von ADR 0036
 im eng begrenzten Dokumentationsscope mit PASS abgeschlossen. Er gilt nur für
@@ -19,18 +19,54 @@ Jan hat ADR 0037 am 2026-09-08 ausdrücklich angenommen.
 
 [ADR 0037](docs/decisions/0037-browser-sync-transport-diagnostic-foundation-observation-close-notification.md)
 entscheidet `D_K4` als gezielte Ergänzung von ADR 0035 und ersetzt keinen ADR
-formal. Die angenommene Sollgrenze ergänzt den Effectport um die synchrone
-Notification `observationClosed()` nach `O0` und vor Cleanup. Die vorhandene
-Foundation implementiert weiterhin nur den Ein-Feld-Port; die Notification ist
-weder implementiert noch getestet, und die bisherige 422/422-Suite belegt sie
-nicht.
+formal. Die getrennt autorisierte netzwerkfreie Implementierung erweitert den
+Effectport auf exakt `{ exchange, observationClosed }` mit zwei erforderlichen
+Capabilityrollen. Die Notification wird mit eigenem nicht-enumerablem
+Data-Descriptor `length: 0` genau einmal erfasst und nach Ownertransfer auch
+nach Exchange-Portschluss erhalten, bis `O0` gebunden ist. Der einzige synchrone
+Callsite konsumiert sie unmittelbar nach `O0` und vor Cleanup; nur `undefined`
+ist ein gültiger Rückgabewert. Fehler und interne Exchange-Reentranz erzeugen
+einen sticky Cleanupverstoß mit `FAIL`-Präzedenz, ohne `O0` zu ändern oder
+Rückgabewerte zu reflektieren, zu assimilieren oder abzuwarten.
 
-Als Nächstes folgt ausschließlich die gesondert zu beauftragende netzwerkfreie
-Foundationanpassung samt vorhandenen Tests, Deadline-Proxytrap-Nachweis,
-Regressionen, Mutanten, Hashaudit und unabhängigem Implementierungsreview.
-Danach muss ADR 0036 gegen die tatsächlich neue Foundation, ihre Rohhashes und
-Testverträge abgeglichen und erneut unabhängig geprüft werden, bevor Jan über
-seine Annahme entscheidet. Adapter-, Lauf- und Git-Schritte bleiben geschlossen.
+Die vorhandene Foundation-Testdatei besteht nun mit 595/595 Tests, exakt
+`422 + 173`. Sie erkennt 27 neue Notificationmutanten und vier
+Deadlinevarianten. Die sieben Notification-Fallklassen umfassen auch portlose
+Pfade sowie Pending vor und nach `O0`; die 18 Joinfälle, das getrennte
+Drei-Microtask-Präfix und das strukturelle Pending-Oracle bleiben erhalten.
+Die vier getrennten Proxytrap-Zähler `get`, `getPrototypeOf`, `ownKeys` und
+`getOwnPropertyDescriptor` bestätigen für Setup und Cleanup positive Reflection
+bei `deadline-1` sowie jeweils null Traps bei `deadline` und `deadline+1`.
+Der vorhandene temporäre Testexportzugang v2 wird nicht vergrößert.
+
+Die unveränderten Regressionen bestehen mit 423/423 Transporttests, 466/466
+gemeinsamen SyncService-/Transporttests und 735/735 Tests der sechs Sync-Suites.
+Die vollständige serielle Suite besteht mit 2350/2350, exakt `1755 + 595`;
+alle Läufe besitzen 0 Fehlschläge, Cancellations, Skips und Todos. Der
+Produktions-Build transformiert exakt 46 Module; `bundle:n8n:check` besteht
+driftfrei. Der rohe Schutz-/Hashaudit bestätigt die übrigen 14 gebundenen
+Dateien gegen ihre Baselinehashes und bytegleich zu HEAD, alle ADRs sowie den
+unveränderten 4259-Byte-Evaluationstring. Das Frontendmanifest ist im
+historischen Commit, in HEAD und im Worktree mit 51 Pfaden und 5606 Bytes
+identisch. Die neuen rohen Worktree-SHA-256-Werte lauten:
+
+- Foundation `scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js`:
+  `ff55a775ccbb7588474fc1efe3e1a08d871ce3524f133a000b0b3d8c7512eb1d`;
+- Tests `tests/browserSyncTransportRuntimeDiagnosticObserver.test.js`:
+  `1e8ce75e175b3e74c8c8b064e343550f32865fd5703aa54e01ead909a86e100c`.
+
+Die historischen ADR0035-Nachweise mit 422/422 und 2177/2177 sowie die damaligen
+unabhängigen Reviews gelten unverändert nur für ihre damaligen Bytes. Alle
+ADRs bleiben bytegleich. Der neue unabhängige Daybreak-xhigh-
+Implementierungsreview steht aus. Als Nächstes folgt ausschließlich dieser
+gesonderte Review; erst danach und nach Jans manuellem
+Featurecommit darf ADR 0036 in einem eigenen Dokumentationsslice gegen die
+neuen Foundationbytes, Rohhashes, Loadbindung und Testverträge abgeglichen und
+erneut unabhängig geprüft werden, bevor Jan über seine Annahme entscheidet.
+Adapter, Adaptertests, adapterseitiges `A_obs`, Diagnoselauf und Runtime-Evidenz
+sind nicht umgesetzt oder nachgewiesen. Foundation `NOT_EVIDENCE`,
+ADR-0029-`overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben
+unverändert; Adapter-, Lauf- und Git-Schritte bleiben in diesem Auftrag geschlossen.
 
 ### BrowserSyncTransport Runtime Diagnostic Adapter Boundary – ADR 0036 vorgeschlagen
 
@@ -38,9 +74,10 @@ seine Annahme entscheidet. Adapter-, Lauf- und Git-Schritte bleiben geschlossen.
   ergänzt ADR 0035 und ersetzt keinen ADR. Der Status bleibt
   `Vorgeschlagen – 2026-09-06`; der nach R1–R4 korrigierte Diff arbeitet K2
   konstruktiv aus und hat den begrenzten R1–R4-Dokumentreview bestanden. Die
-  K4-Foundationentscheidung ist durch ADR 0037 angenommen, ihre Umsetzung und
-  Nachweise fehlen jedoch; deshalb bleibt ADR 0036 nicht annahmereif. ADR 0032
-  bis ADR 0035 bleiben bytegleich.
+  K4-Foundationentscheidung ist durch ADR 0037 angenommen und inzwischen
+  getrennt implementiert und mit 595/595 fokussierten Tests geprüft. Ihr
+  unabhängiger Implementierungsreview und der spätere ADR-0036-Abgleich stehen
+  aus; ADR 0036 bleibt nicht annahmereif. Alle ADRs bleiben bytegleich.
 - Der rein dokumentarische Slice beschreibt für eine spätere Implementierung
   die inaktive One-shot-Adapterfactory, den byte-owned Foundationload, das
   Sieben-Intent-Effects-Protokoll, Windows-Debug-Pipe, NUL-Framing,
@@ -63,15 +100,17 @@ seine Annahme entscheidet. Adapter-, Lauf- und Git-Schritte bleiben geschlossen.
   geschlossene Ressourcenoperationen; mutable Bytes, opaque Handles,
   Raw-Fixtureevents und Foundation-Dequeuewerte sind getrennt. Beide Profile
   bleiben `adapterEvidenceEligible:false`; Poison- und Wiringnachweise stehen
-  nur als spätere Solltests fest, und die ADR-0035-Foundationtestkopie bleibt
-  unverändert. K2 ist dokumentarisch geprüft; seine Testnachweise bleiben offen.
+  nur als spätere Solltests fest. Der vorhandene ADR-0035-Testexportzugang v2
+  bleibt unter ADR 0037 unvergrößert. K2 ist dokumentarisch geprüft; seine
+  Adaptertestnachweise bleiben offen.
 - Adaptertests bleiben am Raw-Byte-/Producerpfad und decken Setup/Cleanup an
   `deadline-1`, `deadline`, `deadline+1` sowie Capture ereignisbasiert ab.
-  Getter-/Proxy-Envelopes entstehen dort nicht. Die bestehenden
-  Foundationtests belegen null Getteraufrufe am `=`/`>`-Deadlineguard sowie
-  das Unerreichtbleiben ausgewählter Proxy-Traps an anderen Guards, aber keinen
-  vollständigen null-Descriptor-/Proxytrap-Nachweis am Deadlineguard; diese
-  konkrete Testlücke bleibt offen.
+  Getter-/Proxy-Envelopes entstehen dort nicht. Der getrennte ADR-0037-
+  Foundation-Slice schließt die bisherige Deadline-Nachweislücke: Für Setup
+  und Cleanup bleiben `get`, `getPrototypeOf`, `ownKeys` und
+  `getOwnPropertyDescriptor` bei `=` und `>` jeweils null, bei `<` wird
+  Reflection positiv erreicht. Vier kausale Deadlinevarianten werden erkannt;
+  dies ersetzt keinen späteren Adapter-Wiringnachweis.
 - Einzelne Cancelpayloads und spätere Projektionen tragen keine O0-Phasenbindung;
   daraus folgt weder Injektivität noch Nicht-Injektivität der vollständigen
   öffentlichen Historie. Der beschlossene bounded syntaktische Tracker besitzt
@@ -82,9 +121,10 @@ seine Annahme entscheidet. Adapter-, Lauf- und Git-Schritte bleiben geschlossen.
   genau eine synchrone argumentlose
   `effectPort.observationClosed()`-Notification unmittelbar nach `O0` und vor
   jedem Cleanup. Sie ist kein achter Intent und trägt keine Ursache. Die
-  Entscheidung ist durch ADR 0037 angenommen; bis zur getrennten
-  Foundationimplementierung samt Nachweisen und erneutem Review bleiben
-  ADR-0036-Annahme, Adapterimplementierung und Adaptertests gesperrt.
+  Entscheidung ist durch ADR 0037 angenommen und getrennt implementiert und
+  geprüft. Der unabhängige Implementierungsreview und der danach gesonderte
+  ADR-0036-Abgleich samt erneutem Review stehen aus; ADR-0036-Annahme,
+  Adapterimplementierung und Adaptertests bleiben gesperrt.
 - `browser.engineBuild`, globale Portfreiheit, effektive Proxy-/VPN-/Policy-/
   Extension-/Permission-/Service-Worker-/Cachewerte und unabhängige
   Adapterattestierung bleiben ohne authentische Quelle ausdrücklich
@@ -100,7 +140,7 @@ seine Annahme entscheidet. Adapter-, Lauf- und Git-Schritte bleiben geschlossen.
   `causeStatus: CAUSE_NOT_PROVEN`, geschlossene Browserkomposition und
   fehlendes Browser-End-to-End bleiben unverändert.
 
-### BrowserSyncTransport Diagnostic Effects-as-Data Foundation – Implementierung
+### BrowserSyncTransport Diagnostic Effects-as-Data Foundation – historischer ADR-0035-Implementierungsstand
 
 - Die getrennte, importinaktive und vollständig netzwerkfreie Foundation ist
   in `scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js`
@@ -142,12 +182,13 @@ seine Annahme entscheidet. Adapter-, Lauf- und Git-Schritte bleiben geschlossen.
   Bestandssuite verwendete ihre zwei unveränderten Loopback-Fixtures. ADR 0036
   ist als dokumentarische Adaptergrenze vorgeschlagen. ADR 0037 entscheidet
   `D_K4`; sein unabhängiger dokumentarischer Review ist abgeschlossen und Jan
-  hat ihn angenommen. Der nächste Schritt ist ausschließlich die gesondert
-  beauftragte Foundationanpassung samt Tests und unabhängigem
-  Implementierungsreview. Jans mögliche ADR-0036-Annahme ist erst nach deren
-  Umsetzung, dem Abgleich gegen die neuen Rohhashes und einem weiteren Review
-  zulässig. Adapterimplementierung und sichtbarer Diagnoselauf bleiben separat
-  und nicht autorisiert.
+  hat ihn angenommen. Die danach getrennt implementierte und geprüfte
+  Foundationanpassung ist oben als eigener ADR-0037-Nachweis dokumentiert.
+  Deren unabhängiger Implementierungsreview steht aus. Erst danach und nach
+  Jans manuellem Featurecommit folgen der gesonderte ADR-0036-Abgleich gegen
+  neue Load-/Hash-/Testverträge und ein weiterer unabhängiger Review vor Jans
+  möglicher Annahme. Adapterimplementierung und sichtbarer Diagnoselauf bleiben
+  separat und nicht autorisiert.
 
 ### BrowserSyncTransport Diagnostic Foundation Join and Internal Transition Testability Boundary – Entscheidung / ADR 0035
 

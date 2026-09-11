@@ -19,7 +19,7 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – ADR 0035 angenommen; R1–R4-Dokumentreview zu ADR 0036 abgeschlossen; ADR 0037 für D_K4 angenommen – 2026-09-08; Foundation weiterhin mit Ein-Feld-Port und 422/422 bisherigen fokussierten Tests; Notification noch nicht implementiert oder getestet; ADR 0036 nicht annahmereif; Implementierung und Diagnoselauf nicht autorisiert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+Aktueller Stand: `v0.3.0 – ADR 0035 angenommen; R1–R4-Dokumentreview zu ADR 0036 abgeschlossen; ADR 0037 für D_K4 angenommen und netzwerkfrei implementiert – 2026-09-08; Foundation mit zwei erforderlichen Portrollen und 595/595 fokussierten Tests (Δ173); unabhängiger Implementierungsreview ausstehend; ADR 0036 nicht annahmereif; Adapterimplementierung, Adaptertests und Diagnoselauf nicht autorisiert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
 
 ### Aktuelle Foundationentscheidung / ADR 0037
 
@@ -32,20 +32,34 @@ Jan hat ADR 0037 am 2026-09-08 ausdrücklich angenommen.
 
 [ADR 0037](docs/decisions/0037-browser-sync-transport-diagnostic-foundation-observation-close-notification.md)
 entscheidet `D_K4` als gezielte Ergänzung von ADR 0035 und ersetzt keinen ADR
-formal. Die angenommene Sollgrenze ergänzt den Effectport um die erforderliche
+formal. Die implementierte Grenze ergänzt den Effectport um die erforderliche
 synchrone Notification `observationClosed()` nach `O0` und vor Cleanup: zwei
 getrennte Capabilityrollen, einmaliger Konsum auch nach Exchange-Portschluss,
 fail-closed Fehler-/Reentranzbehandlung und unvergrößerter Testexportzugang.
-Die vorhandene Foundation implementiert weiterhin nur den Ein-Feld-Port; die
-Notification ist weder implementiert noch getestet, und die vorhandene
-422/422-Suite belegt sie nicht.
+Die netzwerkfreie Foundationanpassung ist mit 595/595 fokussierten Tests
+(`Δ = 173` gegenüber der historischen 422er-Basis) geprüft. 27 neue
+Notificationmutanten und vier Deadlinevarianten werden erkannt; die 18
+Joinfälle sowie das Drei-Microtask-Präfix mit strukturellem Pending-Oracle
+bleiben erhalten. Setup und Cleanup zählen am Dequeue-Envelope `get`,
+`getPrototypeOf`, `ownKeys` und `getOwnPropertyDescriptor` getrennt bei
+`deadline-1`, `deadline` und `deadline+1`: unterhalb ist Reflection erreichbar,
+bei Gleichheit und Überschreitung bleiben alle vier Traps null. Die bestehenden
+Regressionen bestehen mit 423/423, 466/466 und 735/735 Tests. Die vollständige
+serielle Gesamtsuite besteht mit 2350/2350, exakt `1755 + 595`, bei jeweils
+0 Fehlschlägen, Cancellations, Skips und Todos. Der Produktions-Build
+transformiert exakt 46 Module; `bundle:n8n:check` besteht driftfrei. Der rohe
+Schutz-/Hashaudit bestätigt die übrigen 14 gebundenen Dateien gegen Baseline
+und HEAD, alle ADRs sowie den unveränderten Evaluationstring und das
+Frontendmanifest. Neue Foundation-/Testhashes sind im Changelog dokumentiert.
 
-Als Nächstes folgt ausschließlich die gesondert zu beauftragende netzwerkfreie
-Foundationanpassung samt vorhandenen Tests, Deadline-Proxytrap-Nachweis,
-Regressionen, Mutanten, Hashaudit und unabhängigem Implementierungsreview.
-Danach muss ADR 0036 gegen die tatsächlich neue Foundation, ihre Rohhashes und
-Testverträge abgeglichen und erneut unabhängig geprüft werden, bevor Jan über
-seine Annahme entscheidet. Adapter-, Lauf- und Git-Schritte bleiben geschlossen.
+Als Nächstes folgt ausschließlich der gesonderte
+unabhängige Daybreak-xhigh-Implementierungsreview; er steht aus. Erst danach
+und nach Jans manuellem Featurecommit darf ADR 0036 in einem eigenen
+Dokumentationsslice gegen die tatsächlich neue Foundation, ihre Rohhashes,
+Loadbindung und Testverträge abgeglichen und erneut unabhängig geprüft werden,
+bevor Jan über seine Annahme entscheidet. Adapter-, Lauf- und Git-Schritte
+bleiben in diesem Auftrag geschlossen. Ein adapterseitiges `A_obs` wurde
+nicht implementiert oder nachgewiesen.
 
 Die abgeschlossene Basis `v0.2.0` umfasst:
 
@@ -146,11 +160,12 @@ Aktuell ist
 `v0.3.0 – in Arbeit – ADR 0035 und das ADR-0037-D_K4-Delta angenommen;
 ADR 0036 als nach R1–R4 korrigierte dokumentarische Adaptergrenze
 vorgeschlagen, K2-Korrektur konstruktiv ausgearbeitet und im
-R1–R4-Dokumentreview geprüft; D_K4-Umsetzung und -Nachweise fehlen, daher ADR
-0036 nicht annahmereif – 2026-09-08; getrennte Effects-as-Data-Foundation
-weiterhin mit Ein-Feld-Port und 422/422 bisherigen fokussierten Tests;
+R1–R4-Dokumentreview geprüft; D_K4 netzwerkfrei implementiert und mit 595/595
+fokussierten Tests geprüft, unabhängiger Implementierungsreview ausstehend;
+ADR 0036 weiterhin nicht annahmereif – 2026-09-08; getrennte
+Effects-as-Data-Foundation mit zwei erforderlichen Portrollen;
 gebundenes Chrome-151-Runtimegate weiterhin FAIL; Ursache CAUSE_NOT_PROVEN;
-Foundationanpassung, Adapterimplementierung, Adaptertests und Diagnoselauf
+Adapterimplementierung, Adaptertests und Diagnoselauf
 nicht autorisiert`.
 ADR 0023 ersetzt ADR 0002 und ADR 0019 und übernimmt deren weiterhin
 gültigen Kern: Der `SyncService` bleibt die einzige Kommunikationsschicht des
@@ -232,12 +247,11 @@ dokumentarische Adaptergrenze vorgeschlagen. Seine nach R1–R4 korrigierte
 K2-Konstruktion ist über zwei disjunkte Vier-Export-Kopieprofile ausgearbeitet
 und im begrenzten R1–R4-Dokumentationsscope geprüft. Die notwendige synchrone
 Foundationnotification `effectPort.observationClosed()` unmittelbar nach `O0`
-und vor Cleanup ist durch ADR 0037 entschieden und angenommen; die vorhandene
-Foundation besitzt weiterhin nur den Ein-Feld-Port, Umsetzung und Nachweise
-fehlen. Als Nächstes ist ausschließlich die gesondert beauftragte
-Foundationanpassung samt Tests und unabhängigem Implementierungsreview
-zulässig. Adapterimplementierung, Adaptertests und jeder sichtbare
-Diagnoselauf bleiben geschlossen.
+und vor Cleanup ist durch ADR 0037 entschieden, angenommen und netzwerkfrei
+implementiert; die fokussierte Suite besteht mit 595/595 Tests. Als Nächstes
+folgt ausschließlich der gesonderte unabhängige Implementierungsreview.
+Adapterimplementierung, Adaptertests und jeder sichtbare Diagnoselauf bleiben
+geschlossen.
 
 ADR 0028 ersetzt ADR 0027 formal, übernimmt dessen beide Korrekturen
 vollständig und lässt alle nicht ausdrücklich geänderten ADR-0026-/ADR-0027-
@@ -626,11 +640,12 @@ Architekturgrenzen gewählt ist `D_K4`, genau eine synchrone argumentlose und
 einmalige Foundationnotification `effectPort.observationClosed()` unmittelbar
 nach `O0` und vor jedem Cleanup. Sie ist kein achter Intent und trägt weder
 Purpose noch Closegrund. Diese Änderung der Sollgrenze ist durch ADR 0037
-angenommen, benötigt aber weiterhin eine getrennte Foundationimplementierung
-samt Fallmatrix und Nachweisen. Bis dahin gibt es ohne früheres authentisches
-`A_obs` keinen Record. Der R1–R4-Dokumentreview zu ADR 0036 und der unabhängige
-dokumentarische Review zu ADR 0037 sind abgeschlossen; die vorhandene
-422/422-Suite belegt die Notification nicht.
+angenommen und im getrennten Foundation-Slice samt Fallmatrix, Deadline-
+Proxytrap-Nachweis und Mutanten implementiert; die Suite besteht mit 595/595
+Tests. Der unabhängige Implementierungsreview steht aus. Ohne ein später
+adapterseitig authentisch gebundenes `A_obs` gibt es weiterhin keinen Record.
+Der R1–R4-Dokumentreview zu ADR 0036 und der unabhängige dokumentarische Review
+zu ADR 0037 sind abgeschlossen; sie prüfen nicht die neuen Implementierungsbytes.
 
 ADR 0035 adressiert ausschließlich den Testbarkeitswiderspruch des
 internen Pending-Joins und drei Ableitungsregressionen. Die spätere
@@ -718,27 +733,49 @@ nie ein zweiter Intent oder Send-Ack; ein exakt einmal bestätigter Send bleibt
 Die implementierte einzige API ist
 `createBrowserSyncTransportRuntimeDiagnosticObserver({ effectPort,
 runBinding })`: Factory-Arity `1`, exakt die beiden Optionskeys, Port exakt
-`{ exchange }`, keine Realdefaults und kein Factoryeffekt. Die erfolgreiche
-Factory liefert eine frische gewöhnliche tief eingefrorene `{ run }`-API.
+`{ exchange, observationClosed }` in dieser Reihenfolge, keine Realdefaults und
+kein Factoryeffekt. Beide Portfelder sind erforderlich und werden je genau
+einmal descriptorbasiert als Own Data erfasst. Für `observationClosed` wird
+genau einmal der eigene nicht-enumerable Data-Descriptor `length: 0` geprüft;
+weitere Callable-Klassifikationen oder spätere Lengthprüfungen erfolgen nicht.
+Die erfolgreiche Factory liefert eine frische gewöhnliche tief eingefrorene
+`{ run }`-API.
 `run.length === 0` verwendet privat `runState = unused|active|terminal` und
 `activeRunToken = 1|null`. Der erste Aufruf wird synchron vor seiner
 Arityprüfung alleiniger Owner; bei gültiger Arity transferiert er nicht
-reentrant beobachtbar `capturedExchange -> activeExchange` und löscht den
-alten Slot. Falsche Erst-Arity terminalisiert ohne Effekt. Zweit-, Parallel-
+reentrant beobachtbar `capturedExchange -> activeExchange` und
+`capturedObservationClosed -> activeObservationClosed` und löscht beide alten
+Slots. Falsche Erst-Arity und ein terminaler Prestartpfad verwerfen beide
+Rollen ohne Notification. Zweit-, Parallel-
 und reentrante Nicht-Owner erhalten eigene statisch erfüllte Fehler-Promises,
 ohne Slots, Ownerzustand, Zähler, Effekte oder Cleanup zu berühren.
 
 Das Verbot erhaltener Eingabereferenzen betrifft dauerhafte Datenhaltung und
-alle Outputgraphen. Genau eine callerlieferte Capabilityreferenz ist zeitlich
-disjunkt erst in `capturedExchange`, dann im Owner-Slot `activeExchange`
-zulässig. `effectPort` und `exchange` werden je genau einmal
-descriptorbasiert gelesen; der Container wird verworfen. Owneraufrufe
-verwenden nur die erfasste Apply-Intrinsic, `undefined` und ein frisches
-geschlossenes Frozen Intent. Die Capability wird nie ausgegeben,
-serialisiert, eingefroren, persistiert, verglichen oder als Provenienz
-verwendet. Der Owner löscht `activeExchange` nach dem letzten benötigten
-Exchange und vor Promise-Erfüllung; ein ewig pending Exchange darf den Lauf
-pending halten.
+alle Outputgraphen. Genau zwei callerlieferte Capabilityrollen sind jeweils
+zeitlich disjunkt in ihrem Capture- und danach ihrem aktiven Owner-Slot
+zulässig; identische Funktionsidentitäten für beide Rollen sind erlaubt.
+Der Portcontainer wird nach der einmaligen Own-Data-Erfassung verworfen.
+Exchangeaufrufe verwenden nur die erfasste Apply-Intrinsic, `undefined` und
+ein frisches geschlossenes Frozen Intent. Die Capabilities werden nie
+ausgegeben, serialisiert, eingefroren, persistiert, verglichen oder als
+Provenienz verwendet. Der Owner löscht `activeExchange` nach dem letzten
+benötigten Exchange und vor Promise-Erfüllung; der Exchange-Portschluss
+verwirft eine noch für `O0` benötigte Notification nicht. Ein ewig pending
+Exchange darf den Lauf pending halten.
+
+Unmittelbar nach dem erfolgreichen Freeze und Binden von `O0` konsumiert der
+einzige zentrale Callsite in `freezeObservationSnapshot` die Notification:
+aktiven Slot löschen, `armed -> invoking`, synchron per erfasster Apply-
+Intrinsic mit `undefined` als Receiver und null Argumenten aufrufen,
+anschließend `consumed`. Erst danach folgen Cleanup-Phase, Old-Cap-Scan und
+Cleanup-Ledger. Vorstartiges Verwerfen lautet `armed -> discarded`.
+Ausschließlich der Rückgabewert `undefined` ist gültig; jeder andere Wert,
+Throw oder interner Exchange-Reentranzversuch latcht einen statisch redigierten
+sticky Cleanupverstoß, ohne `O0` zu ändern. Der Reentranzguard liegt nach
+Arity-/Identitätsprüfung und vor Profilreflection, Join, IDs, Zählern, Ledger
+und Effekten. Rückgabewerte werden weder reflektiert noch assimiliert oder
+awaited; Fehlergründe werden nicht gebunden. Der lokale Callback- und
+Rückgabewertbezug endet unmittelbar mit diesem synchronen Callsite.
 
 Vier transiente Referenzrollen sind geschlossen: aktueller
 Exchange-Promise-Kandidat; aktueller Fulfillmentgraph jeder Ack-Art;
@@ -934,16 +971,16 @@ Foundation kann kein echtes `observerGate: PASS` belegen; selbst ein
 hypothetisches Kandidaten-PASS bleibt `NOT_EVIDENCE` mit
 `runtimeAuthorized: false`, `persistenceAuthorized: false`, unverändertem
 ADR-0029-`overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN`. Die getrennte
-netzwerkfreie Effects-as-Data-Foundation ist implementiert und mit 422/422
-fokussierten Tests geprüft. ADR 0036 ist als dokumentarische Adaptergrenze
+netzwerkfreie Effects-as-Data-Foundation einschließlich ADR 0037 ist
+implementiert und mit 595/595 fokussierten Tests geprüft. ADR 0036 ist als dokumentarische Adaptergrenze
 vorgeschlagen. Die K2-Korrektur ist konstruktiv ausgearbeitet und im begrenzten
 R1–R4-Dokumentationsscope geprüft. Die synchrone
-`D_K4`-Foundationnotification nach `O0` ist durch ADR 0037 angenommen, aber
-noch nicht implementiert oder getestet; deshalb bleibt ADR 0036 nicht
-annahmereif. Der aktuell einzige zulässige nächste Schritt ist die gesondert
-beauftragte Foundationanpassung samt Nachweisen und unabhängigem
-Implementierungsreview. Adapterimplementierung, Adaptertests und
-Diagnoseruntimevorgang bleiben geschlossen.
+`D_K4`-Foundationnotification nach `O0` ist durch ADR 0037 angenommen und
+netzwerkfrei implementiert. Ihr unabhängiger Implementierungsreview steht aus.
+ADR 0036 bleibt nicht annahmereif; sein späterer gesonderter Abgleich und
+Review vor Jans Annahme stehen aus. Als Nächstes folgt ausschließlich der
+gesonderte unabhängige Implementierungsreview. Adapterimplementierung,
+Adaptertests und Diagnoseruntimevorgang bleiben geschlossen.
 
 ADR 0027 ersetzt ADR 0026 formal und übernimmt dessen Browser-SyncTransport-
 Vertrag mit zwei präzisierten Nachweisgrenzen. Der erste Implementierungsversuch
@@ -970,14 +1007,14 @@ Browserkomposition sollte danach getrennt folgen. Gegenwärtig ersetzt der
 angenommene ADR 0035 ADR 0034 formal und übernimmt alle durch ihn nicht
 korrigierten Regeln aus ADR 0034, ADR 0033 und ADR 0032. ADR 0034 bleibt mit
 bytegleichem Hauptteil ab `## Kontext` historische Entscheidungsebene. Die
-getrennte netzwerkfreie Effects-as-Data-Foundation ist implementiert und mit
-422/422 fokussierten Tests geprüft. ADR 0036 ist als getrennter
-dokumentarischer Adapter-ADR vorgeschlagen. Seine K2-Konstruktion ist
+getrennte netzwerkfreie Effects-as-Data-Foundation einschließlich ADR 0037 ist
+implementiert und mit 595/595 fokussierten Tests geprüft. ADR 0036 ist als
+getrennter dokumentarischer Adapter-ADR vorgeschlagen. Seine K2-Konstruktion ist
 ausgearbeitet und im begrenzten R1–R4-Dokumentationsscope geprüft. Die für K4
 notwendige synchrone Foundationnotification `effectPort.observationClosed()`
-ist durch ADR 0037 angenommen, aber noch nicht implementiert oder getestet.
-Als Nächstes ist nur die gesondert beauftragte Foundationanpassung samt
-Nachweisen und unabhängigem Implementierungsreview zulässig.
+ist durch ADR 0037 angenommen und netzwerkfrei implementiert. Als Nächstes
+folgt ausschließlich der gesonderte unabhängige Implementierungsreview;
+er steht aus.
 Adapterimplementierung, Adaptertests und sichtbarer Diagnoselauf bleiben
 geschlossen.
 
@@ -1095,14 +1132,17 @@ Innerhalb dieses Pfads gilt verbindlich folgende Implementierungsreihenfolge:
     konstruktiv aus; der begrenzte R1–R4-Dokumentreview ist abgeschlossen; Testnachweise bleiben offen;
     die K4-Foundationentscheidung ist durch ADR 0037 angenommen; die synchrone
     `effectPort.observationClosed()`-Notification unmittelbar nach `O0` ist
-    noch nicht implementiert oder getestet;
+    inzwischen getrennt implementiert und mit 595/595 fokussierten Tests geprüft;
 17. der unabhängige R1–R4-Dokumentreview ist abgeschlossen;
 18. ADR 0037 entscheidet D_K4 als gezielte Ergänzung von ADR 0035; der
     unabhängige dokumentarische Review ist abgeschlossen und Jan hat ADR 0037
     am 2026-09-08 ausdrücklich angenommen;
-19. ein davon getrennter Foundationimplementierungs- und Testslice setzt die
-    angenommene Notification und ihre sieben Fallklassen um;
-20. erst nach erneutem Review und ausdrücklicher ADR-0036-Annahme wird der
+19. der getrennte Foundationimplementierungs- und Testslice hat die angenommene
+    Notification und ihre sieben Fallklassen umgesetzt; der unabhängige
+    Daybreak-xhigh-Implementierungsreview steht aus;
+20. erst nach diesem Review, Jans manuellem Featurecommit, gesondertem
+    ADR-0036-Abgleich mit den neuen Load-/Hash-/Testverträgen, erneutem Review
+    und ausdrücklicher ADR-0036-Annahme wird der
     Adapter in einem getrennt autorisierten, netzwerkfreien Slice implementiert
     und geprüft;
 21. erst danach werden Zielbrowser, `T_replay`, Observer, höchstens ein
@@ -1151,10 +1191,11 @@ vorgeschlagen, nicht angenommen oder implementiert. Die K2-Korrektur ist
 ausgearbeitet und im begrenzten R1–R4-Dokumentationsscope geprüft; K4 setzt
 `D_K4` voraus. Schritt 17 ist im begrenzten R1–R4-Scope abgeschlossen; Schritt
 18 ist mit unabhängigem Review und Jans Annahme von ADR 0037 abgeschlossen.
-Der nächste zulässige Schritt ist die gesondert beauftragte
-Foundationimplementierung mit Tests und Review in Schritt 19. ADR-0036-Abgleich
-und -Annahme sowie Adapterimplementierung bleiben getrennt und dürfen nicht
-zusammengezogen werden.
+Schritt 19 ist implementiert und geprüft; als Nächstes folgt ausschließlich
+sein gesonderter unabhängiger
+Implementierungsreview. Jans manueller Featurecommit, der spätere
+ADR-0036-Abgleich samt erneutem Review und Annahme sowie Adapterimplementierung
+bleiben getrennt und dürfen nicht zusammengezogen werden.
 Jeder sichtbare Diagnose- oder Runtime-Evidence-Lauf bleibt gesperrt und
 benötigt zuvor zusätzlich eine getrennt angenommene handlegebundene Windows-
 Prozessbaum- und Pfadcleanupfähigkeit.
@@ -1350,10 +1391,10 @@ Runtimevorgang. Der danach getrennt autorisierte Foundation-Slice ist
 implementiert und geprüft. ADR 0036 ist als getrennte dokumentarische
 Adaptergrenze nach R1–R4 korrigiert vorgeschlagen; ihre K2-Konstruktion ist im
 begrenzten Dokumentationsscope geprüft. Die `D_K4`-Foundationentscheidung ist
-durch ADR 0037 angenommen, ihre Umsetzung und Nachweise fehlen jedoch; deshalb
-bleibt ADR 0036 nicht annahmereif und später gegen die konkret geänderte
-Foundation zu prüfen. Foundationänderung und Adapterimplementierung bleiben
-geschlossen.
+durch ADR 0037 angenommen und mit 595/595 fokussierten Tests netzwerkfrei
+implementiert. Der unabhängige Implementierungsreview steht aus; ADR 0036
+bleibt nicht annahmereif und ist später gesondert gegen die konkret geänderte
+Foundation zu prüfen. Adapterimplementierung und Adaptertests bleiben geschlossen.
 Browserkomposition und Browser-End-to-End-`syncTest` bleiben bis zu einem
 späteren vollständig neuen ADR-0029-Gesamt-`PASS` gesperrt.
 
