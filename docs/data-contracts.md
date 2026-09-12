@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0035 und ADR-0037-D_K4-Delta angenommen – 2026-09-08; Foundationnotification implementiert und mit 595/595 fokussierten Tests geprüft; unabhängiger Implementierungsreview ausstehend; ADR 0036 vorgeschlagen und nicht annahmereif; Adapter und Diagnoselauf nicht autorisiert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
+| Projektphase | `v0.3.0 – ADR 0035 und ADR-0037-D_K4-Delta angenommen; Foundationabgleich – 2026-09-12; Foundationnotification implementiert und mit 595/595 fokussierten Tests geprüft; gebundener Implementierungsreview und Jans Featurecommit abgeschlossen; unabhängiger ADR-0036-Dokumentreview laut Jans Chatbericht PASS ohne Befund; ADR 0036 durch Jan am 2026-09-12 ausdrücklich angenommen; Adapterimplementierung und Adaptertests fehlen und benötigen einen gesonderten Auftrag; Diagnoselauf nicht autorisiert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,16 +21,16 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | ADR 0037 ist nach unabhängigem dokumentarischem Review durch Jan angenommen und ergänzt ADR 0035 gezielt. Die netzwerkfreie Foundation implementiert den Zwei-Feld-Port samt Notification-, Reentranz- und Deadline-Proxytrap-Nachweisen. Der unabhängige Implementierungsreview steht aus; ADR 0036 bleibt vorgeschlagen und nicht annahmereif. |
-| Letzte Aktualisierung | 2026-09-08 |
+| Status | ADR 0037 ist nach unabhängigem dokumentarischem Review durch Jan angenommen und ergänzt ADR 0035 gezielt. Die netzwerkfreie Foundation implementiert den Zwei-Feld-Port samt Notification-, Reentranz- und Deadline-Proxytrap-Nachweisen. Der gebundene Implementierungsreview und Jans Featurecommit sind abgeschlossen; der unabhängige Dokumentreview des Foundationabgleichs ist laut Jans Chatbericht mit PASS ohne Befund abgeschlossen; Jan hat ADR 0036 am 2026-09-12 ausdrücklich angenommen. |
+| Letzte Aktualisierung | 2026-09-12 |
 
 ## Aktuelle Foundationentscheidung / ADR 0037
 
 Der unabhängige Astra-Review hat die R1–R4-Dokumentkorrektur von ADR 0036
 im eng begrenzten Dokumentationsscope mit PASS abgeschlossen. Er gilt nur für
 die dort gebundenen Rohbytes, nicht für ausgeführte Adapter-/Testkopiennachweise.
-ADR 0036 bleibt vorgeschlagen und nicht annahmereif. Der unabhängige
-dokumentarische Review von ADR 0037 ist ohne Befund mit PASS abgeschlossen;
+ADR 0036 war danach weiterhin vorgeschlagen und nicht annahmereif. Der
+unabhängige dokumentarische Review von ADR 0037 ist ohne Befund mit PASS abgeschlossen;
 Jan hat ADR 0037 am 2026-09-08 ausdrücklich angenommen.
 
 [ADR 0037](decisions/0037-browser-sync-transport-diagnostic-foundation-observation-close-notification.md)
@@ -127,15 +127,33 @@ Prüfbindung ist keine Runtimeprovenienz: `foundationSha256` bleibt in der
 FoundationProjection `null`, `evidenceStatus: NOT_EVIDENCE`,
 `runtimeAuthorized: false` und `persistenceAuthorized: false` bleiben fest.
 
-Der unabhängige Daybreak-xhigh-Implementierungsreview dieses D_K4-Slices steht
-aus; die historischen Dokument- und ADR-0035-Reviews belegen ihn nicht. Nach
-dieser Übergabe folgt ausschließlich sein getrennt zu beauftragender Review.
-Danach bleiben Jans manueller Featurecommit und der separate Abgleich von ADR
-0036 gegen die tatsächlich neue Foundation, ihre Load-/Rohhashbindungen und
-Testverträge gesonderte Schritte. ADR 0036 muss anschließend erneut unabhängig
-geprüft werden, bevor Jan über seine Annahme entscheidet. Seine bisherigen
-Hashbindungen werden in diesem Slice nicht geändert. Adapterimplementierung,
-Adaptertests, `A_obs`, Recordpersistenz und Diagnoselauf bleiben geschlossen;
+Der unabhängige Daybreak-xhigh-Implementierungsreview ist mit gebundenem PASS
+abgeschlossen; Jan hat die geprüften neun Fassungen anschließend unverändert
+in `799e23e2f122ec2df3262af28a883616a8120327` committet. Der Review galt
+ursprünglich HEAD `4dc4d6f98e0d4dd0418544b286fd1bb204597f55` plus diese
+neun uncommitteten Dateien. Alle neun Berichthashes treffen die Featureblobs;
+die genaue [Reviewprovenienz in ADR 0036](decisions/0036-browser-sync-transport-runtime-diagnostic-adapter-boundary.md#kontext)
+überträgt das PASS weder auf den späteren Commit noch auf diesen Docs-Diff.
+Die oben genannten Regressionen und Gesamttests sind Nachweise des
+ADR-0037-Implementierungsslices, keine hier erneut ausgeführte Gesamtsuite.
+Der unabhängige Daybreak-Blue-Latest-/xhigh-Dokumentreview des
+ADR-0036-Foundationabgleichs ist laut Jans Chatbericht mit `PASS` ohne Befund
+abgeschlossen. Er bindet ausschließlich die geprüften vollständigen
+Vorannahmebytes der acht Dokumente, nicht die durch diese Statusnachführung
+entstehenden Fassungen. Die vollständigen Rohhashbindungen stehen im
+[Annahmeeintrag](../CHANGELOG.md#adr-0036-annahme-und-abgeschlossener-dokumentreview--2026-09-12);
+der frühere R1–R4-Review bindet weiterhin nur seine
+damaligen ADR-0036-Bytes. Anschließend hat Jan ADR 0036 am `2026-09-12`
+ausdrücklich angenommen. Damit ist die dokumentarische Adaptergrenze
+entschieden. Als nächster fachlicher Schritt kommt ein eigener netzwerkfreier
+Adapterimplementierungs-/Testslice erst auf gesonderten Auftrag in Betracht;
+Adapter und Adaptertests sind weder implementiert noch ausgeführt. `A_obs`,
+Writer, Diagnoselauf, Browserkomposition und End-to-End bleiben geschlossen;
+Lauf- und Persistenzfreigaben fehlen weiterhin. Dieser Auftrag endet nach
+Statusnachführung und Verifikation; Git-Schritte bleiben manuell bei Jan.
+Die aktiven ADR-0036-Foundation-/Testhashes sind nachgeführt und ADR 0037 ist
+als ergänzende aktuelle Entscheidungsgrundlage gebunden; dies ergänzt keinen
+Replayoperanden, kein Recordfeld und keine unabhängige Adapterattestierung.
 `overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert.
 
 Dieses Dokument definiert die implementierten lokalen Speicherverträge für
@@ -3307,16 +3325,17 @@ implementiert und mit 595/595 fokussierten Tests geprüft. Die unveränderten
 Regressionen bestehen erneut mit 423/423, 466/466 und 735/735 Tests, die
 Gesamtsuite mit 2350/2350; Build und Bundlecheck bestehen bei exakt 46 Modulen
 beziehungsweise driftfrei. Als
-rein dokumentarische Grenze ist ADR 0036 nach R1–R4 korrigiert vorgeschlagen,
-aber nicht angenommen. Seine K2-Konstruktion ist im begrenzten
+rein dokumentarische Grenze ist ADR 0036 nach R1–R4 korrigiert und durch Jan
+am `2026-09-12` ausdrücklich angenommen. Seine K2-Konstruktion ist im begrenzten
 R1–R4-Dokumentationsscope geprüft. Die für K4 notwendige synchrone
 Foundationnotification `effectPort.observationClosed()` ist durch ADR 0037
 angenommen und einschließlich Deadline-Proxytrap-Nachweis implementiert und
-fokussiert geprüft. Der unabhängige Daybreak-xhigh-Implementierungsreview steht
-aus und ist nach Übergabe der einzige nächste gesondert zu beauftragende
-Schritt. Danach folgen erst Jans manueller Featurecommit und der getrennte
-ADR-0036-Abgleich; Adapterimplementierung, Adaptertests und sichtbarer
-Diagnoselauf bleiben geschlossen.
+fokussiert geprüft. Der gebundene unabhängige Implementierungsreview und Jans unveränderter
+Featurecommit sind abgeschlossen. Der ADR-0036-Foundationabgleich ist
+dokumentiert; sein unabhängiger Dokumentreview ist laut Jans Chatbericht mit
+`PASS` ohne Befund für die gebundenen Vorannahmebytes abgeschlossen.
+Adapterimplementierung und Adaptertests fehlen und benötigen einen gesonderten
+netzwerkfreien Auftrag; ein sichtbarer Diagnoselauf bleibt geschlossen.
 Browserkomposition und lokaler Browser-End-to-End-`syncTest` bleiben bis zu
 einem späteren vollständig neuen ADR-0029-Gesamt-`PASS` geschlossen.
 
@@ -3332,15 +3351,18 @@ implementiert und geprüft. ADR 0035 ist als enge Korrektur ihrer internen Join-
 angenommen, ersetzt ADR 0034 formal und führt dessen nicht ausdrücklich
 korrigierte Regeln fort; ADR 0034 bleibt mit bytegleichem Hauptteil historische
 Entscheidungsebene. ADR 0036 ist als nach R1–R4 korrigierte dokumentarische
-Adaptergrenze vorgeschlagen; seine K2-Konstruktion ist im begrenzten
-R1–R4-Dokumentationsscope geprüft. Die `D_K4`-Foundationentscheidung ist durch
+Adaptergrenze durch Jan am `2026-09-12` ausdrücklich angenommen; seine
+K2-Konstruktion ist im begrenzten R1–R4-Dokumentationsscope geprüft. Die `D_K4`-Foundationentscheidung ist durch
 ADR 0037 angenommen und mit 595/595 fokussierten Tests umgesetzt. Ihr
-unabhängiger Implementierungsreview steht aus. Die folgenden historischen
+gebundener unabhängiger Implementierungsreview und Jans Featurecommit sind
+abgeschlossen. Die folgenden historischen
 ADR-0033-Port- und Referenzregeln gelten nur soweit fort, wie sie nicht durch
 die oben dokumentierte ADR-0037-Notification mit zwei Capabilityrollen gezielt
-korrigiert sind. Als Nächstes ist nach Übergabe ausschließlich der getrennt zu
-beauftragende Daybreak-xhigh-Implementierungsreview zulässig. Adapterimplementierung,
-Adaptertests, Parser,
+korrigiert sind. Der unabhängige ADR-0036-Dokumentreview des Foundationabgleichs
+ist laut Jans Chatbericht mit `PASS` ohne Befund für die gebundenen
+Vorannahmebytes abgeschlossen. Ein eigener netzwerkfreier
+Adapterimplementierungs-/Testslice benötigt einen gesonderten Auftrag.
+Adapterimplementierung, Adaptertests, Parser,
 Queue, Timer, Browser, CDP, Netzwerk und ein Diagnoselauf sind nicht
 autorisiert. Das ADR-0029-Gesamtgate bleibt `FAIL`, die Ursache
 `CAUSE_NOT_PROVEN`.
@@ -5450,10 +5472,11 @@ beschriebene synchrone Notification. Seine 595/595 fokussierten Tests,
 `Δ = 173` und die Gesamtsuite mit 2350/2350, exakt `1755 + 595`, sind getrennt
 belegt. Die Regressionen bestehen erneut mit 423/423, 466/466 und 735/735;
 alle Läufe besitzen 0 Fehlschläge, Cancellations, Skips oder Todos. Build und
-Bundlecheck bestehen bei exakt 46 Modulen beziehungsweise driftfrei. Der dafür
-erforderliche unabhängige Implementierungsreview ist noch ausstehend. Die drei
-historischen Reviews werden nicht auf die geänderten Produktions- und
-Testbytes übertragen.
+Bundlecheck bestehen bei exakt 46 Modulen beziehungsweise driftfrei. Dies sind
+Nachweise des ADR-0037-Implementierungsslices. Sein unabhängiger Review ist
+mit gebundenem PASS abgeschlossen und Jan hat die geprüften Bytes unverändert
+committet. Die drei historischen ADR-0035-Reviews werden nicht auf die
+geänderten Produktions- und Testbytes übertragen.
 
 ### Testkopie v2 und vier private Bindings
 
@@ -5726,24 +5749,31 @@ Export. Damit ist die historische `one/unproven`-Antwortregel ausdrücklich
 durch die ADR-0034-Operationsmatrix überholt: Antwortdubletten ändern niemals
 einen bestätigten Send-Ack oder dessen Operationsergebnis.
 
-ADR 0036 ist als ausschließlich dokumentarische Adaptergrenze vorgeschlagen.
-Der nach R1–R4 korrigierte Vorschlag arbeitet K2 konstruktiv aus und hat den
-begrenzten R1–R4-Dokumentreview bestanden. Die K4-Foundationentscheidung ist
+ADR 0036 ist als ausschließlich dokumentarische Adaptergrenze durch Jan am
+`2026-09-12` ausdrücklich angenommen. Die nach R1–R4 korrigierte Grenze
+arbeitet K2 konstruktiv aus und hat den begrenzten R1–R4-Dokumentreview
+bestanden. Die K4-Foundationentscheidung ist
 durch ADR 0037 angenommen und netzwerkfrei implementiert sowie fokussiert
-geprüft. Der unabhängige Implementierungsreview und der danach getrennte
-Abgleich von ADR 0036 gegen neue Load-/Rohhashbindungen und Testverträge stehen
-aus; deshalb ist ADR 0036 ausdrücklich nicht annahmereif.
-Adapterimplementierung, Adaptertests,
+geprüft. Der gebundene unabhängige Implementierungsreview und Jans unveränderter
+Featurecommit sind abgeschlossen. Der ADR-0036-Foundationabgleich ist
+dokumentiert; sein unabhängiger Dokumentreview ist laut Jans Chatbericht mit
+`PASS` ohne Befund für die gebundenen Vorannahmebytes abgeschlossen.
+Ein eigener netzwerkfreier Adapterimplementierungs-/Testslice benötigt einen
+gesonderten Auftrag. Adapterimplementierung, Adaptertests,
 sichtbarer Diagnoselauf, Browserkomposition und Browser-End-to-End bleiben
 geschlossen.
 
 <a id="browser-sync-transport-runtime-diagnostic-adapter--adr-0036"></a>
 
-## Vorgeschlagener Runtime Diagnostic Adaptervertrag / ADR 0036
+## Angenommener Runtime Diagnostic Adaptervertrag / ADR 0036
 
 [ADR 0036](decisions/0036-browser-sync-transport-runtime-diagnostic-adapter-boundary.md)
 ergänzt ADR 0035 und ersetzt keinen ADR. Sein Status ist
-`Vorgeschlagen – 2026-09-06`. Er implementiert und autorisiert nichts.
+`Angenommen – 2026-09-12`, ausdrücklich durch Jan nach dem laut seinem
+Chatbericht mit `PASS` ohne Befund abgeschlossenen unabhängigen
+Daybreak-Blue-Latest-/xhigh-Dokumentreview der gebundenen Vorannahmebytes.
+Die Annahme implementiert nichts und autorisiert weder den gesondert zu
+beauftragenden netzwerkfreien Adapter-/Testslice noch einen Diagnoselauf.
 
 Der künftige Adapterpfad und seine einzige öffentliche API sind:
 
@@ -5938,7 +5968,7 @@ sieben Intents und Antworten. Das durch ADR 0037 angenommene und inzwischen
 implementierte `D_K4` ergänzt den Foundationport um exakt die synchrone,
 argumentlose Notification `observationClosed()`; sie ist kein Intent. Ihre
 Foundationnachweise gehören zur aktuellen 595/595-Suite, nicht zur historischen
-422/422-Suite. Im vorgeschlagenen Adaptervertrag erhält jeder Exchange ein adaptereigenes natives
+422/422-Suite. Im angenommenen Adaptervertrag erhält jeder Exchange ein adaptereigenes natives
 Same-Realm-Promise; nur Dequeue darf auf ein späteres Ereignis warten. Es gibt
 höchstens einen offenen Exchange und genau einen Dequeue-Resolver, keinen
 Leerwert, kein Polling, `Promise.race` oder Ersatzcap. Send-Ack bedeutet nur
@@ -6090,13 +6120,15 @@ zuerst Setup, dann Capture; regulärer Cleanup initialisiert sein Ledger vor
 finalisieren erst danach; Prestart bildet kein `O0`; portlose Cleanupfehler
 verwenden das bereits vorhandene `O0` und Ledger. Die durch ADR 0037 total
 entschiedene Foundationgrenze ist mit 595/595 fokussierten Tests implementiert
-und geprüft; ihr unabhängiger Daybreak-xhigh-Implementierungsreview steht aus.
+und geprüft. Der gebundene unabhängige Implementierungsreview und Jans unveränderter
+Featurecommit sind abgeschlossen. Der ADR-0036-Foundationabgleich ist
+dokumentiert; sein unabhängiger Dokumentreview ist laut Jans Chatbericht mit
+`PASS` ohne Befund für die gebundenen Vorannahmebytes abgeschlossen. Jan hat
+ADR 0036 am `2026-09-12` ausdrücklich angenommen.
 Adapterabhängige positive Claims bleiben `unproven`, und ohne früheres
-authentisches `A_obs` ist ein Record verboten. Erst nach dem getrennten Review
-und Jans manuellem Featurecommit folgt der gesonderte ADR-0036-Abgleich gegen
-die neuen Foundation-, Load-/Rohhash- und Testverträge samt erneutem
-unabhängigem Dokumentreview. ADR 0036 bleibt bis dahin nicht annahmereif;
-seine bisherigen Rohhashbindungen bleiben in diesem Slice unverändert.
+authentisches `A_obs` ist ein Record verboten. Die aktiven Foundation-,
+Load-/Rohhash- und Testbindungen sind in ADR 0036 nachgeführt; das ist kein
+Adapter-Wiringnachweis und keine Implementierungs- oder Lauffreigabe.
 
 Nach terminalem Cleanup wird ein neuer referenzdisjunkter Record mit exakt den
 bestehenden 17 Rootfeldern materialisiert. `projectionType` wird zu
@@ -8471,14 +8503,17 @@ erhalten. ADR 0035 ist als enge Testbarkeitskorrektur angenommen, ersetzt ADR
 0034 bleibt mit bytegleichem Hauptteil historische Entscheidungsebene. Die
 getrennte netzwerkfreie Diagnosefoundation ist einschließlich ADR-0037-Delta
 implementiert und mit 595/595 fokussierten Tests geprüft. ADR 0036 ist als nach R1–R4 korrigierte
-dokumentarische Adaptergrenze vorgeschlagen; seine K2-Konstruktion ist im
-begrenzten R1–R4-Dokumentationsscope geprüft. Die
+dokumentarische Adaptergrenze durch Jan am `2026-09-12` ausdrücklich angenommen;
+seine K2-Konstruktion ist im begrenzten R1–R4-Dokumentationsscope geprüft. Die
 `D_K4`-Foundationnotification und ihr Deadline-Proxytrap-Nachweis sind umgesetzt.
-Der unabhängige Implementierungsreview und der danach getrennte ADR-0036-
-Abgleich gegen neue Load-/Rohhashbindungen und Testverträge stehen aus; deshalb
-bleibt ADR 0036 nicht annahmereif. Nach Übergabe ist als Nächstes nur der
-gesondert beauftragte Daybreak-xhigh-Implementierungsreview zulässig. Adapterimplementierung,
-Adaptertests und Runtimevorgang bleiben geschlossen.
+Der gebundene unabhängige Implementierungsreview und Jans unveränderter
+Featurecommit sind abgeschlossen. Der ADR-0036-Foundationabgleich ist
+dokumentiert; sein unabhängiger Dokumentreview ist laut Jans Chatbericht mit
+`PASS` ohne Befund für die gebundenen Vorannahmebytes abgeschlossen.
+Als nächster fachlicher Schritt kommt ein eigener netzwerkfreier
+Adapterimplementierungs-/Testslice erst auf gesonderten Auftrag in Betracht.
+Adapterimplementierung und Adaptertests fehlen; ein Runtimevorgang bleibt
+geschlossen.
 Zielbrowser,
 `T_replay`, Observer, der einzelne Request, Benutzerinteraktion und Cleanup
 benötigen auch danach eine eigene ausdrückliche Autorisierung.
@@ -12094,14 +12129,17 @@ Testbarkeitskorrektur angenommen, ersetzt ADR 0034 formal und führt dessen
 nicht ausdrücklich korrigierte Regeln fort; ADR 0034 bleibt mit bytegleichem
 Hauptteil historische Entscheidungsebene. Die Diagnosefoundation und ihre
 Tests sind einschließlich ADR-0037-Delta getrennt netzwerkfrei implementiert
-und mit 595/595 fokussierten Tests geprüft. ADR 0036 schlägt ausschließlich die nach R1–R4
-korrigierte dokumentarische Adaptergrenze vor; seine K2-Konstruktion ist im
+und mit 595/595 fokussierten Tests geprüft. ADR 0036 entscheidet ausschließlich die nach R1–R4
+korrigierte dokumentarische Adaptergrenze und ist durch Jan am `2026-09-12`
+ausdrücklich angenommen; seine K2-Konstruktion ist im
 begrenzten R1–R4-Dokumentationsscope geprüft. Die
 `D_K4`-Foundationentscheidung ist durch ADR 0037 angenommen und fokussiert
-umgesetzt sowie geprüft. Ihr unabhängiger Implementierungsreview und der
-anschließend getrennte ADR-0036-Abgleich gegen neue Load-/Rohhashbindungen und
-Testverträge stehen aus; deshalb bleibt ADR 0036 nicht annahmereif.
-Adapterimplementierung, Adaptertests und sichtbarer
+umgesetzt sowie geprüft. Der gebundene unabhängige Implementierungsreview und Jans unveränderter
+Featurecommit sind abgeschlossen. Der ADR-0036-Foundationabgleich ist
+dokumentiert; sein unabhängiger Dokumentreview ist laut Jans Chatbericht mit
+`PASS` ohne Befund für die gebundenen Vorannahmebytes abgeschlossen.
+Ein eigener netzwerkfreier Adapterimplementierungs-/Testslice benötigt einen
+gesonderten Auftrag. Adapterimplementierung, Adaptertests und sichtbarer
 Diagnoselauf bleiben geschlossen. Produktive SyncService-/`src/main.js`-
 Komposition und Browser-End-to-End-Fluss fehlen weiterhin und folgen erst nach
 einem späteren vollständig neuen ADR-0029-Gesamt-`PASS`.
