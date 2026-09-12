@@ -834,7 +834,7 @@ function createBrowserSyncTransportRuntimeDiagnosticRunMachine(input) {
     }
     inputValues = readClosedRecord(
       input,
-      ['activeExchange', 'runBinding'],
+      ['activeExchange', 'activeObservationClosed', 'runBinding'],
       new CapturedWeakSet()
     )
   } catch {
@@ -842,8 +842,9 @@ function createBrowserSyncTransportRuntimeDiagnosticRunMachine(input) {
   }
   if (
     typeof inputValues[0] !== 'function' ||
-    inputValues[1] === null ||
-    typeof inputValues[1] !== 'object'
+    typeof inputValues[1] !== 'function' ||
+    inputValues[2] === null ||
+    typeof inputValues[2] !== 'object'
   ) {
     throw new TypeError('invalidRunMachineInput')
   }
@@ -861,6 +862,9 @@ function createBrowserSyncTransportRuntimeDiagnosticRunMachine(input) {
     phase: 'prestart',
     lease: LEASE_IDLE,
     activeExchange: inputValues[0],
+    activeObservationClosed: inputValues[1],
+    observationNotificationState: 'armed',
+    observationNotificationViolation: false,
     nextExchangeRequestProfile: null,
     nextExchangeContext: null,
     activeExchangeRequestProfile: null,
@@ -884,7 +888,7 @@ function createBrowserSyncTransportRuntimeDiagnosticRunMachine(input) {
     capStates: { setup: 'absent', capture: 'absent', cleanup: 'absent' },
     capArmIntentIds: { setup: null, capture: null, cleanup: null },
     capCancelAttempted: { setup: false, capture: false, cleanup: false },
-    runBinding: inputValues[1],
+    runBinding: inputValues[2],
     nextCommandId: 1,
     operationLedger: createInitialOperationLedger(),
     completedCommandIds: new CapturedMap(),
@@ -1015,6 +1019,11 @@ function requestBrowserSyncTransportRuntimeDiagnosticExchange(machine, profile) 
     machine === null ||
     capturedReflectApply(capturedWeakSetHas, machineIdentities, [machine]) !== true
   ) {
+    return undefined
+  }
+
+  if (machine.observationNotificationState === 'invoking') {
+    machine.observationNotificationViolation = true
     return undefined
   }
 
@@ -1338,6 +1347,15 @@ function settleMachineWithProjection(machine) {
 }
 
 function clearEphemeralMachineState(machine) {
+  if (machine.activeObservationClosed !== null) {
+    machine.activeObservationClosed = null
+  }
+  if (
+    machine.preCleanupObservationSnapshot === null &&
+    machine.observationNotificationState === 'armed'
+  ) {
+    machine.observationNotificationState = 'discarded'
+  }
   machine.heldDequeuedObservation = null
   machine.heldDequeuePhase = null
   machine.targetId = null
@@ -3992,6 +4010,30 @@ function freezeObservationSnapshot(machine) {
     stickyViolation: machine.stickyViolation,
   }
   machine.preCleanupObservationSnapshot = deepFreezeGenerated(snapshot)
+
+  // ADR 0037: consume the separate role after O0, before any cleanup transition.
+  let observationClosed = machine.activeObservationClosed
+  machine.activeObservationClosed = null
+  if (
+    machine.observationNotificationState !== 'armed' ||
+    typeof observationClosed !== 'function'
+  ) {
+    machine.observationNotificationViolation = true
+  } else {
+    machine.observationNotificationState = 'invoking'
+    try {
+      if (capturedReflectApply(observationClosed, undefined, []) !== undefined) {
+        machine.observationNotificationViolation = true
+      }
+    } catch {
+      machine.observationNotificationViolation = true
+    }
+  }
+  observationClosed = null
+  machine.observationNotificationState = 'consumed'
+  if (machine.observationNotificationViolation) {
+    machine.cleanupInitialViolation = true
+  }
 }
 
 function createCleanupCheckMap() {
@@ -6124,6 +6166,7 @@ function createFoundationProjection(machine) {
 
 export function createBrowserSyncTransportRuntimeDiagnosticObserver(options) {
   let capturedExchange
+  let capturedObservationClosed
   let internalRunBinding
   try {
     if (arguments.length !== 1) {
@@ -6135,11 +6178,30 @@ export function createBrowserSyncTransportRuntimeDiagnosticObserver(options) {
       ['effectPort', 'runBinding'],
       visited
     )
-    const portValues = readClosedRecord(optionValues[0], ['exchange'], visited)
-    if (typeof portValues[0] !== 'function') {
+    const portValues = readClosedRecord(
+      optionValues[0],
+      ['exchange', 'observationClosed'],
+      visited
+    )
+    if (
+      typeof portValues[0] !== 'function' ||
+      typeof portValues[1] !== 'function'
+    ) {
       throw new TypeError('invalidEffectPort')
     }
+    const notificationLength = capturedGetOwnPropertyDescriptor(portValues[1], 'length')
+    if (
+      notificationLength === undefined ||
+      notificationLength.enumerable !== false ||
+      capturedObjectHasOwn(notificationLength, 'value') !== true ||
+      capturedObjectHasOwn(notificationLength, 'get') === true ||
+      capturedObjectHasOwn(notificationLength, 'set') === true ||
+      notificationLength.value !== 0
+    ) {
+      throw new TypeError('invalidObservationClosedCapability')
+    }
     capturedExchange = portValues[0]
+    capturedObservationClosed = portValues[1]
     internalRunBinding = copyRunBinding(optionValues[1], visited)
   } catch {
     throw new TypeError(FACTORY_DEPENDENCY_ERROR)
@@ -6155,17 +6217,21 @@ export function createBrowserSyncTransportRuntimeDiagnosticObserver(options) {
     activeRunToken = 1
     if (arguments.length !== 0) {
       capturedExchange = null
+      capturedObservationClosed = null
       internalRunBinding = null
       activeRunToken = null
       runState = 'terminal'
       return createLocalResolvedPromise(createFoundationErrorResult())
     }
     const activeExchange = capturedExchange
+    const activeObservationClosed = capturedObservationClosed
     capturedExchange = null
+    capturedObservationClosed = null
     let machine
     try {
       machine = createBrowserSyncTransportRuntimeDiagnosticRunMachine({
         activeExchange,
+        activeObservationClosed,
         runBinding: internalRunBinding,
       })
       machine.ownerTerminalCallback = function ownerTerminalCallback() {
