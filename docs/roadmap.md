@@ -4,13 +4,45 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0035 und ADR-0037-D_K4-Delta unverändert angenommen; ADR 0036 durch Jan angenommen – 2026-09-12; Notification netzwerkfrei implementiert, zwei erforderliche Portrollen, 595/595 fokussierte Tests (Δ173); gebundener Implementierungsreview und Jans Featurecommit abgeschlossen; ADR-0036-Foundationabgleich mit gebundenem unabhängigem Dokumentreview PASS abgeschlossen; Adapterimplementierung, Adaptertests und Diagnoselauf nicht autorisiert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
+| Projektphase | `v0.3.0 – begrenzte Foundation-Arraydescriptor-Korrektur; 757/757 fokussierte und 2512/2512 Gesamttests; unabhängiger Korrekturreview ausstehend; ADR-0036-Load-/Hashabgleich offen; Adapterimplementierung nicht fortgesetzt; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | ADR 0037 ist nach unabhängigem dokumentarischem Review durch Jan angenommen und ergänzt ADR 0035 gezielt. Die Notification und ihre Nachweise sind netzwerkfrei implementiert: 595/595 fokussierte und 2350/2350 Gesamttests, Build mit 46 Modulen, Bundlecheck und Hashaudit bestanden. Der gebundene Implementierungsreview und Jans Featurecommit sind abgeschlossen; der Foundationabgleich ist dokumentiert, sein unabhängiger Dokumentreview laut Jans Chatbericht mit gebundenem PASS ohne Befund abgeschlossen; Jan hat ADR 0036 anschließend am 2026-09-12 ausdrücklich angenommen. Adapter und Adaptertests fehlen weiterhin. |
-| Letzte Aktualisierung | 2026-09-12 |
+| Status | ADR 0035, ADR 0036 und ADR 0037 bleiben unverändert angenommen. Der lokale Vertragsabgleich trägt die Entfernung genau zweier zusätzlicher Writablebedingungen; bestehende Descriptor-, Freeze-, Effect- und Evidenzgrenzen bleiben erhalten. Frühere Reviews gelten ausschließlich für ihre gebundenen Bytes. Der unabhängige Review dieser Korrektur und der gesonderte ADR-0036-Load-/Hashabgleich stehen aus. |
+| Letzte Aktualisierung | 2026-09-13 |
+
+## Aktuelle Arraydescriptor-Korrektur / 2026-09-13
+
+Der vorgeschaltete lokale Vertragsabgleich bestätigt eine
+Implementierungsüberrestriktion in `readClosedArray` für `replayOperands`
+und `readClosedTargetInfos`: Die fortgeltende native Arraygrammatik erlaubt
+beide Writablezustände. Entfernt ist ausschließlich der jeweilige zusätzliche
+`lengthDescriptor.writable !== true`-Guard. Die Foundation friert weiterhin
+keine Fremdeingabe ein; bereits eingefrorene Eingaben bleiben unvertrauenswürdig.
+Der vollständige Adapter-Freezevertrag bleibt erhalten.
+
+Geprüft sind 757/757 Foundationtests (`595 + 162`), fünf neue kausale Mutanten,
+423/423, 466/466 und 735/735 Bestandsregressionen sowie 2512/2512 Gesamttests
+(`1755 + 757`). Build: 46 Module; Bundlecheck: Exit 0, driftfrei.
+Befund, Gegenproben, Befehle und alte/neue Rohhashes stehen im
+[Nachweiseintrag](../CHANGELOG.md#foundation-arraydescriptor-korrektur--2026-09-13).
+Die neue Foundationprüfung bleibt netzwerkfrei; die Gesamtregression enthält
+ausschließlich die unveränderten erlaubten Loopback-Testpfade samt Cleanup.
+
+Nächste Schritte sind ausschließlich gesondert beauftragter unabhängiger
+Implementierungsreview, Jans manueller Korrekturcommit und danach ein eigener
+dokumentarischer ADR-0036-Load-/Hashabgleich samt Prüfung. Erst anschließend
+kommt ein neu gebundener Adapterauftrag in Betracht. ADR 0036 bleibt
+angenommen und bytegleich; seine alten Load-/Testhashes passen ausdrücklich
+noch nicht zu den korrigierten Bytes. Dieser Slice setzt die
+Adapterimplementierung nicht fort und liefert kein authentisches `A_obs`.
+Lauf-, Browser-, E2E-, Writer- und Persistenzfreigaben fehlen weiterhin.
 
 ## Aktuelle Foundationentscheidung / ADR 0037
+
+Die folgenden Implementierungszahlen, Rohhashes, Reviews und
+Statusnachführungen dokumentieren den gebundenen ADR-0037-/ADR-0036-Basisstand
+vor dieser Arraydescriptor-Korrektur; sie gelten nicht als Review oder
+aktuelle Loadbindung der neuen Bytes. Der aktuelle Korrekturstand steht oben.
 
 Der unabhängige Astra-Review hat die R1–R4-Dokumentkorrektur von ADR 0036
 im eng begrenzten Dokumentationsscope mit PASS abgeschlossen. Er gilt nur für
@@ -74,6 +106,11 @@ nicht starre Kalendertermine.
 - Jede Version liefert ein sichtbares und lokal überprüfbares Ergebnis.
 - Eine neue Phase beginnt erst, wenn die Abnahmekriterien der vorherigen Phase
   erfüllt sind.
+- Vor der nachstehenden Adapterfortsetzung stehen seit der
+  Arraydescriptor-Korrektur vom 2026-09-13 der separat beauftragte unabhängige
+  Korrekturreview, Jans manueller Commit und danach der eigene
+  ADR-0036-Load-/Hashabgleich samt Prüfung. Erst anschließend kommt ein neu
+  gebundener Adapterauftrag in Betracht.
 - Die aktuelle Implementierungsreihenfolge lautet: **ADR 0027 – beobachtbare
   Browser-SyncTransport-Nachweisgrenzen ✅ → isolierte BrowserSyncTransport-
   Implementierung und netzwerkfreie Unit-Tests ✅ → ADR 0028 – feste

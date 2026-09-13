@@ -19,9 +19,41 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – ADR 0035 und ADR-0037-D_K4-Delta unverändert angenommen; Foundation netzwerkfrei implementiert, unabhängig geprüft und durch Jan unverändert committet; 595/595 fokussierte Tests (Δ173); unabhängiger ADR-0036-Foundationabgleich-Dokumentreview mit gebundenem PASS abgeschlossen; ADR 0036 am 2026-09-12 ausdrücklich durch Jan angenommen; Adapter und Adaptertests weder implementiert noch ausgeführt; eigener netzwerkfreier Adapterimplementierungs- und Testslice nur auf gesonderten Auftrag; Diagnoselauf und Persistenz nicht autorisiert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+Aktueller Stand: `v0.3.0 – begrenzte Foundation-Arraydescriptor-Korrektur; 757/757 fokussierte Tests (Δ162) und 2512/2512 Gesamttests; unabhängiger Korrekturreview ausstehend; ADR 0035, ADR 0036 und ADR 0037 unverändert angenommen; ADR-0036-Load-/Hashabgleich offen; Adapterimplementierung nicht fortgesetzt; Diagnoselauf und Persistenz nicht autorisiert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+
+### Aktuelle Arraydescriptor-Korrektur / 2026-09-13
+
+Der vorgeschaltete lokale Vertragsabgleich trägt die Entfernung ausschließlich
+der beiden zusätzlichen `lengthDescriptor.writable !== true`-Bedingungen in
+`readClosedArray` und `readClosedTargetInfos`. Native Array-Längendescriptoren
+mit beiden Writablezuständen erfüllen bei sonst gültigem Profil die
+fortgeltende Arraygrammatik. Fremde Eingaben werden weiterhin weder mutiert
+noch eingefroren; eingefrorene Eingaben erhalten keine Provenienz.
+Der Adapter-Freezevertrag bleibt unverändert.
+
+595/595 Basistests wurden vor der Korrektur erneut ausgeführt. Jetzt bestehen
+757/757 Foundationtests, einschließlich fünf neuer kausaler Mutanten und aller
+bestehenden Notification-, Deadline- und Joinnachweise, sowie 2512/2512 Tests
+der seriellen Gesamtsuite (`1755 + 757`). Die Regressionen bestehen mit
+423/423, 466/466 und 735/735, der Build mit 46 Modulen und der Bundlecheck
+driftfrei. Befund, Testmatrix und Rohhashes stehen im
+[Changelog](CHANGELOG.md#foundation-arraydescriptor-korrektur--2026-09-13).
+
+Dieser Korrekturslice endet mit geprüftem, ungestagtem Diff. Separat folgen
+der unabhängige Implementierungsreview, Jans manueller Commit und danach ein
+dokumentarischer ADR-0036-Load-/Hashabgleich samt Prüfung. ADR 0036 bleibt
+angenommen und bytegleich; seine alten Foundation-/Testhashes passen noch
+nicht zu den korrigierten Bytes. Erst anschließend kommt ein neu gebundener
+Adapterauftrag in Betracht. Adapterimplementierung und Adaptertests werden
+hier nicht fortgesetzt. Authentisches `A_obs`, Lauf-, Browser-, E2E-, Writer-
+und Persistenzfreigaben fehlen weiterhin; Foundation bleibt `NOT_EVIDENCE`.
 
 ### Aktuelle Foundationentscheidung / ADR 0037
+
+Die folgenden Implementierungszahlen, Rohhashes, Reviews und
+Statusnachführungen dokumentieren den gebundenen Basisstand vor der
+Arraydescriptor-Korrektur; sie werden nicht auf die neuen Bytes übertragen.
+Die aktuelle Prüfbindung und nächste Schrittfolge stehen im Abschnitt oben.
 
 Der unabhängige Astra-Review hat die R1–R4-Dokumentkorrektur von ADR 0036
 im eng begrenzten Dokumentationsscope mit PASS abgeschlossen. Er gilt nur für
@@ -1082,6 +1114,12 @@ Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 - echte private oder gesundheitsbezogene Daten im Portfolio-Modus.
 
 ## Verbindliche Entwicklungsreihenfolge
+
+Vor der unten beschriebenen Adapterfortsetzung stehen seit der
+Arraydescriptor-Korrektur vom 2026-09-13 ausschließlich gesondert beauftragter
+unabhängiger Korrekturreview, Jans manueller Commit und danach der eigene
+ADR-0036-Load-/Hashabgleich samt Prüfung. Die bisherigen ADR-0036-Loadhashes
+sind für die korrigierten Foundationbytes noch nicht nachgeführt.
 
 Halte diese Reihenfolge der Hauptmeilensteine ein:
 

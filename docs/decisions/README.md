@@ -6,6 +6,29 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 
 ## Entscheidungsübersicht
 
+Aktueller Implementierungsstand vom 2026-09-13: Der lokale Vertragsabgleich
+trägt eine begrenzte Arraydescriptor-Korrektur der Foundation, ohne neue
+Entscheidung oder Änderung einer ADR-Datei. Ausschließlich zwei zusätzliche
+Writablebedingungen wurden entfernt; 757/757 Foundationtests (`595 + 162`),
+fünf neue kausale Mutanten und 2512/2512 Gesamttests sind geprüft. Die
+unveränderten Regressionen bestehen mit 423/423, 466/466 und 735/735; Build:
+46 Module, Bundlecheck: Exit 0, driftfrei. Details und Rohhashes stehen im
+[Nachweiseintrag](../../CHANGELOG.md#foundation-arraydescriptor-korrektur--2026-09-13).
+
+ADR 0035, ADR 0036 und ADR 0037 bleiben unverändert angenommen. Der unabhängige
+Review der Korrektur steht aus; danach folgen Jans manueller Commit und ein
+gesonderter dokumentarischer ADR-0036-Load-/Hashabgleich samt Prüfung.
+Die alten ADR-0036-Foundation-/Testhashes passen noch nicht zu den neuen Bytes.
+Erst anschließend kommt ein neu gebundener Adapterauftrag in Betracht;
+Adapterimplementierung und Adaptertests werden hier nicht fortgesetzt.
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation `NOT_EVIDENCE`
+und fehlende authentische `A_obs`-, Lauf-, Browser-, E2E-, Writer- und
+Persistenznachweise beziehungsweise Freigaben bleiben unverändert.
+
+Die folgenden bisherigen 595er-/2350er-Nachweise, Reviews und Hashbindungen
+dokumentieren ihre damaligen Bytes; sie sind kein Review oder neuer
+Load-/Hashabgleich für diese Korrektur.
+
 | ADR | Entscheidung | Status |
 | --- | --- | --- |
 | [0001](0001-vite-vanilla-js.md) | Vite und Vanilla JavaScript als Frontend-Grundlage | Angenommen |

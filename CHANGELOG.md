@@ -8,6 +8,136 @@ Release.
 
 ## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0036 angenommen; gebundener Dokumentreview abgeschlossen; Runtimegate FAIL
 
+### Foundation-Arraydescriptor-Korrektur / 2026-09-13
+
+Der vorgeschaltete lokale Vertragsabgleich trägt eine begrenzte Korrektur der
+Foundation auf Branch `codex/fix/diagnostic-foundation-array-descriptors`.
+Ausgangsbasis ist `91eef75adf179de8d32720562ea481bc891319b3`, Tree
+`3813cab2394657b5d3432f8a2cd32848d9b7754b`, identisch zu den lokal gelesenen
+Refs `main` und `origin/main`; 164 getrackte Pfade, sauberer Worktree und
+leerer Index. Es wurde weder gefetcht noch eine Git-Schreibaktion ausgeführt.
+
+| Prüfer und Callsite | Bestehender Vertrag | Beleg und kleinstes Delta |
+| --- | --- | --- |
+| `readClosedTargetInfos`, aufgerufen aus `parseGetTargetsResponse`; Baseline Zeile 2448 | [ADR 0033 §6](docs/decisions/0033-browser-sync-transport-diagnostic-foundation-effects-protocol-boundary.md), [ADR 0034 §1](docs/decisions/0034-browser-sync-transport-diagnostic-foundation-grammar-derivation-and-testability-boundary.md) verlangen native Length-/Dense-/Descriptorgrenzen, keinen Writablezwang; [ADR 0036 §5](docs/decisions/0036-browser-sync-transport-runtime-diagnostic-adapter-boundary.md) verlangt den tief eingefrorenen JSON-Graphen | Die zusätzliche Bedingung `lengthDescriptor.writable !== true` verwirft diesen Graphen. Ausschließlich diese Bedingung ist entfernt. |
+| `readClosedArray`, aufgerufen aus `copyRunBinding` für genau 59 `replayOperands`; Baseline Zeile 447 | ADR 0033 §2/§6 und ADR 0034 §1 sowie der [Living Contract](docs/data-contracts.md#prototyp--frische--und-freezegrammatik) verlangen dieselbe native Arraygrammatik ohne Pflicht zu `writable: true` | Derselbe zusätzliche Implementierungsguard ist eigenständig nicht normativ verlangt und ebenfalls entfernt. Aus dem R0-Freeze wird kein zweiter Adapterblocker abgeleitet. |
+
+ADR 0034 gilt über ADR 0035 fort; ADR 0037 ändert ausschließlich die
+Notificationgrenze und verlangt keine zusätzliche Writablebedingung.
+Ein nativer Array-Längendescriptor kann bei unveränderten
+`enumerable: false`-/`configurable: false`-Grenzen beide Writablezustände
+besitzen. Das Verbot, fremde Eingaben durch die Foundation einzufrieren,
+verbietet nicht die Annahme bereits eingefrorener Eingaben. Keine weitere
+Array-, Alias-, Descriptor-, Exact-once-, Cap-, Clock-, Korrelations-, Join-,
+Notification-, Cleanup-, Projektions- oder Fehlerpräzedenzgrenze wurde geändert.
+Es gibt keinen neuen Validator, Import, Export, Anker oder Testseam. Der
+Adapter-Freezevertrag bleibt vollständig erhalten; dies ist eine
+Implementierungskorrektur ohne neue normative Entscheidung oder Review-PASS.
+
+Vor der ersten Änderung bestanden erneut 595/595 Foundationtests. Sechs
+separate Gegenproben liefen danach mit den unveränderten, längen- und
+hashgeprüften Produktionsbytes als in-memory `vm.SourceTextModule` mit
+kanonischer File-URL, ohne Instrumentierung oder Imports. Beide veränderlichen
+Kontrollen erreichten die sechs synthetischen Commandintents einschließlich
+Evaluate. Nur `length.writable = false` und der vollständige Deep Freeze
+führten bei `targetInfos` jeweils schon nach `Target.getTargets` zu
+`FAIL/observer-invalid`, Capture `not-started`; bei `replayOperands` scheiterten
+beide Profile bereits am statischen Factory-Dependencyfehler ohne Intent.
+Alle sechs erwarteten Baselinebeobachtungen wurden durch Assertions bestätigt.
+Der Evaluationstring wurde niemals ausgeführt. Diese reine Gegenprobe
+verwendete lokal `node --experimental-vm-modules --no-warnings --input-type=module -`;
+die dauerhafte Testsuite benötigt weiterhin keine zusätzlichen Prozessflags.
+
+Die additiven Regressionen liegen ausschließlich in der bestehenden
+[Foundationtestsuite](tests/browserSyncTransportRuntimeDiagnosticObserver.test.js):
+
+| Nachweis | Test beziehungsweise Oracle |
+| --- | --- |
+| Drei gültige Profile je Arrayprüfer, echte Übergabeidentität, unveränderte Eingaben | `akzeptiert beide nativen Arraylaengendescriptoren und tief gefrorene Eingabegraphen`; vollständige Intents und Resultprojektionen einschließlich Stages, Counts, Capturestart und terminalem Cleanup sind wertgleich, getrennte Runs bleiben frisch |
+| Beide Writablezustände, kein freier Read/Getter/Freeze/Schreibzugriff | `bewahrt Exact-once-Reflection ohne Fremdreads oder Mutation fuer beide Writablewerte`; Proxyvorbereitung erfolgt vor Messung, alle Descriptorresultate erfüllen Proxy-Invarianten |
+| Holes, Symbole, Extras, Accessors, fremder Prototyp, Reflectionthrows, Keyfolge und Alias | `erhaelt die geschlossenen Arraygrenzen und Reflectionfehler bei beiden Writablewerten`; keine unmöglichen nativen Lengthdescriptoren als Fixture |
+| Targetgrößen 0/1/128/129, keine Elementreads über 128, doppelte/angehängte Targets und Antwortdubletten | `erhaelt Targetkardinalitaet und den 129er-Guard vor Elementreads bei beiden Writablewerten`; Dublette vor Evaluate bleibt `U` ohne Evaluate, während Capture bleibt sie `UNPROVEN` bis `cap-fired` |
+| Alle 59 falschen Feld-IDs unter gültiger gefrorener Kontrolle; fehlende, zusätzliche, vertauschte Positionen, Zustand, Nullregel und Skalarfehler | `prueft gefrorene Replaynegativfixtures hinter einer gueltigen 59-Positionen-Kontrolle`; die frühere vorgeschaltete Freezeablehnung maskiert diese Prüfungen nicht mehr |
+| Vier isolierte Writablezwänge und zusätzlicher Feld-ID-Bypass | `erkennt vier getrennte Array-Writablezwang-Mutanten am selben oeffentlichen Verhaltensoracle`; pro Arrayprüfer werden alter True-Zwang durch nicht schreibbare Profile und umgekehrter False-Zwang durch veränderliche Kontrollen erkannt; der fünfte Mutant weist die kausale gefrorene Feld-ID-Ablehnung nach |
+
+Alle fünf Mutanten werden erfolgreich über den unveränderten
+ADR-0035-Testkopie-v2-Zugang mit insgesamt fünf Exports importiert und am
+gleichen jeweiligen Verhaltensoracle wie ihre Kontrollkopie erkannt.
+Jede Kopie entsteht frisch aus rohbytegeprüfter Produktionsquelle mit genau
+einer begrenzten Mutation und wird außerhalb des Repositorys seriell geprüft;
+das bestehende `finally` bestätigt die Nichtexistenz von Kopie und Testroot.
+Alle bisherigen Tests bleiben erhalten, darunter 27 Notificationmutanten,
+vier Deadlinemutanten, 18 Joinfälle und elf Joinmutanten sowie das getrennte
+Drei-Microtask-Präfix und strukturelle Pending-Oracle. Bei Setup-/Cleanup-
+Deadlinegleichheit und -überschreitung bleiben die vier Envelope-Traps null.
+
+Tatsächlich ausgeführte abschließende Prüfungen unter lokalem Node `24.19.0`:
+
+| Befehl | Ergebnis |
+| --- | --- |
+| `node --test --test-concurrency=1 tests/browserSyncTransportRuntimeDiagnosticObserver.test.js` | 757/757, `F = 595 + 162` |
+| `node --test --test-concurrency=1 tests/browserSyncTransport.test.js` | 423/423 |
+| `node --test --test-concurrency=1 tests/syncService.test.js tests/browserSyncTransport.test.js` | 466/466 |
+| `node --test --test-concurrency=1 tests/syncContract.test.js tests/syncService.test.js tests/syncGatewayRequestBoundary.test.js tests/syncAgent.test.js tests/localSyncGatewayHttpServer.test.js tests/browserSyncTransport.test.js` | 735/735 |
+| `npm.cmd test -- --test-concurrency=1` | 2512/2512, exakt `1755 + 757 = 2350 + 162` |
+| `npm.cmd run build` | Exit 0; exakt 46 Module |
+| `npm.cmd run bundle:n8n:check` | Exit 0; driftfrei |
+
+Alle abschließenden Testläufe besitzen 0 Fehler, Cancellations, Skips und Todos.
+Ein erster erweiterter Zwischenlauf hatte drei falsche neue Erwartungen zur
+wohlgeformten Dublette vor Evaluate und den dadurch fehlschlagenden Elterntest.
+Diese Erwartungen wurden an den unveränderten ADR-0035-§8-Vertrag angeglichen;
+das produktive Delta blieb bei den zwei entfernten Writablebedingungen.
+
+Neue Foundationlogik, neue Fixtures und ihre Nachweise sind netzwerkfrei.
+Die bestehenden Gesamtregressionen verwenden getrennt ausschließlich die
+erlaubten Loopbackabläufe von `localSyncGatewayHttpServer.test.js` und
+`n8nCloudIngressProbe.test.js` samt vorhandenen Socket-, Listener-, Timer-
+und Child-Cleanupprüfungen. Bestehende kontrollierte Node-Testkindprozesse,
+temporäre Testkopien und Buildartefakte bleiben Test-/Buildausnahmen. Es gab
+keinen Browser-, CDP-, manuellen Gateway-, Vite-, Diagnose- oder Replaylauf,
+keinen externen Request und keine neue Hostfähigkeit der Korrekturfixtures.
+
+| Artefakt | Alte Bytes / SHA-256 an HEAD | Neue Bytes / SHA-256 im ungestagten Diff |
+| --- | --- | --- |
+| Foundation | 219196 / `ff55a775ccbb7588474fc1efe3e1a08d871ce3524f133a000b0b3d8c7512eb1d` | 219112 / `d4cadf656bb50e2b062c9d0d66e3f895bc87649362ce995abfbdbe24a9f4e731` |
+| Foundationtests | 305890 / `1e8ce75e175b3e74c8c8b064e343550f32865fd5703aa54e01ead909a86e100c` | 325244 / `4cf2698fa2af48750a71a5effbc23e059ef51133e0646c3e0333bb93d633cb64` |
+
+Vor Änderungen trafen alle 16 Schutzdateien ihre festen Sollhashes und rohen
+HEAD-Blobs. Aus diesem Bestand ändern sich ausschließlich Foundation und
+Foundationtests. Die übrigen 14, alle weiteren ADRs sowie Produkt-, Paket-,
+Lockfile-, CI-, Workflow-, Bundle-, Generator- und Evidencepfade bleiben
+bytegleich. Der ADR-0037-Hauptteil bleibt bei 30763 Bytes und
+`83d728f3d4fb088b78e1577457aad561d971579c57c8f5898fcce83f61df831c`.
+Die eindeutige Evaluationextraktion bleibt bei 4259 Bytes und
+`a623ffafee8dfcbc1d2ddc374cc35f0dbf800defd97619a3b58337d972090f7b`.
+Das Frontendmanifest bleibt für historischen Commit
+`8001cc7eb7d2fed68c5ca4061514b486a204ac44`, Ausgangsbasis und Working Tree bei
+51 Pfaden, 5606 Bytes und
+`6f3d5740b043308b4d38df33b6293c9064d8dd1b3f0c5801d50844336c195591`.
+Der abschließende Audit prüft alle 164 getrackten Pfade gegen die gesicherten
+Ausgangsbytes, die Neun-Dateien-Whitelist, UTF-8/LF und unverändertes
+PowerShell-CRLF, lokale Dokumentlinks, Diffcheck, leeren Index und unveränderte
+Refs. Es gibt keine neue Repositorydatei oder verbliebene temporäre Testkopie.
+
+Phase 0/Tor A bleibt anhand des Diffs bestätigt: keine Modelle, statistische
+Inferenz, Provider, Credentials, privaten Inhaltspayloads, Telemetrie oder
+neu autorisierte Persistenz; Kommunikations- und Produktkomposition bleiben
+unverändert. Foundation bleibt `NOT_EVIDENCE`, ohne Runtime-Record, Writer,
+authentischen adapterseitigen `A_obs`-Nachweis oder Ursachenbeweis.
+`overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben fest.
+
+Dieser Auftrag endet mit geprüftem, ungestagtem Diff; der unabhängige
+Implementierungsreview steht aus. Ausschließlich separat beauftragt folgen
+`gpt-daybreak-blue-latest` mit Reasoning `xhigh`, nach bestandenem Review Jans
+manueller Korrekturcommit, danach ein dokumentarischer ADR-0036-Load-/Hashabgleich
+samt Prüfung und erst anschließend ein neu gebundener Adapterauftrag.
+ADR 0036 bleibt angenommen und unverändert: Seine alten Load-/Testhashes
+passen ausdrücklich noch nicht zu diesen korrigierten Foundationbytes.
+Die Adapterimplementierung wird hier nicht fortgesetzt. Frühere Review-PASS-
+Urteile und Berichtshashes bleiben an ihre damaligen Bytes gebunden. Lauf-,
+Browser-, E2E-, Writer- und Persistenzfreigaben werden nicht erteilt.
+
 ### ADR-0036-Annahme und abgeschlossener Dokumentreview / 2026-09-12
 
 Jan hat ADR 0036 am `2026-09-12` ausdrücklich angenommen:
