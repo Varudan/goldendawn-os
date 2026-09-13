@@ -6,9 +6,165 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0036 angenommen; gebundener Dokumentreview abgeschlossen; Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0036 angenommen; Load-/Hashabgleich dokumentiert; neuer Dokumentreview ausstehend; Runtimegate FAIL
+
+### ADR-0036-Load-/Hashabgleich nach Foundationkorrektur / 2026-09-13
+
+Dieser Dokumentationsslice gleicht ausschließlich ADR 0036 und die sieben
+freigegebenen Living Documents an die unabhängig geprüfte und durch Jan
+unverändert committete Arraydescriptor-Korrektur an. Der read-only Preflight
+bestätigte Branch `codex/docs/adr-0036-array-descriptor-alignment`, HEAD
+`8f8150e1426983ef18755a395fdb8d8c99dfc470`, genau den Parent
+`91eef75adf179de8d32720562ea481bc891319b3`, Tree
+`0ed2c672d2a05f1f5f41df35dd302ef1435c2f18` und den Commitbetreff
+`fix: accept non-writable array length descriptors`. `main` und der nur lokal
+gelesene Remote-Tracking-Ref `origin/main` standen auf dem Parent; 164 getrackte
+Pfade, sauberer Working Tree, leerer Index, keine ungetrackten Dateien und
+sauberer Ausgangsdiff samt `git diff --check`. Der Commitdiff umfasst exakt
+die neun nachstehend gebundenen Dateien; produktiv entfernt er ausschließlich
+die beiden zusätzlichen Writablebedingungen. Es erfolgte kein Fetch.
+
+Die vor Änderungen erstellte Fundstellen- und Deltamatrix unterscheidet:
+
+| Fundstellen | Bindungsklasse | Gezielter Abgleich |
+| --- | --- | --- |
+| ADR 0036 §1/§2/§10 und aktive Suiteangaben | aktive operative Bindung | korrigierte Foundation-/Testbytes, Auditbasis `8f8150e…`, aktive 757/757-Suite |
+| Alte Hash-/Reviewtabellen und 422er-/595er-Nachweise | historischer Nachweis | Werte erhalten, historische Geltung ausdrücklich kennzeichnen |
+| ADR 0036 Status/Kontext/§12/§14/§15/Konsequenzen/Neubewertung sowie Köpfe, Zusammenfassungen und Schrittfolgen der Living Documents | aktuelle Status- oder Schrittfolgeangabe | abgeschlossenen Korrekturreview und anschließenden Commit binden; neuen Dokumentreview und manuellen Dokumentationscommit vor einem neuen Adapterauftrag einordnen |
+
+Jan übermittelte den unabhängigen Korrekturreview von
+`gpt-daybreak-blue-latest`, Reasoning `xhigh`, als Chatbericht: `PASS` ohne
+relevante Befunde. Dieser Review galt ausschließlich Basis
+`91eef75adf179de8d32720562ea481bc891319b3` plus den folgenden neun damals
+uncommitteten Rohbytefassungen. Jan übernahm diese Bytes anschließend
+unverändert in `8f8150e1426983ef18755a395fdb8d8c99dfc470`. Alle neun
+Reviewhashes und Bytezahlen stimmen mit den rohen Commitblobs und den Dateien
+vor diesem Dokumentabgleich überein:
+
+| Reviewdatei | Bytes | SHA-256 der damaligen Reviewfassung und des Korrekturcommitblobs |
+| --- | ---: | --- |
+| `scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js` | 219112 | `d4cadf656bb50e2b062c9d0d66e3f895bc87649362ce995abfbdbe24a9f4e731` |
+| `tests/browserSyncTransportRuntimeDiagnosticObserver.test.js` | 325244 | `4cf2698fa2af48750a71a5effbc23e059ef51133e0646c3e0333bb93d633cb64` |
+| `AGENTS.md` | 200088 | `3c1ae4b04301e7e1782f003642f347ce4b88a0015b704b1f7f10c479b90e58e9` |
+| `CHANGELOG.md` | 178108 | `1333b8b2f2e62eb3bd7957339982e65939904f0f75aee0a60d728aae58c55bc0` |
+| `docs/architecture.md` | 278419 | `79c9f2f5673dd261ddf75baf3b220125d49aaf5e820cc63d506e200696c5c680` |
+| `docs/data-contracts.md` | 719684 | `27fc7694d974aeeaddf11525807cce341e4db9e27d31418f7749ca09200af5e6` |
+| `docs/roadmap.md` | 226600 | `706a89d491310cb531d92ff1809176f3373e9141ad5ac302726d6f003e8f5520` |
+| `docs/security.md` | 282890 | `80ed9c5c93c00f3b7fba36a63b934027e7c836077d48743d5884e277e166fe46` |
+| `docs/decisions/README.md` | 30305 | `22e3d07e4296d6d709e8b932fa562e9a45b8f1eb4add05d75c68de633820e492` |
+
+Der Review wurde weder auf dem Korrekturcommit noch auf den jetzigen neuen
+Dokumentfassungen ausgeführt. Für den Chatbericht werden kein Berichtspfad,
+Berichtdateihash oder Ausführungszeitpunkt behauptet. Frühere R1–R4-Reviews,
+ADR-0037-Annahme, dessen Implementierungsreview und Featurecommit sowie
+ADR-0036-Vorannahmereview und Annahme behalten ausschließlich ihre jeweiligen
+historischen Bindungen. Korrekturreview, jetzige Selbstprüfung und erst noch
+separat zu beauftragender unabhängiger Dokumentreview sind davon getrennt.
+
+Die Ergebnisprovenienz der abgeschlossenen Korrektur lautet:
+
+| Prüfung | Korrekturimplementierungsbericht | Vom unabhängigen Korrekturreview selbst wiederholt |
+| --- | --- | --- |
+| Foundation | 757/757 = 595 + 162 | 757/757 |
+| BrowserSyncTransport | 423/423 | nicht erneut ausgeführt |
+| SyncService plus Transport | 466/466 | nicht erneut ausgeführt |
+| sechs serielle Sync-Suites | 735/735 | nicht erneut ausgeführt |
+| serielle Gesamtsuite | 2512/2512 = 1755 + 757 | nicht erneut ausgeführt |
+| Build | exakt 46 Module | exakt 46 Module |
+| Bundlecheck | driftfrei | Exit 0, driftfrei |
+
+Alle genannten abschließenden Testläufe hatten laut ihren jeweiligen Berichten
+0 Fehler, Cancellations, Skips und Todos. Die historische 595er-Baseline und
+sechs VM-Gegenproben wurden vom Korrekturreview nicht erneut ausgeführt.
+Die größeren Implementierungsprüfungen nutzten ihre ausdrücklich erlaubten
+bestehenden Loopback-/Testprozessfixtures; sie waren nicht vollständig
+netzwerkfrei. Diese berichteten Ergebnisse sind keine eigenen Läufe des
+jetzigen Dokumentationsslices.
+
+Aktiv sind in ADR 0036 §2 ausschließlich Foundationhash `d4cadf65…`, in §10
+ausschließlich Testhash `4cf2698f…` und die Fokussuite 757/757. Die vollständigen
+Hashes stehen in der obigen Tabelle und in den jeweiligen ADR-Abschnitten.
+Die Auditbasis `8f8150e…` ist kein fest vorgeschriebener Repositorycommit eines
+späteren Laufs: Der unveränderte Loadervertrag bindet weiterhin den tatsächlich
+angegebenen `repositoryCommit` und dessen rohen Foundationblob. Frühere
+Foundation-/Testhashes bleiben historische Nachweise und sind kein
+zusätzlicher akzeptierter Loaderhash oder Fallback.
+
+Die Korrektur setzt die fortgeltende native Arraygrammatik mit beiden
+Writablezuständen um; sonstige Descriptor-, Dichte-, Key-, Cap- und Aliasregeln
+bleiben erhalten. Die Foundation mutiert oder friert fremde Graphen nicht ein,
+und der vollständige Adapter-Deep-Freeze-Vertrag bleibt unverändert. Die 162
+zusätzlichen Tests und fünf kausal erkannten Mutanten (vier Writablezwänge und
+ein Feld-ID-Bypass) sind reine Foundationnachweise. Die 27 Notificationmutanten,
+vier Deadlinemutanten, 18 Joinfälle, elf Joinmutanten sowie das getrennte
+Drei-Microtask-Präfix und strukturelle Pending-Oracle bleiben erhalten. Daraus
+folgen keine ausgeführten Raw-Adapter-, Parser-, FIFO-/Cap-Wiring-,
+Adaptertestkopien- oder authentischen `A_obs`-Nachweise.
+
+ADR 0036 bleibt ausdrücklich durch Jan `Angenommen – 2026-09-12`. Vor diesem
+Abgleich bestätigte der Rohbyteaudit seine vollständigen 168357 Bytes mit
+`0727943c53644d1381f478e8f28771592493f6010208b3fe25d7f9a70d44e528`
+und den Hauptteil ab einschließlich `## Kontext` mit 166449 Bytes und
+`c61cd42d8da9ae7d5cfe62884a53e8761301a96c5f471554c884152c77b15566`.
+Die Hauptteilgleichheit gilt ausdrücklich historisch für die damalige
+Annahmenachführung. Dieser beauftragte Abgleich ändert ausgewählte
+Hauptteilpassagen ohne neue Annahme oder Architekturentscheidung; die neuen
+vollständigen Bytes werden nicht vom alten Vorannahme-PASS gedeckt. Finale
+Dokument- und Hauptteilhashes stehen ausschließlich im Abschlussbericht,
+damit keine zirkuläre Selbsthashbindung entsteht.
+
+Dieser Dokumentationsslice führte nach den Dokumentkorrekturen ausschließlich
+die folgenden drei bestehenden Projektprüfungen seriell selbst aus:
+
+| Eigene Bestandsprüfung | Ergebnis |
+| --- | --- |
+| `node --test --test-concurrency=1 "C:/Users/jslom/Documents/Projekte/GoldenDawn/tests/browserSyncTransportRuntimeDiagnosticObserver.test.js"` | Exit 0; 757/757; 0 Fehler, Cancellations, Skips und Todos; kein zusätzliches VM-Flag |
+| `npm.cmd run build` | Exit 0; exakt 46 transformierte Module |
+| `npm.cmd run bundle:n8n:check` | Exit 0; driftfrei |
+
+Vor und nach diesen Läufen bestätigte der Rohbyteaudit alle 15 Schutzbindungen
+gegen Sollhashes und rohe HEAD-Blobs. Die übrigen 156 getrackten Dateien
+blieben gegenüber der Start-Rohbytebaseline unverändert, darunter sämtliche
+36 anderen ADRs; ADR 0037 blieb auch im getrennt gehashten Hauptteil bytegleich.
+Das Frontendmanifest blieb für historischen Commit, aktuelle Basis und Working
+Tree bei 51 Pfaden, 5606 Bytes und
+`6f3d5740b043308b4d38df33b6293c9064d8dd1b3f0c5801d50844336c195591`.
+Die eindeutig extrahierte, niemals ausgeführte Evaluation blieb bei 4259 Bytes
+und `a623ffafee8dfcbc1d2ddc374cc35f0dbf800defd97619a3b58337d972090f7b`.
+
+Der Abschlussaudit bestätigt ausschließlich die acht erlaubten Dokumente als
+ungestagten Diff, weiterhin 164 getrackte Pfade, keine neuen Repositorydateien
+oder verbliebenen temporären Foundationtestkopien und einen unveränderten
+Bestand ignorierter Pfade. Branch, HEAD, Tree und alle zu Beginn erfassten Refs
+blieben unverändert; Index und `git diff --check` sind sauber. Alle acht
+Dokumente sind gültiges UTF-8 ohne BOM, mit ausschließlich LF, finaler LF und
+ohne NUL-Bytes; 156 lokale Linkziele und 23 verwendete Überschriftsanker sind
+gültig. Vorgeschriebene PowerShell-CRLF-Darstellungen wurden anhand der
+Start-Rohbytes unverändert bestätigt und nicht normalisiert. Der ADR-0036-Diff
+bleibt innerhalb der vorherigen Deltamatrix; die nicht freigegebenen technischen
+Passagen und sämtliche gefenceten technischen Blöcke aller acht Dokumente
+bleiben bytegleich. Es gab keine weiteren Projektprüfläufe, Git-Schreibaktionen
+oder Adapter-, Browser-, Netzwerk- oder Diagnoseausführung.
+
+Als Nächstes folgen ausschließlich der separat beauftragte unabhängige
+Dokumentreview der acht neuen Rohbytefassungen, bei erfolgreichem Review Jans
+manueller Dokumentationscommit und erst danach ein neu gebundener,
+ausdrücklich beauftragter netzwerkfreier Adapterimplementierungs- und
+Testslice. Die Selbstprüfung ist kein unabhängiger Review-PASS.
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation `NOT_EVIDENCE`
+und fehlendes authentisches adapterseitiges `A_obs` bleiben unverändert.
+Sämtliche sichtbaren Laufblocker, insbesondere Windows-Prozessbaumownership,
+handlegebundener Pfadcleanup und unabhängige Adapterausgabestille, gelten fort.
+Adapterimplementierung und ausgeführte Adaptertests sowie Browser-, Diagnose-,
+E2E-, Writer- und Persistenzfreigaben fehlen weiterhin. Git-Schritte bleiben
+manuell bei Jan.
 
 ### Foundation-Arraydescriptor-Korrektur / 2026-09-13
+
+Der folgende Eintrag hält den damaligen Implementierungsabschluss vor
+Korrekturreview, Jans Commit und dem oben dokumentierten Load-/Hashabgleich
+historisch fest. Seine damaligen Ausgangs-, Ergebnis-, Hash- und
+Schrittfolgeangaben werden nicht auf den jetzigen Dokumentationsslice übertragen.
 
 Der vorgeschaltete lokale Vertragsabgleich trägt eine begrenzte Korrektur der
 Foundation auf Branch `codex/fix/diagnostic-foundation-array-descriptors`.
@@ -173,9 +329,9 @@ ADR-0037-Implementierungsreview, Jans unveränderte Übernahme in den
 Featurecommit, dieser ADR-0036-Dokumentreview und die anschließende Annahme
 bleiben getrennte Bindungen.
 
-Diese Nachführung beschränkt sich auf den ADR-0036-Statuspräfix und die
-Status-/Review-/Schrittfolgeangaben der sieben Living Documents. Der geprüfte
-Hauptteil ab einschließlich `## Kontext` wird unverändert übernommen:
+Die damalige Annahmenachführung beschränkte sich auf den ADR-0036-Statuspräfix
+und die Status-/Review-/Schrittfolgeangaben der sieben Living Documents. Der
+geprüfte Hauptteil ab einschließlich `## Kontext` wurde damals unverändert übernommen:
 166.449 Bytes, SHA-256
 `c61cd42d8da9ae7d5cfe62884a53e8761301a96c5f471554c884152c77b15566`.
 ADR 0035 und ADR 0037 bleiben unverändert angenommen; Foundation und Tests

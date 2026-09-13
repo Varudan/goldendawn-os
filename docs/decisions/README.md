@@ -6,21 +6,39 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 
 ## Entscheidungsübersicht
 
-Aktueller Implementierungsstand vom 2026-09-13: Der lokale Vertragsabgleich
+Korrekturimplementierungsstand vom 2026-09-13: Der lokale Vertragsabgleich
 trägt eine begrenzte Arraydescriptor-Korrektur der Foundation, ohne neue
 Entscheidung oder Änderung einer ADR-Datei. Ausschließlich zwei zusätzliche
 Writablebedingungen wurden entfernt; 757/757 Foundationtests (`595 + 162`),
-fünf neue kausale Mutanten und 2512/2512 Gesamttests sind geprüft. Die
+fünf neue kausale Mutanten und 2512/2512 Gesamttests sind laut Implementierungsbericht
+geprüft. Die
 unveränderten Regressionen bestehen mit 423/423, 466/466 und 735/735; Build:
 46 Module, Bundlecheck: Exit 0, driftfrei. Details und Rohhashes stehen im
 [Nachweiseintrag](../../CHANGELOG.md#foundation-arraydescriptor-korrektur--2026-09-13).
 
-ADR 0035, ADR 0036 und ADR 0037 bleiben unverändert angenommen. Der unabhängige
-Review der Korrektur steht aus; danach folgen Jans manueller Commit und ein
-gesonderter dokumentarischer ADR-0036-Load-/Hashabgleich samt Prüfung.
-Die alten ADR-0036-Foundation-/Testhashes passen noch nicht zu den neuen Bytes.
-Erst anschließend kommt ein neu gebundener Adapterauftrag in Betracht;
-Adapterimplementierung und Adaptertests werden hier nicht fortgesetzt.
+Laut Jans Chatbericht schloss der unabhängige Korrekturreview durch
+`gpt-daybreak-blue-latest` mit Reasoning `xhigh` mit `PASS` ohne relevante
+Befunde ab. Er galt ausschließlich der Basis
+`91eef75adf179de8d32720562ea481bc891319b3` plus neun damals uncommitteten
+Rohbytefassungen. Jan übernahm diese anschließend unverändert in
+`8f8150e1426983ef18755a395fdb8d8c99dfc470`. Der Review wiederholte nur
+757/757 Foundationtests, den Build mit 46 Modulen und den driftfreien
+Bundlecheck; die größeren Suiten stammen aus dem Implementierungsbericht.
+Die genaue [Provenienz und der aktuelle Load-/Hashabgleich](../../CHANGELOG.md#adr-0036-load-hashabgleich-nach-foundationkorrektur--2026-09-13)
+trennen diese Nachweise von der Selbstprüfung dieses Dokumentationsslices.
+
+Die aktiven ADR-0036-Load-, Quellen- und Testbindungen sind auf die korrigierten
+Bytes und die 757/757-Baseline abgeglichen; die Auditbasis ist der Korrekturcommit.
+Jans Annahme vom 2026-09-12 bleibt unverändert. Der eng begrenzte Abgleich
+ändert ausgewählte Hauptteilpassagen, ohne eine neue Architekturentscheidung
+oder erneute Annahme zu treffen; ältere Reviews decken die neuen Dokumentbytes
+nicht ab. Als Nächstes folgen der separat beauftragte unabhängige Dokumentreview
+der acht neuen Rohbytefassungen, bei Erfolg Jans manueller Dokumentationscommit
+und erst danach ein neu gebundener, ausdrücklich beauftragter netzwerkfreier
+Adapterimplementierungs- und Testslice. Authentisches `A_obs`, Lauf-, Browser-,
+E2E-, Writer- und Persistenzfreigaben fehlen weiterhin.
+ADR 0035, ADR 0036 und ADR 0037 bleiben angenommen. Adapterimplementierung und
+Adaptertests werden hier nicht fortgesetzt.
 `overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation `NOT_EVIDENCE`
 und fehlende authentische `A_obs`-, Lauf-, Browser-, E2E-, Writer- und
 Persistenznachweise beziehungsweise Freigaben bleiben unverändert.
@@ -85,7 +103,7 @@ konsumiert, auch nach Exchange-Portschluss; Fehler und interne Reentranz
 behalten sticky `FAIL`-Präzedenz. Der vorhandene Testexportzugang v2 bleibt
 unvergrößert.
 
-Die fokussierte Suite besteht mit 595/595 Tests (`Δ = 173`), darunter sieben
+Die damalige ADR-0037-Suite bestand mit 595/595 Tests (`Δ = 173`), darunter sieben
 Notification-Fallklassen, 27 neue Notificationmutanten und vier
 Deadlinevarianten. Die 18 Joinfälle und das Drei-Microtask-Präfix samt
 strukturellem Pending-Oracle bleiben erhalten. Transport-, Service-/Transport-
@@ -126,13 +144,15 @@ angenommen. Er ergänzt ADR 0035 und ersetzt keinen ADR;
 der nach R1–R4 korrigierte Vorschlag arbeitet K2 konstruktiv aus und hat den
 begrenzten R1–R4-Dokumentreview bestanden. Die K4-Foundationentscheidung ist
 durch ADR 0037 angenommen und getrennt netzwerkfrei implementiert und geprüft.
-Der gebundene unabhängige Implementierungsreview und Jans unveränderter
-Featurecommit sind abgeschlossen. Der ADR-0036-Foundationabgleich ist
+Der gebundene historische ADR-0037-Implementierungsreview und Jans unveränderter
+Featurecommit sind abgeschlossen. Der damalige ADR-0036-Foundationabgleich ist
 dokumentiert; sein unabhängiger Dokumentreview ist mit gebundenem PASS
 abgeschlossen.
 Er implementiert oder autorisiert weder Adapter noch Tests, Loader, Parser, Queue, Timer, Launcher,
 Recordfinalizer, Writer, Runtimekomposition oder Diagnoselauf.
 
+Der aktuelle Load-/Hashabgleich bindet die geprüfte Korrekturbaseline 757/757;
+sein unabhängiger Dokumentreview der acht neuen Rohbytefassungen steht aus.
 Entschieden sind genau ein argumentloser import- und factory-inaktiver
 One-shot-Adapterexport, ein byte-owned und ABA-gebundener Foundationload, der
 Effects-Port für die sieben bestehenden Intents, ein exklusiver
@@ -206,13 +226,15 @@ jedem Cleanup. Sie ist kein achter Intent, trägt keine Ursache und ist kein
 informationstheoretischer Notwendigkeitsbeweis. Die sieben Fallklassen beachten
 Portschluss vor `O0` bei unbeobachtbaren Observationfehlern, Old-Cap-Scan nach
 `O0` und Cleanup-Ledger vor `cleanup-origin`. Die Entscheidung ist durch ADR
-0037 angenommen und inzwischen getrennt mit 595/595 fokussierten Tests
-implementiert und geprüft. Der gebundene unabhängige Implementierungsreview und Jans unveränderter
-Featurecommit sind abgeschlossen. Der ADR-0036-Foundationabgleich ist
+0037 angenommen und damals getrennt mit 595/595 fokussierten Tests
+implementiert und geprüft. Der gebundene historische ADR-0037-Implementierungsreview und Jans unveränderter
+Featurecommit sind abgeschlossen. Der damalige ADR-0036-Foundationabgleich ist
 dokumentiert; sein unabhängiger Dokumentreview ist mit gebundenem PASS
 abgeschlossen und Jan hat ADR 0036 anschließend am 2026-09-12 ausdrücklich
-angenommen. Adapterimplementierung und Adaptertests fehlen weiterhin; ihr
-eigener netzwerkfreier Slice benötigt einen gesonderten Auftrag.
+angenommen. Adapterimplementierung und Adaptertests fehlen weiterhin.
+Vor dem neu gebundenen, ausdrücklich beauftragten netzwerkfreien
+Adapterimplementierungs- und Testslice stehen der unabhängige Dokumentreview
+dieses Load-/Hashabgleichs und bei Erfolg Jans manueller Dokumentationscommit.
 
 ADR 0035 ist am `2026-09-05` angenommen, ersetzt ADR 0034 formal und keinen
 weiteren ADR. ADR 0034 bleibt mit bytegleichem Hauptteil ab `## Kontext` als
@@ -282,13 +304,16 @@ ADR 0035 implementierte oder autorisierte aus sich heraus weder Foundation
 noch Tests, Adapter oder Runtimevorgang; in seinem Entscheidungsslice wurden
 keine Tests ergänzt. Der danach getrennt autorisierte Effects-as-Data-
 Foundationimplementierungsslice ist inzwischen um ADR 0037 erweitert und
-mit 595/595 fokussierten Tests netzwerkfrei geprüft. ADR 0036 ist als nach
+mit 757/757 fokussierten Tests netzwerkfrei geprüft. ADR 0036 ist als nach
 R1–R4 korrigierte dokumentarische Adaptergrenze am 2026-09-12 ausdrücklich durch Jan angenommen; seine K2-Konstruktion
 ist im begrenzten R1–R4-Dokumentationsscope geprüft. Die
 `D_K4`-Foundationentscheidung ist durch ADR 0037 angenommen und umgesetzt.
-Der gebundene unabhängige Implementierungsreview und Jans unveränderter
-Featurecommit sind abgeschlossen. Der ADR-0036-Foundationabgleich ist
+Der gebundene historische ADR-0037-Implementierungsreview und Jans unveränderter
+Featurecommit sind abgeschlossen. Der damalige ADR-0036-Foundationabgleich ist
 dokumentiert; sein unabhängiger Dokumentreview ist mit gebundenem PASS abgeschlossen.
+Vor dem neu gebundenen, ausdrücklich beauftragten netzwerkfreien
+Adapterimplementierungs- und Testslice stehen der unabhängige Dokumentreview
+dieses Load-/Hashabgleichs und bei Erfolg Jans manueller Dokumentationscommit.
 Adapterimplementierung, Adaptertests und sichtbarer Diagnoselauf bleiben
 geschlossen. ADR 0029, sein
 Evidence-Record, `overallGate: FAIL` und
@@ -329,7 +354,7 @@ einmal passender lexikalischer Anker darf nur testlokale Exports ergänzen; die
 Kopie wird seriell importiert, im `finally` entfernt und ihre Entfernung
 bestätigt. Sie bleibt `NOT_EVIDENCE`; die öffentliche Original-API belegt die
 PASS-Unerreichbarkeit zusätzlich black-box. Das Foundationmodul ist inzwischen
-getrennt netzwerkfrei implementiert, um ADR 0037 erweitert und mit 595/595
+getrennt netzwerkfrei implementiert, um ADR 0037 erweitert und mit 757/757
 fokussierten Tests geprüft. Im damaligen angenommenen ADR-0034-Stand sollte ausschließlich diese
 Effects-as-Data-Foundationimplementierung folgen; ADR 0035 hat zuvor die
 interne Join-Testbarkeit adressiert und ADR 0034 formal ersetzt. ADR 0034 bleibt
@@ -338,8 +363,11 @@ ADR 0036 ist als eigener nach R1–R4 korrigierter Adapter-ADR am 2026-09-12 aus
 Seine K2-Konstruktion ist im begrenzten R1–R4-Dokumentationsscope geprüft. Die
 für K4 notwendige synchrone Foundationnotification unmittelbar nach `O0` ist
 durch ADR 0037 angenommen, implementiert, unabhängig mit gebundenem PASS
-geprüft und durch Jan unverändert committet. Der Foundationabgleich ist
+geprüft und durch Jan unverändert committet. Der damalige Foundationabgleich ist
 dokumentiert; sein unabhängiger Dokumentreview ist mit gebundenem PASS abgeschlossen.
+Vor dem neu gebundenen, ausdrücklich beauftragten netzwerkfreien
+Adapterimplementierungs- und Testslice stehen der unabhängige Dokumentreview
+dieses Load-/Hashabgleichs und bei Erfolg Jans manueller Dokumentationscommit.
 Adapterimplementierung, Adaptertests und sichtbarer Diagnoselauf bleiben geschlossen. ADR
 0029, sein Evidence-Record,
 `overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert.
