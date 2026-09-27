@@ -19,7 +19,19 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – Foundation-Arraydescriptor-Korrektur unabhängig geprüft und durch Jan unverändert committet; aktive Foundationbaseline 757/757 (Δ162); ADR-0036-Load-/Hashabgleich dokumentiert; unabhängiger Dokumentreview der acht neuen Fassungen ausstehend; ADR 0035, ADR 0036 und ADR 0037 unverändert angenommen; Adapterimplementierung, Diagnoselauf und Persistenz nicht autorisiert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+Aktueller Stand: `v0.3.0 – netzwerkfreier ADR-0036-Adapter und Tests implementiert und selbst geprüft; unabhängiger Implementierungsreview ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+
+### ADR-0036-Adapterfortsetzung / 2026-09-27
+
+Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei.
+
+Die Fortsetzung begann am 2026-09-20 und wurde am 2026-09-26 auf erneuten ausdrücklichen Nutzerauftrag wiederaufgenommen. Die letzte erforderliche Prüfung endete 2026-09-26T22:00:20.7800541Z; das Sektionsdatum verwendet Europe/Berlin. Ergebnisse, Reparaturprovenienz und Rohbindungen stehen im [Changelog](CHANGELOG.md#adr-0036-adapterfortsetzung--2026-09-27).
+
+ADR 0035, ADR 0036 und ADR 0037 sowie die geschützte Foundation bleiben unverändert. Foundation und Testkopien bleiben `NOT_EVIDENCE`, die Testfinalisierung liefert `runtimeRecord:null`. Authentisches Runtime-`A_obs`, Diagnoselauf, Browserkomposition, Browser-E2E, Writer und Persistenz sind weder nachgewiesen noch autorisiert. `overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert.
+
+Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit. Diese Selbstprüfung ist kein unabhängiger Review-PASS. Git-Schritte bleiben manuell bei Jan.
+
+Die folgenden älteren Status-, Freigabe- und Schrittfolgeangaben beschreiben ihre jeweiligen historischen Slices; sie sind keine aktuelle Sperre des jetzt ausdrücklich beauftragten netzwerkfreien Adapter-/Testslices. Ihre Annahme-, Review-, Commitdaten, Rohhashes und technischen Regeln bleiben erhalten. Maßgeblich für den aktuellen Arbeits- und Prüfstand ist dieser Abschnitt; frühere Reviews gelten ausschließlich für ihre damaligen Bytes.
 
 ### Aktuelle Arraydescriptor-Korrektur / 2026-09-13
 

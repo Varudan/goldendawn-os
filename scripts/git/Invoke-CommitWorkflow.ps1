@@ -142,7 +142,7 @@ try {
     }
 
     Write-Host 'Führe automatisierte Tests aus ...'
-    $testResult = Invoke-NativeCommand -Command $npmApplication.Source -Arguments @('test')
+    $testResult = Invoke-NativeCommand -Command $npmApplication.Source -Arguments @('test', '--', '--experimental-vm-modules', '--no-warnings', '--test-concurrency=1')
     $testResult.Output | ForEach-Object { Write-Host $_ }
     Assert-WorkflowState -ExpectedBranch $currentBranch -ExpectedHeadOid $initialHeadOid -ExpectedIndex $initialIndex
     Write-Host 'Erstelle den Produktions-Build ...'

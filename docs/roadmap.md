@@ -4,11 +4,23 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – Foundationkorrektur geprüft und unverändert committet; ADR-0036-Load-/Hashabgleich dokumentiert; unabhängiger Dokumentreview ausstehend; aktive Foundationbaseline 757/757; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
+| Projektphase | `v0.3.0 – netzwerkfreier ADR-0036-Adapter und Tests implementiert und selbst geprüft; unabhängiger Implementierungsreview ausstehend; Foundationbaseline 757/757; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | ADR 0035, ADR 0036 und ADR 0037 bleiben angenommen; Jans ADR-0036-Annahme vom 2026-09-12 bleibt unverändert. Der Korrekturreview ist bytegebunden abgeschlossen, Jan übernahm die geprüften Fassungen unverändert in den Korrekturcommit. Die aktiven ADR-0036-Quellen-/Load-/Testbindungen sind abgeglichen; der unabhängige Dokumentreview der acht neuen Fassungen steht aus. Adapterimplementierung, Adaptertests und Lauf bleiben geschlossen. |
-| Letzte Aktualisierung | 2026-09-13 |
+| Status | ADR 0035, ADR 0036 und ADR 0037 bleiben unverändert angenommen. Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei. Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit. Reale Diagnose, Writer und Persistenz bleiben geschlossen. |
+| Letzte Aktualisierung | 2026-09-27 |
+
+## ADR-0036-Adapterfortsetzung / 2026-09-27
+
+Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei.
+
+Die Fortsetzung begann am 2026-09-20 und wurde am 2026-09-26 auf erneuten ausdrücklichen Nutzerauftrag wiederaufgenommen. Die letzte erforderliche Prüfung endete 2026-09-26T22:00:20.7800541Z; das Sektionsdatum verwendet Europe/Berlin. Ergebnisse, Reparaturprovenienz und Rohbindungen stehen im [Changelog](../CHANGELOG.md#adr-0036-adapterfortsetzung--2026-09-27).
+
+ADR 0035, ADR 0036 und ADR 0037 sowie die geschützte Foundation bleiben unverändert. Foundation und Testkopien bleiben `NOT_EVIDENCE`, die Testfinalisierung liefert `runtimeRecord:null`. Authentisches Runtime-`A_obs`, Diagnoselauf, Browserkomposition, Browser-E2E, Writer und Persistenz sind weder nachgewiesen noch autorisiert. `overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert.
+
+Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit. Diese Selbstprüfung ist kein unabhängiger Review-PASS. Git-Schritte bleiben manuell bei Jan.
+
+Die folgenden älteren Status-, Freigabe- und Schrittfolgeangaben beschreiben ihre jeweiligen historischen Slices; sie sind keine aktuelle Sperre des jetzt ausdrücklich beauftragten netzwerkfreien Adapter-/Testslices. Ihre Annahme-, Review-, Commitdaten, Rohhashes und technischen Regeln bleiben erhalten. Maßgeblich für den aktuellen Arbeits- und Prüfstand ist dieser Abschnitt; frühere Reviews gelten ausschließlich für ihre damaligen Bytes.
 
 ## Aktuelle Arraydescriptor-Korrektur / 2026-09-13
 
@@ -218,7 +230,7 @@ nicht starre Kalendertermine.
 | `v0.2.0` | Local Dashboard MVP | Command Center und PromptVault implementiert, geprüft und veröffentlicht | ✅ |
 | `v0.2.1` | LearningHub Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
 | `v0.2.2` | LichtwaldLog Local MVP | Vollständig geprüft und veröffentlicht | ✅ |
-| `v0.3.0` | Local SyncAgent and Transport Foundation | In Arbeit: lokale Foundations, modellfreier `syncTest`-Kern, ADR-0025-Komposition, isolierter BrowserSyncTransport, feste v1-Wire-Policy und Effects-as-Data-Diagnosefoundation einschließlich ADR-0037-Notification implementiert; aktuelle Foundationbaseline 757/757; Korrekturimplementierungsbericht mit 2512/2512 Gesamttests, Build mit 46 Modulen, Bundlecheck und Hashaudit; historische ADR-0037-Nachweise 595/595 und 2350/2350; historischer gebundener ADR-0037-Implementierungsreview und Jans Featurecommit abgeschlossen; historischer Chrome-151-Lauf weiterhin Gesamt-`FAIL`, Ursache `CAUSE_NOT_PROVEN`; ADR 0035 und das ADR-0037-D_K4-Delta unverändert angenommen; ADR 0036 als nach R1–R4 korrigierte ergänzende dokumentarische Adaptergrenze durch Jan am 2026-09-12 ausdrücklich angenommen, K2 im R1–R4-Dokumentationsscope geprüft, damaliger Foundationabgleich dokumentiert und sein unabhängiger Vorannahmereview mit gebundenem PASS abgeschlossen; aktueller Load-/Hashabgleich dokumentiert, unabhängiger Dokumentreview der acht neuen Fassungen ausstehend, danach bei Erfolg Jans manueller Dokumentationscommit vor neuem Adapterauftrag; fehlende authentische Adapterquellen bleiben `UNPROVEN`; Adapterimplementierung, Adaptertests, Writer, sichtbarer Lauf, Browserkomposition und End-to-End nicht autorisiert | 🟡 |
+| `v0.3.0` | Local SyncAgent and Transport Foundation | netzwerkfreier ADR-0036-Adapter und Tests implementiert und selbst geprüft; unabhängiger Implementierungsreview ausstehend. Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei. ADR 0035, ADR 0036 und ADR 0037 sowie die geschützte Foundation bleiben unverändert. Foundation und Testkopien bleiben `NOT_EVIDENCE`, die Testfinalisierung liefert `runtimeRecord:null`. Authentisches Runtime-`A_obs`, Diagnoselauf, Browserkomposition, Browser-E2E, Writer und Persistenz sind weder nachgewiesen noch autorisiert. `overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert. Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit. | 🟡 |
 | `v0.4.0` | DataAgent and Airtable Integration | Kontrollierter Airtable-Lese- und Schreibfluss | ⬜ |
 | `v0.5.0` | TestAgent and Learning Tests | Lerntests erstellen, bewerten und speichern | ⬜ |
 | `v0.6.0` | Multi-Agent Integration | Stabiler End-to-End-Fluss und Demo-Trennung | ⬜ |
@@ -765,18 +777,9 @@ eine spätere Phase geplant.
 
 ### Aktueller Stand
 
-`v0.3.0` ist **in Arbeit – ADR 0035 angenommen – 2026-09-05; ADR 0037 für
-`D_K4` angenommen – 2026-09-08; ADR 0034 historische Entscheidungsebene;
-Effects-as-Data-Foundation mit zwei erforderlichen Portrollen und 757/757
-fokussierten Tests; Notification historisch netzwerkfrei implementiert, unabhängig mit
-gebundenem PASS geprüft und durch Jan unverändert committet; ADR 0036 nach
-R1–R4 dokumentarisch geprüft; damaliger Foundationabgleich dokumentiert und sein
-unabhängiger Dokumentreview mit gebundenem PASS ohne Befund abgeschlossen;
-ADR 0036 anschließend durch Jan am 2026-09-12 ausdrücklich angenommen;
-gebundenes Chrome-151-Runtimegate weiterhin `FAIL`; Ursache
-`CAUSE_NOT_PROVEN`; aktueller Load-/Hashabgleich dokumentiert; nächster Schritt: unabhängiger
-Dokumentreview der acht neuen Fassungen, bei Erfolg Jans manueller Dokumentationscommit,
-erst dann neu gebundener ausdrücklich beauftragter netzwerkfreier Adapter-/Testslice**.
+`v0.3.0` ist **in Arbeit – netzwerkfreier ADR-0036-Adapter und Tests implementiert und selbst geprüft; unabhängiger Implementierungsreview ausstehend**. Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei.
+Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit.
+
 Die SyncContract Foundation für Version `1.0`, die Aktion
 `syncTest` und den Handler `SyncAgent`, die asynchrone SyncService Foundation,
 die synchrone transportneutrale SyncGateway Request Boundary, der separate
@@ -2909,14 +2912,9 @@ aktuellen Anforderungen mehr.
     implementiert und geprüft; 595/595 fokussierte und 2350/2350 Gesamttests.
     Der gebundene unabhängige Daybreak-xhigh-Implementierungsreview und Jans
     unveränderter Featurecommit sind abgeschlossen.
-19. ⬜ **Getrennte netzwerkfreie Adapterimplementierung und Tests:** Der
-    damalige ADR-0036-Foundationabgleich, sein gebundener Vorannahmereview und
-    Jans Annahme vom 2026-09-12 bleiben abgeschlossen. Nach Korrekturreview
-    und Jans unverändertem Korrekturcommit ist der aktuelle Load-/Hashabgleich
-    dokumentiert. Zuerst folgen sein separat beauftragter unabhängiger
-    Dokumentreview der acht neuen Fassungen und bei Erfolg Jans manueller
-    Dokumentationscommit. Erst danach folgt ein neu gebundener, ausdrücklich
-    beauftragter netzwerkfreier Adapterimplementierungs- und Testslice.
+19. 🟡 **Getrennte netzwerkfreie Adapterimplementierung und Tests:**
+    Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei.
+    Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit.
 20. ⬜ **Separate Laufautorisierung:** erst danach Zielbrowser, `T_replay`,
     Observer, höchstens einen Transportstimulus, Benutzerinteraktion und Cleanup
     ausdrücklich autorisieren.
@@ -3264,6 +3262,12 @@ Versionsnummer zugeordnet.
 
 ## Nächster konkreter Schritt
 
+Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei.
+
+Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit.
+
+Die nachstehende Entwicklungsgeschichte behält ihre historischen Test- und Freigabebindungen.
+
 Die Implementierung von `v0.2.0 – Local Dashboard MVP` ist abgeschlossen, mit
 den automatisierten Tests sowie dem Produktions-Build geprüft und als Tag
 `v0.2.0` mit dem zugehörigen GitHub Release veröffentlicht. PromptVault
@@ -3450,8 +3454,7 @@ Provideradapter und keine Airtable-Anbindung. Der exakte leere synthetische
 Erfolg ist ausschließlich über den explizit gestarteten lokalen Gateway-
 Prozess mit HTTP `200` erreichbar.
 
-Der aktuelle Load-/Hashabgleich ist dokumentiert; sein unabhängiger Dokumentreview
-und bei Erfolg Jans manueller Dokumentationscommit gehen einem neuen Adapterauftrag voraus.
+Aktuelle Schrittfolge nach der autorisierten Adapterfortsetzung: Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit.
 
 Import/Export, Webhooks, Synchronisierung, geräteübergreifende Speicherung,
 automatische Cloud-Sicherung, Airtable, ein allgemeines Fachbackend,
@@ -3468,12 +3471,10 @@ von ADR 0036 war damals dokumentiert; sein unabhängiger Dokumentreview ist mit
 gebundenem PASS ohne Befund abgeschlossen. Jan hat ADR 0036 anschließend am
 2026-09-12 ausdrücklich angenommen. Der damalige Statusauftrag endete nach
 Statusnachführung und Verifikation; Git-Schritte bleiben manuell bei Jan.
-Vor dem neu gebundenen, ausdrücklich beauftragten netzwerkfreien
-Adapterimplementierungs- und Testslice stehen der unabhängige Dokumentreview
-dieses Load-/Hashabgleichs und bei Erfolg Jans manueller Dokumentationscommit.
-Die aktuelle Foundationbaseline beträgt 757/757. Adapter und Adaptertests sind weder implementiert noch ausgeführt;
-Foundation `NOT_EVIDENCE`, fehlendes authentisches adapterseitiges `A_obs`
-sowie fehlende Lauf-, Browser-, E2E-, Writer- und Persistenzfreigaben bleiben
+Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei.
+Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit.
+Foundation `NOT_EVIDENCE`, fehlendes authentisches Runtime-`A_obs` sowie
+fehlende Lauf-, Browser-, E2E-, Writer- und Persistenzfreigaben bleiben
 unverändert. Vor
 einer sichtbaren Prozess-/Profilwirkung muss zusätzlich
 eine getrennt angenommene handlegebundene Windows-Prozessbaum- und

@@ -6,7 +6,157 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0036 angenommen; Load-/Hashabgleich dokumentiert; neuer Dokumentreview ausstehend; Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – netzwerkfreier ADR-0036-Adapter und Tests implementiert und selbst geprüft; unabhängiger Implementierungsreview ausstehend; Runtimegate FAIL
+
+### ADR-0036-Adapterfortsetzung / 2026-09-27
+
+Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei.
+
+Dieser Eintrag betrifft den ausdrücklich autorisierten netzwerkfreien Adapter-/Testslice auf Branch `codex/feat/adr-0036-diagnostic-adapter-implementation`, HEAD `02412d2a054f86fef12f14c451ad6a3b7f38bbfc`. Die Fortsetzung begann am 2026-09-20 und wurde am 2026-09-26 auf erneuten ausdrücklichen Nutzerauftrag wiederaufgenommen. Letzter erforderlicher Prüfabschluss: 2026-09-26T22:00:20.7800541Z; das Sektionsdatum verwendet Europe/Berlin.
+
+Der frühere Arbeitsbericht war kein Abschlussbericht und kein Review-PASS. Seine letzten erhaltenen 950 erfolgreichen und 22 fehlgeschlagenen Meldungen besitzen keinen vollständigen Footer und definieren kein N. Ein früher nachgewiesener Heapabbruch und das spätere unvollständig überlieferte Prozessende bleiben getrennt; dessen genaue Abbruchursache ist nicht bewiesen. Alle 104 vorhandenen alten Auditdateien wurden bewahrt.
+
+#### Absichtliche Pause und gesonderte Wiederaufnahme
+
+Der gesonderte Gesamtsuitenversuch full-final begann 2026-09-20T20:50:14.5376974Z und wurde auf ausdrücklichen Nutzerwunsch zur Pause beendet; das Wrapper-Ende ist 2026-09-20T21:08:09.2896742Z, der beobachtete erzwungene Exit -1. Sein Rohoutput besitzt keinen vollständigen Gesamtsuitenfooter und keine bestätigte Gesamttestzahl. Dies ist kein aus einem Testfehler abgeleiteter Suitebefund und wird weder mit dem älteren Heapabbruch noch mit dem früheren unvollständig überlieferten Adapterlauf vermischt. Am 2026-09-26T20:04:44.169Z bestätigte die Wiederaufnahmesicherung dieselben 166 Dateibindungen und 104 unveränderten alten Auditdateien. Die sechs am 20.09. abgeschlossenen Pflichtprüfungen werden nur über diese unveränderte Rohbindung weitergeführt. Als neuer Gesamtsuitenversuch ist ausschließlich full-resume-20260926-r2 ausgewählt; sein Ausgang stammt allein aus seinen eigenen vollständigen Laufbelegen. Alle ursprünglichen Pause-/Laufbelege bleiben erhalten.
+
+| Pausen-/Wiederaufnahmebeleg | Bytes | SHA-256 |
+| --- | --- | --- |
+| full-final.start.json | 51551 | a37aebae11a9aa0a788b959f5876cf6516f401cb67139be8b50eaf389a2655e4 |
+| full-final.completion.json | 101961 | 5b065ee3667354798a048de8cbbc570feb7c69aac76513db498e5abc659473ba |
+| full-final.tap | 134532 | f5d9654a2e24ae2029284d38855599c9870ebb07afa81114960f94fe9094a51f |
+| pause-checkpoint.json | 53473 | 0730e28e407466b75f37b9b22006f811e8ae13e9110b78f0c3c9c021cae1f8cc |
+| pause-stop-request.json | 411 | 5a4df461a84334ed6410be5c39a5250d4393aee6ce3167c3be57f7c869c1f6a7 |
+| resume-20260926-baseline.json | 51309 | e7e82c712f0655b2254adfc7d926c96d2427ccc81f1c2578d4c4aadd79500edc |
+
+#### Gesonderter Auditwrapperfehler vor dem zweiten Retry
+
+Der erste Gesamtsuiten-Retry full-resume-20260926 begann 2026-09-26T20:06:14.6381516Z. Sein vollständig erhaltener Rohfooter meldet 3522/3522, jeweils 0/0/0/0 Fail/Cancelled/Skip/Todo und 3795194.2362 ms. Danach scheiterte der Auditwrapper an einer lokalen LASTEXITCODE-Scopeüberschattung. Die Fehlerbeobachtung 2026-09-26T21:10:45.5140101Z ist keine native Laufendzeit; der beobachtete Wrapper-Exit 1 ist kein Testprozess-Exit. Nativer Exit, tatsächliches natives Laufende, Completion-Metadaten und die 166 Nachherbindungen fehlen. Der grüne Footer ersetzt diese fehlenden Belege nicht. Eine getrennte echte Exit-0-/Exit-7-Probe reproduzierte die Scopeüberschattung und bestätigte den expliziten globalen Capture; sie rekonstruiert den fehlenden alten Exit nicht. Dieser Versuch bleibt deshalb getrennte Arbeitsprovenienz und zählt nicht zu den neun abgeschlossenen Pflichtprüfungen. Als vollständiger neuer Gesamtsuitenversuch ist full-resume-20260926-r2 ausgewählt; ausschließlich dessen eigene Laufbelege können den Gesamtsuitennachweis schließen.
+
+| Wrapperfehlerbeleg | Bytes | SHA-256 |
+| --- | --- | --- |
+| full-resume-20260926-wrapper-failure.json | 2543 | 5a50c0e2953786b6a70e3a6b904cdb8f8968ae5f7e2b324fc0b79d955a433181 |
+| full-resume-20260926.start.json | 51869 | 21a36b3965707e9832e1d0f7746fbe1d5efd3bfc0bbb14e6ca4c6c5073aaaca3 |
+| full-resume-20260926.tap | 561790 | a662ba863654d5c9f1cc51ceb71b7e69d42d284c0a6f05b0e71c726d51386d53 |
+| run-required-resume-20260926.ps1 | 4311 | a2bba48426c16e0199293de2014fa5e61207c78cb196f2678f74fd315b4a4a80 |
+| wrapper-exit-scope-probe-20260926.json | 754 | d091a67f6c889cff5097645e6d185ea975347470e5cf0ad22a14b9ef425f26df |
+
+#### Klärung der 22 bekannten Fälle
+
+| Fälle | Gruppe | Bestätigte Klärung |
+| --- | --- | --- |
+| 1–2 | Git-Alternates und Replace-Refs | Der statische Treiber endete zuvor nicht am tatsächlich erreichten Ablehnungspfad. Nur die erreichbaren List-/Close-Präfixe vor O0 und nach Cleanup wurden begrenzt; beide Sourceverletzungen und die unveränderte produktive Ablehnung bleiben geprüft. |
+| 3 | U+FEFF innerhalb eines JSON-Strings | Beide rohen beziehungsweise escapeten inneren BOM-Werte bleiben gültige Stringdaten. Der Treiber liefert nach der getrennten Foundation-Semantikablehnung zuerst die tatsächlichen Post-Settlement-Sourceergebnisse. |
+| 4–5 | RAW_PIPE_BYPASS / PRODUCER_EVENT_BYPASS | Der kausale Parserbypass war sichtbar; die alte Annahme von sechs Writes war falsch. Geprüft werden vier tatsächliche Writes, nicht gesendete Cleanupintents, Parserzähler, Caps, Marker, Finalisierung und FAIL. |
+| 6–7 | FIFO-Material- und Eintragsgrenze | Gleiche Rohbytes und Schedulingpräfixe, präzise Zustandsprüfung vor der Capfreigabe: 4/5 Einträge bei 1 MiB sowie 256/257 Einträge. Der unabhängig gefundene asynchrone Cleanup-Enqueuefehler wird produktiv als Queueverletzung abgefangen. |
+| 8–9 | Dedup und LIFO | Doppelte Antworten bleiben getrennt; LIFO wird anhand des eingefrorenen O0-Snapshots erkannt. Cleanupzeitliche spätere Antworten ersetzen diesen Beobachtungsnachweis nicht. |
+| 10–12 | Network-Reihenfolge 10→12→11, Owner und öffentliche Factory | Rohe Ankunftsreihenfolge bleibt erhalten. Der produktive Receipt-Validator akzeptiert eindeutige dichte positive Reihenfolgen je Layer unabhängig von festen Stage-Arraypositionen; ein Sortiermutant erreicht dadurch das eigentliche Kausaloracle. |
+| 13 | Inbound-Messagecap | Die 6/7-Grenze wird am festen read-only Vor-Cap-Zeitpunkt geprüft; spätere erlaubte Cleanupframes werden nicht rückwirkend dem ersten Batch zugerechnet. |
+| 14–16 | Früher, doppelter und reentranter Marker | Nur die statisch bekannten realen Abbruch-/Cleanupfolgen des Treibers wurden korrigiert. Erfolgreiche importierte Kontrollen und die unveränderten Notification-/No-Record-Oracles bleiben erforderlich. |
+| 17 | QUEUE_EMPTY_FULFILLMENT | Das gefälschte leere Fulfillment verletzt zuerst die Clockbuchführung. Das Oracle prüft strukturelles Pending, fehlenden Capture-Dequeue-Clockeintrag und den tatsächlichen confirmed-violation-Pfad statt eines später nicht erreichbaren Labels. |
+| 18–22 | Operand 53: roh, doppelt gequotet, doppelt JSON, Whitespace, andere Ziffer | Alle fünf exakten Abweichungen bleiben observed/mismatch/DIVERGED. Ohne zusätzliche bestätigte Obserververletzung lautet das Ergebnis vertragsgemäß UNPROVEN/inconclusive statt FAIL; keine Normalisierung verdeckt die Abweichung. |
+
+Die 22 exakten Namen, Ursachen und historischen Reparaturversuche bleiben in `known22-case-mapping.json` erhalten; dessen ältere offene Ergebnisstände werden nicht überschrieben. Die neuen 55/22-Ergebnisse stehen getrennt in `latest-known22-results.json` (34543 Bytes, SHA-256 `784e11dca0b08eef7610cd4c125af95104856339b49a095c892ef9b935c215bb`) und sind an den nachfolgenden abgeschlossenen Fokuslauf gebunden. Der neue gezielte Lauf `repaired-and-new-matrix-focused` bestand tatsächlich mit 55/55, Exit 0, 0 Fail/Cancellation/Skip/Todo und 317849.3797 ms TAP-Dauer. Er lief von 2026-09-20T19:12:45.8620400Z bis 2026-09-20T19:18:03.8496466Z; alle neun Vorher-/Nachherbindungen stimmen überein. Sein unveränderter UTF-16LE-Rohoutput mit BOM umfasst 25962 Bytes, SHA-256 `fb9e36b2a2552bb45e11934a7050da2fdcb3876275540b344033f35576b3a19c`. Die 55 Fälle enthalten die 22 geklärten Fälle, weitere Kontrollen/Mutanten und alle 23 neu ergänzten Grenzfälle; sie sind kein vollständiges N.
+
+#### Zusätzliche Befunde, Verträge und Ergänzungen
+
+Der asynchrone Cleanup-Enqueuepfad fängt eine volle FIFO als Parser-/Queueverletzung ab und beendet seine äußere Auflösung, ohne einen getrennten unhandled-Rejection-Kanal zu hinterlassen. Der Foundationresultat-Receiptvalidator prüft positive ganze, eindeutige und dichte Werte getrennt je Layer; er verlangt keine falsche Reihenfolge der festen Stagefelder. Negative Null-, Bruch-, Duplikat- und Lückenfälle bleiben abgelehnt.
+
+Ergänzt sind beide Chrome-Spawnthrow-Einstiege, acht Änderungen roher Parent-/Held-Identitäten, drei tatsächliche Root-exit→Tree-Erfolgs-Mutanten, ein tatsächlich vorgezogener Exchange-Ack, drei verbotene Entfernungsanforderungen sowie vier Evaluations-Eingabefehler und zwei gleichlange tatsächliche Wireabweichungen. Die Entfernungsfälle verlangen `rm`, `rmdir` oder `unlink` über den geschlossenen virtuellen Resourceport nach wirklichen Identitätsprüfungen; die unbekannten Operationen werden abgelehnt. Es wird kein natives Delete ausgeführt und keine sichere native Löschprimitive behauptet. Der 4.259-Byte-Evaluationtext wird ausschließlich extrahiert und gehasht, niemals ausgeführt.
+
+Kausale Mutanten erhalten auch bei gefiltertem Einzelaufruf eine frisch erfolgreich importierte passende Kontrolle. Identische Familien dürfen nur unveränderliche abgeschlossene Kontrollergebnisse beziehungsweise ein erfülltes Void-Promise behalten; Adapter-, Foundationmodule, Factories, Owner oder Capabilityinstanzen werden nicht als Importabkürzung wiederverwendet.
+
+Die §15-Zuordnung umfasst K2-Pending/Deadline/Write-Ack/partiellen Gatewaystart, die vollständigen registrierten Capability-, Rawsignal-, Promise-, Parser-, FIFO-, Byte-, Source-/Load-, Replay-, Creation-, Cleanup-, Notification- und Recordgruppen sowie die Pflichtmutanten. Die konkrete 38-zeilige Anforderungsmatrix und ihre gezielten 55-Fall-Bindungen liegen in `living-contracts-section15-map.json`; Zeilenzahl und Testzahl sind verschieden. Die gesamte registrierte Matrix ist in den unten gebundenen ungefilterten Läufen ausgeführt. Die 757 geschützten Foundationtests einschließlich ihrer Array-, Notification-, Join- und Proxy-Deadlinebeweise bleiben unverändert und werden getrennt gezählt.
+
+Der Finalizer besitzt keine Schreibfähigkeit. Frische tief eingefrorene Testergebnisse, unverändertes F, null Writeraufrufe und `runtimeRecord:null` bilden die strukturelle Writertrennung dieses Slices. Ein späterer Writer bleibt gemäß §12 gesondert zu entscheiden; hypothetische Persistenzfehler werden hier nicht ausgeführt.
+
+#### Frische Abschlussverifikation
+
+| Prüfung | Tatsächlicher Befund | Exit | Wallzeit | Beginn UTC | Ende UTC |
+| --- | --- | --- | --- | --- | --- |
+| Adapter | 1010/1010; 0 Fail/Cancelled/Skip/Todo | 0 | 2539783 ms | 2026-09-20T19:18:38.5763889Z | 2026-09-20T20:00:58.3594140Z |
+| Foundation ohne zusätzliches VM-Flag | 757/757; 0 Fail/Cancelled/Skip/Todo | 0 | 3905 ms | 2026-09-20T20:01:16.2628266Z | 2026-09-20T20:01:20.1677626Z |
+| Adapter + Foundation | 1767/1767; 0 Fail/Cancelled/Skip/Todo | 0 | 2862334 ms | 2026-09-20T20:01:29.9979459Z | 2026-09-20T20:49:12.3318149Z |
+| BrowserSyncTransport | 423/423; 0 Fail/Cancelled/Skip/Todo | 0 | 2939 ms | 2026-09-20T20:49:33.2972248Z | 2026-09-20T20:49:36.2365066Z |
+| SyncService + BrowserSyncTransport | 466/466; 0 Fail/Cancelled/Skip/Todo | 0 | 3214 ms | 2026-09-20T20:49:38.7923886Z | 2026-09-20T20:49:42.0069565Z |
+| Sechs bestehende Sync-Suites | 735/735; 0 Fail/Cancelled/Skip/Todo | 0 | 6776 ms | 2026-09-20T20:49:44.3718066Z | 2026-09-20T20:49:51.1475887Z |
+| Vollständige serielle Suite | 3522/3522; 0 Fail/Cancelled/Skip/Todo | 0 | 2916146 ms | 2026-09-26T21:11:44.6346471Z | 2026-09-26T22:00:20.7800541Z |
+| Produktionsbuild | 46 Module | 0 | 803 ms | 2026-09-26T21:11:00.2796551Z | 2026-09-26T21:11:01.0821440Z |
+| n8n-Bundlecheck | driftfreier Check | 0 | 508 ms | 2026-09-26T21:11:06.7169353Z | 2026-09-26T21:11:07.2246540Z |
+
+Alle abgeschlossenen Abschlussläufe sind an ihr tatsächliches Repository-CWD, Node-/Vite-Version, ursprüngliches Outputencoding, vollständigen Rohoutput, Prozessende und 166 gleiche Vorher-/Nachher-Dateibindungen gebunden. Die folgenden Metadaten enthalten die vollständige Statistik. Die sechs vor der ausdrücklichen Pause vollständig abgeschlossenen Prüfungen bleiben an ihre unveränderten 166 Rohbytebindungen gebunden. Der unterbrochene full-final ersetzt den ausgewählten Gesamtsuiten-Retry nicht; offene oder abgebrochene Läufe erhalten kein erfundenes Ende und keine Nachherbindung.
+
+| Lauf | Tatsächlicher Befehl | UTF-16LE-Rohoutput mit BOM | Bytes | Roh-SHA-256 | Metadaten | Metadaten-SHA-256 |
+| --- | --- | --- | --- | --- | --- | --- |
+| adapter-final | node --experimental-vm-modules --no-warnings --test --test-concurrency=1 "C:/Users/jslom/Documents/Projekte/GoldenDawn/tests/browserSyncTransportRuntimeDiagnosticAdapter.test.js" | adapter-final.tap | 188448 | 20669a860ed0f9a0cf2987ed653f755ade2df2a209784cf8771ea8affc7452ee | adapter-final.completion.json | c9fdc8e921db3f7fdaa95ced652531508172607b49b133c76a6d159260b726ce |
+| foundation-final | node --test --test-concurrency=1 "C:/Users/jslom/Documents/Projekte/GoldenDawn/tests/browserSyncTransportRuntimeDiagnosticObserver.test.js" | foundation-final.tap | 81650 | 735f78ad9078dd20cebf2b0105dde5c607b82e0b4663d7c076a605a2c2abc627 | foundation-final.completion.json | 7ee416411f832798bd8b12245f2da9ae6dd1601bc29bdbbaef86e283fef77212 |
+| combined-final | node --experimental-vm-modules --no-warnings --test --test-concurrency=1 "C:/Users/jslom/Documents/Projekte/GoldenDawn/tests/browserSyncTransportRuntimeDiagnosticObserver.test.js" "C:/Users/jslom/Documents/Projekte/GoldenDawn/tests/browserSyncTransportRuntimeDiagnosticAdapter.test.js" | combined-final.tap | 269998 | 018e1bf86e5e2e77eb1816d1187ebf16095ae7435b75d8d26a60a3d32eda1a87 | combined-final.completion.json | 9fc574bc7c689dd791dfcbf6066e0ade22c217c0be4b38edaa49f4529a35d8d3 |
+| transport-final | node --test --test-concurrency=1 tests/browserSyncTransport.test.js | transport-final.tap | 59332 | abbf87e08d27c5293385872da45b5ddf66be20f47b185d799a543939b8a2665f | transport-final.completion.json | a681975f5820d8881d3fe3cba75b4404d29e56a9c3fe422372a2c1db5c001d9c |
+| service-transport-final | node --test --test-concurrency=1 tests/syncService.test.js tests/browserSyncTransport.test.js | service-transport-final.tap | 68214 | 902f43b344863047e27a28e9014b8fbf4355ae8f5f2ecdb4acb75a83c84627d0 | service-transport-final.completion.json | ba97c12926041b05ad72d7855f6f634e46f6aa494b4e49d987221c88158e4df8 |
+| six-sync-final | node --test --test-concurrency=1 tests/syncContract.test.js tests/syncService.test.js tests/syncGatewayRequestBoundary.test.js tests/syncAgent.test.js tests/localSyncGatewayHttpServer.test.js tests/browserSyncTransport.test.js | six-sync-final.tap | 116538 | b0908b6de8c61fca774e6c6b9610c08e2bfdd0694ddd566eb4d091409c485612 | six-sync-final.completion.json | 91630147cabfdd60a0c509c5a194bf02eb207ca232e1f4154469546adfa1e1a8 |
+| full-resume-20260926-r2 | npm.cmd test -- --experimental-vm-modules --no-warnings --test-concurrency=1 | full-resume-20260926-r2.tap | 561766 | eea08e6dac544538818315bc0fb44e660c7eb0d54d7783d0e3adcfec062b45b8 | full-resume-20260926-r2.completion.json | 47b5dc47b9736ecff89bdd9bb74160797ca301caaf686970fb179e3f4f15cdf4 |
+| build-final | npm.cmd run build | build-final.tap | 800 | 3c8d348bf9582ae04db4d52055ad4b934b17011121b98929802f468e5f8eb846 | build-final.completion.json | 2be75a1981119093c208514a6999610d8d0b33ad5b028f278962fda80a943fad |
+| bundle-final | npm.cmd run bundle:n8n:check | bundle-final.tap | 214 | 76b2cdefb8109d788ba41d35fe5277589c1d2b74a80e74b2240b2aef916a4512 | bundle-final.completion.json | e188f6319b420bb3f8b6a7f65456b31b0869d8e91d26dec7a1af013a797942b7 |
+
+| Abgeschlossener Lauf | CWD | Node | Node-Executable | Vite |
+| --- | --- | --- | --- | --- |
+| adapter-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| foundation-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| combined-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| transport-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| service-transport-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| six-sync-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| full-resume-20260926-r2 | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| build-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| bundle-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+
+Verifikationsauswertung: `verification-final-resume-20260927.json`, 16175 Bytes, SHA-256 `137861ec6ab439691995afbf807899bb49f554d3e0255605afc1241329439210`. N = 1010; gemeinsame Suite = 1767; vollständige Suite = 3522.
+
+#### Aufwand und CI-Grenze
+
+Die begrenzten Kostenkorrekturen ersetzen wiederholte Casefold-Vollscans durch eine lokale Mitgliedschaftsmenge, entfernen einen unbenutzten gehaltenen Pfadgraphen, übernehmen bei einem vollständigen ersten Chunk ausschließlich die bereits defensiv kopierten privaten Bytes und vermeiden unnötiges erneutes Sortieren bereits geordneter Snapshotordinale. Bei reentranter ungeordneter Veröffentlichung bleibt der numerische Sortierfallback erhalten. Private statische Raw-Fixtureseeds werden einmal gelesen, jeder Aufrufer erhält eine frische Map und frische Bytearrays; tatsächliche Sourceprüfungen und frische Modulimporte bleiben bestehen.
+
+Die realen großen Sourcegrenzfälle und die kumulierte ungefilterte Suite werden anhand ihrer tatsächlichen Laufoutputs beurteilt. Unterschiedliche Zwischenfassungen sind kein kontrollierter Performancevergleich. Speicher-Samples belegen nur die gemessenen Zeitpunkte, keine exakte Maximalbelegung. Es wurden weder Heaplimits erhöht noch Worker, weitere Testdateien, GC-Schalter oder zusammengesetzte Teilläufe eingeführt.
+
+CI bleibt unverändert bei `ubuntu-latest`, Node `20.19`/`22.12` und `timeout-minutes: 10`. Lokale Windows-/Node-24-Ergebnisse sind kein CI-Matrix- oder Zeitbudgetnachweis. Die autorisierten drei Toolingänderungen ergänzen ausschließlich `--experimental-vm-modules --no-warnings --test-concurrency=1` und ihre Erklärung. Ein tatsächlicher CI-Lauf wurde nicht ausgeführt.
+
+| Zusätzliche tatsächliche Beobachtung | Auditdatei | Bytes | SHA-256 |
+| --- | --- | --- | --- |
+| Der ausgewählte Gesamtsuiten-Retry dauerte tatsächlich 2916146 ms Wallzeit (rund 48,6 Minuten). Das unveränderte CI-Limit beträgt 10 Minuten; Ubuntu mit Node 20.19/22.12 wurde nicht ausgeführt. Prozesssamples belegen keine exakte V8-Heapspitze. | performance-final-resume-20260927.json | 49050 | 25fd57276a32e5e25cd26e7f902580569eb3d8d882fd3d991b40c49084259965 |
+| Alle 22 zuvor offenen Fälle und die 23 neuen Grenzfälle sind mit ihren exakten Namen im vollständigen Adapterlauf 1010/1010 jeweils erfolgreich gebunden. | known22-full-adapter-results.json | 118810 | 4730c3095c51e60e6b4cec44c515c685ba4c4a387ba24cdc3ec535e03e23e2cb |
+| 38 Anforderungszeilen ordnen die verpflichtenden Vertragsgruppen und Mutanten konkreten registrierten Fällen zu; die ursprüngliche Fokusbindung 55/55 wird getrennt von den vollständigen Läufen ausgewiesen. | living-contracts-section15-map.json | 69719 | 7f4114ca242a222836e2aa94bac2a4599aad69020bb0bdf36b29d7b0549ada23 |
+| Die Wiederaufnahme bestätigt alle 166 Pausebindungen, 104 alte Auditdateien, Projektrefs und Index. Interne Codex-Refänderungen werden getrennt ohne Ursachenbehauptung ausgewiesen. | resume-20260926-baseline.json | 51309 | e7e82c712f0655b2254adfc7d926c96d2427ccc81f1c2578d4c4aadd79500edc |
+
+#### Rohbytebindungen und Schutzprüfung
+
+| Code-/Toolingdatei | Bytes | SHA-256 |
+| --- | --- | --- |
+| scripts/browser/browserSyncTransportRuntimeDiagnosticAdapter.js | 257839 | 4d27ab936ab4cb2f20ac22f570ded19ebc2f68e7ee1d9014bb8d735979163e7d |
+| tests/browserSyncTransportRuntimeDiagnosticAdapter.test.js | 463641 | cf8cd3802e2ae2904f6743a5c3ad7535b1dcd2d11029a1dbb59b19d8e704f6c7 |
+| .github/workflows/ci.yml | 865 | 89d968ed7c2551187dab9a7a8816eb794f3d6a04f154f58fbc4f6b819183fca1 |
+| scripts/git/Invoke-CommitWorkflow.ps1 | 9860 | 685ba6267103212cd350e49fa1e01ffbe0f23345898ab83bb5d02bf4edd3bc0e |
+| docs/git-workflows.md | 4731 | 258c36b560deeffbb45dd9b4b358f7ad223906f379c993a07afe4a9e7a81ab2e |
+
+Die endgültigen Rohhashes der sieben Statusdokumente werden nach dieser Änderung im Abschlussaudit und Bericht gebunden, nicht als Selbsthash in diesen Dateien. Der Vorstatusaudit `scope-protection-audit-resume-20260927-prestatus-result.json` (121662 Bytes, SHA-256 `3e7c0fe9978cde9a52726c10e329575722da097821cd21d05e950e05f175a7db`) bestätigt die 16 geschützten Dateien, alle ADRs und übrigen nicht freigegebenen Dateien gegen Soll- und rohe Baselinebindungen. Die Evaluation besitzt genau einen normativen Treffer, 4259 Bytes und SHA-256 `a623ffafee8dfcbc1d2ddc374cc35f0dbf800defd97619a3b58337d972090f7b`. Historischer Commit `8001cc7eb7d2fed68c5ca4061514b486a204ac44`, HEAD und Working Tree besitzen jeweils das unveränderte Frontendmanifest mit 51 Pfaden, 5606 Bytes und SHA-256 `6f3d5740b043308b4d38df33b6293c9064d8dd1b3f0c5801d50844336c195591`. Der Audit nach Anwendung dieser sieben Dokumentänderungen bindet zusätzlich deren vollständige neuen Bytes, Encoding, Links, Anker, Whitespace, Temp-Cleanup und Gitstatus.
+
+HEAD, Branch, Projektrefs und Index blieben im Vorstatusaudit unverändert; es gibt weiterhin 164 getrackte Pfade. Interne Codex-Refänderungen werden getrennt ausgewiesen; aus ihrem Namen folgt kein Ursachenbeweis.
+
+| Vergleich | Ref | Vorher | Nachher |
+| --- | --- | --- | --- |
+| historisch → Restart | refs/codex/turn-diffs/captures/1789316603132/ec9230b1-9dba-4a14-bf96-85199de0946f/base | refs/codex/turn-diffs/captures/1789316603132/ec9230b1-9dba-4a14-bf96-85199de0946f/base [NUL] 03b0350bbbb969198019adebe046738d0af7582b [NUL] tree [NUL]  | nicht vorhanden |
+| historisch → Restart | refs/codex/turn-diffs/captures/1789929215308/8816e5bb-f371-4380-9927-24a7ca66049e/base | nicht vorhanden | refs/codex/turn-diffs/captures/1789929215308/8816e5bb-f371-4380-9927-24a7ca66049e/base [NUL] 44954fa2efc5570aa9360589a18ed4ec4d5c376a [NUL] tree [NUL]  |
+| historisch → Restart | refs/codex/turn-diffs/checkpoints/4d9da7a2328a47fcf2a48774c63b94f6/64e9bbe66092224e94c1c67c9c049dcd/1789928433378/6d02f981-e7d9-4a5a-a5e3-564723c43ec2 | nicht vorhanden | refs/codex/turn-diffs/checkpoints/4d9da7a2328a47fcf2a48774c63b94f6/64e9bbe66092224e94c1c67c9c049dcd/1789928433378/6d02f981-e7d9-4a5a-a5e3-564723c43ec2 [NUL] 44954fa2efc5570aa9360589a18ed4ec4d5c376a [NUL] tree [NUL]  |
+| Restart → aktueller Audit | refs/codex/turn-diffs/captures/1789929215308/8816e5bb-f371-4380-9927-24a7ca66049e/base | refs/codex/turn-diffs/captures/1789929215308/8816e5bb-f371-4380-9927-24a7ca66049e/base [NUL] 44954fa2efc5570aa9360589a18ed4ec4d5c376a [NUL] tree [NUL]  | nicht vorhanden |
+| Restart → aktueller Audit | refs/codex/turn-diffs/captures/1790452952291/a5d44534-afe6-4db3-8399-67716cee0c47/base | nicht vorhanden | refs/codex/turn-diffs/captures/1790452952291/a5d44534-afe6-4db3-8399-67716cee0c47/base [NUL] 9bb8980206dd76d63dc5f23845e4bdef21f6ca15 [NUL] tree [NUL]  |
+| Restart → aktueller Audit | refs/codex/turn-diffs/checkpoints/c1925b17cba1a210d944d9a1c3922865/9dedb9908579d4de1c695ae563b503f6/1790373891634/26d2bbf6-618c-4a08-82c3-af5066c2b35b | nicht vorhanden | refs/codex/turn-diffs/checkpoints/c1925b17cba1a210d944d9a1c3922865/9dedb9908579d4de1c695ae563b503f6/1790373891634/26d2bbf6-618c-4a08-82c3-af5066c2b35b [NUL] 9bb8980206dd76d63dc5f23845e4bdef21f6ca15 [NUL] tree [NUL]  |
+
+#### Evidenz-, Sicherheits- und Reviewgrenze
+
+Phase 0/Tor A ist am tatsächlichen begrenzten Diff bestätigt: Es wurden kein Modell, keine statistische Inferenz, kein Provider oder Workflow, keine Credentials oder privaten Inhalts-Payloads und keine neue Logging-, Storage- oder Telemetriefläche ergänzt. Neue Adapter-/Foundationtests bleiben netzwerkfrei. Ausschließlich die unveränderten bestehenden Regressionen beziehungsweise die Gesamtsuite dürfen die bisherigen Loopback-/Testprozessfixtures in `localSyncGatewayHttpServer.test.js` und `n8nCloudIngressProbe.test.js` verwenden. Normale Testinfrastruktur, Auditlogs, sichere temporäre Testkopien und erlaubte Buildoutputs sind keine Runtimeevidenz.
+
+ADR 0035, ADR 0036 und ADR 0037 sowie die geschützte Foundation bleiben unverändert. Foundation und Testkopien bleiben `NOT_EVIDENCE`, die Testfinalisierung liefert `runtimeRecord:null`. Authentisches Runtime-`A_obs`, Diagnoselauf, Browserkomposition, Browser-E2E, Writer und Persistenz sind weder nachgewiesen noch autorisiert. `overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert. Reale handlegebundene Windows-Prozessbaum-/Pfadcleanupfähigkeit und unabhängige Adapterausgabestille bleiben sichtbare Laufblocker; Root-Exit oder Handleclose wird nicht als vollständiger Tree-/Entfernungsbeweis ausgegeben. Keine reale Adapterclock, kein realer Adaptertimer, Browser, Debug-Pipe, manueller Gateway-/Vite-/Devserver, aktiver Portcheck oder externer Zugriff wurde für den neuen Adapter-/Foundationnachweis verwendet.
+
+Historische Foundation-/Korrekturergebnisse, übermittelte frühere Reviews, unterbrochene Adapterarbeit, gezielte Reparaturläufe, frische Vollprüfungen und diese Selbstprüfung sind getrennte Nachweise. Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit. Ein unabhängiger Review wurde weder als PASS behauptet noch automatisch beauftragt. Es erfolgte keine Git-Schreibaktion.
 
 ### ADR-0036-Load-/Hashabgleich nach Foundationkorrektur / 2026-09-13
 

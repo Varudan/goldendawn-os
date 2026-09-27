@@ -41,7 +41,7 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run: npm test
+        run: npm test -- --experimental-vm-modules --no-warnings --test-concurrency=1
 
       - name: Build
         run: npm run build

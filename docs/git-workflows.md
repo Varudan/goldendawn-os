@@ -53,8 +53,14 @@ git add README.md
   -Message "chore: sichere PowerShell-Git-Workflows ergänzen"
 ~~~
 
-Der Workflow prüft Mergekonflikte und den gestagten Diff, führt npm test und
-npm run build aus und kontrolliert danach erneut den Arbeitsbaum. Vor einer
+Der Workflow prüft Mergekonflikte und den gestagten Diff, führt
+`npm test -- --experimental-vm-modules --no-warnings --test-concurrency=1` und
+`npm run build` aus und kontrolliert danach erneut den Arbeitsbaum. Die
+netzwerkfreien Adaptertests benötigen `vm.SourceTextModule` im selben Realm;
+der VM-Schalter ist für diesen Testload erforderlich. `--no-warnings`
+unterdrückt die experimentelle VM-Warnung, und `--test-concurrency=1` hält die
+Gesamtsuite seriell. Diese Testargumente erweitern nicht das geschlossene
+Runtimeprofil eines späteren Adapterlaufs. Vor einer
 Bestätigung zeigt er Branch, Status, Dateistatus, Diff-Statistik und
 Commit-Message an.
 
