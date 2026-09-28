@@ -6,6 +6,20 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 
 ## Entscheidungsübersicht
 
+### ADR 0038 angenommen / 2026-09-28
+
+[ADR 0038](0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) ist durch
+Jan am 2026-09-28 ausdrücklich angenommen und ergänzt ADR 0036 gezielt zur
+CI-Isolation und Serialitätsreichweite. Der unabhängige Dokumentreview meldet
+technisches `PASS` ohne relevante Befunde für die sieben Vorannahmefassungen;
+[Reviewbindungen und Annahmeprovenienz](../../CHANGELOG.md#adr-0038-dokumentreview-und-annahme--2026-09-28)
+trennen dieses Urteil von der Konfigurationsunsicherheit und der jetzigen
+Statusnachführung. Der geprüfte ADR-Hauptteil bleibt unverändert.
+Die CI-Gruppierung ist noch nicht implementiert oder ausgeführt; Umsetzung
+und Nachweise benötigen weiterhin einen gesonderten Auftrag. Zunächst führt
+Jan Commit und Push der Dokumentation manuell aus; derzeit kein PR.
+Die folgenden gebundenen Vorreviewpassagen bleiben historische Statusangaben.
+
 ### ADR-0036-Adapterfortsetzung / 2026-09-27
 
 Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei.
@@ -98,6 +112,7 @@ Load-/Hashabgleich für diese Korrektur.
 | [0035](0035-browser-sync-transport-diagnostic-foundation-join-and-internal-transition-testability-boundary.md) | BrowserSyncTransport Diagnostic Foundation Join and Internal Transition Testability Boundary | Angenommen |
 | [0036](0036-browser-sync-transport-runtime-diagnostic-adapter-boundary.md) | BrowserSyncTransport Runtime Diagnostic Adapter Boundary | Angenommen – 2026-09-12, ausdrücklich durch Jan |
 | [0037](0037-browser-sync-transport-diagnostic-foundation-observation-close-notification.md) | BrowserSyncTransport Diagnostic Foundation Observation-Close Notification | Angenommen |
+| [0038](0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) | Isolierte CI-Testgruppierung der ADR-0036-Adaptersuite | Angenommen – 2026-09-28 |
 
 Der unabhängige Astra-Review hat die R1–R4-Dokumentkorrektur von ADR 0036
 im eng begrenzten Dokumentationsscope mit PASS abgeschlossen. Er gilt nur für

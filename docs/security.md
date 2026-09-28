@@ -4,10 +4,25 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – netzwerkfreier ADR-0036-Adapter und Tests implementiert und selbst geprüft; unabhängiger Implementierungsreview ausstehend; Foundationbaseline 757/757; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
+| Projektphase | `v0.3.0 – ADR-0036-Adapter implementiert und committet; ADR 0038 angenommen, CI-Gruppierung nicht implementiert; Foundationbaseline 757/757; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | ADR 0035, ADR 0036 und ADR 0037 bleiben unverändert angenommen. Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei. Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit. Reale Diagnose, Writer und Persistenz bleiben geschlossen. |
-| Letzte Aktualisierung | 2026-09-27 |
+| Status | [ADR 0038](decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) ist durch Jan angenommen; Umsetzung und Nachweise der CI-Gruppierung bleiben separat zu beauftragen. ADRs 0032–0037 bleiben unverändert. Dokumentreview und Annahme: [Changelog](../CHANGELOG.md#adr-0038-dokumentreview-und-annahme--2026-09-28). |
+| Letzte Aktualisierung | 2026-09-28 |
+
+## ADR 0038 angenommen / 2026-09-28
+
+Die angenommene Entscheidung verlangt getrennte Runner, Checkouts und Prozesse, eigene
+Temproots, unveränderte Byte-/Ownershipprüfungen und bestätigten Cleanup.
+Testartefakte bleiben von Runtime-Evidenz getrennt; Windows-Prozessbaumownership,
+handlegebundene Pfadbereinigung und unabhängige Adapterausgabestille bleiben
+spätere Laufblocker.
+Der unabhängige Dokumentreview gilt mit technischem `PASS` ausschließlich für
+die im Changelog gebundenen Vorannahmefassungen. Die CI-Gruppierung ist weder
+implementiert noch ausgeführt. Der aktuelle Slice umfasst nur Annahme- und
+Reviewnachführung mit statischer Verifikation, ohne Tests, Builds oder Bundlechecks.
+Die nachfolgenden Vorreview- und Statuspassagen bleiben als historische
+Bindungen ihrer jeweiligen Slices erhalten; ihre damaligen nächsten Schritte
+werden durch diesen aktuellen Status nicht erneut beauftragt.
 
 ## ADR-0036-Adapterfortsetzung / 2026-09-27
 

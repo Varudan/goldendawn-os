@@ -19,7 +19,27 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – netzwerkfreier ADR-0036-Adapter und Tests implementiert und selbst geprüft; unabhängiger Implementierungsreview ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+Aktueller Stand: `v0.3.0 – ADR-0036-Adapter implementiert und committet; ADR 0038 angenommen, CI-Gruppierung nicht implementiert; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+
+### ADR 0038 angenommen / 2026-09-28
+
+[ADR 0038](docs/decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md)
+ist seit Jans ausdrücklicher Entscheidung am 2026-09-28 angenommen. Er begrenzt
+die CI-Gruppierung auf isolierte Jobs; innerhalb jeder Gruppe bleiben Tests
+und vollständige Kopielebenszyklen seriell. Die Gruppierung ist noch nicht
+implementiert oder ausgeführt und benötigt einen gesonderten Auftrag.
+Der unabhängige Dokumentreview ist laut Jans Bericht mit technischem `PASS`
+ohne relevante Befunde abgeschlossen. Seine sieben Vorannahmebindungen und
+die getrennte Konfigurationsunsicherheit stehen im [Changelog](CHANGELOG.md#adr-0038-dokumentreview-und-annahme--2026-09-28);
+dieses PASS gilt nicht für die neuen vollständigen Bytes der Statusnachführung.
+Der aktuelle Slice erlaubt ausschließlich die sieben benannten Dokumentdateien
+und statische Verifikation; Tests, Builds und Bundlechecks sind auf Jans
+ausdrückliche Vorgabe ausgeschlossen. Commit und Push führt Jan manuell über
+VS Code aus; derzeit kein PR. Danach kann die Umsetzung separat beauftragt werden.
+Die folgenden gebundenen Vorreviewpassagen und früheren Schrittfolgen bleiben
+historisch erhalten, einschließlich der früheren Adapterreviewprovenienz mit
+technischem PASS, damaligem INCOMPLETE und Jans Akzeptanz von Blue / Ultra.
+Maßgeblich für diesen Slice ist diese Ergänzung. Runtimegrenzen bleiben geschlossen.
 
 ### ADR-0036-Adapterfortsetzung / 2026-09-27
 

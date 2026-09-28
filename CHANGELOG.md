@@ -6,7 +6,134 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – netzwerkfreier ADR-0036-Adapter und Tests implementiert und selbst geprüft; unabhängiger Implementierungsreview ausstehend; Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR-0036-Adapter committet; ADR 0038 angenommen, CI-Gruppierung nicht implementiert; Runtimegate FAIL
+
+### ADR-0038-Dokumentreview und Annahme / 2026-09-28
+
+Jan hat [ADR 0038](docs/decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md)
+am 2026-09-28 ausdrücklich angenommen: „ADR 0038 wird hiermit angenommen.“
+Die isolierte CI-Gruppierung mit vollständiger Serialität innerhalb jeder
+Gruppe ist damit entschieden; sie ist noch nicht implementiert oder ausgeführt.
+Gruppenzahl, Zuschnitt, Auswahltechnik und sämtliche Abnahmenachweise bleiben
+offen und benötigen einen gesonderten Implementierungs- und Nachweisauftrag.
+
+Der von Jan übermittelte unabhängige Dokumentreview meldet technisches `PASS`
+ohne relevante Befunde in allen sechs Reviewbereichen. Er gilt ausschließlich
+für die folgenden sieben Vorannahmefassungen auf Branch
+`codex/docs/adr-0038-ci-isolation`, HEAD
+`1299011e63455658ac645fe7646fc55af8b07997`, Parent
+`02412d2a054f86fef12f14c451ad6a3b7f38bbfc`, Tree
+`47547d43f7c12eca803c049d38145ba50f19476e`. Der Bericht bindet einen leeren
+Änderungsindex, die sechs modifizierten getrackten Dokumente und den damals
+ungetrackten neuen ADR. Alle sieben Rohbytebindungen wurden vor dieser
+Statusnachführung erneut gegen den vorhandenen Arbeitsbaum bestätigt.
+
+| Reviewdatei, relativ zum Repositoryroot | Rohbytes | SHA-256 der Vorannahmefassung |
+| --- | --- | --- |
+| `docs/decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md` | 21644 | `5930d5bd9bd2de644cd18ec5464e9e79b32acbed27bda50c3add6fe70411cf35` |
+| `docs/decisions/README.md` | 35257 | `9534293c345f479aa5ec9aa812a9a0862d1edf811e23749213319ca7f83fbda0` |
+| `docs/data-contracts.md` | 724260 | `0db81f5fa633a43b6d5fcfb01caa84fc0d75600268ad180d986ee28b283b80d7` |
+| `docs/architecture.md` | 283572 | `e205bc58c7b986deb7ef03b6b101934db7192d639ae0571332159ea8b973c306` |
+| `docs/security.md` | 288046 | `984125185b3f6c297db05a2b91e204bb456c0ec0f88cb51e3d5e97d81a7ef446` |
+| `AGENTS.md` | 205177 | `2edddc5441b6af56516e812cd9d94a3d70c8dcb78f4fdcd9ad33842648c25d65` |
+| `CHANGELOG.md` | 219161 | `5819c6b971aed1df4f1a5d11c0a8f4ae79e8f7d589de800a5ecbf7fe22093179` |
+
+Der lokal übermittelte Bericht `Eingefügter Text.txt` hat 5.820 Rohbytes und
+SHA-256 `814b2c31d398558fdae81d7f8a2a000c8d0c392a78d9b7eaf17347d373bfcd13`.
+Vorgesehen war Daybreak Blue / extra high, ein Reviewer ohne Subagenten.
+Der Bericht bestätigt einen Reviewer ohne Subagenten, attestiert die
+Modellkonfiguration jedoch nicht technisch. Diese Konfigurationsunsicherheit
+bleibt vom technischen Dokumenturteil getrennt; weder `max` noch eine
+technisch nachgewiesene `xhigh`-Bindung werden daraus abgeleitet. Die ältere
+Adapterreviewprovenienz mit technischer PASS-Aussage, damaligem INCOMPLETE und
+Jans Akzeptanz von Blue / Ultra bleibt unverändert im Folgeabschnitt erhalten.
+
+Der Dokumentreview nennt vollständige Lektüre von ADR 0038, Begleitdiff und
+geltender AGENTS.md, statischen Vertrags-/Harness-/CI-Abgleich, sieben passende
+Quellbindungen, 173 auflösbare lokale Links/Anker, Dateihygiene und einen
+unauffälligen Whitespace-Diffcheck. Laut Bericht blieben die sieben Reviewdateien,
+die 160 übrigen sichtbaren Dateien, Index und erfassten Git-Refs unverändert.
+Es wurden keine Tests, Builds, Bundlechecks, Projektmodule, CI- oder Runtimepfade
+ausgeführt. Diese Angaben sind die historischen Reviewresultate, keine neuen
+Implementierungs-, Performance- oder Runtimebelege.
+
+Die jetzige Annahmenachführung verändert ausschließlich Status- und
+Provenienzangaben in denselben sieben Dokumentdateien. Der unabhängig geprüfte
+ADR-Hauptteil ab einschließlich `## Kontext` bleibt mit 21.067 Rohbytes und
+SHA-256 `75945c53853d0b13f73d6143a77e20da5c26704a47ffa4c18b7e6dced4d174d5`
+unverändert. Seine Vorschlags- und nächsten Schrittangaben sind historische
+Vorannahmeformulierungen; die technischen Regeln und offenen Abnahmebedingungen
+gelten fort. Der Review-PASS wird nicht auf die neuen vollständigen Dokumentbytes
+übertragen; ein erneuter unabhängiger Review dieser Nachführung wird nicht behauptet.
+Die nachfolgenden historischen Einträge und gebundenen Vorreviewtexte bleiben erhalten.
+
+Auf Jans ausdrückliche Vorgabe umfasst dieser Dokumentationsslice nur statische
+Prüfungen von Änderungsumfang, Diff, Dateihygiene, Links und Bindungen; keine
+Tests, Builds oder Bundlechecks. Der unveränderte Commithelper wird dafür nicht
+verwendet. Dies ändert weder den allgemeinen lokalen Commit-Prüfweg noch die
+späteren Implementierungs- und CI-Prüfpflichten. Commit und Push führt Jan manuell
+über VS Code aus; derzeit kein PR. Beides wird hier nicht als erfolgt behauptet.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und
+`runtimeRecord:null` bleiben unverändert. Authentisches Runtime-`A_obs` fehlt;
+Diagnose, Browserkomposition, Browser-E2E, Writer und Persistenz bleiben geschlossen.
+Auch die Runtimeblocker für Windows-Prozessbaumownership, handlegebundene
+Pfadbereinigung und unabhängige Adapterausgabestille bleiben bestehen.
+
+### ADR-0038-Isolierte CI-Testgruppierung vorgeschlagen / 2026-09-27
+
+[ADR 0038](docs/decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) ist neu
+vorgeschlagen, nicht angenommen. Er präzisiert ausschließlich die mögliche
+Gruppierung der ADR-0036-Adaptersuite in getrennten CI-Jobs mit isolierten
+Runnern, Checkouts und frischen Node-Prozessen. Tests und vollständige
+Kopielebenszyklen blieben innerhalb jeder Gruppe seriell; zwischen diesen Jobs
+wäre keine zusätzliche Serialität verlangt. Eindeutige Fall-/Variantenmengen,
+ungeteilte Kontroll-/Mutantenfamilien, gemeinsame Quellen, gebundene Ergebnisse
+und vollständiger Cleanup wären Voraussetzungen des Gesamterfolgs. Gruppenzahl,
+Zuschnitt und Auswahltechnik bleiben offen. Der lokale Commit-Prüfweg ist eine
+getrennte Entscheidung; es entsteht keine wiederkehrende Referenztestpflicht.
+
+Ausgangsbasis ist der von Jan bereitgestellte Branch
+`codex/docs/adr-0038-ci-isolation`, HEAD
+`1299011e63455658ac645fe7646fc55af8b07997`, sauberer Arbeitsbaum und ohne
+staged Änderungen. Featurebranch und lokaler zugehöriger Remote-Tracking-Ref
+binden denselben Commit; `main` und lokales `origin/main` bleiben bei
+`91eef75adf179de8d32720562ea481bc891319b3`. Adapter und Tests sind damit
+implementiert und committet. Die unten erhaltenen Vorreviewpassagen dokumentieren
+ihre damaligen Bytes und nächsten Schritte, nicht einen erneuten Reviewauftrag.
+
+Laut Jans Auftrag und vorliegendem lesendem Vertragsabgleich urteilt der
+unabhängige Daybreak-Review technisch `PASS`. Ursprünglich verlangt war
+`xhigh`; tatsächlich verwendete Jan Blue / Ultra und akzeptierte die Abweichung
+ausdrücklich. Technisches PASS, damaliges formales INCOMPLETE und spätere
+Akzeptanz bleiben getrennt; allein daraus folgt kein Wiederholungsreview.
+Die historischen 1010/1010, 757/757, 1767/1767 und 3522/3522 Tests, der Build
+mit 46 Modulen und der driftfreie Bundlecheck wurden hier nicht erneut ausgeführt.
+
+Geändert sind ausschließlich der neue ADR, Entscheidungsindex, Datenverträge,
+Architektur, Sicherheitsgrundlage, AGENTS.md und dieser Changelog. Die statische
+Verifikation umfasst Allowlist, Diff, lokale Links/Anker, UTF-8/Dateihygiene,
+Rohhashbindungen sowie unveränderten Index und Git-Refs. ADRs 0032–0037, Code,
+Tests, Workflow, Paketdateien, Commithelfer und übrige Dateien bleiben unverändert.
+Keine Tests, Harnessdiscovery, Modulproben, Builds, Bundlechecks, Benchmarks,
+CI- oder Runtimevorgänge wurden gestartet.
+
+Der statische Audit bestätigt die 160 übrigen getrackten Dateien rohbytegleich
+zur Ausgangsbasis, alle sieben Quellbindungen des neuen ADRs gegen Checkout und
+HEAD sowie unveränderte historische Vorreviewtexte. Alle 173 lokalen Links
+und Anker in den sieben Dokumenten, darunter 26 neue Verweise, sind auflösbar;
+UTF-8 ohne BOM und LF-Zeilenenden sind erhalten, der Whitespace-Diffcheck ist
+ohne Befund. Der vorhandene Reviewlog bestätigt lesend 1010 Resultatzeilen bei
+1000 Anzeigenamen; dies ist keine Harnessausführung.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und
+`runtimeRecord:null` bleiben unverändert. Authentisches Runtime-`A_obs` fehlt;
+Diagnose, Browserkomposition, Browser-E2E, Writer und Persistenz bleiben geschlossen.
+Windows-Prozessbaumownership, handlegebundene Pfadbereinigung und unabhängige
+Adapterausgabestille bleiben spätere Laufblocker. Nächster möglicher Schritt
+ist ein separat beauftragter Review der neuen Dokumentbytes, danach Jans
+Entscheidung über Annahme und manuelle Git-Schritte. Die im ADR beschriebenen
+Abnahme-, CI-, Laufzeit- und Speichernachweise bleiben spätere Arbeit.
 
 ### ADR-0036-Adapterfortsetzung / 2026-09-27
 
