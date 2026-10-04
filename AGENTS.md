@@ -19,9 +19,196 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – ADR 0035 und ADR-0037-D_K4-Delta unverändert angenommen; Foundation netzwerkfrei implementiert, unabhängig geprüft und durch Jan unverändert committet; 595/595 fokussierte Tests (Δ173); unabhängiger ADR-0036-Foundationabgleich-Dokumentreview mit gebundenem PASS abgeschlossen; ADR 0036 am 2026-09-12 ausdrücklich durch Jan angenommen; Adapter und Adaptertests weder implementiert noch ausgeführt; eigener netzwerkfreier Adapterimplementierungs- und Testslice nur auf gesonderten Auftrag; Diagnoselauf und Persistenz nicht autorisiert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+Aktueller Stand: `v0.3.0 – ADR 0039 angenommen; Adapter-CI-Joblimit auf 30 Minuten gesetzt; tatsächliche Ubuntu-CI ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+
+### ADR-0039-Annahme und Workflowlimit / 2026-10-04
+
+Jan hat ADR 0039 nach unabhängigem Dokumentreview mit technischem `PASS`
+für die sieben gebundenen Vorannahmefassungen ausdrücklich angenommen.
+Der Review gilt nicht für diese neue Statusnachführung oder den geänderten
+Workflow. Ausschließlich `jobs.adapter.timeout-minutes` steht nun auf `30`;
+`verify` und `aggregate` bleiben bei `10`. Die sechs Adaptergruppen, beide
+Node-Versionen, Serialität und vollständige Ergebnisaggregation bleiben
+unverändert. Der frühere ADR-0038-Implementierungs-Re-Review mit `PASS`
+umfasste die alte Workflowdatei; die damaligen lokalen Ergebnisartefakte
+sind wegen des neuen Workflowhashes nicht auf den jetzigen CI-Stand übertragbar.
+
+Die tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0`,
+Commit dieses Slices und PR stehen aus. `overallGate: FAIL`, `causeStatus:
+CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und `runtimeRecord:null` bleiben
+unverändert. Die folgende Vorschlags- und Reviewpassage dokumentiert den
+früheren Stand vor Annahme und Workflowänderung.
+
+### ADR-0039-Zeitbudgetvorschlag / 2026-10-04
+
+Der getrennte unabhängige ADR-0038-Implementierungs-Re-Review schloss für die
+zwölf exakt gebundenen Dateifassungen technisch mit `PASS`. Diese Fassungen
+sind nun im Commit `5f5304e53c0519513f703856c29a7c3a94914fa9` enthalten;
+der frühere Review-`FAIL` bleibt historisch. Die tatsächliche Ubuntu-CI-Abnahme
+auf Node `20.19.0` und `22.12.0` steht weiterhin aus.
+
+[ADR 0039](docs/decisions/0039-bounded-adapter-ci-job-timeout.md) schlägt
+ausschließlich für die zwölf isolierten Adapterjobs ein vorläufiges
+30-Minuten-Joblimit vor. `verify` und `aggregate` sollen bei zehn Minuten
+bleiben. ADR 0039 ist nicht angenommen; der Workflow bleibt bei zehn Minuten
+für alle Jobs. Dokumentreview, Jans Annahme und eine gesonderte
+Workflowänderung stehen aus. Der Branch-Push löst nach aktuellem Workflow
+keinen CI-Lauf aus; ein PR gegen `main` wurde nicht erstellt.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und
+`runtimeRecord:null` bleiben unverändert. Die folgenden datierten Abschnitte
+behalten ihre jeweiligen historischen Prüfstände und Rohbindungen.
+
+### ADR-0038-Lokale Neubindung / 2026-10-03
+
+Die vollständige lokale Selbstprüfung der reparierten ADR-0038-Bytes besteht:
+115/115 Infrastrukturtests, 2627/2627 im gesonderten `remaining`-Lauf und
+3637/3637 im einmaligen npm-Referenzlauf. Die sechs neuen, nacheinander
+abgeschlossenen Gruppen stimmen mit der neuen Referenz in allen 1010
+Fallidentitäten und 2322 Obligationen exakt überein; native Abschlüsse,
+TAP-Root-Pläne, feste Plan-/Quellbindungen und Cleanup sind bestätigt.
+21 eigene Artefaktgegenproben werden abgelehnt, einschließlich der
+konsistent neu gehashten Kopie ohne TAP-Root-Plan. Build: 46 Module, Exit 0;
+Bundlecheck: Exit 0, driftfrei.
+
+Die Nachweise vom 2026-09-28 und der frühere unabhängige Implementierungsreview
+mit `FAIL` bleiben historisch. Diese neue Selbstprüfung ersetzt weder den
+noch ausstehenden unabhängigen Re-Review noch die tatsächliche Ubuntu-CI-Abnahme
+auf Node `20.19.0` und `22.12.0`. Lokale Windows-/Node-Messungen belegen
+keinen Gesamtverbrauch des Runners und keine Einhaltung des unveränderten
+Zehn-Minuten-Joblimits. `overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`,
+`NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert. Die folgenden
+Abschnitte halten ihre jeweiligen historischen Prüfstände fest.
+[Neue Rohbelege und Messgrenzen](CHANGELOG.md#adr-0038-lokale-neubindung--2026-10-03).
+
+### ADR-0038-P1-Reparatur / 2026-10-03
+
+Die beiden P1-Befunde des unabhängigen Implementierungsreviews sind eng
+repariert. Discovery, Ausführung und Aggregation akzeptieren nur noch den
+extern fest gebundenen vollständigen Sollplan-SHA-256
+`1ec700dba82e0e93aa60c01968b717434fa22d4dd51e25d3cc4a0da576dc09a6`
+samt 1010 Fällen, Gruppenfallzahlen `193/122/222/318/102/53`, 1312
+Zusatzvarianten und 2322 Obligationen. Gruppenlogs benötigen jetzt genau einen
+TAP-13-Header, einen terminalen Root-Plan und den vollständigen geordneten
+Footer; die npm-Referenz bleibt ein getrennter Modus mit positivem, gegebenenfalls
+kleinerem Root-Plan.
+
+Die Infrastrukturtests bestehen mit 115/115. Darin bestehen die originale
+Planregistrierung, die beiden kausalen L728-Family-/Site-Gegenproben, vollständige
+LF-/CRLF- und verschachtelte Referenzlogs sowie eine echte positive
+Sechs-Gruppen-Aggregation. Deren eigene Artefaktkopie ohne Root-Plan wird trotz
+konsistent nachgezogener Loggröße und Log-SHA vom echten Aggregate-CLI verworfen.
+
+Standardlauf, sechs reale Gruppenläufe, positive Referenzaggregation, Build und
+Bundlecheck wurden für diese neuen Bytes nicht erneut ausgeführt. Die Nachweise
+vom 2026-09-28 bleiben historisch und werden nicht übertragen; die vollständige
+lokale Erfolgsevidenz ist daher noch unvollständig. Unabhängiger Re-Review und
+tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0` stehen aus. Es
+gab keinen Browser-/Diagnoselauf, Remote-CI- oder Git-Schritt. `overallGate:
+FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und `runtimeRecord:null`
+bleiben unverändert.
+
+### ADR-0038-CI-Testgruppierung / 2026-09-28
+
+Die angenommene ADR-0038-Gruppierung ist implementiert und lokal geprüft: sechs
+isolierte CI-Gruppen, weiterhin serielle Tests und vollständige Kopielebenszyklen
+innerhalb jeder Gruppe. Der Standardlauf besteht mit 3620/3620 Tests; alle sechs
+lokal nacheinander gestarteten Gruppen bestehen und stimmen in sämtlichen Fall-/
+Variantenidentitäten mit der 1010-Fall-Referenz überein. Die 98 neuen
+Infrastrukturtests, die tatsächliche positive Aggregation, 20 abgelehnte
+Artefaktgegenproben, Build mit 46 Modulen und driftfreier Bundlecheck sind belegt.
+[Nachweise und Rohbindungen](CHANGELOG.md#adr-0038-ci-testgruppierung--2026-09-28) trennen diese Selbstprüfung von früheren Reviews.
+
+Unabhängiger Implementierungsreview und tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0` stehen aus. Die lokalen Windows-/Node-24-Ergebnisse belegen weder die Einhaltung des unveränderten Zehn-Minuten-Joblimits noch einen Beschleunigungsfaktor. Git-Schritte bleiben vollständig manuell bei Jan; kein PR und kein entfernter CI-Lauf wurden gestartet.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation und Testkopien als `NOT_EVIDENCE` sowie `runtimeRecord:null` bleiben unverändert. Authentisches Runtime-`A_obs` fehlt; Diagnose, Browserkomposition, Browser-E2E, Writer und Persistenz bleiben geschlossen. Windows-Prozessbaumownership, handlegebundene Pfadbereinigung und unabhängige Adapterausgabestille bleiben spätere Runtimeblocker.
+
+Die folgenden Annahme-, Review- und Statuspassagen beschreiben ihre damaligen Slices. Ihre Aussagen zur noch ausstehenden Gruppierung und zur Beschränkung auf statische Prüfungen gelten nicht für diesen gesondert beauftragten Implementierungsslice. Frühere Reviews und Rohhashbindungen werden nicht auf die neuen Bytes übertragen.
+
+### ADR 0038 angenommen / 2026-09-28
+
+[ADR 0038](docs/decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md)
+ist seit Jans ausdrücklicher Entscheidung am 2026-09-28 angenommen. Er begrenzt
+die CI-Gruppierung auf isolierte Jobs; innerhalb jeder Gruppe bleiben Tests
+und vollständige Kopielebenszyklen seriell. Die Gruppierung ist noch nicht
+implementiert oder ausgeführt und benötigt einen gesonderten Auftrag.
+Der unabhängige Dokumentreview ist laut Jans Bericht mit technischem `PASS`
+ohne relevante Befunde abgeschlossen. Seine sieben Vorannahmebindungen und
+die getrennte Konfigurationsunsicherheit stehen im [Changelog](CHANGELOG.md#adr-0038-dokumentreview-und-annahme--2026-09-28);
+dieses PASS gilt nicht für die neuen vollständigen Bytes der Statusnachführung.
+Der aktuelle Slice erlaubt ausschließlich die sieben benannten Dokumentdateien
+und statische Verifikation; Tests, Builds und Bundlechecks sind auf Jans
+ausdrückliche Vorgabe ausgeschlossen. Commit und Push führt Jan manuell über
+VS Code aus; derzeit kein PR. Danach kann die Umsetzung separat beauftragt werden.
+Die folgenden gebundenen Vorreviewpassagen und früheren Schrittfolgen bleiben
+historisch erhalten, einschließlich der früheren Adapterreviewprovenienz mit
+technischem PASS, damaligem INCOMPLETE und Jans Akzeptanz von Blue / Ultra.
+Maßgeblich für diesen Slice ist diese Ergänzung. Runtimegrenzen bleiben geschlossen.
+
+### ADR-0036-Adapterfortsetzung / 2026-09-27
+
+Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei.
+
+Die Fortsetzung begann am 2026-09-20 und wurde am 2026-09-26 auf erneuten ausdrücklichen Nutzerauftrag wiederaufgenommen. Die letzte erforderliche Prüfung endete 2026-09-26T22:00:20.7800541Z; das Sektionsdatum verwendet Europe/Berlin. Ergebnisse, Reparaturprovenienz und Rohbindungen stehen im [Changelog](CHANGELOG.md#adr-0036-adapterfortsetzung--2026-09-27).
+
+ADR 0035, ADR 0036 und ADR 0037 sowie die geschützte Foundation bleiben unverändert. Foundation und Testkopien bleiben `NOT_EVIDENCE`, die Testfinalisierung liefert `runtimeRecord:null`. Authentisches Runtime-`A_obs`, Diagnoselauf, Browserkomposition, Browser-E2E, Writer und Persistenz sind weder nachgewiesen noch autorisiert. `overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert.
+
+Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit. Diese Selbstprüfung ist kein unabhängiger Review-PASS. Git-Schritte bleiben manuell bei Jan.
+
+Die folgenden älteren Status-, Freigabe- und Schrittfolgeangaben beschreiben ihre jeweiligen historischen Slices; sie sind keine aktuelle Sperre des jetzt ausdrücklich beauftragten netzwerkfreien Adapter-/Testslices. Ihre Annahme-, Review-, Commitdaten, Rohhashes und technischen Regeln bleiben erhalten. Maßgeblich für den aktuellen Arbeits- und Prüfstand ist dieser Abschnitt; frühere Reviews gelten ausschließlich für ihre damaligen Bytes.
+
+### Aktuelle Arraydescriptor-Korrektur / 2026-09-13
+
+Der vorgeschaltete lokale Vertragsabgleich trägt die Entfernung ausschließlich
+der beiden zusätzlichen `lengthDescriptor.writable !== true`-Bedingungen in
+`readClosedArray` und `readClosedTargetInfos`. Native Array-Längendescriptoren
+mit beiden Writablezuständen erfüllen bei sonst gültigem Profil die
+fortgeltende Arraygrammatik. Fremde Eingaben werden weiterhin weder mutiert
+noch eingefroren; eingefrorene Eingaben erhalten keine Provenienz.
+Der Adapter-Freezevertrag bleibt unverändert.
+
+Der Korrekturimplementierungsbericht nennt erneut ausgeführte 595/595
+Basistests vor der Korrektur. Seine abschließenden Ergebnisse sind
+757/757 Foundationtests, einschließlich fünf neuer kausaler Mutanten und aller
+bestehenden Notification-, Deadline- und Joinnachweise, sowie 2512/2512 Tests
+der seriellen Gesamtsuite (`1755 + 757`). Die Regressionen bestehen mit
+423/423, 466/466 und 735/735, der Build mit 46 Modulen und der Bundlecheck
+driftfrei. Befund, Testmatrix und Rohhashes stehen im
+[Changelog](CHANGELOG.md#foundation-arraydescriptor-korrektur--2026-09-13).
+
+Jan übermittelte den unabhängigen Korrekturreview von
+`gpt-daybreak-blue-latest`, Reasoning `xhigh`, als Chatbericht: `PASS` ohne
+relevante Befunde. Er galt Basis `91eef75adf179de8d32720562ea481bc891319b3`
+plus neun damals uncommitteten Rohbytefassungen. Jan übernahm diese danach
+unverändert in `8f8150e1426983ef18755a395fdb8d8c99dfc470`; alle neun
+Reviewhashes treffen die rohen Commitblobs. Der Review wiederholte nur
+757/757, Build mit exakt 46 Modulen und Bundlecheck mit Exit 0 ohne Drift.
+Die größeren Suiten stammen ausschließlich aus dem Implementierungsbericht
+und nutzten ihre erlaubten bestehenden Loopback-/Testprozessfixtures.
+Die historische 595er-Baseline und sechs VM-Gegenproben wurden im
+Korrekturreview nicht wiederholt. Seine Bindung gilt weder als auf dem
+Korrekturcommit ausgeführter Review noch für die neuen Dokumentbytes.
+
+Der jetzige dokumentarische ADR-0036-Load-/Hashabgleich bindet die korrigierten
+Foundation-/Testbytes und die aktive 757er-Suite. ADR 0036 bleibt ausdrücklich
+durch Jan `Angenommen – 2026-09-12`; die Hauptteilgleichheit galt historisch
+für die damalige Annahmenachführung. Ausgewählte Hauptteilpassagen ändern sich
+jetzt ohne neue Annahme oder Architekturentscheidung. Die vollständige
+[Review- und Ergebnisprovenienz](CHANGELOG.md#adr-0036-load-hashabgleich-nach-foundationkorrektur--2026-09-13)
+trennt historische Reviews, Korrekturreview und eigene Selbstprüfung.
+Als Nächstes folgen ausschließlich separat beauftragter unabhängiger
+Dokumentreview der acht neuen Rohbytefassungen, bei Erfolg Jans manueller
+Dokumentationscommit und erst danach ein neu gebundener, ausdrücklich
+beauftragter netzwerkfreier Adapterimplementierungs- und Testslice.
+Authentisches `A_obs`, Lauf-, Browser-, E2E-, Writer- und Persistenzfreigaben
+fehlen weiterhin; Foundation bleibt `NOT_EVIDENCE`.
 
 ### Aktuelle Foundationentscheidung / ADR 0037
+
+Die folgenden Implementierungszahlen, Rohhashes, Reviews und
+Statusnachführungen dokumentieren den gebundenen Basisstand vor der
+Arraydescriptor-Korrektur; sie werden nicht auf die neuen Bytes übertragen.
+Die aktuelle Prüfbindung und nächste Schrittfolge stehen im Abschnitt oben.
 
 Der unabhängige Astra-Review hat die R1–R4-Dokumentkorrektur von ADR 0036
 im eng begrenzten Dokumentationsscope mit PASS abgeschlossen. Er gilt nur für
@@ -172,7 +359,7 @@ Vertragsresponses sind weiterhin auf `dataOrigin: "synthetic"` begrenzt.
 Dieser Wert ist nur eine Vertragsklassifikation und kein Herkunfts- oder
 Datenschutzbeweis. `v0.2.2` bleibt vollständig lokal. Die Boundary selbst
 besitzt weiterhin keinen HTTP-Handler und ist nicht in `src/main.js` komponiert.
-Aktuell ist
+Vor der Arraydescriptor-Korrektur galt
 `v0.3.0 – in Arbeit – ADR 0035 und das ADR-0037-D_K4-Delta angenommen;
 ADR 0036 als nach R1–R4 korrigierte dokumentarische Adaptergrenze
 am 2026-09-12 ausdrücklich durch Jan angenommen, K2-Korrektur konstruktiv ausgearbeitet und im
@@ -1001,8 +1188,8 @@ R1–R4-Dokumentationsscope geprüft. Die synchrone
 `D_K4`-Foundationnotification nach `O0` ist durch ADR 0037 angenommen und
 netzwerkfrei implementiert, unabhängig mit gebundenem PASS geprüft und durch
 Jan unverändert committet. Der Foundationabgleich ist dokumentiert und sein
-unabhängiger Dokumentreview mit gebundenem PASS abgeschlossen. Der fachliche
-Folgeschritt ist ein eigener netzwerkfreier Adapterimplementierungs- und
+unabhängiger Dokumentreview mit gebundenem PASS abgeschlossen. Der damalige fachliche
+Folgeschritt war ein eigener netzwerkfreier Adapterimplementierungs- und
 Testslice nur auf gesonderten Auftrag. Adapterimplementierung, Adaptertests
 und Diagnoseruntimevorgang bleiben in diesem Auftrag geschlossen.
 
@@ -1027,7 +1214,7 @@ nicht implementiert. Es existieren weiterhin weder
 Browser-End-to-End-Fluss oder `src/main.js`-Komposition. Im damaligen
 ADR-0026-Entscheidungsstand war der nächste Slice ausschließlich die isolierte
 Implementierung dieses Moduls samt mutationswirksamer Unit-Suite; die
-Browserkomposition sollte danach getrennt folgen. Gegenwärtig ersetzt der
+Browserkomposition sollte danach getrennt folgen. Im damaligen Abgleich ersetzt der
 angenommene ADR 0035 ADR 0034 formal und übernimmt alle durch ihn nicht
 korrigierten Regeln aus ADR 0034, ADR 0033 und ADR 0032. ADR 0034 bleibt mit
 bytegleichem Hauptteil ab `## Kontext` historische Entscheidungsebene. Die
@@ -1082,6 +1269,13 @@ Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 - echte private oder gesundheitsbezogene Daten im Portfolio-Modus.
 
 ## Verbindliche Entwicklungsreihenfolge
+
+Korrekturreview und Jans unveränderter Korrekturcommit sind abgeschlossen;
+der ADR-0036-Load-/Hashabgleich ist dokumentiert. Vor der unten beschriebenen
+Adapterfortsetzung stehen ausschließlich der separat beauftragte unabhängige
+Dokumentreview der acht neuen Rohbytefassungen und bei Erfolg Jans manueller
+Dokumentationscommit. Erst danach folgt ein neu gebundener, ausdrücklich
+beauftragter netzwerkfreier Adapterimplementierungs- und Testslice.
 
 Halte diese Reihenfolge der Hauptmeilensteine ein:
 
@@ -1169,8 +1363,12 @@ Innerhalb dieses Pfads gilt verbindlich folgende Implementierungsreihenfolge:
 20. der gesonderte ADR-0036-Abgleich gegen neue Load-/Hash-/Port-/Testverträge
     ist dokumentiert, sein unabhängiger Dokumentreview mit gebundenem PASS
     abgeschlossen und ADR 0036 anschließend am 2026-09-12 ausdrücklich durch
-    Jan angenommen; der eigene netzwerkfreie Adapterimplementierungs- und
-    Testslice benötigt weiterhin einen gesonderten Auftrag;
+    Jan angenommen; danach sind Arraydescriptor-Korrekturreview und Jans
+    unveränderter Korrekturcommit abgeschlossen und der aktuelle Load-/Hashabgleich
+    dokumentiert. Vor dem neu gebundenen, ausdrücklich beauftragten
+    netzwerkfreien Adapterimplementierungs- und Testslice folgen separat
+    unabhängiger Dokumentreview der acht neuen Rohbytefassungen und bei Erfolg
+    Jans manueller Dokumentationscommit;
 21. erst danach werden Zielbrowser, `T_replay`, Observer, höchstens ein
     Transportstimulus, Benutzerinteraktion und Cleanup separat autorisiert;
 22. der einmalige sichtbare Diagnoselauf wird ausgeführt und getrennt
@@ -1222,8 +1420,12 @@ Schritt 19 ist implementiert, geprüft, unabhängig mit gebundenem PASS
 reviewt und durch Jan unverändert committet. Der Foundationabgleich aus
 Schritt 20 ist dokumentiert, sein unabhängiger Dokumentreview mit gebundenem
 PASS abgeschlossen und Jans anschließende ausdrückliche ADR-0036-Annahme
-erfolgt. Adapterimplementierung und Adaptertests bleiben ein eigener
-netzwerkfreier Slice auf gesonderten Auftrag.
+erfolgt. Die anschließende Arraydescriptor-Korrektur ist unabhängig geprüft
+und durch Jan unverändert committet; der Load-/Hashabgleich ist dokumentiert.
+Sein unabhängiger Dokumentreview der acht neuen Rohbytefassungen steht aus;
+bei Erfolg folgt Jans manueller Dokumentationscommit. Erst danach kommen
+Adapterimplementierung und Adaptertests als neu gebundener, ausdrücklich
+beauftragter netzwerkfreier Slice in Betracht.
 Jeder sichtbare Diagnose- oder Runtime-Evidence-Lauf bleibt gesperrt und
 benötigt zuvor zusätzlich eine getrennt angenommene handlegebundene Windows-
 Prozessbaum- und Pfadcleanupfähigkeit.
@@ -1419,11 +1621,15 @@ Runtimevorgang. Der danach getrennt autorisierte Foundation-Slice ist
 implementiert und geprüft. ADR 0036 ist als getrennte dokumentarische
 Adaptergrenze nach R1–R4 korrigiert und am 2026-09-12 ausdrücklich durch Jan angenommen; ihre K2-Konstruktion ist im
 begrenzten Dokumentationsscope geprüft. Die `D_K4`-Foundationentscheidung ist
-durch ADR 0037 angenommen und mit 595/595 fokussierten Tests netzwerkfrei
+durch ADR 0037 angenommen und damals mit 595/595 fokussierten Tests netzwerkfrei
 implementiert, unabhängig mit gebundenem PASS geprüft und durch Jan unverändert
 committet. Der Foundationabgleich ist dokumentiert; der unabhängige Dokumentreview
-seiner gebundenen Vorannahmefassung ist mit PASS abgeschlossen. Adapterimplementierung
-und Adaptertests fehlen weiterhin und benötigen einen gesonderten Auftrag.
+seiner gebundenen Vorannahmefassung ist mit PASS abgeschlossen. Die danach
+korrigierte Foundation besitzt die aktive 757/757-Baseline; Korrekturreview und
+Jans Commit sind abgeschlossen. Vor Adapterimplementierung und Adaptertests
+stehen der separat beauftragte unabhängige Dokumentreview des jetzigen
+Load-/Hashabgleichs und bei Erfolg Jans manueller Dokumentationscommit;
+erst danach ist ein neu gebundener ausdrücklicher Adapterauftrag vorgesehen.
 Browserkomposition und Browser-End-to-End-`syncTest` bleiben bis zu einem
 späteren vollständig neuen ADR-0029-Gesamt-`PASS` gesperrt.
 

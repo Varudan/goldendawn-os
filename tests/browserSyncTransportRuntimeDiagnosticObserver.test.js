@@ -8634,3 +8634,410 @@ test('beweist ADR-0037-Deadlinegrenzen mit vier getrennten Envelope-Proxytraps u
     }
   })
 })
+
+const ARRAY_DESCRIPTOR_MODES = ['mutable', 'length-readonly', 'deep-frozen']
+
+function createArrayDescriptorTarget(index = 0) {
+  return {
+    type: index === 0 ? 'page' : 'worker',
+    url: index === 0 ? TOP_LEVEL_URL : `http://127.0.0.1/worker-${index}`,
+    attached: false,
+    targetId: index === 0 ? 'target-adr0035-1' : `worker-${index}`,
+  }
+}
+
+function prepareArrayDescriptorMode(root, array, mode) {
+  if (mode === 'length-readonly') {
+    Object.defineProperty(array, 'length', { writable: false })
+  } else if (mode === 'deep-frozen') {
+    deepFreeze(root)
+  } else {
+    assert.equal(mode, 'mutable')
+  }
+}
+
+function assertArrayDescriptorMode(root, array, mode) {
+  const length = Object.getOwnPropertyDescriptor(array, 'length')
+  assert.equal(length.writable, mode === 'mutable')
+  assert.equal(length.enumerable, false)
+  assert.equal(length.configurable, false)
+  assert.equal(Object.getOwnPropertyDescriptor(array, '0').writable,
+    mode !== 'deep-frozen')
+  if (mode === 'deep-frozen') {
+    assertDeepFrozenGraph(root)
+  } else {
+    assert.equal(Object.isFrozen(array), false)
+    assert.equal(Object.isFrozen(array[0]), false)
+  }
+}
+
+async function assertArrayDescriptorCompatibility(factory, domain, mode) {
+  const runBinding = createValidRunBinding()
+  const setupMessages = createSetupMessagesForTargets([createArrayDescriptorTarget()])
+  const root = domain === 'replayOperands' ? runBinding : setupMessages[0]
+  const array = domain === 'replayOperands'
+    ? runBinding.replayOperands
+    : setupMessages[0].value.result.targetInfos
+  prepareArrayDescriptorMode(root, array, mode)
+  const before = cloneTree(root)
+  const descriptors = Object.getOwnPropertyDescriptors(array)
+  let handoffCount = 0
+  const controller = createFullRunEffectController({
+    setupMessages,
+    settlementForIntent(intent, response) {
+      if (domain === 'targetInfos' && response === setupMessages[0]) {
+        assert.equal(intent.kind, 'observation-dequeue')
+        assert.equal(intent.payload.phase, 'setup')
+        assert.equal(response.value.result.targetInfos, array)
+        assertArrayDescriptorMode(response, array, mode)
+        handoffCount += 1
+      }
+    },
+  })
+  const options = { effectPort: controller.effectPort, runBinding }
+  if (domain === 'replayOperands') {
+    assert.equal(options.runBinding.replayOperands, array)
+    assertArrayDescriptorMode(options.runBinding, array, mode)
+    handoffCount += 1
+  }
+  let api
+  assert.doesNotThrow(() => { api = factory(options) },
+    'array descriptor factory compatibility')
+  const result = await api.run()
+  assertFoundationResult(result)
+  assert.equal(result.ok, true, 'array descriptor run compatibility')
+  assert.equal(result.recordProjection.candidateObserverGate, 'UNPROVEN',
+    'array descriptor run compatibility')
+  assert.equal(result.recordProjection.candidateFinding, 'inconclusive')
+  assert.deepEqual(controller.protocolCommands, PROTOCOL_COMMANDS,
+    'array descriptor run compatibility')
+  const evaluateAcks = controller.responses.filter(({ intent }) =>
+    intent.kind === 'protocol-command-send' &&
+    intent.payload.command === 'Runtime.evaluate')
+  assert.equal(evaluateAcks.length, 1)
+  assert.equal(evaluateAcks[0].response.sendState, 'sent-and-capture-cap-started')
+  assert.equal(result.recordProjection.timing.completion.captureWindowState, 'elapsed')
+  assert.equal(result.recordProjection.timing.completion.cleanupFinalized, true)
+  assert.equal(result.recordProjection.timing.completion.cleanupFinalizeReason,
+    'all-steps-terminal')
+  assert.equal(controller.notificationCalls.length, 1)
+  assert.equal(handoffCount, 1)
+  assertArrayDescriptorMode(root, array, mode)
+  assert.deepEqual(Object.getOwnPropertyDescriptors(array), descriptors)
+  assert.deepEqual(root, before)
+  return { result, intents: controller.intents }
+}
+
+test('akzeptiert beide nativen Arraylaengendescriptoren und tief gefrorene Eingabegraphen', { concurrency: false }, async (t) => {
+  for (const domain of ['replayOperands', 'targetInfos']) {
+    let baseline
+    for (const mode of ARRAY_DESCRIPTOR_MODES) {
+      await t.test(`${domain}-${mode}`, async () => {
+        const observed = await assertArrayDescriptorCompatibility(
+          createBrowserSyncTransportRuntimeDiagnosticObserver, domain, mode
+        )
+        if (baseline === undefined) {
+          baseline = observed
+        } else {
+          assert.deepEqual(observed.intents, baseline.intents)
+          assert.deepEqual(observed.result, baseline.result)
+          assert.notEqual(observed.result, baseline.result)
+          assert.notEqual(observed.result.recordProjection,
+            baseline.result.recordProjection)
+        }
+      })
+    }
+  }
+})
+
+function observeArrayDescriptorFixture(target, fault = null) {
+  const operations = []
+  const mutations = []
+  let freeReads = 0
+  const proxy = new Proxy(target, {
+    get() {
+      freeReads += 1
+      throw new Error('array-fixture-free-read')
+    },
+    getPrototypeOf(value) {
+      operations.push('prototype')
+      if (fault === 'prototype-throw') throw new Error('array-fixture-reflection')
+      return Reflect.getPrototypeOf(value)
+    },
+    ownKeys(value) {
+      operations.push('keys')
+      if (fault === 'keys-throw') throw new Error('array-fixture-reflection')
+      const keys = Reflect.ownKeys(value)
+      return fault === 'reordered-keys' ? keys.reverse() : keys
+    },
+    getOwnPropertyDescriptor(value, key) {
+      operations.push(`descriptor:${String(key)}`)
+      if (fault === `descriptor-${String(key)}-throw`) {
+        throw new Error('array-fixture-reflection')
+      }
+      return Reflect.getOwnPropertyDescriptor(value, key)
+    },
+    set() { mutations.push('set'); throw new Error('array-fixture-mutation') },
+    defineProperty() { mutations.push('define'); throw new Error('array-fixture-mutation') },
+    deleteProperty() { mutations.push('delete'); throw new Error('array-fixture-mutation') },
+    preventExtensions() { mutations.push('freeze'); throw new Error('array-fixture-mutation') },
+    setPrototypeOf() { mutations.push('prototype'); throw new Error('array-fixture-mutation') },
+  })
+  return { proxy, operations, mutations, freeReads: () => freeReads }
+}
+
+async function runObservedArrayFixture(domain, fixture, runBinding = createValidRunBinding()) {
+  const controller = domain === 'targetInfos'
+    ? createFullRunEffectController({
+        setupMessages: createSetupMessagesForTargets(fixture.proxy),
+      })
+    : createFullRunEffectController()
+  if (domain === 'replayOperands') runBinding.replayOperands = fixture.proxy
+  let api
+  let factoryError = null
+  try {
+    api = createBrowserSyncTransportRuntimeDiagnosticObserver({
+      effectPort: controller.effectPort, runBinding,
+    })
+  } catch (error) {
+    factoryError = error
+  }
+  const result = api === undefined ? null : await api.run()
+  assert.equal(fixture.freeReads(), 0)
+  assert.deepEqual(fixture.mutations, [])
+  return { result, factoryError, controller }
+}
+
+test('bewahrt Exact-once-Reflection ohne Fremdreads oder Mutation fuer beide Writablewerte', { concurrency: false }, async (t) => {
+  for (const domain of ['replayOperands', 'targetInfos']) {
+    for (const writable of [true, false]) {
+      await t.test(`${domain}-writable-${writable}`, async () => {
+        const target = domain === 'replayOperands'
+          ? createValidRunBinding().replayOperands : [createArrayDescriptorTarget()]
+        Object.defineProperty(target, 'length', { writable })
+        const before = Object.getOwnPropertyDescriptors(target)
+        const fixture = observeArrayDescriptorFixture(target)
+        const observed = await runObservedArrayFixture(domain, fixture)
+        assert.equal(observed.factoryError, null)
+        assert.equal(observed.result.recordProjection.candidateObserverGate, 'UNPROVEN')
+        assert.deepEqual(observed.controller.protocolCommands, PROTOCOL_COMMANDS)
+        assert.deepEqual(fixture.operations, [
+          'prototype', 'keys', 'descriptor:length',
+          ...Array.from({ length: target.length }, (_, index) => `descriptor:${index}`),
+        ])
+        assert.deepEqual(Object.getOwnPropertyDescriptors(target), before)
+        assert.equal(Object.isFrozen(target), false)
+      })
+    }
+  }
+})
+
+test('erhaelt die geschlossenen Arraygrenzen und Reflectionfehler bei beiden Writablewerten', { concurrency: false }, async (t) => {
+  const kinds = [
+    'hole', 'symbol', 'extra', 'accessor', 'foreign-prototype',
+    'prototype-throw', 'keys-throw', 'descriptor-length-throw',
+    'descriptor-0-throw', 'reordered-keys', 'aliased-entry',
+  ]
+  for (const domain of ['replayOperands', 'targetInfos']) {
+    for (const writable of [true, false]) {
+      for (const kind of kinds) {
+        await t.test(`${domain}-${kind}-writable-${writable}`, async () => {
+          const target = domain === 'replayOperands'
+            ? createValidRunBinding().replayOperands
+            : [createArrayDescriptorTarget(), createArrayDescriptorTarget(1)]
+          let getterCalls = 0
+          if (kind === 'hole') delete target[0]
+          if (kind === 'symbol') target[Symbol('array-extra')] = true
+          if (kind === 'extra') target.extra = true
+          if (kind === 'accessor') {
+            Object.defineProperty(target, '0', {
+              enumerable: true, configurable: true,
+              get() { getterCalls += 1; throw new Error('array-fixture-getter') },
+            })
+          }
+          if (kind === 'foreign-prototype') Object.setPrototypeOf(target, null)
+          if (kind === 'aliased-entry') target[1] = target[0]
+          Object.defineProperty(target, 'length', { writable })
+          const before = Object.getOwnPropertyDescriptors(target)
+          const fixture = observeArrayDescriptorFixture(target, kind)
+          const observed = await runObservedArrayFixture(domain, fixture)
+          if (domain === 'replayOperands') {
+            assert.equal(observed.factoryError?.message, EXPECTED_FACTORY_ERROR)
+            assert.equal(observed.result, null)
+            assert.deepEqual(observed.controller.intents, [])
+          } else {
+            assert.equal(observed.factoryError, null)
+            assertFoundationResult(observed.result)
+            assert.equal(observed.result.recordProjection.candidateObserverGate, 'FAIL')
+            assert.equal(observed.result.recordProjection.candidateFinding, 'observer-invalid')
+            assert.deepEqual(observed.controller.protocolCommands, ['Target.getTargets'])
+          }
+          assert.equal(getterCalls, 0)
+          assert.deepEqual(Object.getOwnPropertyDescriptors(target), before)
+          assert.equal(new Set(fixture.operations).size, fixture.operations.length)
+          if (kind === 'accessor' || kind === 'descriptor-0-throw') {
+            assert.equal(fixture.operations.at(-1), 'descriptor:0')
+          }
+        })
+      }
+    }
+  }
+})
+
+test('erhaelt Targetkardinalitaet und den 129er-Guard vor Elementreads bei beiden Writablewerten', { concurrency: false }, async (t) => {
+  for (const writable of [true, false]) {
+    for (const size of [0, 1, 128, 129]) {
+      await t.test(`targetInfos-${size}-writable-${writable}`, async () => {
+        const target = Array.from({ length: size }, (_, index) => createArrayDescriptorTarget(index))
+        Object.defineProperty(target, 'length', { writable })
+        const fixture = observeArrayDescriptorFixture(target)
+        const observed = await runObservedArrayFixture('targetInfos', fixture)
+        const projection = observed.result.recordProjection
+        assert.equal(projection.candidateObserverGate, 'UNPROVEN')
+        assert.equal(observed.controller.protocolCommands.includes('Runtime.evaluate'),
+          size === 1 || size === 128)
+        assert.deepEqual(fixture.operations, [
+          'prototype', 'keys', 'descriptor:length',
+          ...Array.from({ length: size > 128 ? 0 : size }, (_, index) => `descriptor:${index}`),
+        ])
+        if (size === 0 || size === 129) {
+          assert.equal(projection.timing.completion.observationCloseReason,
+            'setup-terminal-unproven')
+          assert.equal(projection.timing.completion.captureWindowState, 'not-started')
+        }
+      })
+    }
+  }
+  for (const mode of ARRAY_DESCRIPTOR_MODES) {
+    for (const kind of ['two-targets', 'attached', 'duplicate-before-evaluate', 'duplicate-during-capture']) {
+      await t.test(`${kind}-${mode}`, async () => {
+        const target = [createArrayDescriptorTarget()]
+        if (kind === 'two-targets') target.push({ ...createArrayDescriptorTarget(), targetId: 'target-second' })
+        if (kind === 'attached') target[0].attached = true
+        const setupMessages = createSetupMessagesForTargets(target)
+        prepareArrayDescriptorMode(setupMessages[0], target, mode)
+        const duplicate = createCdpMessage({ id: 1, result: {
+          targetInfos: [createArrayDescriptorTarget()],
+        } })
+        prepareArrayDescriptorMode(duplicate, duplicate.value.result.targetInfos, mode)
+        if (kind === 'duplicate-before-evaluate') setupMessages.splice(1, 0, duplicate)
+        const controller = createFullRunEffectController({
+          setupMessages,
+          ...(kind === 'duplicate-during-capture' ? { captureMessages: [duplicate] } : {}),
+        })
+        const result = await runFullController(controller)
+        const projection = result.recordProjection
+        assert.equal(projection.candidateObserverGate, 'UNPROVEN')
+        assert.equal(controller.protocolCommands.includes('Runtime.evaluate'),
+          kind === 'duplicate-during-capture')
+        assert.equal(projection.timing.completion.observationCloseReason,
+          kind === 'duplicate-during-capture' ? 'capture-cap' : 'setup-terminal-unproven')
+        assert.equal(projection.timing.completion.captureWindowState,
+          kind === 'duplicate-during-capture' ? 'elapsed' : 'not-started')
+        assert.equal(projection.observer.protocolOperations[0].observedCountClass, 'one')
+        assert.equal(projection.observer.protocolOperations[0].result, 'match')
+      })
+    }
+  }
+})
+
+function assertFrozenReplayFieldRejection(factory, index) {
+  const valid = deepFreeze(createValidRunBinding())
+  assert.doesNotThrow(() => factory(createObserverOptions(valid)),
+    'frozen replay valid control')
+  const invalid = deepFreeze(createReplayVariant(index, {
+    fieldId: `${HISTORICAL_REPLAY_VALUES[index][0]}.wrong`,
+  }))
+  assert.throws(() => factory(createObserverOptions(invalid)),
+    (error) => error instanceof TypeError && error.message === EXPECTED_FACTORY_ERROR,
+    'frozen replay field-id rejection')
+}
+
+test('prueft gefrorene Replaynegativfixtures hinter einer gueltigen 59-Positionen-Kontrolle', { concurrency: false }, async (t) => {
+  for (let index = 0; index < 59; index += 1) {
+    await t.test(`frozen-field-id-${index + 1}`, () => {
+      assertFrozenReplayFieldRejection(createBrowserSyncTransportRuntimeDiagnosticObserver, index)
+    })
+  }
+  for (const mode of ARRAY_DESCRIPTOR_MODES) {
+    for (const kind of ['missing', 'additional', 'reordered', 'invalid-state', 'missing-null', 'invalid-scalar']) {
+      await t.test(`${kind}-${mode}`, () => {
+        const valid = createValidRunBinding()
+        prepareArrayDescriptorMode(valid, valid.replayOperands, mode)
+        assertFactoryAccepts(valid)
+        const invalid = createValidRunBinding()
+        if (kind === 'missing') invalid.replayOperands.pop()
+        if (kind === 'additional') invalid.replayOperands.push({ ...invalid.replayOperands[0] })
+        if (kind === 'reordered') {
+          const first = invalid.replayOperands[0]
+          invalid.replayOperands[0] = invalid.replayOperands[1]
+          invalid.replayOperands[1] = first
+        }
+        if (kind === 'invalid-state') invalid.replayOperands[9].observationState = 'unknown'
+        if (kind === 'missing-null') invalid.replayOperands[9].observationState = 'not-observed'
+        if (kind === 'invalid-scalar') invalid.replayOperands[47].replayValue = '8787'
+        prepareArrayDescriptorMode(invalid, invalid.replayOperands, mode)
+        assertFactoryDependencyError(() => createBrowserSyncTransportRuntimeDiagnosticObserver(
+          createObserverOptions(invalid)
+        ))
+      })
+    }
+  }
+})
+
+test('erkennt vier getrennte Array-Writablezwang-Mutanten am selben oeffentlichen Verhaltensoracle', { concurrency: false }, async (t) => {
+  let originalBytes
+  for (const domain of ['replayOperands', 'targetInfos']) {
+    for (const requiredWritable of [true, false]) {
+      const id = `${domain}-requires-writable-${requiredWritable}`
+      const mode = requiredWritable ? 'length-readonly' : 'mutable'
+      await t.test(id, async () => {
+        await withTemporaryDiagnosticObserverCopy({
+          anchor: PRIVATE_EXPORT_ANCHOR, kind: `${id}-control`,
+        }, async ({ namespace, productionBytes }) => {
+          originalBytes ??= productionBytes
+          assert.deepEqual(productionBytes, originalBytes)
+          await assertArrayDescriptorCompatibility(namespace[PUBLIC_EXPORT_NAME], domain, mode)
+        })
+        const valueGuard = domain === 'replayOperands'
+          ? 'lengthDescriptor.value !== expectedLength ||'
+          : 'lengthDescriptor.value < 0 ||'
+        const search = `    ${valueGuard}\n    lengthDescriptor.enumerable !== false ||\n    lengthDescriptor.configurable !== false`
+        const replacement = `    ${valueGuard}\n    lengthDescriptor.enumerable !== false ||\n    lengthDescriptor.writable !== ${requiredWritable} ||\n    lengthDescriptor.configurable !== false`
+        await withTemporaryDiagnosticObserverCopy({
+          anchor: PRIVATE_EXPORT_ANCHOR, kind: id,
+          mutate(bytes, replace) { return replace(bytes, search, replacement, id) },
+        }, async ({ namespace, productionBytes }) => {
+          assert.deepEqual(productionBytes, originalBytes)
+          await assert.rejects(
+            () => assertArrayDescriptorCompatibility(namespace[PUBLIC_EXPORT_NAME], domain, mode),
+            (error) => error?.code === 'ERR_ASSERTION' &&
+              error.message.includes('array descriptor')
+          )
+        })
+      })
+    }
+  }
+  await t.test('frozen-replay-field-id-guard-omitted', async () => {
+    await withTemporaryDiagnosticObserverCopy({
+      anchor: PRIVATE_EXPORT_ANCHOR, kind: 'frozen-field-id-control',
+    }, async ({ namespace, productionBytes }) => {
+      assert.deepEqual(productionBytes, originalBytes)
+      assertFrozenReplayFieldRejection(namespace[PUBLIC_EXPORT_NAME], 0)
+    })
+    await withTemporaryDiagnosticObserverCopy({
+      anchor: PRIVATE_EXPORT_ANCHOR, kind: 'frozen-field-id-guard-omitted',
+      mutate(bytes, replace) {
+        return replace(bytes,
+          "if (values[0] !== definition[0] || !isOneOf(values[1], ['observed', 'not-observed', 'ambiguous'])) {",
+          "if (!isOneOf(values[1], ['observed', 'not-observed', 'ambiguous'])) {",
+          'frozen-replay-field-id-guard-omitted')
+      },
+    }, async ({ namespace, productionBytes }) => {
+      assert.deepEqual(productionBytes, originalBytes)
+      assert.throws(() => assertFrozenReplayFieldRejection(namespace[PUBLIC_EXPORT_NAME], 0),
+        (error) => error?.code === 'ERR_ASSERTION' &&
+          error.message.includes('frozen replay field-id rejection'))
+    })
+  })
+})

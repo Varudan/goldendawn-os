@@ -444,7 +444,6 @@ function readClosedArray(node, expectedLength, visited) {
     capturedObjectHasOwn(lengthDescriptor, 'value') !== true ||
     lengthDescriptor.value !== expectedLength ||
     lengthDescriptor.enumerable !== false ||
-    lengthDescriptor.writable !== true ||
     lengthDescriptor.configurable !== false
   ) {
     throw new TypeError('invalidClosedArray')
@@ -2445,7 +2444,6 @@ function readClosedTargetInfos(array) {
     !capturedNumberIsSafeInteger(lengthDescriptor.value) ||
     lengthDescriptor.value < 0 ||
     lengthDescriptor.enumerable !== false ||
-    lengthDescriptor.writable !== true ||
     lengthDescriptor.configurable !== false
   ) {
     throw new TypeError('invalidTargetInfos')

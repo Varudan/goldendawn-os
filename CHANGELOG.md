@@ -6,7 +6,956 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0036 angenommen; gebundener Dokumentreview abgeschlossen; Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0039 angenommen und Adapter-CI-Joblimit angepasst; Ubuntu-CI offen; Runtimegate FAIL
+
+### ADR-0039-Annahme und Workflowlimit / 2026-10-04
+
+Jan hat [ADR 0039](docs/decisions/0039-bounded-adapter-ci-job-timeout.md)
+nach unabhängigem Dokumentreview mit technischem `PASS` für genau die sieben
+gebundenen Vorannahmefassungen ausdrücklich angenommen: „ADR 0039 wird in der
+geprüften Fassung angenommen.“ Der frühere P2-Befund und dessen `FAIL`
+bleiben für ihre damaligen Bytes historisch. Das neue `PASS` wird weder auf
+diese Statusnachführung noch auf die geänderte Workflowdatei übertragen.
+
+In [.github/workflows/ci.yml](.github/workflows/ci.yml) wurde ausschließlich
+`jobs.adapter.timeout-minutes` von `10` auf `30` gesetzt. Die beiden
+`verify`-Jobs und `aggregate` bleiben bei zehn Minuten; Node-Versionen,
+sechs Gruppen, isolierte Runner, Serialität, Test- und Kopielebenszyklen,
+Quell-/Planbindung, Ergebnisformat und Aggregation bleiben unverändert.
+Die neue Workflowdatei ist eine geänderte CI-Quelle. Die lokalen
+ADR-0038-Ergebnisartefakte und der damalige Implementierungsreview-PASS
+belegen diese neuen Workflowbytes nicht; ein tatsächlicher Ubuntu-Lauf
+mit beiden Node-Versionen bleibt erforderlich. Die 30 Minuten sind ein
+Jobbudget einschließlich Einrichtung und Upload, kein bereits erbrachter
+Laufzeitnachweis. Die folgende Vorschlagspassage dokumentiert ihren
+historischen Stand vor Annahme und Umsetzung.
+
+Die gezielte CI-Infrastruktursuite besteht mit **115/115**, der Produktions-Build
+mit **46 Modulen** und der schreibfreie Bundlecheck mit Exit 0. Die ersten
+sandboxierten Test- und Bundlecheckversuche scheiterten an verweigertem
+temporärem Dateizugriff; die Wiederholungen außerhalb der Sandbox bestanden.
+Der Workflow-Diff ist genau die eine Timeoutzeile; sein neuer SHA-256 ist
+`8ebeeb9e021d4e71236ad5e76e9406a4134614c3f1ed8af666b4e2ab5ab20c92`.
+Diese lokalen Prüfungen belegen keine Ubuntu-Joblaufzeit. Vollständige
+Adaptergruppen, Remote-CI-, Browser- und Runtime-Diagnoseläufe wurden nicht
+ausgeführt. Git-Schreibschritte und PR bleiben manuell bei Jan und sind
+noch offen. `overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`,
+`NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert.
+
+### ADR-0039-Zeitbudgetvorschlag / 2026-10-04
+
+Der am 2026-10-04 unabhängig durchgeführte ADR-0038-Implementierungs-Re-Review
+schloss für die zwölf im [Abschlussaudit](#adr-0038-lokale-neubindung--2026-10-03)
+gebundenen Dateifassungen technisch mit `PASS` ohne neuen P1-/P2-Befund.
+Die beiden früheren P1-Gegenproben und die echten Ergebnisartefakte wurden
+materiell geprüft. Der frühere Review mit `FAIL` und die lokalen Nachweise
+vom 2026-09-28 bleiben getrennte historische Stände. Jan hat die zwölf
+geprüften Fassungen als `5f5304e53c0519513f703856c29a7c3a94914fa9`
+committet; die zwölf Commitblobs stimmen mit den damaligen Reviewhashes
+überein. Im aktuellen Arbeitsbaum bleiben nur die sechs Implementierungs-/
+Workflowdateien bytegleich. Die sechs geänderten Statusdokumente und
+ADR 0039 sind neue, vom damaligen Implementierungs-`PASS` nicht umfasste
+Fassungen.
+Ein Ubuntu-CI-Lauf und ein PR stehen weiterhin aus.
+
+Der neue [ADR 0039](docs/decisions/0039-bounded-adapter-ci-job-timeout.md)
+schlägt eine begrenzte Erhöhung von `jobs.adapter.timeout-minutes` von 10 auf
+30 vor. Die zwölf Adapterjobs wären einheitlich betroffen; `verify` und
+`aggregate` blieben bei zehn Minuten. Die lokalen Windows-/Node-24-Zeiten
+`source` 1141.081 s und `parser` 1255.706 s umfassen weder CI-Einrichtung
+noch Artefakt-Upload und belegen keine Ubuntu-Laufzeit. Die 30 Minuten sind
+ein vorläufiges Jobbudget, kein Abnahmenachweis. ADR 0039 ist noch nicht
+unabhängig dokumentarisch geprüft oder von Jan angenommen. Der Workflow
+bleibt unverändert bei zehn Minuten. Dieser Dokumentationsslice führt
+keine Tests, Builds, Git-Schreibaktionen oder Remote-CI aus.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und
+`runtimeRecord:null` bleiben unverändert. Die folgenden datierten Abschnitte
+halten ihre jeweiligen früheren Prüfstände fest.
+
+### ADR-0038-Lokale Neubindung / 2026-10-03
+
+**Vollständige lokale Selbstprüfung erfolgreich; unabhängiger Re-Review und
+ tatsächliche Ubuntu-CI-Abnahme ausstehend.** Der Verifikationsauftrag begann
+auf `codex/docs/adr-0038-ci-isolation`, HEAD
+`031322fdac56bba245e120da528d448047a26662`, mit leerem Index und genau den
+zwölf vorhandenen uncommitteten Implementierungs-/Statusdateien. Es gab keine
+Code-, Workflow- oder ADR-Korrektur. Erst nach erfolgreicher Neubindung wurden
+ausschließlich die sechs bisherigen Statusdokumente nachgeführt.
+
+Die reparierten Bytes sind unter Windows `10.0.26300`, Node
+`24.19.0` vollständig lokal neu gebunden: **115/115**
+Infrastrukturtests, **2627/2627** im separaten `remaining`-Einstieg und
+**3637/3637** im einmaligen vollständigen npm-Referenzlauf. Danach bestehen
+alle sechs strikt nacheinander ausgeführten Gruppen mit `193/122/222/318/102/53`
+Tests. Die echte positive Aggregate-CLI bestätigt exakt dieselben 1010
+Fallidentitäten und 2322 Obligationen wie die neue Referenz; der feste Plan-SHA-256
+`1ec700dba82e0e93aa60c01968b717434fa22d4dd51e25d3cc4a0da576dc09a6` bleibt erhalten.
+Native Abschlüsse sind jeweils Exit 0/Signal `null`, ohne Fehlschläge,
+Cancellations, Skips oder Todos; Cleanup ist vollständig bestätigt.
+21 Gegenproben auf eigenen Artefaktkopien enden nativ mit Exit 1,
+einschließlich der trotz konsistent neu gebundener Loggröße und SHA-256
+verworfenen Kopie ohne TAP-Root-Plan. Produktions-Build: 46 Module, Exit 0;
+`bundle:n8n:check`: Exit 0, driftfrei.
+
+Dies ist neue Selbstprüfung, kein unabhängiger Review-PASS. Die Belege vom
+2026-09-28 bleiben historisch; der frühere unabhängige Implementierungsreview
+mit `FAIL` wird nicht umgedeutet oder auf die Reparaturbytes übertragen.
+Unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0`
+und `22.12.0` stehen aus. Lokale Zeiten und Adapterprozess-`maxRSS` belegen
+weder Runnergesamtverbrauch noch das unveränderte Zehn-Minuten-CI-Joblimit
+inklusive Setup und Artefaktübergabe. `overallGate: FAIL`,
+`causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und `runtimeRecord:null`
+bleiben unverändert. Die folgenden Reparatur- und Implementierungsabschnitte
+beschreiben ihre jeweiligen historischen Prüfstände.
+
+Die neue Referenz lief von `2026-10-03T17:53:36.191Z` bis
+`2026-10-03T18:42:53.408Z`, native Testaufrufdauer **2957.217 s**;
+die Hülle dauerte 2958.004 s.
+Die Gesamtzahl ist aus dem neuen Footer abgeleitet, keine Wiederverwendung
+der historischen 3620. Die 757 unveränderten Foundationtests und die
+Bestandsregressionen sind im Referenzlauf enthalten. Der zusätzliche
+`remaining`-Workflow-Einstieg dauerte 15.615 s; er ersetzt weder
+die Referenz noch Ubuntu-CI. Alle sechs Gruppen liefen danach in derselben
+Kontextbindung, jeweils in frischem Prozess und neuem Verzeichnis:
+
+| Gruppe | Tests | Obligationen | native Testaufrufdauer s | maxRSS KiB | Kopien erzeugt/entfernt |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `source` | 193 | 193 | 1141.081 | 2022776 | 234/234 |
+| `parser` | 122 | 125 | 1255.706 | 1241464 | 142/142 |
+| `record` | 222 | 481 | 5.072 | 432432 | 243/243 |
+| `boundary` | 318 | 1368 | 493.287 | 1209624 | 282/282 |
+| `lifecycle` | 102 | 102 | 537.866 | 1303556 | 117/117 |
+| `timing` | 53 | 53 | 272.474 | 984092 | 66/66 |
+| Summe | 1010 | 2322 | 3705.485 | nicht addiert | 1084/1084 |
+
+Die Referenz bestätigt 1084/1084 bereinigte Kopien,
+alle Läufe null Pending-Copies. Der Wert `process.resourceUsage().maxRSS`
+wurde im After-Hook des Adapter-Testprozesses in KiB gemessen; Referenz:
+3391352 KiB. Er schließt Runner, Eltern- und Kindprozesse aus,
+ist weder Heap noch Runnergesamt-RSS und garantiert kein späteres
+Lebenszeitmaximum. Runnergesamtspeicher wurde nicht gemessen.
+Die Gruppenhülle einschließlich Planung und Quell-/Ergebnisprüfung liegt
+zwischen 0.436 und 0.973 s;
+CI-Bereitstellung, Installation und Artefakttransfer sind nicht enthalten.
+Die Gruppen wurden auch oberhalb zehn Minuten vollständig auslaufen gelassen;
+eine Aussage zur Ubuntu-Laufzeiteignung oder zu einem Beschleunigungsfaktor
+wird daraus nicht abgeleitet. Das CI-Limit bleibt zehn Minuten.
+
+Die positive Aggregation vergleicht vollständige Fall-/Variantenidentitäten,
+nicht bloß Zähler. Die 20 dokumentierten Gegenproben wurden mit ausschließlich
+neuen Artefaktkopien wiederholt; die fehlende, konsistent neu gehashte
+TAP-Root-Plan-Kopie ist die 21. Gegenprobe. Alle CLI-Abschlüsse sind Exit 1,
+Signal `null`; ihre konkreten Ablehnungsgründe sind erhalten. Die maßgeblichen
+positiven Gruppen- und Referenzartefakte bleiben bytegleich.
+
+Ausgeführte Implementierungsbytes, vor und nach allen Läufen identisch:
+
+| Datei | Rohbytes | SHA-256 |
+| --- | ---: | --- |
+| `.github/workflows/ci.yml` | 3336 | `1007ae71d38bb42a55c8149cacc11809f2435b9cd3ce82075fb05c1495b17aad` |
+| `scripts/ci/adapterResults.js` | 14776 | `4022910b8e1539df46feb72aec68005d4fb9acf31343f00332795cfb0cade044` |
+| `scripts/ci/adapterTestPlan.js` | 17411 | `a35592b5caa60cff8ec22c18696b1a3a9c3ce0507f85c5a83498d29fb6d0bbb2` |
+| `scripts/ci/runAdapterGroups.js` | 19827 | `8f107c9959870e0f36c7da0165ce710ef6ee011298aee71ebf7e4978c6fedab4` |
+| `tests/browserSyncTransportRuntimeDiagnosticAdapter.test.js` | 481679 | `225108863e2a966b71ccaa1badccfe3449b1ad5df802770341a262105d17b701` |
+| `tests/ciTestGrouping.test.js` | 29089 | `b833131222bdbd4a54f04d19b7c296c9094dacfaa7e5e27b69d4706d4704075c` |
+
+Neue Belegwurzel ausschließlich außerhalb des Repositorys:
+`C:/Users/jslom/AppData/Local/Temp/goldendawn-adr0038-rebind-20261003-77ab4b03`.
+`baseline.json` bindet die zwölf Ausgangsdateien, 159 geschützte Dateien,
+165 Harnessquellen, rohe HEAD-Blobs, Index und Refs. Neuer Kontext:
+`adr0038-cf94cfc1-244f-4051-a52d-a22efaa43efc`, Versuch `1`.
+`reference/` und `groups/<gruppe>/` erhalten vollständige Rohlogs sowie
+Child-, Binding-, Ergebnis- und native Abschlussdaten. `captures/` enthält
+je Einstieg Start-/Endquellen, Konfiguration, rohe stdout/stderr-Ausgaben und
+nativen Abschluss. `actual-aggregate-negatives/` bewahrt alle mutierten Kopien;
+Vor-/Nachinventare bestätigen unveränderte positive Artefakte.
+`verification-summary.json` enthält Einzelzeiten, Speichermessumfang,
+Abschlüsse und Grenzen; `final-audit.json` bindet die finalen sechs
+Dokumentfassungen, relevante Links, Dateihygiene und unveränderte
+Implementierungs-/Schutzdateien, HEAD, Index und relevante Refs. Finale
+Dokumenthashes stehen im Abschlussaudit, nicht als Selbsthash in den Dokumenten.
+
+Vor dem ersten Testlauf scheiterte ein externer Auditwrapper am Entfernen des
+führenden Porcelain-Leerzeichens. Dieser reine Wrappervorversuch ist getrennt
+unter `goldendawn-adr0038-rebind-20261003-CD1wdy` erhalten; er hatte keinen
+Kontext und keine Testartefakte. Der korrigierte Wrapper begann mit neuer
+Belegwurzel und neuem Kontext. Ergebnisse werden nicht zwischen Versuchen
+gemischt. Browser-/Runtime-Diagnoselauf, Remote-CI und Git-Schreibaktionen
+unterblieben; Git-Schritte bleiben manuell bei Jan.
+
+### ADR-0038-P1-Reparatur / 2026-10-03
+
+Die uncommittete Reparatur ändert ausschließlich
+`scripts/ci/adapterTestPlan.js`, `scripts/ci/runAdapterGroups.js` und
+`tests/ciTestGrouping.test.js` sowie diese sechs Statusnachführungen. Der
+vollständige kanonische Plan wird vor Rückgabe oder Nutzung gegen den externen,
+nicht in den Plan einfließenden SHA-256
+`1ec700dba82e0e93aa60c01968b717434fa22d4dd51e25d3cc4a0da576dc09a6`
+geprüft. Zusätzlich gelten die festen Gruppenfallzahlen
+`source 193 / parser 122 / record 222 / boundary 318 / lifecycle 102 /
+timing 53`, insgesamt 1010 Fälle, 1312 Zusatzvarianten und 2322 Obligationen.
+Die kausalen Gegenproben verschieben am L728-Marker die Family zu
+`registerAdr36ClockContractTests` beziehungsweise die Site zu L729; beide
+lassen die rekonstruierte Baseline unverändert und werden dennoch verworfen.
+
+Die TAP-Auswertung verlangt für Gruppen genau einen ungerückten
+`TAP version 13`-Header, genau einen terminalen Root-Plan mit `N === # tests`
+und unmittelbar danach `tests`, `suites`, `pass`, `fail`, `cancelled`,
+`skipped`, `todo`, `duration_ms` in dieser Reihenfolge. Zähler sind sichere
+nichtnegative Ganzzahlen, die Dauer ist endlich und nichtnegativ. Der getrennte
+npm-Referenzmodus erlaubt den Banner und einen positiven Root-Plan kleiner als
+die Gesamtzahl verschachtelter Tests; historische Zahlen werden nicht gepinnt.
+
+Der gezielte Lauf
+`node --test --experimental-vm-modules --no-warnings --test-concurrency=1
+tests/ciTestGrouping.test.js` besteht mit **115/115**. Er umfasst vollständige
+LF-/CRLF-Positivlogs, ein verschachteltes Referenzlog, die verlangten
+Negativformen und den tatsächlichen Aggregate-CLI-Pfad: Sechs neu erzeugte,
+vollständig gebundene Gruppenartefakte aggregieren positiv; eine eigene Kopie,
+bei der nur der Root-Plan entfernt und Loggröße sowie SHA-256 in `result.json`
+und `native.json` konsistent nachgeführt wurden, endet nicht erfolgreich. Die
+Plan-CLI besteht mit dem festen Digest und allen Sollsummen; auch die
+historischen echten Source-/Referenzlogs werden vom neuen Gruppen-/Referenzmodus
+mit 193 beziehungsweise 3620 Tests akzeptiert.
+
+Der Standardlauf, sechs reale Gruppenläufe, die positive Referenzaggregation,
+Build und `bundle:n8n:check` wurden unter den Reparaturbytes nicht erneut
+ausgeführt. Die Rohbelege vom 2026-09-28 bleiben ausschließlich historische
+Evidenz; ein vollständiger neuer lokaler Erfolgsnachweis wird nicht behauptet.
+Unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0`
+und `22.12.0` stehen aus. Browser-/Diagnoselauf, Remote-CI und Git-Schritte
+unterblieben. `overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation
+und Testkopien als `NOT_EVIDENCE` sowie `runtimeRecord:null` bleiben unverändert.
+
+### ADR-0038-CI-Testgruppierung / 2026-09-28
+
+**Implementiert und lokal geprüft; unabhängiger Implementierungsreview und
+tatsächliche CI-Abnahme ausstehend.** ADR 0038 bleibt angenommen und bytegleich.
+Der gesonderte Auftrag autorisierte Implementierung, lokale Tests, Build und
+Bundlecheck; die frühere Beschränkung auf Dokumentation gilt für ihren damaligen
+Slice. Basis war der saubere Branch `codex/docs/adr-0038-ci-isolation`, HEAD
+`031322fdac56bba245e120da528d448047a26662`, mit leerem Index und gleichstehendem
+lokalem Remote-Tracking-Ref. Eine aktuelle Remoteprüfung erfolgte nicht.
+
+Geändert sind die Adaptertestdatei und `.github/workflows/ci.yml`; neu sind die
+drei Helfer `scripts/ci/adapterTestPlan.js`, `adapterResults.js`,
+`runAdapterGroups.js` und ausschließlich die Infrastrukturtests in
+`tests/ciTestGrouping.test.js`. Hinzu kommen kurze Statusnachführungen in
+AGENTS, Changelog, Architektur, Datenverträgen, Sicherheitsgrundlage und
+Entscheidungsindex. Produktiver Adapter, Foundation, Foundationtests, übrige
+Bestandstests, alle ADRs/Evidence-Records, Paket-/Lockdateien und Commithelper
+bleiben unverändert. Der neue Stand ist uncommittet.
+
+Der Ausgangszuschnitt aus sechs fachlich zusammenhängenden Gruppen erhält alle
+Registrierungs-/Kontrollfamilien ungeteilt: Source samt Checkpoints und Handles,
+Parser samt Dequeue, Recordableitung/-mutanten, Eingabe-/Effect-/Command-/Replay-
+Grenzen, Lebenszyklus sowie Clock-/Deadline-/Cap-Regeln. Er ist ein begründeter
+Startzuschnitt, keine auf Ubuntu gemessene Laufzeitoptimierung. Je Node-Version
+läuft jede Gruppe in einem eigenen Job/Runner/Checkout und frischen Prozess;
+innerhalb bleiben vollständige Testcallbacks und Kopielebenszyklen seriell.
+`derivation-conformance` und `virtual-runtime-conformance` behalten ihre
+jeweiligen vier Exports, Transformationen, Selector-Sperren, Byteprüfungen,
+byte-owned Foundationloads und `adapterEvidenceEligible:false`.
+
+Der Metadatenplan steht vor der Resultatauswertung fest und führt keine
+Adaptercallbacks, Testkopien oder produktiven Runtimepfade aus. Fall-IDs binden
+Familie, ursprüngliche Quellstelle und konkreten Vektor; gleichnamige
+Registrierungen sind ausdrücklich disambiguiert. Die mechanische Rückführung aller
+markierten Gruppierungszusätze rekonstruiert exakt die ursprünglichen 463641
+UTF-8-/LF-Bytes mit SHA-256
+`cf8cd3802e2ae2904f6743a5c3ad7535b1dcd2d11029a1dbb59b19d8e704f6c7`:
+1010 Fälle, 1000 verschiedene Anzeigenamen. Es bestehen 2322 gebundene
+Abschlussobligationen: 1010 erfolgreiche Originalcallbacks plus 1312 explizite
+Iterationsmarken; keine 2322 eigenständigen Tests. Die gesondert ausgewiesenen
+Schema-/Treiberiterationen bleiben mit allen ursprünglichen Assertions und
+Schedulingordnungen erhalten. Reporting fügt dort keine asynchronen Eingriffe
+ein. Metadatenfehler werden auch dann nachträglich abgelehnt, wenn ein kausaler
+Test eine Assertion abfängt; sie zählen nicht als Mutantenkill.
+
+Die geschlossene Auswahl registriert ausschließlich die gewählte Gruppe;
+unbekannte, leere oder widersprüchliche Angaben scheitern. Ohne Auswahl bleibt
+der vollständige Standardlauf erhalten. Die beiden CI-`verify`-Jobs führen die
+übrigen 2610 Tests einschließlich 98 neuer Infrastrukturtests seriell und den
+Build aus. Die zwölf Adapterjobs verwenden unverändert Ubuntu, Node `20.19.0`
+und `22.12.0`, zehn Minuten Joblimit, VM-Flags, `npm ci`, minimale Rechte und
+deaktivierte persistente Checkoutcredentials. Trigger bleiben PR gegen `main`
+und Push auf `main`. Der Aggregationsjob verlangt erfolgreiche Vorgänger und
+alle zwölf Ergebnisse desselben Laufs/Versuchs; ein Teil-Rerun mit alten
+Ergebnissen genügt nicht. Die ergänzten Actions-Versionen wurden gegen die
+Primärquellen geprüft: [upload-artifact v6.0.0](https://github.com/actions/upload-artifact/releases/tag/v6.0.0)
+und [download-artifact v7.0.0](https://github.com/actions/download-artifact/releases/tag/v7.0.0).
+
+Das geschlossene Ergebnisformat bindet tatsächlich gelesene Quellen und
+Konfiguration, den vollständigen Plan, Node, Gruppe, Lauf/Versuch, Fall-/
+Variantenmengen, Cleanup und Abschluss. Das lokale Quellenmanifest enthält
+165 Dateien und benennt die sechs uncommitteten Implementierungsdateien;
+HEAD allein wird nicht als Bytebindung verwendet. Die sechs erst nach den
+Läufen nachgeführten Statusdokumente werden vom Harness nicht gelesen und sind
+aus dieser Ausführungsbindung ausgeschlossen. Plan-SHA-256:
+`1ec700dba82e0e93aa60c01968b717434fa22d4dd51e25d3cc4a0da576dc09a6`.
+Erfolg benötigt zusätzlich den vom Elternprozess erst nach `close` geschriebenen
+nativen Abschluss, einen vollständigen erfolgreichen Footer und passende
+Rohlog-Hashes. Artefakte werden begrenzt als Daten gelesen: JSON höchstens
+8 MiB, Tiefe 32 und 100000 Knoten; Logs jeweils höchstens 64 MiB. Ungültiges
+UTF-8, doppelte JSON-Schlüssel, unerwartete Felder und ungeeignete Dateipfade
+werden abgelehnt; es erfolgt keine Codeauswertung aus Artefakten.
+
+Lokal ausgeführt unter Windows `10.0.26200`,
+`x64`, Node `24.19.0`: zuerst 98/98
+Infrastrukturtests, danach einmal der vollständige Standardpfad über das
+unveränderte npm-Testscript mit `--experimental-vm-modules --no-warnings
+--test-concurrency=1 --test-reporter=tap`. Dieser besteht mit **3620/3620**,
+exakt `3522 + 98 = 1010 + 2512 + 98`; Foundation 757/757 und sämtliche
+Bestandsregressionen sind darin enthalten und wurden nicht redundant wiederholt.
+Referenzzeit: `2026-09-28T20:34:03.905Z` bis
+`2026-09-28T21:13:17.501Z`, 2353.593 s.
+Anschließend liefen alle Gruppen strikt nacheinander in frischen Prozessen:
+
+| Gruppe | Fälle | Abschlussobligationen | Prozesslaufzeit s | maxRSS KiB | Kopien erzeugt/entfernt |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `source` | 193 | 193 | 618.098 | 2022508 | 234/234 |
+| `parser` | 122 | 125 | 654.462 | 1182736 | 142/142 |
+| `record` | 222 | 481 | 6.780 | 432436 | 243/243 |
+| `boundary` | 318 | 1368 | 591.680 | 1132664 | 282/282 |
+| `lifecycle` | 102 | 102 | 470.151 | 1150992 | 117/117 |
+| `timing` | 53 | 53 | 250.717 | 1116712 | 66/66 |
+| Summe | 1010 | 2322 | 2591.890 | nicht addiert | 1084/1084 |
+
+Alle Testläufe endeten nativ mit Exitcode 0 und Signal `null`, ohne
+Fehlschläge, Cancellations, Skips oder Todos. Der Referenzlauf bestätigt
+1084/1084 bereinigte Testkopien; auch alle Gruppen bestätigen jeweils null
+Pending-Copies und vollständigen Cleanup. Alle gebundenen Quellen blieben
+während sämtlicher Läufe unverändert. Die tatsächliche positive Aggregation
+vergleicht sämtliche Gruppenfälle und Varianten exakt mit der Referenz und
+besteht. Zusätzlich lehnt derselbe CLI-Pfad 20 manipulierte Kopien dieser echten
+Artefakte mit jeweils nativem Exitcode 1 ab: unter anderem fehlende/doppelte/
+unbekannte Gruppen, falsche Node-/Quell-/Plan-/Versuchsbindung, fehlende/doppelte
+Fälle, fremde Varianten, Skip, fehlender Cleanup oder nativer Abschluss,
+widersprüchlicher nativer Befehl, Extrafelder, abgeschnittenes JSON, verändertes
+Rohlog und ein trotz neu gebundener Loghashes fehlender Footer. Die 98 kleinen
+Infrastrukturtests decken die weiteren geschlossenen Fehler-/Variantenklassen
+sowie ein vollständiges positives Zweiversions-Ergebnis ab; dieses synthetische
+Ergebnis ist kein ausgeführter Ubuntu-Nachweis. Produktions-Build: exakt
+46 Module, Exit 0; schreibfreier `bundle:n8n:check`: Exit 0, driftfrei.
+
+`process.resourceUsage().maxRSS` wird im Adapter-After-Hook in KiB erfasst;
+[Node dokumentiert maxRSS](https://nodejs.org/download/release/v20.19.0/docs/api/process.html#processresourceusage).
+Die Referenz liefert 3565056 KiB (rund
+3.40 GiB) für den Adapter-Testprozess,
+die Gruppen 432436 bis 2022508 KiB.
+Das ist weder Heap noch Gesamt-RSS des Runners, schließt Eltern-/Kindprozesse
+aus und ist eine Abfrage am After-Hook, kein garantierter späterer
+Lebenszeitmaximalwert. Der lokal gemessene zusätzliche Hüllenaufwand für Planung,
+Quellprüfung und Ergebnisprüfung beträgt je Gruppe
+0.848 bis 1.265 s;
+CI-Installation, Runnerbereitstellung und Artefakttransfer sind darin nicht
+enthalten. Die lokalen Source-/Parserzeiten liegen über zehn Minuten; daraus
+wird keine Ubuntu-Laufzeiteignung abgeleitet und das CI-Limit wird nicht erhöht.
+
+Ausgeführte Implementierungsbytes (vor und nach den Läufen identisch):
+
+| Datei | Rohbytes | SHA-256 |
+| --- | ---: | --- |
+| `.github/workflows/ci.yml` | 3336 | `1007ae71d38bb42a55c8149cacc11809f2435b9cd3ce82075fb05c1495b17aad` |
+| `scripts/ci/adapterTestPlan.js` | 16053 | `199b255e792e9c68979459d8504f30762a53a3fe82605fde04edae1f9af07739` |
+| `scripts/ci/adapterResults.js` | 14776 | `4022910b8e1539df46feb72aec68005d4fb9acf31343f00332795cfb0cade044` |
+| `scripts/ci/runAdapterGroups.js` | 17374 | `e66ed33c22a870ac923a04f1bf867875df5fcf1a5117d009c61ee0085fc9b8ec` |
+| `tests/browserSyncTransportRuntimeDiagnosticAdapter.test.js` | 481679 | `225108863e2a966b71ccaa1badccfe3449b1ad5df802770341a262105d17b701` |
+| `tests/ciTestGrouping.test.js` | 19062 | `3ac44f779632534de864419a2e5a9597da0b05dced08bccdb0c900e825d6639e` |
+
+Die erhaltenen Rohbelege liegen ausschließlich unter
+`C:/Users/jslom/AppData/Local/Temp/goldendawn-adr0038-verification-KXPS0R`:
+`baseline.json` bindet Checkoutbytes, Commitblobs, Index und Refs;
+`reference/` und `groups/<gruppe>/` enthalten Bindung, Child-/Native-/Ergebnis-
+JSON und vollständige stdout/stderr-Logs. Die Capture-Verzeichnisse
+`infrastructure/`, `reference-runner/`, `group-<gruppe>/`,
+`aggregation-positive/`, `aggregation-negative-driver/`, `build/` und
+`bundlecheck/` enthalten je Start-/Endquellen, Konfiguration, Umgebung,
+Rohausgaben und native Abschlüsse. `actual-aggregate-negatives/` bewahrt alle
+20 Gegenproben einschließlich der manipulierten Artefaktkopien;
+`verification-summary.json` fasst die Messwerte zusammen.
+`final-audit.json` bindet den abschließenden Datei-/Link-/Git-Schutzabgleich.
+Diese Nachweisdateien bleiben ausdrücklich erhalten und gehören nicht in den
+Commit; temporäre Adapterkopien wurden nachweislich entfernt.
+
+Die abschließende statische Prüfung umfasst die exakte Änderungsallowlist,
+Diff/Whitespace, UTF-8 ohne BOM und LF, lokale Dokumentlinks sowie alle
+159 geschützten ursprünglichen Dateien. HEAD, Branch, Index und erfasste Refs
+bleiben unverändert. Die zwei bereits vorgesehenen CRLF-Checkoutfassungen der
+PowerShell-Githelfer werden getrennt von ihren LF-Commitblobs gebunden;
+ihre Checkoutbytes bleiben unverändert. Historische Reviewpassagen und
+Annahme-/Rohhashbindungen bleiben unverändert. Diese Arbeit einschließlich
+delegierter Teilprüfungen ist Selbstprüfung, kein unabhängiger Review-PASS.
+
+Unabhängiger Implementierungsreview und tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0` stehen aus. Die lokalen Windows-/Node-24-Ergebnisse belegen weder die Einhaltung des unveränderten Zehn-Minuten-Joblimits noch einen Beschleunigungsfaktor. Git-Schritte bleiben vollständig manuell bei Jan; kein PR und kein entfernter CI-Lauf wurden gestartet.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation und Testkopien als `NOT_EVIDENCE` sowie `runtimeRecord:null` bleiben unverändert. Authentisches Runtime-`A_obs` fehlt; Diagnose, Browserkomposition, Browser-E2E, Writer und Persistenz bleiben geschlossen. Windows-Prozessbaumownership, handlegebundene Pfadbereinigung und unabhängige Adapterausgabestille bleiben spätere Runtimeblocker.
+
+Die folgenden Annahme-, Review- und Statuspassagen beschreiben ihre damaligen Slices. Ihre Aussagen zur noch ausstehenden Gruppierung und zur Beschränkung auf statische Prüfungen gelten nicht für diesen gesondert beauftragten Implementierungsslice. Frühere Reviews und Rohhashbindungen werden nicht auf die neuen Bytes übertragen.
+
+### ADR-0038-Dokumentreview und Annahme / 2026-09-28
+
+Jan hat [ADR 0038](docs/decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md)
+am 2026-09-28 ausdrücklich angenommen: „ADR 0038 wird hiermit angenommen.“
+Die isolierte CI-Gruppierung mit vollständiger Serialität innerhalb jeder
+Gruppe ist damit entschieden; sie ist noch nicht implementiert oder ausgeführt.
+Gruppenzahl, Zuschnitt, Auswahltechnik und sämtliche Abnahmenachweise bleiben
+offen und benötigen einen gesonderten Implementierungs- und Nachweisauftrag.
+
+Der von Jan übermittelte unabhängige Dokumentreview meldet technisches `PASS`
+ohne relevante Befunde in allen sechs Reviewbereichen. Er gilt ausschließlich
+für die folgenden sieben Vorannahmefassungen auf Branch
+`codex/docs/adr-0038-ci-isolation`, HEAD
+`1299011e63455658ac645fe7646fc55af8b07997`, Parent
+`02412d2a054f86fef12f14c451ad6a3b7f38bbfc`, Tree
+`47547d43f7c12eca803c049d38145ba50f19476e`. Der Bericht bindet einen leeren
+Änderungsindex, die sechs modifizierten getrackten Dokumente und den damals
+ungetrackten neuen ADR. Alle sieben Rohbytebindungen wurden vor dieser
+Statusnachführung erneut gegen den vorhandenen Arbeitsbaum bestätigt.
+
+| Reviewdatei, relativ zum Repositoryroot | Rohbytes | SHA-256 der Vorannahmefassung |
+| --- | --- | --- |
+| `docs/decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md` | 21644 | `5930d5bd9bd2de644cd18ec5464e9e79b32acbed27bda50c3add6fe70411cf35` |
+| `docs/decisions/README.md` | 35257 | `9534293c345f479aa5ec9aa812a9a0862d1edf811e23749213319ca7f83fbda0` |
+| `docs/data-contracts.md` | 724260 | `0db81f5fa633a43b6d5fcfb01caa84fc0d75600268ad180d986ee28b283b80d7` |
+| `docs/architecture.md` | 283572 | `e205bc58c7b986deb7ef03b6b101934db7192d639ae0571332159ea8b973c306` |
+| `docs/security.md` | 288046 | `984125185b3f6c297db05a2b91e204bb456c0ec0f88cb51e3d5e97d81a7ef446` |
+| `AGENTS.md` | 205177 | `2edddc5441b6af56516e812cd9d94a3d70c8dcb78f4fdcd9ad33842648c25d65` |
+| `CHANGELOG.md` | 219161 | `5819c6b971aed1df4f1a5d11c0a8f4ae79e8f7d589de800a5ecbf7fe22093179` |
+
+Der lokal übermittelte Bericht `Eingefügter Text.txt` hat 5.820 Rohbytes und
+SHA-256 `814b2c31d398558fdae81d7f8a2a000c8d0c392a78d9b7eaf17347d373bfcd13`.
+Vorgesehen war Daybreak Blue / extra high, ein Reviewer ohne Subagenten.
+Der Bericht bestätigt einen Reviewer ohne Subagenten, attestiert die
+Modellkonfiguration jedoch nicht technisch. Diese Konfigurationsunsicherheit
+bleibt vom technischen Dokumenturteil getrennt; weder `max` noch eine
+technisch nachgewiesene `xhigh`-Bindung werden daraus abgeleitet. Die ältere
+Adapterreviewprovenienz mit technischer PASS-Aussage, damaligem INCOMPLETE und
+Jans Akzeptanz von Blue / Ultra bleibt unverändert im Folgeabschnitt erhalten.
+
+Der Dokumentreview nennt vollständige Lektüre von ADR 0038, Begleitdiff und
+geltender AGENTS.md, statischen Vertrags-/Harness-/CI-Abgleich, sieben passende
+Quellbindungen, 173 auflösbare lokale Links/Anker, Dateihygiene und einen
+unauffälligen Whitespace-Diffcheck. Laut Bericht blieben die sieben Reviewdateien,
+die 160 übrigen sichtbaren Dateien, Index und erfassten Git-Refs unverändert.
+Es wurden keine Tests, Builds, Bundlechecks, Projektmodule, CI- oder Runtimepfade
+ausgeführt. Diese Angaben sind die historischen Reviewresultate, keine neuen
+Implementierungs-, Performance- oder Runtimebelege.
+
+Die jetzige Annahmenachführung verändert ausschließlich Status- und
+Provenienzangaben in denselben sieben Dokumentdateien. Der unabhängig geprüfte
+ADR-Hauptteil ab einschließlich `## Kontext` bleibt mit 21.067 Rohbytes und
+SHA-256 `75945c53853d0b13f73d6143a77e20da5c26704a47ffa4c18b7e6dced4d174d5`
+unverändert. Seine Vorschlags- und nächsten Schrittangaben sind historische
+Vorannahmeformulierungen; die technischen Regeln und offenen Abnahmebedingungen
+gelten fort. Der Review-PASS wird nicht auf die neuen vollständigen Dokumentbytes
+übertragen; ein erneuter unabhängiger Review dieser Nachführung wird nicht behauptet.
+Die nachfolgenden historischen Einträge und gebundenen Vorreviewtexte bleiben erhalten.
+
+Auf Jans ausdrückliche Vorgabe umfasst dieser Dokumentationsslice nur statische
+Prüfungen von Änderungsumfang, Diff, Dateihygiene, Links und Bindungen; keine
+Tests, Builds oder Bundlechecks. Der unveränderte Commithelper wird dafür nicht
+verwendet. Dies ändert weder den allgemeinen lokalen Commit-Prüfweg noch die
+späteren Implementierungs- und CI-Prüfpflichten. Commit und Push führt Jan manuell
+über VS Code aus; derzeit kein PR. Beides wird hier nicht als erfolgt behauptet.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und
+`runtimeRecord:null` bleiben unverändert. Authentisches Runtime-`A_obs` fehlt;
+Diagnose, Browserkomposition, Browser-E2E, Writer und Persistenz bleiben geschlossen.
+Auch die Runtimeblocker für Windows-Prozessbaumownership, handlegebundene
+Pfadbereinigung und unabhängige Adapterausgabestille bleiben bestehen.
+
+### ADR-0038-Isolierte CI-Testgruppierung vorgeschlagen / 2026-09-27
+
+[ADR 0038](docs/decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) ist neu
+vorgeschlagen, nicht angenommen. Er präzisiert ausschließlich die mögliche
+Gruppierung der ADR-0036-Adaptersuite in getrennten CI-Jobs mit isolierten
+Runnern, Checkouts und frischen Node-Prozessen. Tests und vollständige
+Kopielebenszyklen blieben innerhalb jeder Gruppe seriell; zwischen diesen Jobs
+wäre keine zusätzliche Serialität verlangt. Eindeutige Fall-/Variantenmengen,
+ungeteilte Kontroll-/Mutantenfamilien, gemeinsame Quellen, gebundene Ergebnisse
+und vollständiger Cleanup wären Voraussetzungen des Gesamterfolgs. Gruppenzahl,
+Zuschnitt und Auswahltechnik bleiben offen. Der lokale Commit-Prüfweg ist eine
+getrennte Entscheidung; es entsteht keine wiederkehrende Referenztestpflicht.
+
+Ausgangsbasis ist der von Jan bereitgestellte Branch
+`codex/docs/adr-0038-ci-isolation`, HEAD
+`1299011e63455658ac645fe7646fc55af8b07997`, sauberer Arbeitsbaum und ohne
+staged Änderungen. Featurebranch und lokaler zugehöriger Remote-Tracking-Ref
+binden denselben Commit; `main` und lokales `origin/main` bleiben bei
+`91eef75adf179de8d32720562ea481bc891319b3`. Adapter und Tests sind damit
+implementiert und committet. Die unten erhaltenen Vorreviewpassagen dokumentieren
+ihre damaligen Bytes und nächsten Schritte, nicht einen erneuten Reviewauftrag.
+
+Laut Jans Auftrag und vorliegendem lesendem Vertragsabgleich urteilt der
+unabhängige Daybreak-Review technisch `PASS`. Ursprünglich verlangt war
+`xhigh`; tatsächlich verwendete Jan Blue / Ultra und akzeptierte die Abweichung
+ausdrücklich. Technisches PASS, damaliges formales INCOMPLETE und spätere
+Akzeptanz bleiben getrennt; allein daraus folgt kein Wiederholungsreview.
+Die historischen 1010/1010, 757/757, 1767/1767 und 3522/3522 Tests, der Build
+mit 46 Modulen und der driftfreie Bundlecheck wurden hier nicht erneut ausgeführt.
+
+Geändert sind ausschließlich der neue ADR, Entscheidungsindex, Datenverträge,
+Architektur, Sicherheitsgrundlage, AGENTS.md und dieser Changelog. Die statische
+Verifikation umfasst Allowlist, Diff, lokale Links/Anker, UTF-8/Dateihygiene,
+Rohhashbindungen sowie unveränderten Index und Git-Refs. ADRs 0032–0037, Code,
+Tests, Workflow, Paketdateien, Commithelfer und übrige Dateien bleiben unverändert.
+Keine Tests, Harnessdiscovery, Modulproben, Builds, Bundlechecks, Benchmarks,
+CI- oder Runtimevorgänge wurden gestartet.
+
+Der statische Audit bestätigt die 160 übrigen getrackten Dateien rohbytegleich
+zur Ausgangsbasis, alle sieben Quellbindungen des neuen ADRs gegen Checkout und
+HEAD sowie unveränderte historische Vorreviewtexte. Alle 173 lokalen Links
+und Anker in den sieben Dokumenten, darunter 26 neue Verweise, sind auflösbar;
+UTF-8 ohne BOM und LF-Zeilenenden sind erhalten, der Whitespace-Diffcheck ist
+ohne Befund. Der vorhandene Reviewlog bestätigt lesend 1010 Resultatzeilen bei
+1000 Anzeigenamen; dies ist keine Harnessausführung.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und
+`runtimeRecord:null` bleiben unverändert. Authentisches Runtime-`A_obs` fehlt;
+Diagnose, Browserkomposition, Browser-E2E, Writer und Persistenz bleiben geschlossen.
+Windows-Prozessbaumownership, handlegebundene Pfadbereinigung und unabhängige
+Adapterausgabestille bleiben spätere Laufblocker. Nächster möglicher Schritt
+ist ein separat beauftragter Review der neuen Dokumentbytes, danach Jans
+Entscheidung über Annahme und manuelle Git-Schritte. Die im ADR beschriebenen
+Abnahme-, CI-, Laufzeit- und Speichernachweise bleiben spätere Arbeit.
+
+### ADR-0036-Adapterfortsetzung / 2026-09-27
+
+Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei.
+
+Dieser Eintrag betrifft den ausdrücklich autorisierten netzwerkfreien Adapter-/Testslice auf Branch `codex/feat/adr-0036-diagnostic-adapter-implementation`, HEAD `02412d2a054f86fef12f14c451ad6a3b7f38bbfc`. Die Fortsetzung begann am 2026-09-20 und wurde am 2026-09-26 auf erneuten ausdrücklichen Nutzerauftrag wiederaufgenommen. Letzter erforderlicher Prüfabschluss: 2026-09-26T22:00:20.7800541Z; das Sektionsdatum verwendet Europe/Berlin.
+
+Der frühere Arbeitsbericht war kein Abschlussbericht und kein Review-PASS. Seine letzten erhaltenen 950 erfolgreichen und 22 fehlgeschlagenen Meldungen besitzen keinen vollständigen Footer und definieren kein N. Ein früher nachgewiesener Heapabbruch und das spätere unvollständig überlieferte Prozessende bleiben getrennt; dessen genaue Abbruchursache ist nicht bewiesen. Alle 104 vorhandenen alten Auditdateien wurden bewahrt.
+
+#### Absichtliche Pause und gesonderte Wiederaufnahme
+
+Der gesonderte Gesamtsuitenversuch full-final begann 2026-09-20T20:50:14.5376974Z und wurde auf ausdrücklichen Nutzerwunsch zur Pause beendet; das Wrapper-Ende ist 2026-09-20T21:08:09.2896742Z, der beobachtete erzwungene Exit -1. Sein Rohoutput besitzt keinen vollständigen Gesamtsuitenfooter und keine bestätigte Gesamttestzahl. Dies ist kein aus einem Testfehler abgeleiteter Suitebefund und wird weder mit dem älteren Heapabbruch noch mit dem früheren unvollständig überlieferten Adapterlauf vermischt. Am 2026-09-26T20:04:44.169Z bestätigte die Wiederaufnahmesicherung dieselben 166 Dateibindungen und 104 unveränderten alten Auditdateien. Die sechs am 20.09. abgeschlossenen Pflichtprüfungen werden nur über diese unveränderte Rohbindung weitergeführt. Als neuer Gesamtsuitenversuch ist ausschließlich full-resume-20260926-r2 ausgewählt; sein Ausgang stammt allein aus seinen eigenen vollständigen Laufbelegen. Alle ursprünglichen Pause-/Laufbelege bleiben erhalten.
+
+| Pausen-/Wiederaufnahmebeleg | Bytes | SHA-256 |
+| --- | --- | --- |
+| full-final.start.json | 51551 | a37aebae11a9aa0a788b959f5876cf6516f401cb67139be8b50eaf389a2655e4 |
+| full-final.completion.json | 101961 | 5b065ee3667354798a048de8cbbc570feb7c69aac76513db498e5abc659473ba |
+| full-final.tap | 134532 | f5d9654a2e24ae2029284d38855599c9870ebb07afa81114960f94fe9094a51f |
+| pause-checkpoint.json | 53473 | 0730e28e407466b75f37b9b22006f811e8ae13e9110b78f0c3c9c021cae1f8cc |
+| pause-stop-request.json | 411 | 5a4df461a84334ed6410be5c39a5250d4393aee6ce3167c3be57f7c869c1f6a7 |
+| resume-20260926-baseline.json | 51309 | e7e82c712f0655b2254adfc7d926c96d2427ccc81f1c2578d4c4aadd79500edc |
+
+#### Gesonderter Auditwrapperfehler vor dem zweiten Retry
+
+Der erste Gesamtsuiten-Retry full-resume-20260926 begann 2026-09-26T20:06:14.6381516Z. Sein vollständig erhaltener Rohfooter meldet 3522/3522, jeweils 0/0/0/0 Fail/Cancelled/Skip/Todo und 3795194.2362 ms. Danach scheiterte der Auditwrapper an einer lokalen LASTEXITCODE-Scopeüberschattung. Die Fehlerbeobachtung 2026-09-26T21:10:45.5140101Z ist keine native Laufendzeit; der beobachtete Wrapper-Exit 1 ist kein Testprozess-Exit. Nativer Exit, tatsächliches natives Laufende, Completion-Metadaten und die 166 Nachherbindungen fehlen. Der grüne Footer ersetzt diese fehlenden Belege nicht. Eine getrennte echte Exit-0-/Exit-7-Probe reproduzierte die Scopeüberschattung und bestätigte den expliziten globalen Capture; sie rekonstruiert den fehlenden alten Exit nicht. Dieser Versuch bleibt deshalb getrennte Arbeitsprovenienz und zählt nicht zu den neun abgeschlossenen Pflichtprüfungen. Als vollständiger neuer Gesamtsuitenversuch ist full-resume-20260926-r2 ausgewählt; ausschließlich dessen eigene Laufbelege können den Gesamtsuitennachweis schließen.
+
+| Wrapperfehlerbeleg | Bytes | SHA-256 |
+| --- | --- | --- |
+| full-resume-20260926-wrapper-failure.json | 2543 | 5a50c0e2953786b6a70e3a6b904cdb8f8968ae5f7e2b324fc0b79d955a433181 |
+| full-resume-20260926.start.json | 51869 | 21a36b3965707e9832e1d0f7746fbe1d5efd3bfc0bbb14e6ca4c6c5073aaaca3 |
+| full-resume-20260926.tap | 561790 | a662ba863654d5c9f1cc51ceb71b7e69d42d284c0a6f05b0e71c726d51386d53 |
+| run-required-resume-20260926.ps1 | 4311 | a2bba48426c16e0199293de2014fa5e61207c78cb196f2678f74fd315b4a4a80 |
+| wrapper-exit-scope-probe-20260926.json | 754 | d091a67f6c889cff5097645e6d185ea975347470e5cf0ad22a14b9ef425f26df |
+
+#### Klärung der 22 bekannten Fälle
+
+| Fälle | Gruppe | Bestätigte Klärung |
+| --- | --- | --- |
+| 1–2 | Git-Alternates und Replace-Refs | Der statische Treiber endete zuvor nicht am tatsächlich erreichten Ablehnungspfad. Nur die erreichbaren List-/Close-Präfixe vor O0 und nach Cleanup wurden begrenzt; beide Sourceverletzungen und die unveränderte produktive Ablehnung bleiben geprüft. |
+| 3 | U+FEFF innerhalb eines JSON-Strings | Beide rohen beziehungsweise escapeten inneren BOM-Werte bleiben gültige Stringdaten. Der Treiber liefert nach der getrennten Foundation-Semantikablehnung zuerst die tatsächlichen Post-Settlement-Sourceergebnisse. |
+| 4–5 | RAW_PIPE_BYPASS / PRODUCER_EVENT_BYPASS | Der kausale Parserbypass war sichtbar; die alte Annahme von sechs Writes war falsch. Geprüft werden vier tatsächliche Writes, nicht gesendete Cleanupintents, Parserzähler, Caps, Marker, Finalisierung und FAIL. |
+| 6–7 | FIFO-Material- und Eintragsgrenze | Gleiche Rohbytes und Schedulingpräfixe, präzise Zustandsprüfung vor der Capfreigabe: 4/5 Einträge bei 1 MiB sowie 256/257 Einträge. Der unabhängig gefundene asynchrone Cleanup-Enqueuefehler wird produktiv als Queueverletzung abgefangen. |
+| 8–9 | Dedup und LIFO | Doppelte Antworten bleiben getrennt; LIFO wird anhand des eingefrorenen O0-Snapshots erkannt. Cleanupzeitliche spätere Antworten ersetzen diesen Beobachtungsnachweis nicht. |
+| 10–12 | Network-Reihenfolge 10→12→11, Owner und öffentliche Factory | Rohe Ankunftsreihenfolge bleibt erhalten. Der produktive Receipt-Validator akzeptiert eindeutige dichte positive Reihenfolgen je Layer unabhängig von festen Stage-Arraypositionen; ein Sortiermutant erreicht dadurch das eigentliche Kausaloracle. |
+| 13 | Inbound-Messagecap | Die 6/7-Grenze wird am festen read-only Vor-Cap-Zeitpunkt geprüft; spätere erlaubte Cleanupframes werden nicht rückwirkend dem ersten Batch zugerechnet. |
+| 14–16 | Früher, doppelter und reentranter Marker | Nur die statisch bekannten realen Abbruch-/Cleanupfolgen des Treibers wurden korrigiert. Erfolgreiche importierte Kontrollen und die unveränderten Notification-/No-Record-Oracles bleiben erforderlich. |
+| 17 | QUEUE_EMPTY_FULFILLMENT | Das gefälschte leere Fulfillment verletzt zuerst die Clockbuchführung. Das Oracle prüft strukturelles Pending, fehlenden Capture-Dequeue-Clockeintrag und den tatsächlichen confirmed-violation-Pfad statt eines später nicht erreichbaren Labels. |
+| 18–22 | Operand 53: roh, doppelt gequotet, doppelt JSON, Whitespace, andere Ziffer | Alle fünf exakten Abweichungen bleiben observed/mismatch/DIVERGED. Ohne zusätzliche bestätigte Obserververletzung lautet das Ergebnis vertragsgemäß UNPROVEN/inconclusive statt FAIL; keine Normalisierung verdeckt die Abweichung. |
+
+Die 22 exakten Namen, Ursachen und historischen Reparaturversuche bleiben in `known22-case-mapping.json` erhalten; dessen ältere offene Ergebnisstände werden nicht überschrieben. Die neuen 55/22-Ergebnisse stehen getrennt in `latest-known22-results.json` (34543 Bytes, SHA-256 `784e11dca0b08eef7610cd4c125af95104856339b49a095c892ef9b935c215bb`) und sind an den nachfolgenden abgeschlossenen Fokuslauf gebunden. Der neue gezielte Lauf `repaired-and-new-matrix-focused` bestand tatsächlich mit 55/55, Exit 0, 0 Fail/Cancellation/Skip/Todo und 317849.3797 ms TAP-Dauer. Er lief von 2026-09-20T19:12:45.8620400Z bis 2026-09-20T19:18:03.8496466Z; alle neun Vorher-/Nachherbindungen stimmen überein. Sein unveränderter UTF-16LE-Rohoutput mit BOM umfasst 25962 Bytes, SHA-256 `fb9e36b2a2552bb45e11934a7050da2fdcb3876275540b344033f35576b3a19c`. Die 55 Fälle enthalten die 22 geklärten Fälle, weitere Kontrollen/Mutanten und alle 23 neu ergänzten Grenzfälle; sie sind kein vollständiges N.
+
+#### Zusätzliche Befunde, Verträge und Ergänzungen
+
+Der asynchrone Cleanup-Enqueuepfad fängt eine volle FIFO als Parser-/Queueverletzung ab und beendet seine äußere Auflösung, ohne einen getrennten unhandled-Rejection-Kanal zu hinterlassen. Der Foundationresultat-Receiptvalidator prüft positive ganze, eindeutige und dichte Werte getrennt je Layer; er verlangt keine falsche Reihenfolge der festen Stagefelder. Negative Null-, Bruch-, Duplikat- und Lückenfälle bleiben abgelehnt.
+
+Ergänzt sind beide Chrome-Spawnthrow-Einstiege, acht Änderungen roher Parent-/Held-Identitäten, drei tatsächliche Root-exit→Tree-Erfolgs-Mutanten, ein tatsächlich vorgezogener Exchange-Ack, drei verbotene Entfernungsanforderungen sowie vier Evaluations-Eingabefehler und zwei gleichlange tatsächliche Wireabweichungen. Die Entfernungsfälle verlangen `rm`, `rmdir` oder `unlink` über den geschlossenen virtuellen Resourceport nach wirklichen Identitätsprüfungen; die unbekannten Operationen werden abgelehnt. Es wird kein natives Delete ausgeführt und keine sichere native Löschprimitive behauptet. Der 4.259-Byte-Evaluationtext wird ausschließlich extrahiert und gehasht, niemals ausgeführt.
+
+Kausale Mutanten erhalten auch bei gefiltertem Einzelaufruf eine frisch erfolgreich importierte passende Kontrolle. Identische Familien dürfen nur unveränderliche abgeschlossene Kontrollergebnisse beziehungsweise ein erfülltes Void-Promise behalten; Adapter-, Foundationmodule, Factories, Owner oder Capabilityinstanzen werden nicht als Importabkürzung wiederverwendet.
+
+Die §15-Zuordnung umfasst K2-Pending/Deadline/Write-Ack/partiellen Gatewaystart, die vollständigen registrierten Capability-, Rawsignal-, Promise-, Parser-, FIFO-, Byte-, Source-/Load-, Replay-, Creation-, Cleanup-, Notification- und Recordgruppen sowie die Pflichtmutanten. Die konkrete 38-zeilige Anforderungsmatrix und ihre gezielten 55-Fall-Bindungen liegen in `living-contracts-section15-map.json`; Zeilenzahl und Testzahl sind verschieden. Die gesamte registrierte Matrix ist in den unten gebundenen ungefilterten Läufen ausgeführt. Die 757 geschützten Foundationtests einschließlich ihrer Array-, Notification-, Join- und Proxy-Deadlinebeweise bleiben unverändert und werden getrennt gezählt.
+
+Der Finalizer besitzt keine Schreibfähigkeit. Frische tief eingefrorene Testergebnisse, unverändertes F, null Writeraufrufe und `runtimeRecord:null` bilden die strukturelle Writertrennung dieses Slices. Ein späterer Writer bleibt gemäß §12 gesondert zu entscheiden; hypothetische Persistenzfehler werden hier nicht ausgeführt.
+
+#### Frische Abschlussverifikation
+
+| Prüfung | Tatsächlicher Befund | Exit | Wallzeit | Beginn UTC | Ende UTC |
+| --- | --- | --- | --- | --- | --- |
+| Adapter | 1010/1010; 0 Fail/Cancelled/Skip/Todo | 0 | 2539783 ms | 2026-09-20T19:18:38.5763889Z | 2026-09-20T20:00:58.3594140Z |
+| Foundation ohne zusätzliches VM-Flag | 757/757; 0 Fail/Cancelled/Skip/Todo | 0 | 3905 ms | 2026-09-20T20:01:16.2628266Z | 2026-09-20T20:01:20.1677626Z |
+| Adapter + Foundation | 1767/1767; 0 Fail/Cancelled/Skip/Todo | 0 | 2862334 ms | 2026-09-20T20:01:29.9979459Z | 2026-09-20T20:49:12.3318149Z |
+| BrowserSyncTransport | 423/423; 0 Fail/Cancelled/Skip/Todo | 0 | 2939 ms | 2026-09-20T20:49:33.2972248Z | 2026-09-20T20:49:36.2365066Z |
+| SyncService + BrowserSyncTransport | 466/466; 0 Fail/Cancelled/Skip/Todo | 0 | 3214 ms | 2026-09-20T20:49:38.7923886Z | 2026-09-20T20:49:42.0069565Z |
+| Sechs bestehende Sync-Suites | 735/735; 0 Fail/Cancelled/Skip/Todo | 0 | 6776 ms | 2026-09-20T20:49:44.3718066Z | 2026-09-20T20:49:51.1475887Z |
+| Vollständige serielle Suite | 3522/3522; 0 Fail/Cancelled/Skip/Todo | 0 | 2916146 ms | 2026-09-26T21:11:44.6346471Z | 2026-09-26T22:00:20.7800541Z |
+| Produktionsbuild | 46 Module | 0 | 803 ms | 2026-09-26T21:11:00.2796551Z | 2026-09-26T21:11:01.0821440Z |
+| n8n-Bundlecheck | driftfreier Check | 0 | 508 ms | 2026-09-26T21:11:06.7169353Z | 2026-09-26T21:11:07.2246540Z |
+
+Alle abgeschlossenen Abschlussläufe sind an ihr tatsächliches Repository-CWD, Node-/Vite-Version, ursprüngliches Outputencoding, vollständigen Rohoutput, Prozessende und 166 gleiche Vorher-/Nachher-Dateibindungen gebunden. Die folgenden Metadaten enthalten die vollständige Statistik. Die sechs vor der ausdrücklichen Pause vollständig abgeschlossenen Prüfungen bleiben an ihre unveränderten 166 Rohbytebindungen gebunden. Der unterbrochene full-final ersetzt den ausgewählten Gesamtsuiten-Retry nicht; offene oder abgebrochene Läufe erhalten kein erfundenes Ende und keine Nachherbindung.
+
+| Lauf | Tatsächlicher Befehl | UTF-16LE-Rohoutput mit BOM | Bytes | Roh-SHA-256 | Metadaten | Metadaten-SHA-256 |
+| --- | --- | --- | --- | --- | --- | --- |
+| adapter-final | node --experimental-vm-modules --no-warnings --test --test-concurrency=1 "C:/Users/jslom/Documents/Projekte/GoldenDawn/tests/browserSyncTransportRuntimeDiagnosticAdapter.test.js" | adapter-final.tap | 188448 | 20669a860ed0f9a0cf2987ed653f755ade2df2a209784cf8771ea8affc7452ee | adapter-final.completion.json | c9fdc8e921db3f7fdaa95ced652531508172607b49b133c76a6d159260b726ce |
+| foundation-final | node --test --test-concurrency=1 "C:/Users/jslom/Documents/Projekte/GoldenDawn/tests/browserSyncTransportRuntimeDiagnosticObserver.test.js" | foundation-final.tap | 81650 | 735f78ad9078dd20cebf2b0105dde5c607b82e0b4663d7c076a605a2c2abc627 | foundation-final.completion.json | 7ee416411f832798bd8b12245f2da9ae6dd1601bc29bdbbaef86e283fef77212 |
+| combined-final | node --experimental-vm-modules --no-warnings --test --test-concurrency=1 "C:/Users/jslom/Documents/Projekte/GoldenDawn/tests/browserSyncTransportRuntimeDiagnosticObserver.test.js" "C:/Users/jslom/Documents/Projekte/GoldenDawn/tests/browserSyncTransportRuntimeDiagnosticAdapter.test.js" | combined-final.tap | 269998 | 018e1bf86e5e2e77eb1816d1187ebf16095ae7435b75d8d26a60a3d32eda1a87 | combined-final.completion.json | 9fc574bc7c689dd791dfcbf6066e0ade22c217c0be4b38edaa49f4529a35d8d3 |
+| transport-final | node --test --test-concurrency=1 tests/browserSyncTransport.test.js | transport-final.tap | 59332 | abbf87e08d27c5293385872da45b5ddf66be20f47b185d799a543939b8a2665f | transport-final.completion.json | a681975f5820d8881d3fe3cba75b4404d29e56a9c3fe422372a2c1db5c001d9c |
+| service-transport-final | node --test --test-concurrency=1 tests/syncService.test.js tests/browserSyncTransport.test.js | service-transport-final.tap | 68214 | 902f43b344863047e27a28e9014b8fbf4355ae8f5f2ecdb4acb75a83c84627d0 | service-transport-final.completion.json | ba97c12926041b05ad72d7855f6f634e46f6aa494b4e49d987221c88158e4df8 |
+| six-sync-final | node --test --test-concurrency=1 tests/syncContract.test.js tests/syncService.test.js tests/syncGatewayRequestBoundary.test.js tests/syncAgent.test.js tests/localSyncGatewayHttpServer.test.js tests/browserSyncTransport.test.js | six-sync-final.tap | 116538 | b0908b6de8c61fca774e6c6b9610c08e2bfdd0694ddd566eb4d091409c485612 | six-sync-final.completion.json | 91630147cabfdd60a0c509c5a194bf02eb207ca232e1f4154469546adfa1e1a8 |
+| full-resume-20260926-r2 | npm.cmd test -- --experimental-vm-modules --no-warnings --test-concurrency=1 | full-resume-20260926-r2.tap | 561766 | eea08e6dac544538818315bc0fb44e660c7eb0d54d7783d0e3adcfec062b45b8 | full-resume-20260926-r2.completion.json | 47b5dc47b9736ecff89bdd9bb74160797ca301caaf686970fb179e3f4f15cdf4 |
+| build-final | npm.cmd run build | build-final.tap | 800 | 3c8d348bf9582ae04db4d52055ad4b934b17011121b98929802f468e5f8eb846 | build-final.completion.json | 2be75a1981119093c208514a6999610d8d0b33ad5b028f278962fda80a943fad |
+| bundle-final | npm.cmd run bundle:n8n:check | bundle-final.tap | 214 | 76b2cdefb8109d788ba41d35fe5277589c1d2b74a80e74b2240b2aef916a4512 | bundle-final.completion.json | e188f6319b420bb3f8b6a7f65456b31b0869d8e91d26dec7a1af013a797942b7 |
+
+| Abgeschlossener Lauf | CWD | Node | Node-Executable | Vite |
+| --- | --- | --- | --- | --- |
+| adapter-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| foundation-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| combined-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| transport-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| service-transport-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| six-sync-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| full-resume-20260926-r2 | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| build-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+| bundle-final | C:/Users/jslom/Documents/Projekte/GoldenDawn | v24.19.0 | C:\Program Files\nodejs\node.exe | 8.1.4 |
+
+Verifikationsauswertung: `verification-final-resume-20260927.json`, 16175 Bytes, SHA-256 `137861ec6ab439691995afbf807899bb49f554d3e0255605afc1241329439210`. N = 1010; gemeinsame Suite = 1767; vollständige Suite = 3522.
+
+#### Aufwand und CI-Grenze
+
+Die begrenzten Kostenkorrekturen ersetzen wiederholte Casefold-Vollscans durch eine lokale Mitgliedschaftsmenge, entfernen einen unbenutzten gehaltenen Pfadgraphen, übernehmen bei einem vollständigen ersten Chunk ausschließlich die bereits defensiv kopierten privaten Bytes und vermeiden unnötiges erneutes Sortieren bereits geordneter Snapshotordinale. Bei reentranter ungeordneter Veröffentlichung bleibt der numerische Sortierfallback erhalten. Private statische Raw-Fixtureseeds werden einmal gelesen, jeder Aufrufer erhält eine frische Map und frische Bytearrays; tatsächliche Sourceprüfungen und frische Modulimporte bleiben bestehen.
+
+Die realen großen Sourcegrenzfälle und die kumulierte ungefilterte Suite werden anhand ihrer tatsächlichen Laufoutputs beurteilt. Unterschiedliche Zwischenfassungen sind kein kontrollierter Performancevergleich. Speicher-Samples belegen nur die gemessenen Zeitpunkte, keine exakte Maximalbelegung. Es wurden weder Heaplimits erhöht noch Worker, weitere Testdateien, GC-Schalter oder zusammengesetzte Teilläufe eingeführt.
+
+CI bleibt unverändert bei `ubuntu-latest`, Node `20.19`/`22.12` und `timeout-minutes: 10`. Lokale Windows-/Node-24-Ergebnisse sind kein CI-Matrix- oder Zeitbudgetnachweis. Die autorisierten drei Toolingänderungen ergänzen ausschließlich `--experimental-vm-modules --no-warnings --test-concurrency=1` und ihre Erklärung. Ein tatsächlicher CI-Lauf wurde nicht ausgeführt.
+
+| Zusätzliche tatsächliche Beobachtung | Auditdatei | Bytes | SHA-256 |
+| --- | --- | --- | --- |
+| Der ausgewählte Gesamtsuiten-Retry dauerte tatsächlich 2916146 ms Wallzeit (rund 48,6 Minuten). Das unveränderte CI-Limit beträgt 10 Minuten; Ubuntu mit Node 20.19/22.12 wurde nicht ausgeführt. Prozesssamples belegen keine exakte V8-Heapspitze. | performance-final-resume-20260927.json | 49050 | 25fd57276a32e5e25cd26e7f902580569eb3d8d882fd3d991b40c49084259965 |
+| Alle 22 zuvor offenen Fälle und die 23 neuen Grenzfälle sind mit ihren exakten Namen im vollständigen Adapterlauf 1010/1010 jeweils erfolgreich gebunden. | known22-full-adapter-results.json | 118810 | 4730c3095c51e60e6b4cec44c515c685ba4c4a387ba24cdc3ec535e03e23e2cb |
+| 38 Anforderungszeilen ordnen die verpflichtenden Vertragsgruppen und Mutanten konkreten registrierten Fällen zu; die ursprüngliche Fokusbindung 55/55 wird getrennt von den vollständigen Läufen ausgewiesen. | living-contracts-section15-map.json | 69719 | 7f4114ca242a222836e2aa94bac2a4599aad69020bb0bdf36b29d7b0549ada23 |
+| Die Wiederaufnahme bestätigt alle 166 Pausebindungen, 104 alte Auditdateien, Projektrefs und Index. Interne Codex-Refänderungen werden getrennt ohne Ursachenbehauptung ausgewiesen. | resume-20260926-baseline.json | 51309 | e7e82c712f0655b2254adfc7d926c96d2427ccc81f1c2578d4c4aadd79500edc |
+
+#### Rohbytebindungen und Schutzprüfung
+
+| Code-/Toolingdatei | Bytes | SHA-256 |
+| --- | --- | --- |
+| scripts/browser/browserSyncTransportRuntimeDiagnosticAdapter.js | 257839 | 4d27ab936ab4cb2f20ac22f570ded19ebc2f68e7ee1d9014bb8d735979163e7d |
+| tests/browserSyncTransportRuntimeDiagnosticAdapter.test.js | 463641 | cf8cd3802e2ae2904f6743a5c3ad7535b1dcd2d11029a1dbb59b19d8e704f6c7 |
+| .github/workflows/ci.yml | 865 | 89d968ed7c2551187dab9a7a8816eb794f3d6a04f154f58fbc4f6b819183fca1 |
+| scripts/git/Invoke-CommitWorkflow.ps1 | 9860 | 685ba6267103212cd350e49fa1e01ffbe0f23345898ab83bb5d02bf4edd3bc0e |
+| docs/git-workflows.md | 4731 | 258c36b560deeffbb45dd9b4b358f7ad223906f379c993a07afe4a9e7a81ab2e |
+
+Die endgültigen Rohhashes der sieben Statusdokumente werden nach dieser Änderung im Abschlussaudit und Bericht gebunden, nicht als Selbsthash in diesen Dateien. Der Vorstatusaudit `scope-protection-audit-resume-20260927-prestatus-result.json` (121662 Bytes, SHA-256 `3e7c0fe9978cde9a52726c10e329575722da097821cd21d05e950e05f175a7db`) bestätigt die 16 geschützten Dateien, alle ADRs und übrigen nicht freigegebenen Dateien gegen Soll- und rohe Baselinebindungen. Die Evaluation besitzt genau einen normativen Treffer, 4259 Bytes und SHA-256 `a623ffafee8dfcbc1d2ddc374cc35f0dbf800defd97619a3b58337d972090f7b`. Historischer Commit `8001cc7eb7d2fed68c5ca4061514b486a204ac44`, HEAD und Working Tree besitzen jeweils das unveränderte Frontendmanifest mit 51 Pfaden, 5606 Bytes und SHA-256 `6f3d5740b043308b4d38df33b6293c9064d8dd1b3f0c5801d50844336c195591`. Der Audit nach Anwendung dieser sieben Dokumentänderungen bindet zusätzlich deren vollständige neuen Bytes, Encoding, Links, Anker, Whitespace, Temp-Cleanup und Gitstatus.
+
+HEAD, Branch, Projektrefs und Index blieben im Vorstatusaudit unverändert; es gibt weiterhin 164 getrackte Pfade. Interne Codex-Refänderungen werden getrennt ausgewiesen; aus ihrem Namen folgt kein Ursachenbeweis.
+
+| Vergleich | Ref | Vorher | Nachher |
+| --- | --- | --- | --- |
+| historisch → Restart | refs/codex/turn-diffs/captures/1789316603132/ec9230b1-9dba-4a14-bf96-85199de0946f/base | refs/codex/turn-diffs/captures/1789316603132/ec9230b1-9dba-4a14-bf96-85199de0946f/base [NUL] 03b0350bbbb969198019adebe046738d0af7582b [NUL] tree [NUL]  | nicht vorhanden |
+| historisch → Restart | refs/codex/turn-diffs/captures/1789929215308/8816e5bb-f371-4380-9927-24a7ca66049e/base | nicht vorhanden | refs/codex/turn-diffs/captures/1789929215308/8816e5bb-f371-4380-9927-24a7ca66049e/base [NUL] 44954fa2efc5570aa9360589a18ed4ec4d5c376a [NUL] tree [NUL]  |
+| historisch → Restart | refs/codex/turn-diffs/checkpoints/4d9da7a2328a47fcf2a48774c63b94f6/64e9bbe66092224e94c1c67c9c049dcd/1789928433378/6d02f981-e7d9-4a5a-a5e3-564723c43ec2 | nicht vorhanden | refs/codex/turn-diffs/checkpoints/4d9da7a2328a47fcf2a48774c63b94f6/64e9bbe66092224e94c1c67c9c049dcd/1789928433378/6d02f981-e7d9-4a5a-a5e3-564723c43ec2 [NUL] 44954fa2efc5570aa9360589a18ed4ec4d5c376a [NUL] tree [NUL]  |
+| Restart → aktueller Audit | refs/codex/turn-diffs/captures/1789929215308/8816e5bb-f371-4380-9927-24a7ca66049e/base | refs/codex/turn-diffs/captures/1789929215308/8816e5bb-f371-4380-9927-24a7ca66049e/base [NUL] 44954fa2efc5570aa9360589a18ed4ec4d5c376a [NUL] tree [NUL]  | nicht vorhanden |
+| Restart → aktueller Audit | refs/codex/turn-diffs/captures/1790452952291/a5d44534-afe6-4db3-8399-67716cee0c47/base | nicht vorhanden | refs/codex/turn-diffs/captures/1790452952291/a5d44534-afe6-4db3-8399-67716cee0c47/base [NUL] 9bb8980206dd76d63dc5f23845e4bdef21f6ca15 [NUL] tree [NUL]  |
+| Restart → aktueller Audit | refs/codex/turn-diffs/checkpoints/c1925b17cba1a210d944d9a1c3922865/9dedb9908579d4de1c695ae563b503f6/1790373891634/26d2bbf6-618c-4a08-82c3-af5066c2b35b | nicht vorhanden | refs/codex/turn-diffs/checkpoints/c1925b17cba1a210d944d9a1c3922865/9dedb9908579d4de1c695ae563b503f6/1790373891634/26d2bbf6-618c-4a08-82c3-af5066c2b35b [NUL] 9bb8980206dd76d63dc5f23845e4bdef21f6ca15 [NUL] tree [NUL]  |
+
+#### Evidenz-, Sicherheits- und Reviewgrenze
+
+Phase 0/Tor A ist am tatsächlichen begrenzten Diff bestätigt: Es wurden kein Modell, keine statistische Inferenz, kein Provider oder Workflow, keine Credentials oder privaten Inhalts-Payloads und keine neue Logging-, Storage- oder Telemetriefläche ergänzt. Neue Adapter-/Foundationtests bleiben netzwerkfrei. Ausschließlich die unveränderten bestehenden Regressionen beziehungsweise die Gesamtsuite dürfen die bisherigen Loopback-/Testprozessfixtures in `localSyncGatewayHttpServer.test.js` und `n8nCloudIngressProbe.test.js` verwenden. Normale Testinfrastruktur, Auditlogs, sichere temporäre Testkopien und erlaubte Buildoutputs sind keine Runtimeevidenz.
+
+ADR 0035, ADR 0036 und ADR 0037 sowie die geschützte Foundation bleiben unverändert. Foundation und Testkopien bleiben `NOT_EVIDENCE`, die Testfinalisierung liefert `runtimeRecord:null`. Authentisches Runtime-`A_obs`, Diagnoselauf, Browserkomposition, Browser-E2E, Writer und Persistenz sind weder nachgewiesen noch autorisiert. `overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben unverändert. Reale handlegebundene Windows-Prozessbaum-/Pfadcleanupfähigkeit und unabhängige Adapterausgabestille bleiben sichtbare Laufblocker; Root-Exit oder Handleclose wird nicht als vollständiger Tree-/Entfernungsbeweis ausgegeben. Keine reale Adapterclock, kein realer Adaptertimer, Browser, Debug-Pipe, manueller Gateway-/Vite-/Devserver, aktiver Portcheck oder externer Zugriff wurde für den neuen Adapter-/Foundationnachweis verwendet.
+
+Historische Foundation-/Korrekturergebnisse, übermittelte frühere Reviews, unterbrochene Adapterarbeit, gezielte Reparaturläufe, frische Vollprüfungen und diese Selbstprüfung sind getrennte Nachweise. Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit. Ein unabhängiger Review wurde weder als PASS behauptet noch automatisch beauftragt. Es erfolgte keine Git-Schreibaktion.
+
+### ADR-0036-Load-/Hashabgleich nach Foundationkorrektur / 2026-09-13
+
+Dieser Dokumentationsslice gleicht ausschließlich ADR 0036 und die sieben
+freigegebenen Living Documents an die unabhängig geprüfte und durch Jan
+unverändert committete Arraydescriptor-Korrektur an. Der read-only Preflight
+bestätigte Branch `codex/docs/adr-0036-array-descriptor-alignment`, HEAD
+`8f8150e1426983ef18755a395fdb8d8c99dfc470`, genau den Parent
+`91eef75adf179de8d32720562ea481bc891319b3`, Tree
+`0ed2c672d2a05f1f5f41df35dd302ef1435c2f18` und den Commitbetreff
+`fix: accept non-writable array length descriptors`. `main` und der nur lokal
+gelesene Remote-Tracking-Ref `origin/main` standen auf dem Parent; 164 getrackte
+Pfade, sauberer Working Tree, leerer Index, keine ungetrackten Dateien und
+sauberer Ausgangsdiff samt `git diff --check`. Der Commitdiff umfasst exakt
+die neun nachstehend gebundenen Dateien; produktiv entfernt er ausschließlich
+die beiden zusätzlichen Writablebedingungen. Es erfolgte kein Fetch.
+
+Die vor Änderungen erstellte Fundstellen- und Deltamatrix unterscheidet:
+
+| Fundstellen | Bindungsklasse | Gezielter Abgleich |
+| --- | --- | --- |
+| ADR 0036 §1/§2/§10 und aktive Suiteangaben | aktive operative Bindung | korrigierte Foundation-/Testbytes, Auditbasis `8f8150e…`, aktive 757/757-Suite |
+| Alte Hash-/Reviewtabellen und 422er-/595er-Nachweise | historischer Nachweis | Werte erhalten, historische Geltung ausdrücklich kennzeichnen |
+| ADR 0036 Status/Kontext/§12/§14/§15/Konsequenzen/Neubewertung sowie Köpfe, Zusammenfassungen und Schrittfolgen der Living Documents | aktuelle Status- oder Schrittfolgeangabe | abgeschlossenen Korrekturreview und anschließenden Commit binden; neuen Dokumentreview und manuellen Dokumentationscommit vor einem neuen Adapterauftrag einordnen |
+
+Jan übermittelte den unabhängigen Korrekturreview von
+`gpt-daybreak-blue-latest`, Reasoning `xhigh`, als Chatbericht: `PASS` ohne
+relevante Befunde. Dieser Review galt ausschließlich Basis
+`91eef75adf179de8d32720562ea481bc891319b3` plus den folgenden neun damals
+uncommitteten Rohbytefassungen. Jan übernahm diese Bytes anschließend
+unverändert in `8f8150e1426983ef18755a395fdb8d8c99dfc470`. Alle neun
+Reviewhashes und Bytezahlen stimmen mit den rohen Commitblobs und den Dateien
+vor diesem Dokumentabgleich überein:
+
+| Reviewdatei | Bytes | SHA-256 der damaligen Reviewfassung und des Korrekturcommitblobs |
+| --- | ---: | --- |
+| `scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js` | 219112 | `d4cadf656bb50e2b062c9d0d66e3f895bc87649362ce995abfbdbe24a9f4e731` |
+| `tests/browserSyncTransportRuntimeDiagnosticObserver.test.js` | 325244 | `4cf2698fa2af48750a71a5effbc23e059ef51133e0646c3e0333bb93d633cb64` |
+| `AGENTS.md` | 200088 | `3c1ae4b04301e7e1782f003642f347ce4b88a0015b704b1f7f10c479b90e58e9` |
+| `CHANGELOG.md` | 178108 | `1333b8b2f2e62eb3bd7957339982e65939904f0f75aee0a60d728aae58c55bc0` |
+| `docs/architecture.md` | 278419 | `79c9f2f5673dd261ddf75baf3b220125d49aaf5e820cc63d506e200696c5c680` |
+| `docs/data-contracts.md` | 719684 | `27fc7694d974aeeaddf11525807cce341e4db9e27d31418f7749ca09200af5e6` |
+| `docs/roadmap.md` | 226600 | `706a89d491310cb531d92ff1809176f3373e9141ad5ac302726d6f003e8f5520` |
+| `docs/security.md` | 282890 | `80ed9c5c93c00f3b7fba36a63b934027e7c836077d48743d5884e277e166fe46` |
+| `docs/decisions/README.md` | 30305 | `22e3d07e4296d6d709e8b932fa562e9a45b8f1eb4add05d75c68de633820e492` |
+
+Der Review wurde weder auf dem Korrekturcommit noch auf den jetzigen neuen
+Dokumentfassungen ausgeführt. Für den Chatbericht werden kein Berichtspfad,
+Berichtdateihash oder Ausführungszeitpunkt behauptet. Frühere R1–R4-Reviews,
+ADR-0037-Annahme, dessen Implementierungsreview und Featurecommit sowie
+ADR-0036-Vorannahmereview und Annahme behalten ausschließlich ihre jeweiligen
+historischen Bindungen. Korrekturreview, jetzige Selbstprüfung und erst noch
+separat zu beauftragender unabhängiger Dokumentreview sind davon getrennt.
+
+Die Ergebnisprovenienz der abgeschlossenen Korrektur lautet:
+
+| Prüfung | Korrekturimplementierungsbericht | Vom unabhängigen Korrekturreview selbst wiederholt |
+| --- | --- | --- |
+| Foundation | 757/757 = 595 + 162 | 757/757 |
+| BrowserSyncTransport | 423/423 | nicht erneut ausgeführt |
+| SyncService plus Transport | 466/466 | nicht erneut ausgeführt |
+| sechs serielle Sync-Suites | 735/735 | nicht erneut ausgeführt |
+| serielle Gesamtsuite | 2512/2512 = 1755 + 757 | nicht erneut ausgeführt |
+| Build | exakt 46 Module | exakt 46 Module |
+| Bundlecheck | driftfrei | Exit 0, driftfrei |
+
+Alle genannten abschließenden Testläufe hatten laut ihren jeweiligen Berichten
+0 Fehler, Cancellations, Skips und Todos. Die historische 595er-Baseline und
+sechs VM-Gegenproben wurden vom Korrekturreview nicht erneut ausgeführt.
+Die größeren Implementierungsprüfungen nutzten ihre ausdrücklich erlaubten
+bestehenden Loopback-/Testprozessfixtures; sie waren nicht vollständig
+netzwerkfrei. Diese berichteten Ergebnisse sind keine eigenen Läufe des
+jetzigen Dokumentationsslices.
+
+Aktiv sind in ADR 0036 §2 ausschließlich Foundationhash `d4cadf65…`, in §10
+ausschließlich Testhash `4cf2698f…` und die Fokussuite 757/757. Die vollständigen
+Hashes stehen in der obigen Tabelle und in den jeweiligen ADR-Abschnitten.
+Die Auditbasis `8f8150e…` ist kein fest vorgeschriebener Repositorycommit eines
+späteren Laufs: Der unveränderte Loadervertrag bindet weiterhin den tatsächlich
+angegebenen `repositoryCommit` und dessen rohen Foundationblob. Frühere
+Foundation-/Testhashes bleiben historische Nachweise und sind kein
+zusätzlicher akzeptierter Loaderhash oder Fallback.
+
+Die Korrektur setzt die fortgeltende native Arraygrammatik mit beiden
+Writablezuständen um; sonstige Descriptor-, Dichte-, Key-, Cap- und Aliasregeln
+bleiben erhalten. Die Foundation mutiert oder friert fremde Graphen nicht ein,
+und der vollständige Adapter-Deep-Freeze-Vertrag bleibt unverändert. Die 162
+zusätzlichen Tests und fünf kausal erkannten Mutanten (vier Writablezwänge und
+ein Feld-ID-Bypass) sind reine Foundationnachweise. Die 27 Notificationmutanten,
+vier Deadlinemutanten, 18 Joinfälle, elf Joinmutanten sowie das getrennte
+Drei-Microtask-Präfix und strukturelle Pending-Oracle bleiben erhalten. Daraus
+folgen keine ausgeführten Raw-Adapter-, Parser-, FIFO-/Cap-Wiring-,
+Adaptertestkopien- oder authentischen `A_obs`-Nachweise.
+
+ADR 0036 bleibt ausdrücklich durch Jan `Angenommen – 2026-09-12`. Vor diesem
+Abgleich bestätigte der Rohbyteaudit seine vollständigen 168357 Bytes mit
+`0727943c53644d1381f478e8f28771592493f6010208b3fe25d7f9a70d44e528`
+und den Hauptteil ab einschließlich `## Kontext` mit 166449 Bytes und
+`c61cd42d8da9ae7d5cfe62884a53e8761301a96c5f471554c884152c77b15566`.
+Die Hauptteilgleichheit gilt ausdrücklich historisch für die damalige
+Annahmenachführung. Dieser beauftragte Abgleich ändert ausgewählte
+Hauptteilpassagen ohne neue Annahme oder Architekturentscheidung; die neuen
+vollständigen Bytes werden nicht vom alten Vorannahme-PASS gedeckt. Finale
+Dokument- und Hauptteilhashes stehen ausschließlich im Abschlussbericht,
+damit keine zirkuläre Selbsthashbindung entsteht.
+
+Dieser Dokumentationsslice führte nach den Dokumentkorrekturen ausschließlich
+die folgenden drei bestehenden Projektprüfungen seriell selbst aus:
+
+| Eigene Bestandsprüfung | Ergebnis |
+| --- | --- |
+| `node --test --test-concurrency=1 "C:/Users/jslom/Documents/Projekte/GoldenDawn/tests/browserSyncTransportRuntimeDiagnosticObserver.test.js"` | Exit 0; 757/757; 0 Fehler, Cancellations, Skips und Todos; kein zusätzliches VM-Flag |
+| `npm.cmd run build` | Exit 0; exakt 46 transformierte Module |
+| `npm.cmd run bundle:n8n:check` | Exit 0; driftfrei |
+
+Vor und nach diesen Läufen bestätigte der Rohbyteaudit alle 15 Schutzbindungen
+gegen Sollhashes und rohe HEAD-Blobs. Die übrigen 156 getrackten Dateien
+blieben gegenüber der Start-Rohbytebaseline unverändert, darunter sämtliche
+36 anderen ADRs; ADR 0037 blieb auch im getrennt gehashten Hauptteil bytegleich.
+Das Frontendmanifest blieb für historischen Commit, aktuelle Basis und Working
+Tree bei 51 Pfaden, 5606 Bytes und
+`6f3d5740b043308b4d38df33b6293c9064d8dd1b3f0c5801d50844336c195591`.
+Die eindeutig extrahierte, niemals ausgeführte Evaluation blieb bei 4259 Bytes
+und `a623ffafee8dfcbc1d2ddc374cc35f0dbf800defd97619a3b58337d972090f7b`.
+
+Der Abschlussaudit bestätigt ausschließlich die acht erlaubten Dokumente als
+ungestagten Diff, weiterhin 164 getrackte Pfade, keine neuen Repositorydateien
+oder verbliebenen temporären Foundationtestkopien und einen unveränderten
+Bestand ignorierter Pfade. Branch, HEAD, Tree und alle zu Beginn erfassten Refs
+blieben unverändert; Index und `git diff --check` sind sauber. Alle acht
+Dokumente sind gültiges UTF-8 ohne BOM, mit ausschließlich LF, finaler LF und
+ohne NUL-Bytes; 156 lokale Linkziele und 23 verwendete Überschriftsanker sind
+gültig. Vorgeschriebene PowerShell-CRLF-Darstellungen wurden anhand der
+Start-Rohbytes unverändert bestätigt und nicht normalisiert. Der ADR-0036-Diff
+bleibt innerhalb der vorherigen Deltamatrix; die nicht freigegebenen technischen
+Passagen und sämtliche gefenceten technischen Blöcke aller acht Dokumente
+bleiben bytegleich. Es gab keine weiteren Projektprüfläufe, Git-Schreibaktionen
+oder Adapter-, Browser-, Netzwerk- oder Diagnoseausführung.
+
+Als Nächstes folgen ausschließlich der separat beauftragte unabhängige
+Dokumentreview der acht neuen Rohbytefassungen, bei erfolgreichem Review Jans
+manueller Dokumentationscommit und erst danach ein neu gebundener,
+ausdrücklich beauftragter netzwerkfreier Adapterimplementierungs- und
+Testslice. Die Selbstprüfung ist kein unabhängiger Review-PASS.
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation `NOT_EVIDENCE`
+und fehlendes authentisches adapterseitiges `A_obs` bleiben unverändert.
+Sämtliche sichtbaren Laufblocker, insbesondere Windows-Prozessbaumownership,
+handlegebundener Pfadcleanup und unabhängige Adapterausgabestille, gelten fort.
+Adapterimplementierung und ausgeführte Adaptertests sowie Browser-, Diagnose-,
+E2E-, Writer- und Persistenzfreigaben fehlen weiterhin. Git-Schritte bleiben
+manuell bei Jan.
+
+### Foundation-Arraydescriptor-Korrektur / 2026-09-13
+
+Der folgende Eintrag hält den damaligen Implementierungsabschluss vor
+Korrekturreview, Jans Commit und dem oben dokumentierten Load-/Hashabgleich
+historisch fest. Seine damaligen Ausgangs-, Ergebnis-, Hash- und
+Schrittfolgeangaben werden nicht auf den jetzigen Dokumentationsslice übertragen.
+
+Der vorgeschaltete lokale Vertragsabgleich trägt eine begrenzte Korrektur der
+Foundation auf Branch `codex/fix/diagnostic-foundation-array-descriptors`.
+Ausgangsbasis ist `91eef75adf179de8d32720562ea481bc891319b3`, Tree
+`3813cab2394657b5d3432f8a2cd32848d9b7754b`, identisch zu den lokal gelesenen
+Refs `main` und `origin/main`; 164 getrackte Pfade, sauberer Worktree und
+leerer Index. Es wurde weder gefetcht noch eine Git-Schreibaktion ausgeführt.
+
+| Prüfer und Callsite | Bestehender Vertrag | Beleg und kleinstes Delta |
+| --- | --- | --- |
+| `readClosedTargetInfos`, aufgerufen aus `parseGetTargetsResponse`; Baseline Zeile 2448 | [ADR 0033 §6](docs/decisions/0033-browser-sync-transport-diagnostic-foundation-effects-protocol-boundary.md), [ADR 0034 §1](docs/decisions/0034-browser-sync-transport-diagnostic-foundation-grammar-derivation-and-testability-boundary.md) verlangen native Length-/Dense-/Descriptorgrenzen, keinen Writablezwang; [ADR 0036 §5](docs/decisions/0036-browser-sync-transport-runtime-diagnostic-adapter-boundary.md) verlangt den tief eingefrorenen JSON-Graphen | Die zusätzliche Bedingung `lengthDescriptor.writable !== true` verwirft diesen Graphen. Ausschließlich diese Bedingung ist entfernt. |
+| `readClosedArray`, aufgerufen aus `copyRunBinding` für genau 59 `replayOperands`; Baseline Zeile 447 | ADR 0033 §2/§6 und ADR 0034 §1 sowie der [Living Contract](docs/data-contracts.md#prototyp--frische--und-freezegrammatik) verlangen dieselbe native Arraygrammatik ohne Pflicht zu `writable: true` | Derselbe zusätzliche Implementierungsguard ist eigenständig nicht normativ verlangt und ebenfalls entfernt. Aus dem R0-Freeze wird kein zweiter Adapterblocker abgeleitet. |
+
+ADR 0034 gilt über ADR 0035 fort; ADR 0037 ändert ausschließlich die
+Notificationgrenze und verlangt keine zusätzliche Writablebedingung.
+Ein nativer Array-Längendescriptor kann bei unveränderten
+`enumerable: false`-/`configurable: false`-Grenzen beide Writablezustände
+besitzen. Das Verbot, fremde Eingaben durch die Foundation einzufrieren,
+verbietet nicht die Annahme bereits eingefrorener Eingaben. Keine weitere
+Array-, Alias-, Descriptor-, Exact-once-, Cap-, Clock-, Korrelations-, Join-,
+Notification-, Cleanup-, Projektions- oder Fehlerpräzedenzgrenze wurde geändert.
+Es gibt keinen neuen Validator, Import, Export, Anker oder Testseam. Der
+Adapter-Freezevertrag bleibt vollständig erhalten; dies ist eine
+Implementierungskorrektur ohne neue normative Entscheidung oder Review-PASS.
+
+Vor der ersten Änderung bestanden erneut 595/595 Foundationtests. Sechs
+separate Gegenproben liefen danach mit den unveränderten, längen- und
+hashgeprüften Produktionsbytes als in-memory `vm.SourceTextModule` mit
+kanonischer File-URL, ohne Instrumentierung oder Imports. Beide veränderlichen
+Kontrollen erreichten die sechs synthetischen Commandintents einschließlich
+Evaluate. Nur `length.writable = false` und der vollständige Deep Freeze
+führten bei `targetInfos` jeweils schon nach `Target.getTargets` zu
+`FAIL/observer-invalid`, Capture `not-started`; bei `replayOperands` scheiterten
+beide Profile bereits am statischen Factory-Dependencyfehler ohne Intent.
+Alle sechs erwarteten Baselinebeobachtungen wurden durch Assertions bestätigt.
+Der Evaluationstring wurde niemals ausgeführt. Diese reine Gegenprobe
+verwendete lokal `node --experimental-vm-modules --no-warnings --input-type=module -`;
+die dauerhafte Testsuite benötigt weiterhin keine zusätzlichen Prozessflags.
+
+Die additiven Regressionen liegen ausschließlich in der bestehenden
+[Foundationtestsuite](tests/browserSyncTransportRuntimeDiagnosticObserver.test.js):
+
+| Nachweis | Test beziehungsweise Oracle |
+| --- | --- |
+| Drei gültige Profile je Arrayprüfer, echte Übergabeidentität, unveränderte Eingaben | `akzeptiert beide nativen Arraylaengendescriptoren und tief gefrorene Eingabegraphen`; vollständige Intents und Resultprojektionen einschließlich Stages, Counts, Capturestart und terminalem Cleanup sind wertgleich, getrennte Runs bleiben frisch |
+| Beide Writablezustände, kein freier Read/Getter/Freeze/Schreibzugriff | `bewahrt Exact-once-Reflection ohne Fremdreads oder Mutation fuer beide Writablewerte`; Proxyvorbereitung erfolgt vor Messung, alle Descriptorresultate erfüllen Proxy-Invarianten |
+| Holes, Symbole, Extras, Accessors, fremder Prototyp, Reflectionthrows, Keyfolge und Alias | `erhaelt die geschlossenen Arraygrenzen und Reflectionfehler bei beiden Writablewerten`; keine unmöglichen nativen Lengthdescriptoren als Fixture |
+| Targetgrößen 0/1/128/129, keine Elementreads über 128, doppelte/angehängte Targets und Antwortdubletten | `erhaelt Targetkardinalitaet und den 129er-Guard vor Elementreads bei beiden Writablewerten`; Dublette vor Evaluate bleibt `U` ohne Evaluate, während Capture bleibt sie `UNPROVEN` bis `cap-fired` |
+| Alle 59 falschen Feld-IDs unter gültiger gefrorener Kontrolle; fehlende, zusätzliche, vertauschte Positionen, Zustand, Nullregel und Skalarfehler | `prueft gefrorene Replaynegativfixtures hinter einer gueltigen 59-Positionen-Kontrolle`; die frühere vorgeschaltete Freezeablehnung maskiert diese Prüfungen nicht mehr |
+| Vier isolierte Writablezwänge und zusätzlicher Feld-ID-Bypass | `erkennt vier getrennte Array-Writablezwang-Mutanten am selben oeffentlichen Verhaltensoracle`; pro Arrayprüfer werden alter True-Zwang durch nicht schreibbare Profile und umgekehrter False-Zwang durch veränderliche Kontrollen erkannt; der fünfte Mutant weist die kausale gefrorene Feld-ID-Ablehnung nach |
+
+Alle fünf Mutanten werden erfolgreich über den unveränderten
+ADR-0035-Testkopie-v2-Zugang mit insgesamt fünf Exports importiert und am
+gleichen jeweiligen Verhaltensoracle wie ihre Kontrollkopie erkannt.
+Jede Kopie entsteht frisch aus rohbytegeprüfter Produktionsquelle mit genau
+einer begrenzten Mutation und wird außerhalb des Repositorys seriell geprüft;
+das bestehende `finally` bestätigt die Nichtexistenz von Kopie und Testroot.
+Alle bisherigen Tests bleiben erhalten, darunter 27 Notificationmutanten,
+vier Deadlinemutanten, 18 Joinfälle und elf Joinmutanten sowie das getrennte
+Drei-Microtask-Präfix und strukturelle Pending-Oracle. Bei Setup-/Cleanup-
+Deadlinegleichheit und -überschreitung bleiben die vier Envelope-Traps null.
+
+Tatsächlich ausgeführte abschließende Prüfungen unter lokalem Node `24.19.0`:
+
+| Befehl | Ergebnis |
+| --- | --- |
+| `node --test --test-concurrency=1 tests/browserSyncTransportRuntimeDiagnosticObserver.test.js` | 757/757, `F = 595 + 162` |
+| `node --test --test-concurrency=1 tests/browserSyncTransport.test.js` | 423/423 |
+| `node --test --test-concurrency=1 tests/syncService.test.js tests/browserSyncTransport.test.js` | 466/466 |
+| `node --test --test-concurrency=1 tests/syncContract.test.js tests/syncService.test.js tests/syncGatewayRequestBoundary.test.js tests/syncAgent.test.js tests/localSyncGatewayHttpServer.test.js tests/browserSyncTransport.test.js` | 735/735 |
+| `npm.cmd test -- --test-concurrency=1` | 2512/2512, exakt `1755 + 757 = 2350 + 162` |
+| `npm.cmd run build` | Exit 0; exakt 46 Module |
+| `npm.cmd run bundle:n8n:check` | Exit 0; driftfrei |
+
+Alle abschließenden Testläufe besitzen 0 Fehler, Cancellations, Skips und Todos.
+Ein erster erweiterter Zwischenlauf hatte drei falsche neue Erwartungen zur
+wohlgeformten Dublette vor Evaluate und den dadurch fehlschlagenden Elterntest.
+Diese Erwartungen wurden an den unveränderten ADR-0035-§8-Vertrag angeglichen;
+das produktive Delta blieb bei den zwei entfernten Writablebedingungen.
+
+Neue Foundationlogik, neue Fixtures und ihre Nachweise sind netzwerkfrei.
+Die bestehenden Gesamtregressionen verwenden getrennt ausschließlich die
+erlaubten Loopbackabläufe von `localSyncGatewayHttpServer.test.js` und
+`n8nCloudIngressProbe.test.js` samt vorhandenen Socket-, Listener-, Timer-
+und Child-Cleanupprüfungen. Bestehende kontrollierte Node-Testkindprozesse,
+temporäre Testkopien und Buildartefakte bleiben Test-/Buildausnahmen. Es gab
+keinen Browser-, CDP-, manuellen Gateway-, Vite-, Diagnose- oder Replaylauf,
+keinen externen Request und keine neue Hostfähigkeit der Korrekturfixtures.
+
+| Artefakt | Alte Bytes / SHA-256 an HEAD | Neue Bytes / SHA-256 im ungestagten Diff |
+| --- | --- | --- |
+| Foundation | 219196 / `ff55a775ccbb7588474fc1efe3e1a08d871ce3524f133a000b0b3d8c7512eb1d` | 219112 / `d4cadf656bb50e2b062c9d0d66e3f895bc87649362ce995abfbdbe24a9f4e731` |
+| Foundationtests | 305890 / `1e8ce75e175b3e74c8c8b064e343550f32865fd5703aa54e01ead909a86e100c` | 325244 / `4cf2698fa2af48750a71a5effbc23e059ef51133e0646c3e0333bb93d633cb64` |
+
+Vor Änderungen trafen alle 16 Schutzdateien ihre festen Sollhashes und rohen
+HEAD-Blobs. Aus diesem Bestand ändern sich ausschließlich Foundation und
+Foundationtests. Die übrigen 14, alle weiteren ADRs sowie Produkt-, Paket-,
+Lockfile-, CI-, Workflow-, Bundle-, Generator- und Evidencepfade bleiben
+bytegleich. Der ADR-0037-Hauptteil bleibt bei 30763 Bytes und
+`83d728f3d4fb088b78e1577457aad561d971579c57c8f5898fcce83f61df831c`.
+Die eindeutige Evaluationextraktion bleibt bei 4259 Bytes und
+`a623ffafee8dfcbc1d2ddc374cc35f0dbf800defd97619a3b58337d972090f7b`.
+Das Frontendmanifest bleibt für historischen Commit
+`8001cc7eb7d2fed68c5ca4061514b486a204ac44`, Ausgangsbasis und Working Tree bei
+51 Pfaden, 5606 Bytes und
+`6f3d5740b043308b4d38df33b6293c9064d8dd1b3f0c5801d50844336c195591`.
+Der abschließende Audit prüft alle 164 getrackten Pfade gegen die gesicherten
+Ausgangsbytes, die Neun-Dateien-Whitelist, UTF-8/LF und unverändertes
+PowerShell-CRLF, lokale Dokumentlinks, Diffcheck, leeren Index und unveränderte
+Refs. Es gibt keine neue Repositorydatei oder verbliebene temporäre Testkopie.
+
+Phase 0/Tor A bleibt anhand des Diffs bestätigt: keine Modelle, statistische
+Inferenz, Provider, Credentials, privaten Inhaltspayloads, Telemetrie oder
+neu autorisierte Persistenz; Kommunikations- und Produktkomposition bleiben
+unverändert. Foundation bleibt `NOT_EVIDENCE`, ohne Runtime-Record, Writer,
+authentischen adapterseitigen `A_obs`-Nachweis oder Ursachenbeweis.
+`overallGate: FAIL` und `causeStatus: CAUSE_NOT_PROVEN` bleiben fest.
+
+Dieser Auftrag endet mit geprüftem, ungestagtem Diff; der unabhängige
+Implementierungsreview steht aus. Ausschließlich separat beauftragt folgen
+`gpt-daybreak-blue-latest` mit Reasoning `xhigh`, nach bestandenem Review Jans
+manueller Korrekturcommit, danach ein dokumentarischer ADR-0036-Load-/Hashabgleich
+samt Prüfung und erst anschließend ein neu gebundener Adapterauftrag.
+ADR 0036 bleibt angenommen und unverändert: Seine alten Load-/Testhashes
+passen ausdrücklich noch nicht zu diesen korrigierten Foundationbytes.
+Die Adapterimplementierung wird hier nicht fortgesetzt. Frühere Review-PASS-
+Urteile und Berichtshashes bleiben an ihre damaligen Bytes gebunden. Lauf-,
+Browser-, E2E-, Writer- und Persistenzfreigaben werden nicht erteilt.
 
 ### ADR-0036-Annahme und abgeschlossener Dokumentreview / 2026-09-12
 
@@ -43,9 +992,9 @@ ADR-0037-Implementierungsreview, Jans unveränderte Übernahme in den
 Featurecommit, dieser ADR-0036-Dokumentreview und die anschließende Annahme
 bleiben getrennte Bindungen.
 
-Diese Nachführung beschränkt sich auf den ADR-0036-Statuspräfix und die
-Status-/Review-/Schrittfolgeangaben der sieben Living Documents. Der geprüfte
-Hauptteil ab einschließlich `## Kontext` wird unverändert übernommen:
+Die damalige Annahmenachführung beschränkte sich auf den ADR-0036-Statuspräfix
+und die Status-/Review-/Schrittfolgeangaben der sieben Living Documents. Der
+geprüfte Hauptteil ab einschließlich `## Kontext` wurde damals unverändert übernommen:
 166.449 Bytes, SHA-256
 `c61cd42d8da9ae7d5cfe62884a53e8761301a96c5f471554c884152c77b15566`.
 ADR 0035 und ADR 0037 bleiben unverändert angenommen; Foundation und Tests
