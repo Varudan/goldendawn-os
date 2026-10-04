@@ -450,6 +450,8 @@ test('CI grouping aggregate CLI rejects a rehashed group log without its root pl
     await mkdir(positive);
     const plan = await discoverAdapterPlan();
     const sources = bindSources();
+    sources.configuration.repository = 'local';
+    sources.configuration.workflowRef = 'local';
     const planSha256 = digest(JSON.stringify(plan));
     const nodeVersion = process.versions.node;
     const startedAt = '2026-10-03T00:00:00.000Z';
@@ -495,7 +497,8 @@ test('CI grouping aggregate CLI rejects a rehashed group log without its root pl
     const runner = fileURLToPath(new URL('../scripts/ci/runAdapterGroups.js', import.meta.url));
     const checkout = fileURLToPath(new URL('../', import.meta.url));
     const invoke = (directory) => spawnSync(process.execPath, [runner, 'aggregate', directory, contextFile], {
-      cwd: checkout, encoding: 'utf8', timeout: 60000, maxBuffer: 8 * 1024 * 1024, windowsHide: true,
+      cwd: checkout, env: { ...process.env, GITHUB_ACTIONS: 'false' }, encoding: 'utf8',
+      timeout: 60000, maxBuffer: 8 * 1024 * 1024, windowsHide: true,
     });
     const accepted = invoke(positive);
     assert.equal(accepted.error, undefined);
