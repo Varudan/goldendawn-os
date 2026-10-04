@@ -6,7 +6,72 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR-0038-Reparatur vollständig lokal neu gebunden; Re-Review und Ubuntu-CI offen; Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0039 angenommen und Adapter-CI-Joblimit angepasst; Ubuntu-CI offen; Runtimegate FAIL
+
+### ADR-0039-Annahme und Workflowlimit / 2026-10-04
+
+Jan hat [ADR 0039](docs/decisions/0039-bounded-adapter-ci-job-timeout.md)
+nach unabhängigem Dokumentreview mit technischem `PASS` für genau die sieben
+gebundenen Vorannahmefassungen ausdrücklich angenommen: „ADR 0039 wird in der
+geprüften Fassung angenommen.“ Der frühere P2-Befund und dessen `FAIL`
+bleiben für ihre damaligen Bytes historisch. Das neue `PASS` wird weder auf
+diese Statusnachführung noch auf die geänderte Workflowdatei übertragen.
+
+In [.github/workflows/ci.yml](.github/workflows/ci.yml) wurde ausschließlich
+`jobs.adapter.timeout-minutes` von `10` auf `30` gesetzt. Die beiden
+`verify`-Jobs und `aggregate` bleiben bei zehn Minuten; Node-Versionen,
+sechs Gruppen, isolierte Runner, Serialität, Test- und Kopielebenszyklen,
+Quell-/Planbindung, Ergebnisformat und Aggregation bleiben unverändert.
+Die neue Workflowdatei ist eine geänderte CI-Quelle. Die lokalen
+ADR-0038-Ergebnisartefakte und der damalige Implementierungsreview-PASS
+belegen diese neuen Workflowbytes nicht; ein tatsächlicher Ubuntu-Lauf
+mit beiden Node-Versionen bleibt erforderlich. Die 30 Minuten sind ein
+Jobbudget einschließlich Einrichtung und Upload, kein bereits erbrachter
+Laufzeitnachweis. Die folgende Vorschlagspassage dokumentiert ihren
+historischen Stand vor Annahme und Umsetzung.
+
+Die gezielte CI-Infrastruktursuite besteht mit **115/115**, der Produktions-Build
+mit **46 Modulen** und der schreibfreie Bundlecheck mit Exit 0. Die ersten
+sandboxierten Test- und Bundlecheckversuche scheiterten an verweigertem
+temporärem Dateizugriff; die Wiederholungen außerhalb der Sandbox bestanden.
+Der Workflow-Diff ist genau die eine Timeoutzeile; sein neuer SHA-256 ist
+`8ebeeb9e021d4e71236ad5e76e9406a4134614c3f1ed8af666b4e2ab5ab20c92`.
+Diese lokalen Prüfungen belegen keine Ubuntu-Joblaufzeit. Vollständige
+Adaptergruppen, Remote-CI-, Browser- und Runtime-Diagnoseläufe wurden nicht
+ausgeführt. Git-Schreibschritte und PR bleiben manuell bei Jan und sind
+noch offen. `overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`,
+`NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert.
+
+### ADR-0039-Zeitbudgetvorschlag / 2026-10-04
+
+Der am 2026-10-04 unabhängig durchgeführte ADR-0038-Implementierungs-Re-Review
+schloss für die zwölf im [Abschlussaudit](#adr-0038-lokale-neubindung--2026-10-03)
+gebundenen Dateifassungen technisch mit `PASS` ohne neuen P1-/P2-Befund.
+Die beiden früheren P1-Gegenproben und die echten Ergebnisartefakte wurden
+materiell geprüft. Der frühere Review mit `FAIL` und die lokalen Nachweise
+vom 2026-09-28 bleiben getrennte historische Stände. Jan hat die zwölf
+geprüften Fassungen als `5f5304e53c0519513f703856c29a7c3a94914fa9`
+committet; die zwölf Commitblobs stimmen mit den damaligen Reviewhashes
+überein. Im aktuellen Arbeitsbaum bleiben nur die sechs Implementierungs-/
+Workflowdateien bytegleich. Die sechs geänderten Statusdokumente und
+ADR 0039 sind neue, vom damaligen Implementierungs-`PASS` nicht umfasste
+Fassungen.
+Ein Ubuntu-CI-Lauf und ein PR stehen weiterhin aus.
+
+Der neue [ADR 0039](docs/decisions/0039-bounded-adapter-ci-job-timeout.md)
+schlägt eine begrenzte Erhöhung von `jobs.adapter.timeout-minutes` von 10 auf
+30 vor. Die zwölf Adapterjobs wären einheitlich betroffen; `verify` und
+`aggregate` blieben bei zehn Minuten. Die lokalen Windows-/Node-24-Zeiten
+`source` 1141.081 s und `parser` 1255.706 s umfassen weder CI-Einrichtung
+noch Artefakt-Upload und belegen keine Ubuntu-Laufzeit. Die 30 Minuten sind
+ein vorläufiges Jobbudget, kein Abnahmenachweis. ADR 0039 ist noch nicht
+unabhängig dokumentarisch geprüft oder von Jan angenommen. Der Workflow
+bleibt unverändert bei zehn Minuten. Dieser Dokumentationsslice führt
+keine Tests, Builds, Git-Schreibaktionen oder Remote-CI aus.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und
+`runtimeRecord:null` bleiben unverändert. Die folgenden datierten Abschnitte
+halten ihre jeweiligen früheren Prüfstände fest.
 
 ### ADR-0038-Lokale Neubindung / 2026-10-03
 

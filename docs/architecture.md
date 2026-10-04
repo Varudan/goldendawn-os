@@ -4,10 +4,10 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR-0038-P1-Reparatur vollständig lokal neu gebunden; unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
+| Projektphase | `v0.3.0 – ADR 0039 angenommen; Adapter-CI-Joblimit 30 Minuten; Ubuntu-CI ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
 | Architekturumfang | Zielarchitektur für Version 1 |
-| Status | [ADR 0038](decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) bleibt angenommen; seine zwei P1-Implementierungsbefunde sind gezielt repariert. Die vollständige lokale Selbstprüfung ist erfolgreich; unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme stehen aus. [Neubindungsnachweise](../CHANGELOG.md#adr-0038-lokale-neubindung--2026-10-03). |
-| Letzte Aktualisierung | 2026-10-03 |
+| Status | [ADR 0039](decisions/0039-bounded-adapter-ci-job-timeout.md) ist nach unabhängigem Dokumentreview ausdrücklich angenommen; der Workflow begrenzt nur `adapter` auf 30 Minuten, `verify` und `aggregate` weiter auf zehn. Der frühere ADR-0038-Implementierungsreview und die lokalen Artefakte gelten nicht für die neuen Workflowbytes. Ubuntu-CI steht aus. [Aktueller Stand](../CHANGELOG.md#adr-0039-annahme-und-workflowlimit--2026-10-04). |
+| Letzte Aktualisierung | 2026-10-04 |
 
 ## ADR-0038-Lokale Neubindung / 2026-10-03
 

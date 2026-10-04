@@ -19,7 +19,45 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – ADR-0038-P1-Reparatur vollständig lokal neu gebunden; unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+Aktueller Stand: `v0.3.0 – ADR 0039 angenommen; Adapter-CI-Joblimit auf 30 Minuten gesetzt; tatsächliche Ubuntu-CI ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+
+### ADR-0039-Annahme und Workflowlimit / 2026-10-04
+
+Jan hat ADR 0039 nach unabhängigem Dokumentreview mit technischem `PASS`
+für die sieben gebundenen Vorannahmefassungen ausdrücklich angenommen.
+Der Review gilt nicht für diese neue Statusnachführung oder den geänderten
+Workflow. Ausschließlich `jobs.adapter.timeout-minutes` steht nun auf `30`;
+`verify` und `aggregate` bleiben bei `10`. Die sechs Adaptergruppen, beide
+Node-Versionen, Serialität und vollständige Ergebnisaggregation bleiben
+unverändert. Der frühere ADR-0038-Implementierungs-Re-Review mit `PASS`
+umfasste die alte Workflowdatei; die damaligen lokalen Ergebnisartefakte
+sind wegen des neuen Workflowhashes nicht auf den jetzigen CI-Stand übertragbar.
+
+Die tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0`,
+Commit dieses Slices und PR stehen aus. `overallGate: FAIL`, `causeStatus:
+CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und `runtimeRecord:null` bleiben
+unverändert. Die folgende Vorschlags- und Reviewpassage dokumentiert den
+früheren Stand vor Annahme und Workflowänderung.
+
+### ADR-0039-Zeitbudgetvorschlag / 2026-10-04
+
+Der getrennte unabhängige ADR-0038-Implementierungs-Re-Review schloss für die
+zwölf exakt gebundenen Dateifassungen technisch mit `PASS`. Diese Fassungen
+sind nun im Commit `5f5304e53c0519513f703856c29a7c3a94914fa9` enthalten;
+der frühere Review-`FAIL` bleibt historisch. Die tatsächliche Ubuntu-CI-Abnahme
+auf Node `20.19.0` und `22.12.0` steht weiterhin aus.
+
+[ADR 0039](docs/decisions/0039-bounded-adapter-ci-job-timeout.md) schlägt
+ausschließlich für die zwölf isolierten Adapterjobs ein vorläufiges
+30-Minuten-Joblimit vor. `verify` und `aggregate` sollen bei zehn Minuten
+bleiben. ADR 0039 ist nicht angenommen; der Workflow bleibt bei zehn Minuten
+für alle Jobs. Dokumentreview, Jans Annahme und eine gesonderte
+Workflowänderung stehen aus. Der Branch-Push löst nach aktuellem Workflow
+keinen CI-Lauf aus; ein PR gegen `main` wurde nicht erstellt.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und
+`runtimeRecord:null` bleiben unverändert. Die folgenden datierten Abschnitte
+behalten ihre jeweiligen historischen Prüfstände und Rohbindungen.
 
 ### ADR-0038-Lokale Neubindung / 2026-10-03
 

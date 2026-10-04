@@ -6,6 +6,31 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 
 ## Entscheidungsübersicht
 
+### ADR-0039-Annahme und Workflowlimit / 2026-10-04
+
+Jan hat [ADR 0039](0039-bounded-adapter-ci-job-timeout.md) nach dem
+unabhängigen Dokumentreview der sieben Vorannahmefassungen ausdrücklich
+angenommen. Nur das `adapter`-Joblimit ist im Workflow von zehn auf
+30 Minuten gesetzt; `verify` und `aggregate` bleiben bei zehn Minuten.
+Der Dokumentreview-`PASS` gilt nicht für die neuen Status- und Workflowbytes.
+Die alten ADR-0038-Ergebnisartefakte sind wegen des geänderten Workflowhashes
+kein Nachweis für diesen Stand. Tatsächliche Ubuntu-CI auf beiden
+Node-Versionen und der PR stehen aus. Der folgende Vorschlagsabschnitt
+bewahrt den Stand vor Jans Annahme und der Workflowänderung.
+
+### ADR-0039-Zeitbudgetvorschlag / 2026-10-04
+
+[ADR 0039](0039-bounded-adapter-ci-job-timeout.md) schlägt für die zwölf
+isolierten Adaptermatrixjobs ein vorläufiges, einheitliches Joblimit von
+30 Minuten vor. `verify` und `aggregate` bleiben bei zehn Minuten. Der
+unabhängige Implementierungs-Re-Review der ADR-0038-Bytes schloss technisch
+mit `PASS`; dieselben zwölf Dateifassungen sind nun in `5f5304e53c0519513f703856c29a7c3a94914fa9`
+committet. Der frühere Review-`FAIL` und die Nachweise vom 2026-09-28 bleiben
+historisch. ADR 0039 ist vorgeschlagen; Dokumentreview, Jans Annahme,
+Workflowänderung und tatsächliche Ubuntu-CI auf beiden Node-Versionen stehen
+aus. Der bestehende Workflow hat weiterhin zehn Minuten für jeden Job.
+Die folgenden Abschnitte dokumentieren ihre jeweiligen früheren Prüfstände.
+
 ### ADR-0038-Lokale Neubindung / 2026-10-03
 
 ADR 0038 bleibt bytegleich und angenommen; es gibt keine neue Architekturentscheidung.
@@ -172,6 +197,7 @@ Load-/Hashabgleich für diese Korrektur.
 | [0036](0036-browser-sync-transport-runtime-diagnostic-adapter-boundary.md) | BrowserSyncTransport Runtime Diagnostic Adapter Boundary | Angenommen – 2026-09-12, ausdrücklich durch Jan |
 | [0037](0037-browser-sync-transport-diagnostic-foundation-observation-close-notification.md) | BrowserSyncTransport Diagnostic Foundation Observation-Close Notification | Angenommen |
 | [0038](0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) | Isolierte CI-Testgruppierung der ADR-0036-Adaptersuite | Angenommen – 2026-09-28 |
+| [0039](0039-bounded-adapter-ci-job-timeout.md) | Begrenzte Anhebung des Adapter-CI-Joblimits | Angenommen – 2026-10-04, ausdrücklich durch Jan |
 
 Der unabhängige Astra-Review hat die R1–R4-Dokumentkorrektur von ADR 0036
 im eng begrenzten Dokumentationsscope mit PASS abgeschlossen. Er gilt nur für
