@@ -1,3 +1,7 @@
+// ADR0038-BEGIN
+import { after as g36NativeAfter } from 'node:test'
+import { createAdapterTestRegistry } from '../scripts/ci/adapterTestPlan.js'
+// ADR0038-END
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import g36HarnessAssert from 'node:assert/strict'
@@ -7,6 +11,11 @@ import { tmpdir as g36HarnessTmpdir } from 'node:os'
 import { pathToFileURL as g36HarnessFileUrl } from 'node:url'
 import { createHash as g36HarnessCreateHash } from 'node:crypto'
 
+// ADR0038-BEGIN
+const g36Registry = createAdapterTestRegistry({ nativeTest: test, after: g36NativeAfter, sourceUrl: import.meta.url })
+const g36CaseTest = g36Registry.test
+const g36Variant = g36Registry.variant
+// ADR0038-END
 // Explicit raw-byte pins bind the reviewed production edits before test copies.
 const g36HarnessExpectedAdapterByteLength = 257839
 const g36HarnessExpectedAdapterSha256 = '4d27ab936ab4cb2f20ac22f570ded19ebc2f68e7ee1d9014bb8d735979163e7d'
@@ -118,14 +127,14 @@ function g36HarnessContained(parent, child) {
   return relative !== '' && relative !== '..' && !relative.startsWith(`..${g36HarnessPath.sep}`) && !g36HarnessPath.isAbsolute(relative)
 }
 
-async function withAdapterCopy(profile, mutation, callback) {
+async function withAdapterCopy(profile, mutation, callback) {/* ADR0038:sync */g36Registry.assertExecutable();/* ADR0038:end */
   g36HarnessAssert.equal(arguments.length, 3)
   g36HarnessAssert.equal(typeof callback, 'function')
   const previous = g36HarnessCopyTail
   let release
   g36HarnessCopyTail = new Promise((resolve) => { release = resolve })
   await previous
-  let temporaryRoot = null
+/* ADR0038:sync */g36Registry.copyBegin();/* ADR0038:end */  let temporaryRoot = null
   let copyPath = null
   let temporaryParent = null
   try {
@@ -155,7 +164,7 @@ async function withAdapterCopy(profile, mutation, callback) {
     g36HarnessAssert.deepEqual(copyBytes, expectedBytes, 'unexpected additional copy-byte difference')
     g36HarnessAssert.notEqual(g36HarnessHash(copyBytes), g36HarnessHash(bytes))
     temporaryParent = await g36HarnessFs.realpath(g36HarnessPath.resolve(g36HarnessTmpdir()))
-    temporaryRoot = await g36HarnessFs.mkdtemp(g36HarnessPath.join(temporaryParent, 'goldendawn-adr0036-testcopy-'))
+    temporaryRoot = await g36HarnessFs.mkdtemp(g36HarnessPath.join(temporaryParent, 'goldendawn-adr0036-testcopy-'))/* ADR0038:sync */;g36Registry.copyCreated();/* ADR0038:end */
     temporaryRoot = g36HarnessPath.resolve(temporaryRoot)
     g36HarnessAssert.ok(g36HarnessContained(temporaryParent, temporaryRoot))
     g36HarnessAssert.ok(!g36HarnessContained(g36HarnessRepositoryRoot, temporaryRoot))
@@ -182,9 +191,9 @@ async function withAdapterCopy(profile, mutation, callback) {
         g36HarnessAssert.ok(stat.isDirectory() && !stat.isSymbolicLink())
         await g36HarnessFs.rm(temporaryRoot, { recursive: true, force: false })
         g36HarnessAssert.equal(await g36HarnessAbsent(temporaryRoot), true)
-        if (copyPath !== null) g36HarnessAssert.equal(await g36HarnessAbsent(copyPath), true)
+        if (copyPath !== null) g36HarnessAssert.equal(await g36HarnessAbsent(copyPath), true)/* ADR0038:sync */;g36Registry.copyRemoved();/* ADR0038:end */
       }
-    } finally { release() }
+    } finally { /* ADR0038:sync */g36Registry.copyEnd();/* ADR0038:end */release() }
   }
 }
 
@@ -725,7 +734,7 @@ async function runVirtualAdapterScenario(namespace, options) {
 
 function registerAdapterHarnessBaselineTests({ test, assert, loadSourceFixtureFiles }) {
   for (const entry of ['owner', 'factory']) for (const scenario of ['capture-cap', 'setup-cap']) {
-    test(`ADR 0036 harness baseline: ${entry}/${scenario}`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L728', 'registerAdapterHarnessBaselineTests', `ADR 0036 harness baseline: ${entry}/${scenario}`, { concurrency: false }, async () => {
       await withAdapterCopy('virtual-runtime-conformance', null, async (namespace) => {
         const sourcePlan = createAdapterSourceFixturePlan(await loadSourceFixtureFiles())
         const result = await runVirtualAdapterScenario(namespace, { entry, sourcePlan, scenario })
@@ -898,7 +907,7 @@ function g36FixtureLaunchPolicy(profile) {
     JSON.stringify(profile.arguments.slice(2)) === JSON.stringify(['--incognito', '--no-first-run', '--no-default-browser-check', '--new-window', 'http://127.0.0.1:5173/'])
 }
 
-function createVirtualRuntimeFixture() {
+function createVirtualRuntimeFixture() {/* ADR0038:sync */g36Registry.assertExecutable();/* ADR0038:end */
   g36FixtureCheck(arguments.length === 0)
   const sourceNames = [
     ...Object.keys(g36FixtureMethodGroups.entropy), ...Object.keys(g36FixtureMethodGroups.clock),
@@ -1277,7 +1286,7 @@ function createVirtualRuntimeFixture() {
   return Object.freeze({ runtimeCapabilities, controller: Object.freeze({ dispatch, snapshot }) })
 }
 
-g36FixtureTest('ADR 0036: virtuelle Capabilityprofile und Controller bleiben geschlossen und inaktiv', () => {
+/* ADR0038:register:g36FixtureTest */ g36CaseTest('L1280', 'fixture', 'ADR 0036: virtuelle Capabilityprofile und Controller bleiben geschlossen und inaktiv', () => {
   const first = createVirtualRuntimeFixture()
   const second = createVirtualRuntimeFixture()
   g36FixtureAssert.notEqual(first.runtimeCapabilities, second.runtimeCapabilities)
@@ -1316,14 +1325,14 @@ g36FixtureTest('ADR 0036: virtuelle Capabilityprofile und Controller bleiben ges
   g36FixtureAssert.deepEqual(first.controller.snapshot(), fresh)
 })
 
-g36FixtureTest('ADR 0036: Fixture verwirft fremde Formen ohne Zustand oder Producerturn', () => {
+/* ADR0038:register:g36FixtureTest */ g36CaseTest('L1319', 'fixture', 'ADR 0036: Fixture verwirft fremde Formen ohne Zustand oder Producerturn', () => {
   const fixture = createVirtualRuntimeFixture()
   const invalids = [null, [], 1, {}, { kind: 'cdp-message' }, { kind: 'cap-fired' }, { kind: 'connection-closed' }, { kind: 'cleanup-fact' },
     { kind: 'source-return', source: 'readTimeZone', value: 'UTC', extra: true },
     { kind: 'source-return', source: 'process-environment:PATH', value: [] },
     { kind: 'timer-fire', timerOrdinal: 0 }, { kind: 'timer-fire', timerOrdinal: 1.5 },
     Object.defineProperty({}, 'kind', { get() { throw new Error('MUST_NOT_READ') }, enumerable: true })]
-  for (const value of invalids) {
+  for (const value of invalids) {/* ADR0038:sync */g36Variant('fixture-invalid-dispatch',['null','array','number','empty-record','cdp-message','cap-fired','connection-closed','cleanup-fact','source-extra-key','environment-case','timer-zero','timer-fractional','kind-accessor'][invalids.indexOf(value)]);/* ADR0038:end */
     const before = fixture.controller.snapshot()
     g36FixtureAssert.throws(() => fixture.controller.dispatch(value), { name: 'TypeError', message: 'browserSyncTransportRuntimeDiagnosticVirtualDispatchInvalid' })
     g36FixtureAssert.deepEqual(fixture.controller.snapshot(), before)
@@ -1333,7 +1342,7 @@ g36FixtureTest('ADR 0036: Fixture verwirft fremde Formen ohne Zustand oder Produ
   g36FixtureAssert.deepEqual(fixture.controller.snapshot(), before)
 })
 
-g36FixtureTest('ADR 0036: Fixture kopiert Quellenbytes und konsumiert Clock-FIFO ohne versteckte Reads', () => {
+/* ADR0038:register:g36FixtureTest */ g36CaseTest('L1336', 'fixture', 'ADR 0036: Fixture kopiert Quellenbytes und konsumiert Clock-FIFO ohne versteckte Reads', () => {
   const fixture = createVirtualRuntimeFixture()
   const bytes = new Uint8Array(17).fill(9)
   fixture.controller.dispatch({ kind: 'source-return', source: 'readDiagnosticRunIdEntropyBytes', value: bytes })
@@ -1346,13 +1355,13 @@ g36FixtureTest('ADR 0036: Fixture kopiert Quellenbytes und konsumiert Clock-FIFO
   g36FixtureAssert.equal(actual[0], 9)
   g36FixtureAssert.notEqual(actual, bytes)
   g36FixtureAssert.equal(fixture.controller.snapshot().fixtureOwnedByteLength, 0)
-  for (const value of [100n, 6099n, 6100n, 6101n]) fixture.controller.dispatch({ kind: 'source-return', source: 'readControllerNanoseconds', value })
-  for (const value of [100n, 6099n, 6100n, 6101n]) g36FixtureAssert.equal(Reflect.apply(fixture.runtimeCapabilities.clock.readControllerNanoseconds, undefined, []), value)
+  for (const value of [100n, 6099n, 6100n, 6101n]) /* ADR0038:sync */{g36Variant('fixture-clock-enqueue',value);/* ADR0038:end */fixture.controller.dispatch({ kind: 'source-return', source: 'readControllerNanoseconds', value })/* ADR0038:sync */}/* ADR0038:end */
+  for (const value of [100n, 6099n, 6100n, 6101n]) /* ADR0038:sync */{g36Variant('fixture-clock-consume',value);/* ADR0038:end */g36FixtureAssert.equal(Reflect.apply(fixture.runtimeCapabilities.clock.readControllerNanoseconds, undefined, []), value)/* ADR0038:sync */}/* ADR0038:end */
   g36FixtureAssert.equal(fixture.controller.snapshot().pendingSourceResultCount, 0)
   g36FixtureAssert.throws(() => Reflect.apply(fixture.runtimeCapabilities.clock.readControllerNanoseconds, undefined, []), /VirtualDispatchStateInvalid/)
 })
 
-g36FixtureTest('ADR 0036: Fixture-Timer und Failurearm haben korrelierte einmalige Übergänge', () => {
+/* ADR0038:register:g36FixtureTest */ g36CaseTest('L1355', 'fixture', 'ADR 0036: Fixture-Timer und Failurearm haben korrelierte einmalige Übergänge', () => {
   const fixture = createVirtualRuntimeFixture()
   let fired = 0
   const callback = function () { fired += 1 }
@@ -1409,7 +1418,7 @@ for (const name of [
   ...Object.keys(g36FixtureMethodGroups.runtime).filter((value) => value !== 'readProcessEnvironmentMatches'),
   ...g36FixtureEnvironmentNames.map((value) => `process-environment:${value}`),
 ]) {
-  g36FixtureTest(`ADR 0036: Fixture-Quelllabel ${name} bleibt exakt und einmalig konsumiert`, () => {
+  /* ADR0038:register:g36FixtureTest */ g36CaseTest('L1412', 'fixture', `ADR 0036: Fixture-Quelllabel ${name} bleibt exakt und einmalig konsumiert`, () => {
     const fixture = createVirtualRuntimeFixture()
     fixture.controller.dispatch({ kind: 'source-throw', source: name })
     let group = Object.keys(g36FixtureMethodGroups).find((value) => Object.hasOwn(g36FixtureMethodGroups[value], name))
@@ -1424,7 +1433,7 @@ for (const name of [
 
 for (const [group, methods] of Object.entries(g36FixtureMethodGroups).slice(3)) {
   for (const method of Object.keys(methods)) {
-    g36FixtureTest(`ADR 0036: Fixture-Failurearm trifft genau ${method} ohne Handle oder Signal`, () => {
+    /* ADR0038:register:g36FixtureTest */ g36CaseTest('L1427', 'fixture', `ADR 0036: Fixture-Failurearm trifft genau ${method} ohne Handle oder Signal`, () => {
       const fixture = createVirtualRuntimeFixture()
       fixture.controller.dispatch({ kind: 'fail-next-capability-call', capability: method })
       g36FixtureAssert.throws(() => g36FixtureCall(fixture, group, method, ...Array(methods[method]).fill(null)), /VirtualDispatchStateInvalid/)
@@ -1438,7 +1447,7 @@ for (const [group, methods] of Object.entries(g36FixtureMethodGroups).slice(3)) 
 }
 
 for (const dispatchKind of ['pipe-chunk', 'pipe-eof', 'pipe-read-error', 'pipe-write-error', 'pipe-drain']) {
-  g36FixtureTest(`ADR 0036: ${dispatchKind} liefert ausschließlich seinen gebundenen Raw-Sink`, () => {
+  /* ADR0038:register:g36FixtureTest */ g36CaseTest('L1441', 'fixture', `ADR 0036: ${dispatchKind} liefert ausschließlich seinen gebundenen Raw-Sink`, () => {
     const fixture = createVirtualRuntimeFixture()
     const seen = []
     let bytesDuringSink = null
@@ -1468,7 +1477,7 @@ for (const writeCase of [
   { acceptedByteLength: 1, backpressure: true, state: 'failed' },
   { acceptedByteLength: 0, backpressure: false, state: 'failed' },
 ]) {
-  g36FixtureTest(`ADR 0036: Pipeannahme ${writeCase.acceptedByteLength}/${writeCase.backpressure}/${writeCase.state} bleibt getrennt von Completion`, () => {
+  /* ADR0038:register:g36FixtureTest */ g36CaseTest('L1471', 'fixture', `ADR 0036: Pipeannahme ${writeCase.acceptedByteLength}/${writeCase.backpressure}/${writeCase.state} bleibt getrennt von Completion`, () => {
     const fixture = createVirtualRuntimeFixture()
     const raw = []
     const completed = []
@@ -1496,7 +1505,7 @@ for (const writeCase of [
   })
 }
 
-g36FixtureTest('ADR 0036: Pipezustandsfehler nehmen weder Dispatch noch zweite Writegeneration an', () => {
+/* ADR0038:register:g36FixtureTest */ g36CaseTest('L1499', 'fixture', 'ADR 0036: Pipezustandsfehler nehmen weder Dispatch noch zweite Writegeneration an', () => {
   const fixture = createVirtualRuntimeFixture()
   const rawSink = function (value) { void value }
   const completionSink = function (value) { void value }
@@ -1519,7 +1528,7 @@ g36FixtureTest('ADR 0036: Pipezustandsfehler nehmen weder Dispatch noch zweite W
 })
 
 for (const kind of ['child-stdout', 'child-stderr', 'child-exit', 'child-close', 'child-error']) {
-  g36FixtureTest(`ADR 0036: ${kind} bleibt ein primitiver Child-Rawturn`, () => {
+  /* ADR0038:register:g36FixtureTest */ g36CaseTest('L1522', 'fixture', `ADR 0036: ${kind} bleibt ein primitiver Child-Rawturn`, () => {
     const fixture = createVirtualRuntimeFixture()
     const raw = []
     const rawSink = function (value) { raw.push(value) }
@@ -1537,7 +1546,7 @@ for (const kind of ['child-stdout', 'child-stderr', 'child-exit', 'child-close',
   })
 }
 
-g36FixtureTest('ADR 0036: Ressourcenhandles entstehen ausschließlich nach dem gebundenen Completionturn', () => {
+/* ADR0038:register:g36FixtureTest */ g36CaseTest('L1540', 'fixture', 'ADR 0036: Ressourcenhandles entstehen ausschließlich nach dem gebundenen Completionturn', () => {
   const fixture = createVirtualRuntimeFixture()
   let opened = null
   let snapshotInside = null
@@ -1590,7 +1599,7 @@ for (const operationCase of [
   { kind: 'passive-tcp-listeners', input: { endpoints: [{ address: '127.0.0.1', port: 5173 }, { address: '127.0.0.1', port: 8787 }] },
     result: { kind: 'passive-tcp-listeners', endpoints: [{ address: '127.0.0.1', port: 5173, state: 'unavailable' }, { address: '127.0.0.1', port: 8787, state: 'unavailable' }] } },
 ]) {
-  g36FixtureTest(`ADR 0036: Ressourcenresultat ${operationCase.kind} bleibt an seine Operation gebunden`, () => {
+  /* ADR0038:register:g36FixtureTest */ g36CaseTest('L1593', 'fixture', `ADR 0036: Ressourcenresultat ${operationCase.kind} bleibt an seine Operation gebunden`, () => {
     const fixture = createVirtualRuntimeFixture()
     const raw = []
     const rawSink = function (value) { raw.push(value) }
@@ -1610,7 +1619,7 @@ for (const operationCase of [
   })
 }
 
-g36FixtureTest('ADR 0036: fehlgeschlagene Ressourcencompletion besitzt ausschließlich null und keinen Handle', () => {
+/* ADR0038:register:g36FixtureTest */ g36CaseTest('L1613', 'fixture', 'ADR 0036: fehlgeschlagene Ressourcencompletion besitzt ausschließlich null und keinen Handle', () => {
   const fixture = createVirtualRuntimeFixture()
   const raw = []
   const rawSink = function (value) { raw.push(value) }
@@ -1639,7 +1648,7 @@ async function g36FixtureDispatchResourcePlan(controller, plan) {
   }
 }
 
-g36FixtureTest('ADR 0036: Ressourcenreads kopieren Bytes und begrenzen Ergebnisse vor dem Sink', () => {
+/* ADR0038:register:g36FixtureTest */ g36CaseTest('L1642', 'fixture', 'ADR 0036: Ressourcenreads kopieren Bytes und begrenzen Ergebnisse vor dem Sink', () => {
   const fixture = createVirtualRuntimeFixture()
   const raw = []
   let byteLengthInside = 0
@@ -1661,7 +1670,7 @@ g36FixtureTest('ADR 0036: Ressourcenreads kopieren Bytes und begrenzen Ergebniss
 })
 
 for (const kind of ['inspect-open-resource', 'list-directory', 'create-directory-exclusive', 'create-file-exclusive']) {
-  g36FixtureTest(`ADR 0036: ${kind} bindet den virtuellen Parent-/Readhandle ohne Callerhandle im Resultat`, () => {
+  /* ADR0038:register:g36FixtureTest */ g36CaseTest('L1664', 'fixture', `ADR 0036: ${kind} bindet den virtuellen Parent-/Readhandle ohne Callerhandle im Resultat`, () => {
     const fixture = createVirtualRuntimeFixture()
     const raw = []
     const rawSink = function (value) { raw.push(value) }
@@ -1680,7 +1689,7 @@ for (const kind of ['inspect-open-resource', 'list-directory', 'create-directory
   })
 }
 
-g36FixtureTest('ADR 0036: Ressourcen-Failurearm verbraucht die versuchte ID vor späterem Cleanup', () => {
+/* ADR0038:register:g36FixtureTest */ g36CaseTest('L1683', 'fixture', 'ADR 0036: Ressourcen-Failurearm verbraucht die versuchte ID vor späterem Cleanup', () => {
   const fixture = createVirtualRuntimeFixture()
   const raw = []
   const rawSink = function (value) { raw.push(value) }
@@ -1693,7 +1702,7 @@ g36FixtureTest('ADR 0036: Ressourcen-Failurearm verbraucht die versuchte ID vor 
   g36FixtureAssert.equal(fixture.controller.snapshot().callCounts.resources.performResourceOperation, 2)
 })
 
-g36FixtureTest('ADR 0036: ungültige rohe Byteprofile bleiben vor Sink, Zähler und Bytesaldo', () => {
+/* ADR0038:register:g36FixtureTest */ g36CaseTest('L1696', 'fixture', 'ADR 0036: ungültige rohe Byteprofile bleiben vor Sink, Zähler und Bytesaldo', () => {
   const fixture = createVirtualRuntimeFixture()
   let calls = 0
   const rawSink = function (value) { void value; calls += 1 }
@@ -1706,7 +1715,7 @@ g36FixtureTest('ADR 0036: ungültige rohe Byteprofile bleiben vor Sink, Zähler 
     new (class extends Uint8Array {})(1), detached,
     new Proxy(new Uint8Array(1), { get() { throw new Error('UNTRUSTED_BYTE_REASON') } }),
   ]
-  for (const bytes of views) {
+  for (const bytes of views) {/* ADR0038:sync */g36Variant('fixture-byte-input',['over-cap','nonwhole-buffer','shared-buffer','resizable-buffer','subclass','detached','proxy'][views.indexOf(bytes)]);/* ADR0038:end */
     const before = fixture.controller.snapshot()
     g36FixtureAssert.throws(() => fixture.controller.dispatch({ kind: 'pipe-chunk', pipeOrdinal, bytes }), { name: 'TypeError', message: 'browserSyncTransportRuntimeDiagnosticVirtualDispatchInvalid' })
     g36FixtureAssert.deepEqual(fixture.controller.snapshot(), before)
@@ -1717,7 +1726,7 @@ g36FixtureTest('ADR 0036: ungültige rohe Byteprofile bleiben vor Sink, Zähler 
 // These tests become active when root composes this fragment with the exact
 // copy builder. The fixture itself never imports or chooses an adapter copy.
 {
-  g36FixtureTest('ADR 0036: dieselbe vollständige Fixture bindet direkten Owner und öffentlichen virtuellen Factorypfad inaktiv', async () => {
+  /* ADR0038:register:g36FixtureTest */ g36CaseTest('L1720', 'fixture', 'ADR 0036: dieselbe vollständige Fixture bindet direkten Owner und öffentlichen virtuellen Factorypfad inaktiv', async () => {
     await withAdapterCopy('virtual-runtime-conformance', null, async (namespace) => {
       const direct = createVirtualRuntimeFixture()
       const owner = namespace.createBrowserSyncTransportRuntimeDiagnosticAdapterOwner(direct.runtimeCapabilities)
@@ -1739,7 +1748,7 @@ g36FixtureTest('ADR 0036: ungültige rohe Byteprofile bleiben vor Sink, Zähler 
     { name: 'virtual-selector-null-consume', replacement: 'function g36VirtualNullConsume(){ return undefined }' },
     { name: 'virtual-selector-double-consume', replacement: 'function g36VirtualDoubleConsume(){ const selected = consumeBrowserSyncTransportRuntimeDiagnosticVirtualCapabilities(); consumeBrowserSyncTransportRuntimeDiagnosticVirtualCapabilities(); return selected }' },
   ]) {
-    g36FixtureTest(`ADR 0036: produktiver Factory-Oracle erkennt ${variant.name}`, async () => {
+    /* ADR0038:register:g36FixtureTest */ g36CaseTest('L1742', 'fixture', `ADR 0036: produktiver Factory-Oracle erkennt ${variant.name}`, async () => {
       const from = 'const createSelectedBrowserSyncTransportRuntimeDiagnosticCapabilities =\n  consumeBrowserSyncTransportRuntimeDiagnosticVirtualCapabilities'
       const to = `const createSelectedBrowserSyncTransportRuntimeDiagnosticCapabilities =\n  ${variant.replacement}`
       const oracle = async (namespace) => {
@@ -1819,7 +1828,7 @@ const recordFixtureReplayDefinitions = Object.freeze([
   ['toolchain.vite.lockfileVersion', 'historical-commit-closed-derivation', '8.1.4', 'S32'],
 ])
 
-function recordFixtureLedgerTemplate() {
+/* ADR0038:sync */g36Registry.bindReplayFields(recordFixtureReplayDefinitions.map(row => row[0]));/* ADR0038:end */function recordFixtureLedgerTemplate() {
   const wire = [];
   for (let i = 0; i < 6; i += 1) wire[i] = { command: recordFixtureCommands[i], intentCount: 0, acceptedFrameCount: 0, ackCount: 0, profileMatch: true, replyState: 'unobserved', replyCount: 0 };
   const resources = [];
@@ -1898,13 +1907,13 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
   const staticError = error => error instanceof TypeError && error.message === 'browserSyncTransportRuntimeDiagnosticAdapterFailed';
   const apiNames = ['createBrowserSyncTransportRuntimeDiagnosticAdapter', 'deriveBrowserSyncTransportRuntimeDiagnosticRecordGate', 'deriveBrowserSyncTransportRuntimeDiagnosticRecordFinding', 'finalizeBrowserSyncTransportRuntimeDiagnosticRecord'];
   const expectedFinding = ({ gate = 'PASS', replay = 'EQUIVALENT', stimulus = 'one', sequence = 'OPTIONS-204-POST-200-loadingFinished', outcome = 'static-redacted-rejection', profile = 'match' } = {}) => freeze({ candidateObserverGate: gate, replayResult: replay, stimulusCount: stimulus, requestSequence: sequence, settlementOutcome: outcome, settlementStaticProfileResult: profile });
-  test('record copy has only its four exports, unchanged arities, and no integrity inspector', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L1901', 'registerAdr36RecordDerivationTests', 'record copy has only its four exports, unchanged arities, and no integrity inspector', async () => {
     const api = await loadRecordCopy();
     assert.deepEqual(Object.keys(api).sort(), [...apiNames].sort());
-    for (const name of apiNames) assert.equal(api[name].length, name === apiNames[0] ? 0 : 1);
+    for (const name of apiNames) /* ADR0038:sync */{g36Variant('export-arity',name);/* ADR0038:end */assert.equal(api[name].length, name === apiNames[0] ? 0 : 1);/* ADR0038:sync */}/* ADR0038:end */
   });
   for (const [hardViolation, proofIncomplete, expected] of [[false, false, 'PASS'], [false, true, 'UNPROVEN'], [true, false, 'FAIL'], [true, true, 'FAIL']]) {
-    test(`record gate preserves priority for hard=${hardViolation} incomplete=${proofIncomplete}`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L1907', 'registerAdr36RecordDerivationTests', `record gate preserves priority for hard=${hardViolation} incomplete=${proofIncomplete}`, async () => {
       const api = await loadRecordCopy();
       assert.equal(api.deriveBrowserSyncTransportRuntimeDiagnosticRecordGate(freeze({ hardViolation, proofIncomplete })), expected);
     });
@@ -1916,14 +1925,14 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
     ['invalid observer', { gate: 'FAIL' }, 'observer-invalid'],
     ['incomplete evidence', { gate: 'UNPROVEN' }, 'inconclusive'],
   ]) {
-    test(`record finding covers ${name}`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L1919', 'registerAdr36RecordDerivationTests', `record finding covers ${name}`, async () => {
       const api = await loadRecordCopy();
       assert.equal(api.deriveBrowserSyncTransportRuntimeDiagnosticRecordFinding(expectedFinding(options)), expected);
     });
   }
   for (const stimulus of ['zero', 'one', 'multiple', 'unknown']) {
     for (const gate of ['FAIL', 'UNPROVEN', 'PASS']) {
-      test(`record finding binds ${stimulus} stimulus and ${gate} gate`, async () => {
+      /* ADR0038:register:test */ g36CaseTest('L1926', 'registerAdr36RecordDerivationTests', `record finding binds ${stimulus} stimulus and ${gate} gate`, async () => {
         const api = await loadRecordCopy();
         const expected = gate === 'FAIL' ? 'observer-invalid' : gate === 'PASS' && stimulus === 'one' ? 'static-rejection-reproduced-after-http200' : 'inconclusive';
         assert.equal(api.deriveBrowserSyncTransportRuntimeDiagnosticRecordFinding(expectedFinding({ stimulus, gate })), expected);
@@ -1931,20 +1940,20 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
     }
   }
   for (const replay of ['DIVERGED', 'UNPROVEN']) {
-    test(`record finding cannot turn ${replay} replay into positive evidence`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L1934', 'registerAdr36RecordDerivationTests', `record finding cannot turn ${replay} replay into positive evidence`, async () => {
       const api = await loadRecordCopy();
-      for (const sequence of ['OPTIONS-204-POST-200-loadingFinished', 'other', 'incomplete', 'ambiguous']) {
+      for (const sequence of ['OPTIONS-204-POST-200-loadingFinished', 'other', 'incomplete', 'ambiguous']) {/* ADR0038:sync */g36Variant('finding-sequence',sequence);/* ADR0038:end */
         assert.equal(api.deriveBrowserSyncTransportRuntimeDiagnosticRecordFinding(expectedFinding({ replay, sequence })), 'inconclusive');
       }
     });
   }
   for (const [outcome, profile] of [['static-redacted-rejection', 'mismatch'], ['other-rejection', 'mismatch'], ['unknown', 'unproven'], ['fulfilled', 'unproven']]) {
-    test(`record finding leaves unconfirmed public settlement ${outcome}/${profile} inconclusive`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L1942', 'registerAdr36RecordDerivationTests', `record finding leaves unconfirmed public settlement ${outcome}/${profile} inconclusive`, async () => {
       const api = await loadRecordCopy();
       assert.equal(api.deriveBrowserSyncTransportRuntimeDiagnosticRecordFinding(expectedFinding({ outcome, profile })), 'inconclusive');
     });
   }
-  test('record helpers reject caller accessors without invocation and redact reflection throws', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L1947', 'registerAdr36RecordDerivationTests', 'record helpers reject caller accessors without invocation and redact reflection throws', async () => {
     const api = await loadRecordCopy();
     let getterCount = 0;
     const malformed = Object.freeze(Object.defineProperty({}, 'hardViolation', { get() { getterCount += 1; throw new Error('private reason'); }, enumerable: true, configurable: false }));
@@ -1953,7 +1962,7 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
     const throwing = new Proxy({}, { getPrototypeOf() { throw new Error('private reason'); } });
     assert.throws(() => api.deriveBrowserSyncTransportRuntimeDiagnosticRecordGate(throwing), staticError);
   });
-  test('record helpers require exact arity, closed shape, and frozen inputs', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L1956', 'registerAdr36RecordDerivationTests', 'record helpers require exact arity, closed shape, and frozen inputs', async () => {
     const api = await loadRecordCopy();
     const gate = api.deriveBrowserSyncTransportRuntimeDiagnosticRecordGate;
     assert.throws(() => gate(), staticError);
@@ -1963,7 +1972,7 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
     assert.throws(() => gate(freeze({ proofIncomplete: false, hardViolation: false })), staticError);
     assert.throws(() => api.deriveBrowserSyncTransportRuntimeDiagnosticRecordFinding(freeze({ ...expectedFinding(), stimulusCount: 'two' })), staticError);
   });
-  test('pure finalization is always NOT_EVIDENCE with null runtimeRecord and does not alter F', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L1966', 'registerAdr36RecordDerivationTests', 'pure finalization is always NOT_EVIDENCE with null runtimeRecord and does not alter F', async () => {
     const api = await loadRecordCopy();
     const input = freeze(makeRecordPair());
     const before = JSON.stringify(input.foundationProjection);
@@ -1997,7 +2006,7 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
     ['singleMainWorldEvaluationConfirmed', a => { a.network.evaluateCorrelationContradictionCount += 1; }],
   ];
   for (const [name, mutate] of integrityCases) {
-    test(`record integrity negative fact remains FAIL without A_obs: ${name}`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L2000', 'registerAdr36RecordDerivationTests', `record integrity negative fact remains FAIL without A_obs: ${name}`, async () => {
       const api = await loadRecordCopy();
       const input = makeRecordPair();
       mutate(input.adapterLedger);
@@ -2005,7 +2014,7 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
       assert.deepEqual(result, { evidenceStatus: 'NOT_EVIDENCE', observerGate: 'FAIL', finding: 'observer-invalid', runtimeRecord: null });
     });
   }
-  test('record integrity closedPrimitiveProjectionConfirmed cannot accept a widened F', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L2008', 'registerAdr36RecordDerivationTests', 'record integrity closedPrimitiveProjectionConfirmed cannot accept a widened F', async () => {
     const api = await loadRecordCopy();
     const input = makeRecordPair();
     input.foundationProjection.observer.primitiveProjectionProfile = 'allow-handle';
@@ -2032,7 +2041,7 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
     ['cleanupCompleted', a => { a.completion.reason = 'cleanup-terminal-failure'; }],
   ];
   for (const [name, mutate] of cleanupCases) {
-    test(`record cleanup negative fact remains FAIL without A_obs: ${name}`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L2035', 'registerAdr36RecordDerivationTests', `record cleanup negative fact remains FAIL without A_obs: ${name}`, async () => {
       const api = await loadRecordCopy();
       const input = makeRecordPair();
       mutate(input.adapterLedger);
@@ -2044,10 +2053,10 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
     });
   }
   for (const [name, opening, closing] of [['networkDomainClosed', 2, 4], ['targetSessionClosed', 1, 5]]) {
-    test(`record cleanup rejects bound failed protocol close: ${name}`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L2047', 'registerAdr36RecordDerivationTests', `record cleanup rejects bound failed protocol close: ${name}`, async () => {
       const api = await loadRecordCopy();
       const input = makeRecordPair();
-      for (const index of [opening, closing]) {
+      for (const index of [opening, closing]) {/* ADR0038:sync */g36Variant('protocol-close',index);/* ADR0038:end */
         Object.assign(input.adapterLedger.wire[index], { intentCount: 1, acceptedFrameCount: 1, ackCount: 1, replyCount: 1, replyState: 'exact' });
         Object.assign(input.foundationProjection.observer.protocolOperations[index], { observedCountClass: 'one', result: 'match' });
       }
@@ -2058,7 +2067,7 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
     });
   }
   for (const resourceIndex of [1, 2, 3, 4, 5]) {
-    test(`record cannot promote bound host resource ${resourceIndex} from a root terminal count`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L2061', 'registerAdr36RecordDerivationTests', `record cannot promote bound host resource ${resourceIndex} from a root terminal count`, async () => {
       const api = await loadRecordCopy();
       const input = makeRecordPair();
       Object.assign(input.adapterLedger.resources[resourceIndex], { creationState: 'bound', boundCount: 1, terminalCount: 1 });
@@ -2076,14 +2085,14 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
     f => { f.requestBudget.extraRequests = 'zero'; },
     f => { f.causeStatus = 'CAUSE_PROVEN'; },
   ]) {
-    test('record finalizer rejects malformed F rather than borrowing its claims', async () => {
+    /* ADR0038:register:test */ g36CaseTest('L2079', 'registerAdr36RecordDerivationTests', 'record finalizer rejects malformed F rather than borrowing its claims', async () => {
       const api = await loadRecordCopy();
       const input = makeRecordPair();
       mutate(input.foundationProjection);
       assert.throws(() => api.finalizeBrowserSyncTransportRuntimeDiagnosticRecord(freeze(input)), staticError);
     });
   }
-  test('record finalizer preserves a valid sticky Foundation FAIL', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L2086', 'registerAdr36RecordDerivationTests', 'record finalizer preserves a valid sticky Foundation FAIL', async () => {
     const api = await loadRecordCopy();
     const input = makeRecordPair();
     input.foundationProjection.cleanup.result = 'FAIL';
@@ -2092,16 +2101,16 @@ function registerAdr36RecordDerivationTests({ test, assert, loadRecordCopy, make
     const result = api.finalizeBrowserSyncTransportRuntimeDiagnosticRecord(freeze(input));
     assert.deepEqual(result, { evidenceStatus: 'NOT_EVIDENCE', observerGate: 'FAIL', finding: 'observer-invalid', runtimeRecord: null });
   });
-  test('record receipt orders reject nonpositive, fractional, duplicate and gapped per-layer values', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L2095', 'registerAdr36RecordDerivationTests', 'record receipt orders reject nonpositive, fractional, duplicate and gapped per-layer values', async () => {
     const api = await loadRecordCopy();
     assert.equal(api.finalizeBrowserSyncTransportRuntimeDiagnosticRecord(freeze(makeRecordPair())).observerGate, 'UNPROVEN');
-    for (const value of [0, -1, 1.5, 2, NaN, Number.MAX_SAFE_INTEGER + 1]) {
+    for (const value of [0, -1, 1.5, 2, NaN, Number.MAX_SAFE_INTEGER + 1]) {/* ADR0038:sync */g36Variant('receipt-order',value);/* ADR0038:end */
       const input = makeRecordPair();
       input.foundationProjection.stages[0].receiptOrder = value;
       assert.throws(() => api.finalizeBrowserSyncTransportRuntimeDiagnosticRecord(freeze(input)), staticError);
     }
     const duplicate = makeRecordPair();
-    duplicate.foundationProjection.stages[9].receiptOrder = 1;
+    duplicate.foundationProjection.stages[9].receiptOrder = 1;/* ADR0038:sync */g36Variant('receipt-order','duplicate');/* ADR0038:end */
     assert.throws(() => api.finalizeBrowserSyncTransportRuntimeDiagnosticRecord(freeze(duplicate)), staticError);
   });
 }
@@ -2611,14 +2620,14 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
   }
   const familyControl=async(gitMode='loose')=>{if(!provenSourceFamilies.has(gitMode)) await control({gitMode})}
   const positives=[...['loose','pack-v2','pack-v3','ref-delta','ofs-delta','ref-loosebase'].map(gitMode=>({name:gitMode,options:{gitMode}})),{name:'detached HEAD',options:{detachedHead:true}},{name:'packed refs',options:{packedRefs:true}},{name:'REF delta depth32',options:{gitMode:'ref-delta',deltaDepth:32}}]
-  for(const vector of positives) for(const entry of ['owner','factory']) test('ADR 0036 Source: '+vector.name+' via '+entry,{concurrency:false},async()=>{await control(vector.options,entry)})
+  for(const vector of positives) for(const entry of ['owner','factory']) /* ADR0038:register:test */ g36CaseTest('L2614', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source: '+vector.name+' via '+entry,{concurrency:false},async()=>{await control(vector.options,entry)})
   for(const [name,options] of [
     ['Git index v3',{rawFixtureEdit:graph=>sourceFixtureVersion3Index(graph)}],
     ['Git index v3 with explicit extended flag word',{rawFixtureEdit:graph=>sourceFixtureVersion3Index(graph,true)}],
     ['pack index v2 with 64-bit offset table',{gitMode:'pack-v2',rawFixtureEdit:graph=>sourceFixtureLargePackOffsets(graph)}],
     ['REF-delta pack with distinct 64-bit table entries',{gitMode:'ref-delta',rawFixtureEdit:graph=>sourceFixtureLargePackOffsets(graph)}],
-  ]) test('ADR 0036 Source: '+name+' reaches unchanged Foundation runtime',{concurrency:false},async()=>{await control(options)})
-  test('ADR 0036 Source: syntactically valid but unavailable bound commit cannot load another commit',{concurrency:false},async()=>{
+  ]) /* ADR0038:register:test */ g36CaseTest('L2620', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source: '+name+' reaches unchanged Foundation runtime',{concurrency:false},async()=>{await control(options)})
+  /* ADR0038:register:test */ g36CaseTest('L2621', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source: syntactically valid but unavailable bound commit cannot load another commit',{concurrency:false},async()=>{
     await familyControl()
     const plan=createAdapterSourceFixturePlan(await files(),{detachedHead:true})
     const objectsRoot=sourceFixturePath.join(plan.repositoryRoot,'.git','objects')
@@ -2634,7 +2643,7 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
     assert.equal(result.owner.sourceState.factory,null)
   })
   const negatives=sourceFixtureNegativeCases()
-  for(const vector of negatives) test('ADR 0036 Source: reject '+vector.name+' at the first source boundary',{concurrency:false},async()=>{
+  for(const vector of negatives) /* ADR0038:register:test */ g36CaseTest('L2637', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source: reject '+vector.name+' at the first source boundary',{concurrency:false},async()=>{
     await familyControl(vector.options?.gitMode??'loose')
     const plan=createAdapterSourceFixturePlan(await files(),vector.options)
     const path=vector.path(plan),prefix=vector.kind==='list'?sourceFixtureListEnd(plan,path,vector.name==='replace refs forbidden'?1:0):sourceFixtureReadEnd(plan,path)
@@ -2647,7 +2656,7 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
     const result=await run(plan,{scenario:'capture-cap',sourceScriptTransform})
     sourceFixtureFailurePrefix(assert,result,prefix)
   })
-  for(const vector of negatives.filter(value=>value.mutation)) test('ADR 0036 Source causal mutant: '+vector.mutation.name,{concurrency:false},async()=>{
+  for(const vector of negatives.filter(value=>value.mutation)) /* ADR0038:register:test */ g36CaseTest('L2650', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source causal mutant: '+vector.mutation.name,{concurrency:false},async()=>{
     await control({gitMode:vector.options?.gitMode??'loose'})
     const make=()=>createAdapterSourceFixturePlan(loadedFiles,vector.options)
     const loadedFiles=await files()
@@ -2677,7 +2686,7 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
       assert.equal(mutated.owner.sourceState.sourceResourceClosedCount+mutated.owner.sourceState.sourceResourceUnknownCount,mutated.owner.sourceState.sourceResourceCount)
     }
   })
-  for(const [name,relative,cap] of [['raw index','.git/index',16777216],['Foundation file','scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js',1048576],['package-lock file','package-lock.json',1048576]]) test('ADR 0036 Source: '+name+' declared cap+1 rejects before opening',{concurrency:false},async()=>{
+  for(const [name,relative,cap] of [['raw index','.git/index',16777216],['Foundation file','scripts/browser/browserSyncTransportRuntimeDiagnosticObserver.js',1048576],['package-lock file','package-lock.json',1048576]]) /* ADR0038:register:test */ g36CaseTest('L2680', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source: '+name+' declared cap+1 rejects before opening',{concurrency:false},async()=>{
     await familyControl()
     const plan=createAdapterSourceFixturePlan(await files()),path=sourceFixturePath.join(plan.repositoryRoot,...relative.split('/'))
     const index=plan.preflight.findIndex(entry=>entry.kind==='inspect-path'&&entry.path===path)
@@ -2685,7 +2694,7 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
     const result=await run(plan,{scenario:'capture-cap',sourceScriptTransform})
     sourceFixtureFailurePrefix(assert,result,{first:index+1,end:index+1})
   })
-  test('ADR 0036 Source: addressed pack512MiB+1 rejects before opening',{concurrency:false},async()=>{
+  /* ADR0038:register:test */ g36CaseTest('L2688', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source: addressed pack512MiB+1 rejects before opening',{concurrency:false},async()=>{
     await familyControl('pack-v2')
     const plan=createAdapterSourceFixturePlan(await files(),{gitMode:'pack-v2'}),path=sourceFixturePackPath(plan,'.pack')
     const index=plan.preflight.findIndex(entry=>entry.kind==='inspect-path'&&entry.path===path)
@@ -2695,7 +2704,7 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
   for(const [name,gitMode,cap,pathFor] of [
     ['raw index16MiB','loose',16777216,plan=>sourceFixturePath.join(plan.repositoryRoot,'.git','index')],
     ['addressed pack512MiB','pack-v2',536870912,plan=>sourceFixturePackPath(plan,'.pack')],
-  ]) test('ADR 0036 Source: exact '+name+' declared size reaches an actual open and read before explicit unavailable bytes',{concurrency:false},async()=>{
+  ]) /* ADR0038:register:test */ g36CaseTest('L2698', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source: exact '+name+' declared size reaches an actual open and read before explicit unavailable bytes',{concurrency:false},async()=>{
     await familyControl(gitMode)
     const plan=createAdapterSourceFixturePlan(await files(),{gitMode}),path=pathFor(plan)
     const opened=plan.preflight.findIndex(entry=>entry.kind==='open-resource'&&entry.path===path)
@@ -2716,7 +2725,7 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
     // This demonstrates the production metadata guard, not a valid giant
     // index/pack: the explicit failed read supplies no allocated giant bytes.
   })
-  for(const length of [1048576,1048577]) test('ADR 0036 Source: actual Git blob '+length+' bytes',{concurrency:false},async()=>{
+  for(const length of [1048576,1048577]) /* ADR0038:register:test */ g36CaseTest('L2719', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source: actual Git blob '+length+' bytes',{concurrency:false},async()=>{
     const inputs=new Map(await files()); inputs.set('zz-source-blob-boundary.txt',new Uint8Array(length).fill(65))
     const plan=createAdapterSourceFixturePlan(inputs)
     const result=await run(plan,{scenario:'capture-cap'})
@@ -2726,7 +2735,7 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
       sourceFixtureFailurePrefix(assert,result,sourceFixtureReadEnd(plan,sourceFixtureObjectPath(plan,sourceFixtureDigest(raw))))
     }
   })
-  for(const [name,from,measure] of [['object-count','objects:4096',plan=>plan.expectedObjectReads],['expanded-byte-count','expanded:67108864',plan=>plan.expandedByteLength],['worktree-byte-count','worktree:268435456',plan=>plan.worktreeByteLength]]) test('ADR 0036 Source causal bound: '+name+' inclusive comparison on the same valid source fixture',{concurrency:false},async()=>{
+  for(const [name,from,measure] of [['object-count','objects:4096',plan=>plan.expectedObjectReads],['expanded-byte-count','expanded:67108864',plan=>plan.expandedByteLength],['worktree-byte-count','worktree:268435456',plan=>plan.worktreeByteLength]]) /* ADR0038:register:test */ g36CaseTest('L2729', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source causal bound: '+name+' inclusive comparison on the same valid source fixture',{concurrency:false},async()=>{
     const input=await files(),original=createAdapterSourceFixturePlan(input),threshold=measure(original)
     assert.ok(Number.isSafeInteger(threshold)&&threshold>1)
     const field=from.slice(0,from.indexOf(':'))
@@ -2736,7 +2745,7 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
     sourceFixtureError(assert,exclusive.outcome)
     assert.ok(exclusive.completedSourceEntries<original.preflight.length,'one fewer budget unit must prevent complete source capture')
   })
-  for(const targetObjects of [4096,4097]) test('ADR 0036 Source: actual '+targetObjects+' distinct object-read boundary',{concurrency:false},async()=>{
+  for(const targetObjects of [4096,4097]) /* ADR0038:register:test */ g36CaseTest('L2739', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source: actual '+targetObjects+' distinct object-read boundary',{concurrency:false},async()=>{
     const inputs=new Map(await files()),base=createAdapterSourceFixturePlan(inputs)
     const extras=targetObjects-base.expectedObjectReads
     disposeAdapterSourceFixturePlan(base)
@@ -2751,7 +2760,7 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
       else sourceFixtureFailurePrefix(assert,result,sourceFixtureReadEnd(plan,sourceFixturePath.join(plan.repositoryRoot,lastLiteral)))
     } finally { disposeAdapterSourceFixturePlan(plan); inputs.clear() }
   })
-  test('ADR 0036 Source: active Foundation rawhash mismatch prevents SourceTextModule',{concurrency:false},async()=>{
+  /* ADR0038:register:test */ g36CaseTest('L2754', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source: active Foundation rawhash mismatch prevents SourceTextModule',{concurrency:false},async()=>{
     await familyControl()
     const plan=createAdapterSourceFixturePlan(await files(),{rawFixtureEdit:graph=>{
       const path=sourceFixturePath.join(graph.repositoryRoot,'scripts','browser','browserSyncTransportRuntimeDiagnosticObserver.js'),bytes=new Uint8Array(graph.files.get(path)); bytes[bytes.length-1]^=1; graph.putFile(path,bytes)
@@ -2770,7 +2779,7 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
     ['extra module export',"'export const forbiddenAdapterFixtureExport=0;\\n'+text"],
     ['static module import',"'import \\\"unapproved:source-fixture\\\";\\n'+text"],
     ['loaded factory arity',"text+'\\nObject.defineProperty(createBrowserSyncTransportRuntimeDiagnosticObserver,\\\"length\\\",{value:0})'"],
-  ]) test('ADR 0036 Source actual-load causal mutant: '+name,{concurrency:false},async()=>{
+  ]) /* ADR0038:register:test */ g36CaseTest('L2773', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source actual-load causal mutant: '+name,{concurrency:false},async()=>{
     const valid=await control()
     assert.ok(valid.result.fixtureSnapshot.callCounts.launcher.spawnChild>0,'positive control must pass SourceTextModule and reach the runtime resource phase')
     const plan=createAdapterSourceFixturePlan(await files())
@@ -2779,7 +2788,7 @@ function registerAdapterSourceConformanceTests({test,assert,withAdapterCopy,runV
     sourceFixtureError(assert,result.outcome)
     assert.equal(result.fixtureSnapshot.callCounts.launcher.spawnChild,0)
   })
-  test('ADR 0036 Source mandatory causal mutant: standard import cannot replace the byte-owned SourceTextModule load',{concurrency:false},async()=>{
+  /* ADR0038:register:test */ g36CaseTest('L2782', 'registerAdapterSourceConformanceTests', 'ADR 0036 Source mandatory causal mutant: standard import cannot replace the byte-owned SourceTextModule load',{concurrency:false},async()=>{
     await control()
     const plan=createAdapterSourceFixturePlan(await files())
     const from='new sourceVm.SourceTextModule(text,{identifier:state.foundation.url,importModuleDynamically:sourceRejectFoundationImport})'
@@ -2893,7 +2902,7 @@ function registerAdapterSourceCheckpointTests({ test, assert, withAdapterCopy, r
     assert.deepEqual(owner.sourceState.checkpoints.map(check => [check.phase, check.state]), [['pre-o0', 'verified'], ['post-settlement', 'verified'], ['post-cleanup', 'verified']])
   }
   const control = () => controlPromise ??= run().then(value => { fullControl(value.result); return value })
-  for(const vector of vectors.filter(value=>value.unproven)) test('ADR 0036 Source checkpoint post-cleanup unavailable evidence: '+vector.name+' cannot promote UNPROVEN to FAIL',{concurrency:false},async()=>{
+  for(const vector of vectors.filter(value=>value.unproven)) /* ADR0038:register:test */ g36CaseTest('L2896', 'registerAdapterSourceCheckpointTests', 'ADR 0036 Source checkpoint post-cleanup unavailable evidence: '+vector.name+' cannot promote UNPROVEN to FAIL',{concurrency:false},async()=>{
     const baseline=await control()
     assert.equal(baseline.result.owner.cleanupViolation,false)
     assert.equal(baseline.result.owner.terminalOutcome.observerGate,'UNPROVEN')
@@ -2928,12 +2937,12 @@ function registerAdapterSourceCheckpointTests({ test, assert, withAdapterCopy, r
     if (!failedCapability && owner.terminalOutcome !== null) assert.equal(owner.terminalOutcome.observerGate, 'FAIL')
   }
   for (const phase of ['pre-o0', 'post-settlement', 'post-cleanup']) {
-    for (const vector of vectors) test('ADR 0036 Source checkpoint ' + phase + ': ' + vector.name, { concurrency: false }, async () => {
+    for (const vector of vectors) /* ADR0038:register:test */ g36CaseTest('L2931', 'registerAdapterSourceCheckpointTests', 'ADR 0036 Source checkpoint ' + phase + ': ' + vector.name, { concurrency: false }, async () => {
       await control()
       const { result } = await run(vector, phase)
       failedCheckpoint(result, phase, vector.unproven === true)
     })
-    test('ADR 0036 Source checkpoint ' + phase + ': changed Git-object bytes invalidate the immutable-source comparison', { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L2936', 'registerAdapterSourceCheckpointTests', 'ADR 0036 Source checkpoint ' + phase + ': changed Git-object bytes invalidate the immutable-source comparison', { concurrency: false }, async () => {
       await control()
       const input = await files(), body = input.get(foundationRelative)
       assert.ok(body instanceof Uint8Array)
@@ -2942,14 +2951,14 @@ function registerAdapterSourceCheckpointTests({ test, assert, withAdapterCopy, r
       const { result } = await run(vector, phase)
       failedCheckpoint(result, phase, false)
     })
-    test('ADR 0036 Source checkpoint ' + phase + ': public factory also rejects the bound-path replacement', { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L2945', 'registerAdapterSourceCheckpointTests', 'ADR 0036 Source checkpoint ' + phase + ': public factory also rejects the bound-path replacement', { concurrency: false }, async () => {
       await control()
       const { result } = await run(vectors[0], phase, { entry: 'factory' })
       assert.equal(result.owner, null)
       assert.equal(result.fixtureSnapshot.callCounts.launcher.spawnChild, 3)
       assert.equal(result.fixtureSnapshot.callCounts.pipe.writeDebugPipe, phase === 'pre-o0' ? 0 : 6)
     })
-    for (const vector of vectors.filter(value => value.mutation)) test('ADR 0036 Source checkpoint causal mutant ' + phase + ': ' + vector.mutation.name, { concurrency: false }, async () => {
+    for (const vector of vectors.filter(value => value.mutation)) /* ADR0038:register:test */ g36CaseTest('L2952', 'registerAdapterSourceCheckpointTests', 'ADR 0036 Source checkpoint causal mutant ' + phase + ': ' + vector.mutation.name, { concurrency: false }, async () => {
       await control()
       const baseline = await run(vector, phase)
       failedCheckpoint(baseline.result, phase, false)
@@ -2985,7 +2994,7 @@ function guardSourceRows() {
 
 for (const entry of ['owner', 'factory']) {
   for (const argumentsValue of [[undefined], [null], [{ runBinding: true }], [1, 2]]) {
-    test(`adapter ${entry}: first invalid run arity irreversibly consumes the run without a capability call (${argumentsValue.length})`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L2988', 'publicBoundary', `adapter ${entry}: first invalid run arity irreversibly consumes the run without a capability call (${argumentsValue.length})`, async () => {
       await withAdapterCopy('virtual-runtime-conformance', null, async namespace => {
         const fixture = createVirtualRuntimeFixture()
         let api
@@ -3004,7 +3013,7 @@ for (const entry of ['owner', 'factory']) {
   }
   for (let failed = 0; failed < guardSourceRows().length; failed += 1) {
     const source = guardSourceRows()[failed][0]
-    test(`adapter ${entry}: R0 source throw at ${source} has a closed error and no later effect`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L3007', 'publicBoundary', `adapter ${entry}: R0 source throw at ${source} has a closed error and no later effect`, async () => {
       await withAdapterCopy('virtual-runtime-conformance', null, async namespace => {
         const fixture = createVirtualRuntimeFixture()
         const rows = guardSourceRows()
@@ -3037,7 +3046,7 @@ for (const entry of ['owner', 'factory']) {
   }
 }
 
-test('adapter copy profiles are disjoint, factory selector is poisoned in derivation copy, and no real capability is called', async () => {
+/* ADR0038:register:test */ g36CaseTest('L3040', 'publicBoundary', 'adapter copy profiles are disjoint, factory selector is poisoned in derivation copy, and no real capability is called', async () => {
   await withAdapterCopy('derivation-conformance', null, namespace => {
     assert.equal(namespace.createBrowserSyncTransportRuntimeDiagnosticAdapter.length, 0)
     assert.throws(() => namespace.createBrowserSyncTransportRuntimeDiagnosticAdapter(), error => error instanceof TypeError && error.message === 'browserSyncTransportRuntimeDiagnosticAdapterFailed')
@@ -3054,7 +3063,7 @@ test('adapter copy profiles are disjoint, factory selector is poisoned in deriva
 })
 
 for (const caseName of ['root-key', 'root-prototype', 'root-not-frozen', 'missing-method', 'method-arity', 'group-key', 'group-not-frozen', 'method-accessor']) {
-  test(`adapter owner rejects the ${caseName} capability profile before consuming sources`, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3057', 'publicBoundary', `adapter owner rejects the ${caseName} capability profile before consuming sources`, async () => {
     await withAdapterCopy('virtual-runtime-conformance', null, namespace => {
       const fixture = createVirtualRuntimeFixture()
       const root = { ...fixture.runtimeCapabilities }
@@ -3075,7 +3084,7 @@ for (const caseName of ['root-key', 'root-prototype', 'root-not-frozen', 'missin
   })
 }
 
-test('adapter owner capability identity is consumed exactly once and forged owner is rejected before producer reflection', async () => {
+/* ADR0038:register:test */ g36CaseTest('L3078', 'publicBoundary', 'adapter owner capability identity is consumed exactly once and forged owner is rejected before producer reflection', async () => {
   await withAdapterCopy('virtual-runtime-conformance', null, namespace => {
     const fixture = createVirtualRuntimeFixture()
     namespace.createBrowserSyncTransportRuntimeDiagnosticAdapterOwner(fixture.runtimeCapabilities)
@@ -3089,7 +3098,7 @@ test('adapter owner capability identity is consumed exactly once and forged owne
 
 // Selection faults stop at the factory boundary. The real-selector mutant
 // allocates its inert capability graph but never calls run or a host method.
-test('ADR 0036: derivation-no-host-selector-poison dies at the exact synchronous sentinel', async () => {
+/* ADR0038:register:test */ g36CaseTest('L3092', 'publicBoundary', 'ADR 0036: derivation-no-host-selector-poison dies at the exact synchronous sentinel', async () => {
   const oracle = namespace => assert.throws(() => namespace.createBrowserSyncTransportRuntimeDiagnosticAdapter(), error =>
     Object.getPrototypeOf(error) === TypeError.prototype && error.message === 'browserSyncTransportRuntimeDiagnosticAdapterFailed')
   await withAdapterCopy('derivation-conformance', null, oracle)
@@ -3104,7 +3113,7 @@ test('ADR 0036: derivation-no-host-selector-poison dies at the exact synchronous
   })
 })
 
-test('ADR 0036: derivation-real-selector-fallback dies on factory return before run', async () => {
+/* ADR0038:register:test */ g36CaseTest('L3107', 'publicBoundary', 'ADR 0036: derivation-real-selector-fallback dies on factory return before run', async () => {
   const oracle = namespace => assert.throws(() => namespace.createBrowserSyncTransportRuntimeDiagnosticAdapter(), TypeError)
   await withAdapterCopy('derivation-conformance', null, oracle)
   await withAdapterCopy('derivation-conformance', {
@@ -3119,11 +3128,11 @@ test('ADR 0036: derivation-real-selector-fallback dies on factory return before 
   })
 })
 
-test('ADR 0036: virtual installer validates exact arity, retains one slot and consumes one identity', async () => {
+/* ADR0038:register:test */ g36CaseTest('L3122', 'publicBoundary', 'ADR 0036: virtual installer validates exact arity, retains one slot and consumes one identity', async () => {
   await withAdapterCopy('virtual-runtime-conformance', null, namespace => {
     const fixture = createVirtualRuntimeFixture()
     const second = createVirtualRuntimeFixture()
-    for (const args of [[], [undefined], [fixture.runtimeCapabilities, undefined]]) {
+    for (const args of [[], [undefined], [fixture.runtimeCapabilities, undefined]]) {/* ADR0038:sync */g36Variant('installer-arguments',args.length===0?'empty':args.length===1?'undefined':'extra');/* ADR0038:end */
       assert.throws(() => Reflect.apply(namespace.installBrowserSyncTransportRuntimeDiagnosticVirtualCapabilities, undefined, args))
     }
     assert.equal(namespace.installBrowserSyncTransportRuntimeDiagnosticVirtualCapabilities(fixture.runtimeCapabilities), undefined)
@@ -3149,7 +3158,7 @@ for (const mutation of [
   { name: 'VIRTUAL_INSTALLER_IGNORES_ARGUMENT',
     from: '  browserSyncTransportRuntimeDiagnosticVirtualCapabilitySlot = runtimeCapabilities\n  return undefined',
     to: '  browserSyncTransportRuntimeDiagnosticVirtualCapabilitySlot = undefined\n  return undefined' },
-]) test('ADR 0036 selector causal mutant: ' + mutation.name, async () => {
+]) /* ADR0038:register:test */ g36CaseTest('L3152', 'publicBoundary', 'ADR 0036 selector causal mutant: ' + mutation.name, async () => {
   const oracle = namespace => {
     const fixture = createVirtualRuntimeFixture()
     namespace.installBrowserSyncTransportRuntimeDiagnosticVirtualCapabilities(fixture.runtimeCapabilities)
@@ -3167,7 +3176,7 @@ for (const mutation of [
   { name: 'OWNER_CAPABILITY_ARGUMENT_IGNORED',
     from: '    runtimeCapabilities, capabilityCallDepth: 0, capabilityViolation: false,',
     to: '    runtimeCapabilities: null, capabilityCallDepth: 0, capabilityViolation: false,' },
-]) test('ADR 0036 owner causal mutant: ' + mutation.name, async () => {
+]) /* ADR0038:register:test */ g36CaseTest('L3170', 'publicBoundary', 'ADR 0036 owner causal mutant: ' + mutation.name, async () => {
   const oracle = async namespace => {
     const fixture = createVirtualRuntimeFixture()
     fixture.controller.dispatch({ kind: 'source-throw', source: 'readDiagnosticRunIdEntropyBytes' })
@@ -3182,7 +3191,7 @@ for (const mutation of [
 })
 
 let sourceFixtureFilesSeedPromise = null
-async function readSourceFixtureFilesSeed() {
+async function readSourceFixtureFilesSeed() {/* ADR0038:sync */g36Registry.assertExecutable();/* ADR0038:end */
   const files = new Map()
   const literals = ['index.html', 'package.json', 'package-lock.json',
     'server/startLocalSyncGateway.js', 'server/localSyncGatewayRuntimeConfig.js',
@@ -3219,7 +3228,7 @@ async function loadSourceFixtureFiles() {
   return new Map([...seed].map(([literal, bytes]) => [literal, new Uint8Array(bytes)]))
 }
 
-test('adapter integration smoke: raw source load, frozen targetInfos, capture cap, cleanup, NOT_EVIDENCE', async () => {
+/* ADR0038:register:test */ g36CaseTest('L3222', 'publicBoundary', 'adapter integration smoke: raw source load, frozen targetInfos, capture cap, cleanup, NOT_EVIDENCE', async () => {
   await withAdapterCopy('virtual-runtime-conformance', null, async namespace => {
     const sourcePlan = createAdapterSourceFixturePlan(await loadSourceFixtureFiles())
     const result = await runVirtualAdapterScenario(namespace, { entry: 'owner', sourcePlan, scenario: 'capture-cap' })
@@ -3269,7 +3278,7 @@ function registerAdr36ClockContractTests({ test, assert, withAdapterCopy, runVir
     });
     return controlPromise;
   };
-  test('ADR 0036: one exact deferred sample binds FIFO, adapter ledger and Foundation', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3272', 'registerAdr36ClockContractTests', 'ADR 0036: one exact deferred sample binds FIFO, adapter ledger and Foundation', async () => {
     await ensureControl();
   });
   const mutants = [
@@ -3290,7 +3299,7 @@ function registerAdr36ClockContractTests({ test, assert, withAdapterCopy, runVir
     },
   ];
   for (const mutation of mutants) {
-    test(`ADR 0036: exact source mutant ${mutation.name} is causally rejected by clock oracle`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L3293', 'registerAdr36ClockContractTests', `ADR 0036: exact source mutant ${mutation.name} is causally rejected by clock oracle`, async () => {
       await ensureControl();
       const result = await run(mutation);
       assert.equal(result.owner.ownerFinalizationCount, 1);
@@ -3401,18 +3410,18 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     '{"id":1,"result":{"targetInfos":[]}}', '{"id":1,"result":{"targetInfos":[]}}',
     '{"method":"Network.responseReceived","sessionId":"foreign","params":{"requestId":"unrelated","response":{"url":"http://127.0.0.1:8787/api/sync-test","status":418},"timestamp":-17}}',
   ]
-  test('ADR 0036 Parser: one chunk preserves multiple RFC8259 envelopes and semantic counterexamples', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3404', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: one chunk preserves multiple RFC8259 envelopes and semantic counterexamples', { concurrency: false }, async () => {
     parserFixtureAccepted(assert, await run(parserFixtureTextActions(validTexts)), validTexts.length)
   })
-  test('ADR 0036 Parser: every single-byte boundary preserves multibyte UTF8 and escaped UTF16', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3407', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: every single-byte boundary preserves multibyte UTF8 and escaped UTF16', { concurrency: false }, async () => {
     const text = '{"method":"x","params":{"unicode":"ä€😀","escaped":"\\uFEFF\\uD800"}}'
     parserFixtureAccepted(assert, await run(parserFixtureTextActions([text], 1), { sourceSettlementOrder: 'passive-first' }), 1)
   })
-  test('ADR 0036 Parser: interior unescaped U+FEFF and escaped U+FEFF are ordinary JSON string data',{concurrency:false},async()=>{
+  /* ADR0038:register:test */ g36CaseTest('L3411', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: interior unescaped U+FEFF and escaped U+FEFF are ordinary JSON string data',{concurrency:false},async()=>{
     const texts=['{"method":"x","params":{"value":"\uFEFF"}}','{"method":"x","params":{"\uFEFF":"\\uFEFF"}}']
     parserFixtureAccepted(assert,await run(parserFixtureTextActions(texts)),2)
   })
-  test('ADR 0036 Parser: raw and escaped interior U+FEFF member names remain duplicate-equivalent',{concurrency:false},async()=>{
+  /* ADR0038:register:test */ g36CaseTest('L3415', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: raw and escaped interior U+FEFF member names remain duplicate-equivalent',{concurrency:false},async()=>{
     parserFixtureRejected(assert,await run(parserFixtureTextActions(['{"method":"x","params":{"\uFEFF":0,"\\uFEFF":1}}'])),'scan')
   })
   const nestedMemberText=(depth,duplicate)=>{
@@ -3420,25 +3429,25 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     const leaf=duplicate?'{"key":0,"k\\u0065y":1}':'{"key":0,"other":1}'
     return '{"method":"x","params":'+'{"next":'.repeat(depth-2)+leaf+'}'.repeat(depth-2)+'}'
   }
-  for(const depth of [1,2,16,31]) test('ADR 0036 Parser: distinct object members at depth'+depth+' remain valid',{concurrency:false},async()=>{
+  for(const depth of [1,2,16,31]) /* ADR0038:register:test */ g36CaseTest('L3423', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: distinct object members at depth'+depth+' remain valid',{concurrency:false},async()=>{
     parserFixtureAccepted(assert,await run(parserFixtureTextActions([nestedMemberText(depth,false)]),{sourceSettlementOrder:'passive-first'}),1)
   })
-  for(let depth=1;depth<=31;depth+=1) test('ADR 0036 Parser: decoded duplicate member rejected at every permitted nonempty-object depth '+depth,{concurrency:false},async()=>{
+  for(let depth=1;depth<=31;depth+=1) /* ADR0038:register:test */ g36CaseTest('L3426', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: decoded duplicate member rejected at every permitted nonempty-object depth '+depth,{concurrency:false},async()=>{
     parserFixtureRejected(assert,await run(parserFixtureTextActions([nestedMemberText(depth,true)])),'scan')
   })
   // A member value of an object at depth32 would itself be depth33. That
   // independently forbidden shape cannot be a positive duplicate-key control.
-  test('ADR 0036 Parser: object at depth32 cannot admit even its first member value',{concurrency:false},async()=>{
+  /* ADR0038:register:test */ g36CaseTest('L3431', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: object at depth32 cannot admit even its first member value',{concurrency:false},async()=>{
     parserFixtureRejected(assert,await run(parserFixtureTextActions([nestedMemberText(32,false)])),'scan')
   })
-  test('ADR 0036 Parser causal mutant: deepest permitted duplicate guard must precede native parse',{concurrency:false},async()=>{
+  /* ADR0038:register:test */ g36CaseTest('L3434', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser causal mutant: deepest permitted duplicate guard must precede native parse',{concurrency:false},async()=>{
     const input=parserFixtureTextActions([nestedMemberText(31,true)])
     const baseline=await run(input); parserFixtureRejected(assert,baseline,'scan')
     const changed=await run(input,{mutation:{name:'DEEPEST_DECODED_DUPLICATE_KEY_BYPASS',from:'adapterAssert(!keys.has(key) && ++members <= 8192)',to:'adapterAssert(++members <= 8192)'}})
     assert.equal(changed.owner.pipeLedger.parseCount,baseline.owner.pipeLedger.parseCount+1)
     assert.throws(()=>parserFixtureRejected(assert,changed,'scan'),{name:'AssertionError'})
   })
-  test('ADR 0036 Parser: public factory traverses raw chunk framing with the unchanged Foundation', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3441', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: public factory traverses raw chunk framing with the unchanged Foundation', { concurrency: false }, async () => {
     const result = await run(parserFixtureTextActions(validTexts.slice(0, 3)), { entry: 'factory', sourceSettlementOrder: 'passive-first' })
     assert.equal(result.owner, null)
     assert.ok(result.fixtureSnapshot.callCounts.pipe.writeDebugPipe >= 4)
@@ -3478,7 +3487,7 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     ['empty session', '{"method":"x","sessionId":"","params":{}}', 'postparse'],
     ['nonstring session', '{"method":"x","sessionId":1,"params":{}}', 'postparse'],
   ]
-  for (const [name, text, boundary] of badTexts) test('ADR 0036 Parser: reject ' + name + ' at ' + boundary, { concurrency: false }, async () => {
+  for (const [name, text, boundary] of badTexts) /* ADR0038:register:test */ g36CaseTest('L3481', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: reject ' + name + ' at ' + boundary, { concurrency: false }, async () => {
     parserFixtureRejected(assert, await run(parserFixtureTextActions([text])), boundary)
   })
   for (const [name, bytes, boundary] of [
@@ -3488,7 +3497,7 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     ['truncated UTF8', Uint8Array.of(226,130,0), 'decode'],
     ['encoded surrogate UTF8', Uint8Array.of(237,160,128,0), 'decode'],
     ['invalid continuation UTF8', Uint8Array.of(226,32,172,0), 'decode'],
-  ]) test('ADR 0036 Parser: reject ' + name + ' before lexical scan', { concurrency: false }, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L3491', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: reject ' + name + ' before lexical scan', { concurrency: false }, async () => {
     parserFixtureRejected(assert, await run(parserFixtureActions([bytes])), boundary)
   })
   for (const [name, actions, violated] of [
@@ -3496,7 +3505,7 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     ['partial frame EOF is violation', pipeOrdinal => [{ kind: 'pipe-chunk', pipeOrdinal, bytes: parserFixtureBytes('{') }, { kind: 'pipe-eof', pipeOrdinal }], true],
     ['bytes after EOF are violation', pipeOrdinal => [{ kind: 'pipe-eof', pipeOrdinal }, { kind: 'pipe-chunk', pipeOrdinal, bytes: Uint8Array.of(32) }], true],
     ['read error is violation', pipeOrdinal => [{ kind: 'pipe-read-error', pipeOrdinal }], true],
-  ]) test('ADR 0036 Parser: ' + name, { concurrency: false }, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L3499', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: ' + name, { concurrency: false }, async () => {
     const result = await run(actions, { sourceSettlementOrder: violated ? 'post-settlement-first' : 'passive-first' })
     if (violated) parserFixtureRejected(assert, result)
     else { assert.equal(result.owner.pipeLedger.violation, false); assert.equal(result.owner.pipeLedger.closed, true) }
@@ -3507,20 +3516,20 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     ['root-counted depth', 32, depth => '{"method":"x","params":' + '['.repeat(depth - 2) + '0' + ']'.repeat(depth - 2) + '}', 'scan'],
     ['JSON nodes', 4096, nodes => '{"method":"x","params":[' + new Array(nodes - 3).fill('0').join(',') + ']}', 'scan'],
   ]
-  for (const [name, limit, build, boundary] of bounds) for (const delta of [0, 1]) test('ADR 0036 Parser: actual ' + name + ' ' + (limit + delta), { concurrency: false }, async () => {
+  for (const [name, limit, build, boundary] of bounds) for (const delta of [0, 1]) /* ADR0038:register:test */ g36CaseTest('L3510', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser: actual ' + name + ' ' + (limit + delta), { concurrency: false }, async () => {
     const result = await run(parserFixtureTextActions([build(limit + delta)]), { sourceSettlementOrder: delta === 0 ? 'passive-first' : 'post-settlement-first' })
     if (delta === 0) parserFixtureAccepted(assert, result, 1)
     else parserFixtureRejected(assert, result, boundary)
   })
-  test('ADR 0036 FIFO: actual 1048576 material bytes survive until dequeue', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3515', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 FIFO: actual 1048576 material bytes survive until dequeue', { concurrency: false }, async () => {
     parserFixtureAccepted(assert, await run(parserFixtureTextActions([envelope, ...[262144,262144,262144,262144].map(parserFixturePadded)])), 5)
   })
-  test('ADR 0036 FIFO: actual 1048577 queued material bytes reject', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3518', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 FIFO: actual 1048577 queued material bytes reject', { concurrency: false }, async () => {
     // The hook starts with a pending dequeue: a first small envelope takes that slot.
     const texts = [envelope, ...[262144,262144,262144,262100,45].map(parserFixturePadded)]
     parserFixtureRejected(assert, await run(parserFixtureTextActions(texts)))
   })
-  for (const excess of [false, true]) test('ADR 0036 FIFO: actual ' + (excess ? '257' : '256') + ' waiting entries', { concurrency: false }, async () => {
+  for (const excess of [false, true]) /* ADR0038:register:test */ g36CaseTest('L3523', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 FIFO: actual ' + (excess ? '257' : '256') + ' waiting entries', { concurrency: false }, async () => {
     // One envelope is delivered into the pending dequeue; the rest remain FIFO-owned.
     const count = excess ? 258 : 257
     const result = await run(parserFixtureTextActions(new Array(count).fill(envelope)), { rawAfterHookMicrotasks: 32, sourceSettlementOrder: excess ? 'passive-first' : 'post-settlement-first' })
@@ -3538,7 +3547,7 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     { name: 'PRODUCER_EVENT_BYPASS', from: rawEnvelopeCall,
       to: "      if (producerName === 'debug-pipe-read' && event.kind === 'chunk') {\n        const rawText = new AdapterTextDecoder('utf-8', { fatal: true }).decode(event.bytes);\n        for (const part of rawText.split('\\0').filter(part => part.length > 0)) adapterQueue(owner, adapterFreeze({ kind: 'cdp-message', value: adapterFreezeData(adapterParse(part)) }), part.length);\n      } else {\n" + rawEnvelopeCall + '\n      }' },
   ]
-  for (const mutation of bypasses) test('ADR 0036 Parser mandatory causal mutant: ' + mutation.name, { concurrency: false }, async () => {
+  for (const mutation of bypasses) /* ADR0038:register:test */ g36CaseTest('L3541', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser mandatory causal mutant: ' + mutation.name, { concurrency: false }, async () => {
     const baseline = await run(rawBypassInput)
     parserFixtureRejected(assert, baseline, 'scan')
     assert.equal(baseline.owner.pipeLedger.messageCount, 3)
@@ -3590,7 +3599,7 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     { name: 'FIFO-entry-cap-bypass', from: 'owner.fifo.length < 256 && owner.fifoMaterialBytes + materialBytes <= 1048576 &&', to: 'owner.fifoMaterialBytes + materialBytes <= 1048576 &&',
       input: parserFixtureTextActions(new Array(258).fill(envelope)), baseline: true, observable: 'accepted' },
   ]
-  for (const vector of mutants) test('ADR 0036 Parser causal mutant: ' + vector.name, { concurrency: false }, async () => {
+  for (const vector of mutants) /* ADR0038:register:test */ g36CaseTest('L3593', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser causal mutant: ' + vector.name, { concurrency: false }, async () => {
     const queueBoundary = vector.name === 'FIFO-material-accounting-bypass'
       ? { messages: 9, beforeEntries: 4, beforeBytes: 1048532, afterEntries: 5, afterBytes: 1048577 }
       : vector.name === 'FIFO-entry-cap-bypass'
@@ -3641,7 +3650,7 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     else if (vector.observable === 'doubleparse') assert.ok(changed.owner.pipeLedger.parseCount > changed.owner.pipeLedger.scanCount)
     else { assert.equal(changed.owner.pipeLedger.violation, false); assert.ok(changed.owner.pipeLedger.messageCount > baseline.owner.pipeLedger.messageCount || vector.name === 'raw-BOM-guard-bypass') }
   })
-  test('ADR 0036 FIFO causal mutant: identical replies cannot be deduplicated', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3644', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 FIFO causal mutant: identical replies cannot be deduplicated', { concurrency: false }, async () => {
     const input = parserFixtureTextActions([parserFixtureNetworkRequest(), parserFixtureEvaluate(), parserFixtureEvaluate()])
     const baseline = await run(input, { sourceSettlementOrder: 'passive-first' })
     parserFixtureAccepted(assert, baseline, 3)
@@ -3650,7 +3659,7 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     const changed = await run(input, { mutation, sourceSettlementOrder: 'passive-first' })
     assert.equal(changed.owner.wireLedger.operations[3].replyCount, 1)
   })
-  test('ADR 0036 FIFO causal mutant: LIFO cannot move capture cap before an earlier reply', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3653', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 FIFO causal mutant: LIFO cannot move capture cap before an earlier reply', { concurrency: false }, async () => {
     const input = parserFixtureTextActions([parserFixtureNetworkRequest(), parserFixtureEvaluate()])
     const baseline = await run(input, { sourceSettlementOrder: 'passive-first' })
     parserFixtureAccepted(assert, baseline, 2)
@@ -3666,7 +3675,7 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     assert.equal(Object.isFrozen(changed.owner.adapterObservationSnapshot.wire[3]), true)
     assert.equal(changed.owner.adapterObservationSnapshot.wire[3].replyCount, 0)
   })
-  test('ADR 0036 FIFO causal mutant: uncorrelated endpoint responses cannot be prefiltered', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3669', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 FIFO causal mutant: uncorrelated endpoint responses cannot be prefiltered', { concurrency: false }, async () => {
     const foreign = JSON.stringify({ method: 'Network.responseReceived', sessionId: parserFixtureSession,
       params: { requestId: 'foreign-fixture-request', response: { url: 'http://127.0.0.1:8787/api/sync-test', status: 418 }, timestamp: 10.1 } })
     const input = parserFixtureTextActions([parserFixtureNetworkRequest(), foreign])
@@ -3685,15 +3694,15 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     JSON.stringify({method:'Network.requestWillBeSent',sessionId:parserFixtureSession,params:{requestId:'timestamp-post',request:{url:'http://127.0.0.1:8787/api/sync-test',method:'POST'},timestamp:times[2]}}),
   ])
   const networkStage=(result,id)=>result.owner.foundationProjection.stages.find(stage=>stage.stageId===id)
-  test('ADR 0036 Raw Network: timestamps10→11→12 pass unchanged parser and reach three ordered Foundation stages',{concurrency:false},async()=>{
+  /* ADR0038:register:test */ g36CaseTest('L3688', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Raw Network: timestamps10→11→12 pass unchanged parser and reach three ordered Foundation stages',{concurrency:false},async()=>{
     const result=await run(rawNetworkOrder([10,11,12]),{sourceSettlementOrder:'passive-first'})
     parserFixtureAccepted(assert,result,3)
-    for(const [id,order,time] of [['preflight-request-observed',1,0],['preflight-204-observed',2,1000],['post-request-observed',3,2000]]) {
+    for(const [id,order,time] of [['preflight-request-observed',1,0],['preflight-204-observed',2,1000],['post-request-observed',3,2000]]) {/* ADR0038:sync */g36Variant('network-stage',id);/* ADR0038:end */
       const stage=networkStage(result,id)
       assert.equal(stage.observationState,'observed'); assert.equal(stage.receiptOrder,order); assert.equal(stage.relativeMilliseconds,time)
     }
   })
-  for(const entry of ['owner','factory']) test('ADR 0036 Raw Network: timestamps10→12→11 remain in producer arrival order via '+entry,{concurrency:false},async()=>{
+  for(const entry of ['owner','factory']) /* ADR0038:register:test */ g36CaseTest('L3696', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Raw Network: timestamps10→12→11 remain in producer arrival order via '+entry,{concurrency:false},async()=>{
     const result=await run(rawNetworkOrder([10,12,11]),{entry,sourceSettlementOrder:'passive-first'})
     if(entry==='owner') {
       parserFixtureAccepted(assert,result,3)
@@ -3703,7 +3712,7 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
       assert.equal(result.owner.foundationProjection.requestBudget.endpointPosts,'zero')
     } else { assert.equal(result.owner,null); assert.ok(result.fixtureSnapshot.callCounts.pipe.writeDebugPipe>=4) }
   })
-  test('ADR 0036 Raw Network causal mutant: sorting timestamps cannot conceal10→12→11',{concurrency:false},async()=>{
+  /* ADR0038:register:test */ g36CaseTest('L3706', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Raw Network causal mutant: sorting timestamps cannot conceal10→12→11',{concurrency:false},async()=>{
     const input=rawNetworkOrder([10,12,11]),baseline=await run(input,{sourceSettlementOrder:'passive-first'})
     parserFixtureAccepted(assert,baseline,3)
     assert.equal(networkStage(baseline,'post-request-observed').observationState,'not-observed')
@@ -3721,7 +3730,7 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
   for (const [name, from, make] of [
     ['scanner-object-members', '++members <= 8192', limit => '++members <= ' + limit],
     ['postparse-object-members', 'if (!array) adapterAssert(++members <= 8192)', limit => 'if (!array) adapterAssert(++members <= ' + limit + ')'],
-  ]) test('ADR 0036 Parser causal bound: ' + name + ' dominated actual cap', { concurrency: false }, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L3724', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser causal bound: ' + name + ' dominated actual cap', { concurrency: false }, async () => {
     const text = '{"method":"x","params":{' + Array.from({ length: 18 }, (_, index) => '"k' + index + '":0').join(',') + '}}'
     // Anchor scanner uniquely; the postparse guard intentionally retains its own cap.
     const exactFrom = name.startsWith('scanner') ? 'adapterAssert(!keys.has(key) && ++members <= 8192)' : from
@@ -3732,7 +3741,7 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
     const exclusive = await run(input, { mutation: { name: name + '-exclusive19', from: exactFrom, to: exactTo(19) } })
     parserFixtureRejected(assert, exclusive, name.startsWith('scanner') ? 'scan' : 'postparse')
   })
-  test('ADR 0036 Parser causal bound: raw readchunk guard below normative fixture cap', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3735', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser causal bound: raw readchunk guard below normative fixture cap', { concurrency: false }, async () => {
     const mutation = { name: 'raw-chunk-cap512-control', from: 'function adapterReceiveChunk(owner, bytes) {\n  const copy = adapterCopyBytes(bytes, 65536)', to: 'function adapterReceiveChunk(owner, bytes) {\n  const copy = adapterCopyBytes(bytes, 512)' }
     const exact = parserFixtureFrame(parserFixturePadded(511))
     parserFixtureAccepted(assert, await run(parserFixtureActions([exact]), { mutation, sourceSettlementOrder: 'passive-first' }), 1)
@@ -3741,12 +3750,12 @@ function registerAdapterParserQueueConformanceTests({ test, assert, withAdapterC
   for (const [name, from, to, goodLength, badLength, boundary] of [
     ['decoded-text-codeunits', "adapterAssert(typeof text === 'string' && text.length > 0 && text.length <= 262144)", "adapterAssert(typeof text === 'string' && text.length > 0 && text.length <= 512)", 512, 513, 'scan'],
     ['accumulator-including-NUL', 'pipe.accumulator.length + 1 <= 262145', 'pipe.accumulator.length + 1 <= 513', 512, 513, 'frame'],
-  ]) test('ADR 0036 Parser causal bound: ' + name + ' independently enforced before materialization', { concurrency: false }, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L3744', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser causal bound: ' + name + ' independently enforced before materialization', { concurrency: false }, async () => {
     const mutation = { name: name + '-lower-limit-control', from, to }
     parserFixtureAccepted(assert, await run(parserFixtureTextActions([parserFixturePadded(goodLength)]), { mutation, sourceSettlementOrder: 'passive-first' }), 1)
     parserFixtureRejected(assert, await run(parserFixtureTextActions([parserFixturePadded(badLength)]), { mutation }), boundary)
   })
-  test('ADR 0036 Parser causal bound: inbound message cap independent of Foundation dequeue cap', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3749', 'registerAdapterParserQueueConformanceTests', 'ADR 0036 Parser causal bound: inbound message cap independent of Foundation dequeue cap', { concurrency: false }, async () => {
     const mutation = { name: 'message-cap6-control', from: '++owner.pipeLedger.messageCount <= 512', to: '++owner.pipeLedger.messageCount <= 6' }
     // Measure the bound immediately after the unchanged raw reply prefix.
     // Later cleanup replies may legitimately exhaust the same message budget.
@@ -3810,7 +3819,7 @@ function registerAdr36ObservationBindingTests({ test, assert, withAdapterCopy, r
     assert.equal(result.owner.terminalOutcome.evidenceStatus, 'NOT_EVIDENCE');
   });
   for (const scenario of ['capture-cap', 'setup-ready-cancel-reject', 'rejection-quiescence', 'post-o0-setup-cancel']) {
-    test(`ADR 0036: owned virtual observation-close binding survives ${scenario}`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L3813', 'registerAdr36ObservationBindingTests', `ADR 0036: owned virtual observation-close binding survives ${scenario}`, async () => {
       const result = await run(null, scenario);
       completed(result);
       assert.equal(result.owner.notificationCount, 1);
@@ -3823,7 +3832,7 @@ function registerAdr36ObservationBindingTests({ test, assert, withAdapterCopy, r
       if (scenario === 'setup-ready-cancel-reject' || scenario === 'rejection-quiescence') assert.equal(result.owner.terminalOutcome.observerGate, 'FAIL');
     });
   }
-  test('ADR 0036: prestart has no O0, no marker, no record finalizer', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3826', 'registerAdr36ObservationBindingTests', 'ADR 0036: prestart has no O0, no marker, no record finalizer', async () => {
     const result = await run(null, 'prestart');
     completed(result);
     assert.equal(result.owner.attemptStarted, false);
@@ -3840,7 +3849,7 @@ function registerAdr36ObservationBindingTests({ test, assert, withAdapterCopy, r
       from: '      return adapterExchange(owner, intent)',
       to: `      const result = adapterExchange(owner, intent)\n      if (${condition}) Object.defineProperty(result, 'invalidFoundationPromiseProfile', { value: true })\n      return result`,
     };
-    test(`ADR 0036: ${name} retains the original marker through outer cleanup`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L3843', 'registerAdr36ObservationBindingTests', `ADR 0036: ${name} retains the original marker through outer cleanup`, async () => {
       const result = await run(mutation, scenario);
       completed(result);
       assert.equal(result.owner.notificationCount, 1);
@@ -3860,7 +3869,7 @@ function registerAdr36ObservationBindingTests({ test, assert, withAdapterCopy, r
     { name: 'delayed-marker-fence', from: '      return adapterObservationClosed(owner)', to: '      adapterApply(adapterThen, new AdapterPromise(resolve => resolve(undefined)), [function delayedMarker() { adapterObservationClosed(owner); return undefined }])\n      return undefined' },
   ];
   for (const mutation of guardMutants) {
-    test(`ADR 0036: ${mutation.name} cannot authorize record finalization`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L3863', 'registerAdr36ObservationBindingTests', `ADR 0036: ${mutation.name} cannot authorize record finalization`, async () => {
       await requireMarkerControl();
       // Early rejection precedes the first write. All other invalid markers
       // settle Foundation before the outer passive resource cleanup begins.
@@ -3930,7 +3939,7 @@ function registerAdr36DeadlineIntegrationTests({ test, assert, withAdapterCopy, 
     return setupEqualityControlPromise;
   };
   for (const value of [6099, 6100, 6101]) {
-    test(`ADR 0036: actual raw Setup frame loses to inclusive deadline at ${value}`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L3933', 'registerAdr36DeadlineIntegrationTests', `ADR 0036: actual raw Setup frame loses to inclusive deadline at ${value}`, async () => {
       if (value === 6100) await ensureSetupEqualityControl();
       else {
         const result = await run({ scenario: value < 6100 ? 'capture-cap' : 'setup-deadline-reached', controllerClockValues: fixedClock([100], value) });
@@ -3938,7 +3947,7 @@ function registerAdr36DeadlineIntegrationTests({ test, assert, withAdapterCopy, 
       }
     });
   }
-  test('ADR 0036: public factory uses the same raw Setup deadline equality path', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3941', 'registerAdr36DeadlineIntegrationTests', 'ADR 0036: public factory uses the same raw Setup deadline equality path', async () => {
     const result = await run({ entry: 'factory', scenario: 'setup-deadline-reached', controllerClockValues: fixedClock([100], 6100) });
     terminal(result);
     assert.equal(result.owner, null);
@@ -3970,12 +3979,12 @@ function registerAdr36DeadlineIntegrationTests({ test, assert, withAdapterCopy, 
     }
   };
   for (const offset of [-1, 0, 1]) {
-    test(`ADR 0036: actual raw Cleanup frame loses to inclusive deadline at offset ${offset}`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L3973', 'registerAdr36DeadlineIntegrationTests', `ADR 0036: actual raw Cleanup frame loses to inclusive deadline at offset ${offset}`, async () => {
       const result = await run({ scenario: offset < 0 ? 'capture-cap' : 'cleanup-deadline-reached', controllerClockValues: fixedClock([100, 110, 120, 130, 140, 150], 60150 + offset) });
       cleanupOracle(result, offset);
     });
   }
-  test('ADR 0036: public factory uses the same raw Cleanup deadline equality path', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3978', 'registerAdr36DeadlineIntegrationTests', 'ADR 0036: public factory uses the same raw Cleanup deadline equality path', async () => {
     const result = await run({ entry: 'factory', scenario: 'cleanup-deadline-reached', controllerClockValues: fixedClock([100, 110, 120, 130, 140, 150], 60150) });
     terminal(result);
     assert.equal(result.owner, null);
@@ -3987,7 +3996,7 @@ function registerAdr36DeadlineIntegrationTests({ test, assert, withAdapterCopy, 
     from: '  const milliseconds = Number(raw / 1000000n)',
     to: "  const milliseconds = reason === 'setup-dequeue-before-reflection' && Number(raw / 1000000n) >= owner.capLedger.setup.deadline ? owner.capLedger.setup.deadline - 1 : Number(raw / 1000000n)",
   };
-  test('ADR 0036: FIFO_OLDER_PARSED_EVENT_BEATS_REACHED_CAP is killed by the same raw equality operand', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L3990', 'registerAdr36DeadlineIntegrationTests', 'ADR 0036: FIFO_OLDER_PARSED_EVENT_BEATS_REACHED_CAP is killed by the same raw equality operand', async () => {
     await ensureSetupEqualityControl();
     const result = await run({ scenario: 'setup-deadline-reached', controllerClockValues: fixedClock([100], 6100) }, fifoMutation);
     terminal(result);
@@ -4065,11 +4074,11 @@ function registerAdr36DeadlineIntegrationTests({ test, assert, withAdapterCopy, 
     return captureControlPromises.get(entry);
   };
   for (const entry of ['owner', 'factory']) {
-    test(`ADR 0036: ${entry} keeps Capture structurally pending at a huge numeric sample until the raw cap event`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L4068', 'registerAdr36DeadlineIntegrationTests', `ADR 0036: ${entry} keeps Capture structurally pending at a huge numeric sample until the raw cap event`, async () => {
       await ensureCaptureControl(entry);
     });
   }
-  test('ADR 0036: CAPTURE_NUMERIC_CLOSE_WITHOUT_CAP_FIRED is killed before the fixture fires its timer', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L4072', 'registerAdr36DeadlineIntegrationTests', 'ADR 0036: CAPTURE_NUMERIC_CLOSE_WITHOUT_CAP_FIRED is killed before the fixture fires its timer', async () => {
     await ensureCaptureControl('owner');
     const { pendingFailure } = await captureRun('owner', captureMutation);
     assert.equal(pendingFailure?.name, 'AssertionError');
@@ -4152,13 +4161,13 @@ function registerAdapterWireLifecycleTests({ test, assert, withAdapterCopy, runV
     })
     return wireControlPromise
   }
-  test('ADR 0036 Wire: six actual accepted frames match independent ordered UTF8/NUL bytes', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L4155', 'registerAdapterWireLifecycleTests', 'ADR 0036 Wire: six actual accepted frames match independent ordered UTF8/NUL bytes', { concurrency: false }, async () => {
     await ensureWireControl()
   })
   for (const mutation of [
     { name: 'WIRE_MEMBER_ORDER_DRIFT', from: '? { id: commandId, method: command, params: projectedParams }', to: '? { method: command, id: commandId, params: projectedParams }' },
     { name: 'WIRE_SAME_LENGTH_METHOD_DRIFT', from: '  const serialized = adapterStringify(wire)', to: '  const serialized = adapterStringify(wire).replace("Target.getTargets", "Target.getTargetx")' },
-  ]) test(`ADR 0036 Wire: independent frame oracle kills ${mutation.name}`, { concurrency: false }, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L4161', 'registerAdapterWireLifecycleTests', `ADR 0036 Wire: independent frame oracle kills ${mutation.name}`, { concurrency: false }, async () => {
     await ensureWireControl()
     const sourcePlan = await createSourcePlan()
     const frames = commandFrames(sourcePlan)
@@ -4170,7 +4179,7 @@ function registerAdapterWireLifecycleTests({ test, assert, withAdapterCopy, runV
     })
   })
   for (const entry of ['owner', 'factory']) {
-    test(`ADR 0036 K2: ${entry} productive pending dequeue resolves once from one raw turn`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L4173', 'registerAdapterWireLifecycleTests', `ADR 0036 K2: ${entry} productive pending dequeue resolves once from one raw turn`, { concurrency: false }, async () => {
       let pendingExchange = null, pendingResolver = null, pendingClockReads = null
       let pendingAsserted = 0, resumedAsserted = 0
       const result = await run('capture-cap', {
@@ -4224,7 +4233,7 @@ function registerAdapterWireLifecycleTests({ test, assert, withAdapterCopy, runV
       assert.equal(resumedAsserted, 1)
       assert.equal(result.fixtureSnapshot.callCounts.pipe.writeDebugPipe, 6)
     })
-    test(`ADR 0036 K2: ${entry} partial Gateway creation ends on pending resource cleanup cap`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L4227', 'registerAdapterWireLifecycleTests', `ADR 0036 K2: ${entry} partial Gateway creation ends on pending resource cleanup cap`, { concurrency: false }, async () => {
       const result = await run('partial-gateway', { entry })
       terminal(result)
       const counts = result.fixtureSnapshot.callCounts
@@ -4251,7 +4260,7 @@ function registerAdapterWireLifecycleTests({ test, assert, withAdapterCopy, runV
         assert.equal(result.owner.cleanupLedger.finalizeReason, 'cleanup-cap')
       }
     })
-    test(`ADR 0036 K2: ${entry} completed concurrent profile is still closed after Gateway failure`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L4254', 'registerAdapterWireLifecycleTests', `ADR 0036 K2: ${entry} completed concurrent profile is still closed after Gateway failure`, { concurrency: false }, async () => {
       const result = await run('partial-profile-completed', { entry })
       terminal(result)
       assert.equal(result.fixtureSnapshot.callCounts.launcher.spawnChild, 2)
@@ -4280,7 +4289,7 @@ function registerAdapterWireLifecycleTests({ test, assert, withAdapterCopy, runV
       }
     })
     for (const scenario of ['evaluate-partial-write', 'evaluate-write-throw', 'evaluate-timer-throw']) {
-      test(`ADR 0036 Capture commit: ${entry}/${scenario} has no successful Evaluate acknowledgement`, { concurrency: false }, async () => {
+      /* ADR0038:register:test */ g36CaseTest('L4283', 'registerAdapterWireLifecycleTests', `ADR 0036 Capture commit: ${entry}/${scenario} has no successful Evaluate acknowledgement`, { concurrency: false }, async () => {
         const result = await run(scenario, { entry })
         terminal(result)
         assert.ok(result.fixtureSnapshot.callCounts.pipe.writeDebugPipe >= 4)
@@ -4325,7 +4334,7 @@ function registerAdapterWireLifecycleTests({ test, assert, withAdapterCopy, runV
       from: "      operation.ackCount += 1\n      return adapterFreeze({ kind: 'protocol-command-send-result', commandId, sendState: 'sent-and-capture-cap-started' })",
       to: "      adapterApply(adapterThen, new AdapterPromise(resolve => resolve(undefined)), [function delayedCaptureAcknowledgement() { operation.ackCount += 1; return undefined }])\n      return adapterFreeze({ kind: 'protocol-command-send-result', commandId, sendState: 'sent-and-capture-cap-started' })",
     },
-  ]) test(`ADR 0036 Capture commit: ${mutation.name} is detected at the raw write return`, { concurrency: false }, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L4328', 'registerAdapterWireLifecycleTests', `ADR 0036 Capture commit: ${mutation.name} is detected at the raw write return`, { concurrency: false }, async () => {
     await ensureCaptureCommitControl()
     let reached = 0, detected = 0
     const result = await run('capture-cap', {
@@ -4348,7 +4357,7 @@ function registerAdapterWireLifecycleTests({ test, assert, withAdapterCopy, runV
     ['first-write-pending', 1, true], ['first-write-error', 1, true],
     ['stdout-cap', 6, false], ['stdout-over-cap', 0, true],
     ['stderr-cap', 6, false], ['stderr-over-cap', 0, true],
-  ]) test(`ADR 0036 Wire lifecycle: ${scenario}`, { concurrency: false }, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L4351', 'registerAdapterWireLifecycleTests', `ADR 0036 Wire lifecycle: ${scenario}`, { concurrency: false }, async () => {
     let overflowAsserted = 0
     const outputOverflow = scenario === 'stdout-over-cap' || scenario === 'stderr-over-cap'
     const result = await run(scenario, {
@@ -4381,7 +4390,7 @@ function registerAdapterWireLifecycleTests({ test, assert, withAdapterCopy, runV
       from: '  const serialized = adapterStringify(wire)',
       to: `  const originalSerialized = adapterStringify(wire)\n  const serialized = command === 'Target.getTargets' ? originalSerialized + ' '.repeat(${length} - new AdapterTextEncoder().encode(originalSerialized).length - 1) : originalSerialized`,
     }
-    test(`ADR 0036 Wire: complete serialized frame ${length} bytes meets exact output guard`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L4384', 'registerAdapterWireLifecycleTests', `ADR 0036 Wire: complete serialized frame ${length} bytes meets exact output guard`, { concurrency: false }, async () => {
       // The raw fixture still offers only the ordinary command length. At the
       // inclusive bound this is a real partial write; over the bound the raw
       // write capability must remain untouched.
@@ -4412,7 +4421,7 @@ function registerAdr36RecordMutationTests({ test, assert, withAdapterCopy, freez
     replayResult: 'EQUIVALENT', stimulusCount, requestSequence: 'OPTIONS-204-POST-200-loadingFinished',
     settlementOutcome: 'static-redacted-rejection', settlementStaticProfileResult: 'match' });
   function causal(mutation, operation, oracle) {
-    test(`ADR 0036 record causal mutant: ${mutation.name}`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L4415', 'registerAdr36RecordMutationTests', `ADR 0036 record causal mutant: ${mutation.name}`, async () => {
       let baselineValue;
       await withAdapterCopy('derivation-conformance', null, api => { baselineValue = operation(api); oracle(baselineValue); });
       let entered = false;
@@ -4498,7 +4507,7 @@ function registerAdr36RecordMutationTests({ test, assert, withAdapterCopy, freez
 
   // A confirmed second pipe is a negative fact, not an invented positive
   // resource attestation. Run this control before modifying its production join.
-  test('ADR 0036 record counterprobe: confirmed second pipe must remain FAIL without runtime authority', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L4501', 'registerAdr36RecordMutationTests', 'ADR 0036 record counterprobe: confirmed second pipe must remain FAIL without runtime authority', async () => {
     await withAdapterCopy('derivation-conformance', null, api => {
       const value = finalizeOperation(input => { input.adapterLedger.parser.pipeOpenCount = 2; })(api);
       assert.deepEqual(value, expected('FAIL'));
@@ -4557,12 +4566,12 @@ function registerAdapterByteBoundaryTests({ test, assert, withAdapterCopy, runVi
     assert.equal(result.owner.writerCallCount, 0)
   }
   const control = () => controlPromise ??= run().then(value => { complete(value.result); return value })
-  for (const entry of ['owner', 'factory']) test('ADR 0036 Byte boundary: ordinary Uint8Array through ' + entry, { concurrency: false }, async () => {
+  for (const entry of ['owner', 'factory']) /* ADR0038:register:test */ g36CaseTest('L4560', 'registerAdapterByteBoundaryTests', 'ADR 0036 Byte boundary: ordinary Uint8Array through ' + entry, { concurrency: false }, async () => {
     const { result, plan } = entry === 'owner' ? await control() : await run({ entry })
     complete(result, entry)
     assert.equal(result.completedSourceEntries, plan.preflight.length)
   })
-  for (const [name, expression] of cases) test('ADR 0036 Byte boundary: reject ' + name + ' before external effects', { concurrency: false }, async () => {
+  for (const [name, expression] of cases) /* ADR0038:register:test */ g36CaseTest('L4565', 'registerAdapterByteBoundaryTests', 'ADR 0036 Byte boundary: reject ' + name + ' before external effects', { concurrency: false }, async () => {
     await control()
     const mutation = { name: 'entropy-byte-specimen-' + name.replaceAll(' ', '-'), from: entropyLine,
       to: 'const runEntropy = adapterCopyBytes((value => ' + expression + ')(' + entropyCall + '), 17, 17)' }
@@ -4577,7 +4586,7 @@ function registerAdapterByteBoundaryTests({ test, assert, withAdapterCopy, runVi
     assert.equal(result.owner.writerCallCount, 0)
     assert.equal(result.owner.ownerFinalizationCount, 1)
   })
-  test('ADR 0036 Byte boundary: detached zero-length resource differs from valid empty resource', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L4580', 'registerAdapterByteBoundaryTests', 'ADR 0036 Byte boundary: detached zero-length resource differs from valid empty resource', { concurrency: false }, async () => {
     const baseline = await run({ extraEmptyFile: true })
     complete(baseline.result)
     assert.equal(baseline.result.completedSourceEntries, baseline.plan.preflight.length)
@@ -4596,7 +4605,7 @@ function registerAdapterByteBoundaryTests({ test, assert, withAdapterCopy, runVi
     const bitString = new Array(length).fill(byte.toString(2).padStart(8, '0')).join('').slice(0, bits)
     return bitString.match(/.{5}/g).map(group => 'abcdefghijklmnopqrstuvwxyz234567'[Number.parseInt(group, 2)]).join('')
   }
-  test('ADR 0036 Byte boundary: mutating the supplied backing after copy cannot change bound entropy', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L4599', 'registerAdapterByteBoundaryTests', 'ADR 0036 Byte boundary: mutating the supplied backing after copy cannot change bound entropy', { concurrency: false }, async () => {
     await control()
     const wrapper = returnValue => 'const runEntropy = (value => { const owned = adapterCopyBytes(value, 17, 17); value[0] = value[0] ^ 255; return ' + returnValue + ' })(' + entropyCall + ')'
     const expected = 'diag-' + referenceBase32(17, 17, 130)
@@ -4627,14 +4636,14 @@ function registerAdapterByteBoundaryTests({ test, assert, withAdapterCopy, runVi
     ['overlapping subview', () => new Uint8Array(new ArrayBuffer(18), 1, 17)],
     ['detached zero-length view', () => { const value = new Uint8Array(0); structuredClone(value.buffer, { transfer: [value.buffer] }); return value }],
   ]
-  for (const [name, make] of fixtureCases) test('ADR 0036 Virtual fixture bytes: atomic rejection of ' + name, { concurrency: false }, () => {
+  for (const [name, make] of fixtureCases) /* ADR0038:register:test */ g36CaseTest('L4630', 'registerAdapterByteBoundaryTests', 'ADR 0036 Virtual fixture bytes: atomic rejection of ' + name, { concurrency: false }, () => {
     const fixture = createVirtualRuntimeFixture()
     const before = fixture.controller.snapshot()
     assert.throws(() => fixture.controller.dispatch({ kind: 'source-return', source: 'readDiagnosticRunIdEntropyBytes', value: make() }), { name: 'TypeError', message: 'browserSyncTransportRuntimeDiagnosticVirtualDispatchInvalid' })
     assert.deepEqual(fixture.controller.snapshot(), before)
   })
-  test('ADR 0036 Virtual fixture bytes: descriptor-only rejection never invokes shadow getters', { concurrency: false }, () => {
-    for (const key of ['buffer', 'byteLength', Symbol.toStringTag]) {
+  /* ADR0038:register:test */ g36CaseTest('L4636', 'registerAdapterByteBoundaryTests', 'ADR 0036 Virtual fixture bytes: descriptor-only rejection never invokes shadow getters', { concurrency: false }, () => {
+    for (const key of ['buffer', 'byteLength', Symbol.toStringTag]) {/* ADR0038:sync */g36Variant('byte-descriptor',key);/* ADR0038:end */
       let calls = 0
       const value = new Uint8Array(17)
       Object.defineProperty(value, key, { get() { calls += 1; throw new Error('must-not-read-byte-getter') } })
@@ -4734,13 +4743,13 @@ function registerAdr36ProducerCapTests({ test, assert, withAdapterCopy, runVirtu
     return { result, oracleFailure };
   }
   for (const kind of ['unknown-handle', 'future-generation', 'stale-generation', 'cancelled-setup-generation']) {
-    test(`ADR 0036 Producer: ${kind} leaves all four payload traps unreachable`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L4737', 'registerAdr36ProducerCapTests', `ADR 0036 Producer: ${kind} leaves all four payload traps unreachable`, async () => {
       const { oracleFailure } = await probeRun(kind);
       assert.equal(oracleFailure, null);
     });
   }
   for (const kind of ['malformed-child', 'malformed-scheduler']) {
-    test(`ADR 0036 Producer counterprobe: ${kind} invalidates its generation before later payload reflection`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L4743', 'registerAdr36ProducerCapTests', `ADR 0036 Producer counterprobe: ${kind} invalidates its generation before later payload reflection`, async () => {
       const { oracleFailure } = await probeRun(kind);
       assert.equal(oracleFailure, null);
     });
@@ -4752,7 +4761,7 @@ function registerAdr36ProducerCapTests({ test, assert, withAdapterCopy, runVirtu
       from: 'if (!binding.active || generation < binding.generation) return undefined', to: 'if (!binding.active) return undefined' }],
     ['cancelled-setup-generation', { name: 'PRODUCER_CANCELLED_GENERATION_PAYLOAD_BEFORE_GUARD',
       from: 'if (!binding.active || generation < binding.generation) return undefined', to: 'if (generation < binding.generation) return undefined' }],
-  ]) test(`ADR 0036 Producer causal mutant: ${mutation.name}`, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L4755', 'registerAdr36ProducerCapTests', `ADR 0036 Producer causal mutant: ${mutation.name}`, async () => {
     const control = await probeRun(kind);
     assert.equal(control.oracleFailure, null);
     const changed = await probeRun(kind, mutation);
@@ -4773,7 +4782,7 @@ function registerAdr36ProducerCapTests({ test, assert, withAdapterCopy, runVirtu
   };
   const simpleRun = mutation => withAdapterCopy(profile, mutation, async namespace => runVirtualAdapterScenario(namespace,
     { entry: 'owner', sourcePlan: await createSourcePlan(), scenario: 'capture-cap' }));
-  test('ADR 0036 Cap: actual timer handles obey one arm and at most one cancel per generation', async () => { capOracle(await simpleRun(null)); });
+  /* ADR0038:register:test */ g36CaseTest('L4776', 'registerAdr36ProducerCapTests', 'ADR 0036 Cap: actual timer handles obey one arm and at most one cancel per generation', async () => { capOracle(await simpleRun(null)); });
   for (const mutation of [
     { name: 'TIMER_RESET_AFTER_ARM',
       from: "  const handle = adapterInvoke(owner, 'scheduler', 'armTimer', [callback, milliseconds])",
@@ -4781,7 +4790,7 @@ function registerAdr36ProducerCapTests({ test, assert, withAdapterCopy, runVirtu
     { name: 'SECOND_CLEANUP_CANCEL',
       from: "      adapterAssert(adapterInvoke(owner, 'scheduler', 'cancelTimer', [cap.handle]) === undefined)",
       to: "      adapterAssert(adapterInvoke(owner, 'scheduler', 'cancelTimer', [cap.handle]) === undefined)\n      if (kind === 'cleanup') adapterInvoke(owner, 'scheduler', 'cancelTimer', [cap.handle])" },
-  ]) test(`ADR 0036 Cap causal mutant: ${mutation.name}`, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L4784', 'registerAdr36ProducerCapTests', `ADR 0036 Cap causal mutant: ${mutation.name}`, async () => {
     capOracle(await simpleRun(null));
     const result = await simpleRun(mutation);
     terminal(result);
@@ -4838,14 +4847,14 @@ function registerAdr36ProducerCapTests({ test, assert, withAdapterCopy, runVirtu
     [{ name: 'SECOND_RESOLVER_CONSUMES_RAW_VALUE',
       from: '        owner.waitingDequeueResolver = fulfill',
       to: "        owner.waitingDequeueResolver = owner.phase === 'capture' ? value => { new AdapterPromise(resolve => { resolve(value) }) } : fulfill" }, true],
-  ]) test(`ADR 0036 Queue causal mutant: ${mutation.name}`, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L4841', 'registerAdr36ProducerCapTests', `ADR 0036 Queue causal mutant: ${mutation.name}`, async () => {
     const control = await queueRun(null, secondResolver);
     assert.equal(control.initialFailure, null);
     assert.equal(control.afterFailure, null);
     const changed = await queueRun(mutation, secondResolver);
     assert.ok(changed.initialFailure?.name === 'AssertionError' || changed.afterFailure?.name === 'AssertionError');
   });
-  test('ADR 0036 Queue causal mutant: QUEUE_EMPTY_FULFILLMENT cannot replace a pending dequeue', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L4848', 'registerAdr36ProducerCapTests', 'ADR 0036 Queue causal mutant: QUEUE_EMPTY_FULFILLMENT cannot replace a pending dequeue', async () => {
     const mutation = { name: 'QUEUE_EMPTY_FULFILLMENT',
       from: '  if (owner.waitingDequeueResolver === null || owner.fifo.length === 0) return',
       to: "  if (owner.waitingDequeueResolver === null) return\n  if (owner.fifo.length === 0) {\n    if (owner.phase === 'capture') { const resolver = owner.waitingDequeueResolver; owner.waitingDequeueResolver = null; resolver(adapterFreeze({ kind: 'connection-closed' })) }\n    return\n  }" };
@@ -4877,7 +4886,7 @@ function registerAdr36ProducerCapTests({ test, assert, withAdapterCopy, runVirtu
   for (const [kind, name] of [
     ['malformed-child', 'PRODUCER_REJECTED_CHILD_GENERATION_REUSED'],
     ['malformed-scheduler', 'PRODUCER_REJECTED_TIMER_GENERATION_REUSED'],
-  ]) test(`ADR 0036 Producer causal mutant: ${name}`, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L4880', 'registerAdr36ProducerCapTests', `ADR 0036 Producer causal mutant: ${name}`, async () => {
     const original = await probeRun(kind);
     assert.equal(original.oracleFailure, null);
     const changed = await probeRun(kind, {
@@ -4929,7 +4938,7 @@ function registerAdr36InvalidClockTests({ test, assert, withAdapterCopy, runVirt
     ['raw monotonic rollback by one millisecond', raw(ns(129))],
     ['capability throw', throws],
   ];
-  for (const [name, invalid] of vectors) test(`ADR 0036 Clock raw rejection: ${name}`, async () => {
+  for (const [name, invalid] of vectors) /* ADR0038:register:test */ g36CaseTest('L4932', 'registerAdr36InvalidClockTests', `ADR 0036 Clock raw rejection: ${name}`, async () => {
     const result = await run({ scenario: 'capture-cap-post-settlement-first', controllerClockActions: script([100, 110, 120, 130], invalid, 140) });
     terminal(result);
     const owner = result.owner;
@@ -4945,13 +4954,13 @@ function registerAdr36InvalidClockTests({ test, assert, withAdapterCopy, runVirt
     assert.equal(owner.trackerState, 'TERMINAL_NO_RECORD');
     assert.equal(owner.capabilityError, true);
   });
-  test('ADR 0036 Clock raw rejection: public factory rejects the same rollback operand', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L4948', 'registerAdr36InvalidClockTests', 'ADR 0036 Clock raw rejection: public factory rejects the same rollback operand', async () => {
     const result = await run({ entry: 'factory', scenario: 'capture-cap-post-settlement-first', controllerClockActions: script([100, 110, 120, 130], raw(ns(129)), 140) });
     terminal(result);
     assert.equal(result.owner, null);
     assert.equal(result.fixtureSnapshot.callCounts.pipe.writeDebugPipe, 4);
   });
-  test('ADR 0036 Clock addition overflow: invalid Setup origin never arms a numeric cap', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L4954', 'registerAdr36InvalidClockTests', 'ADR 0036 Clock addition overflow: invalid Setup origin never arms a numeric cap', async () => {
     const actions = Array.from({ length: 132 }, () => raw(ns(Number.MAX_SAFE_INTEGER)));
     const result = await run({ scenario: 'setup-origin-rejected', controllerClockActions: actions });
     terminal(result);
@@ -4962,7 +4971,7 @@ function registerAdr36InvalidClockTests({ test, assert, withAdapterCopy, runVirt
     assert.equal(result.fixtureSnapshot.callCounts.scheduler.armTimer, 0);
     assert.equal(result.owner.capLedger.setup.state, 'absent');
   });
-  test('ADR 0036 Clock counterprobe: failed Cleanup-origin addition cannot be reused by outer timer arm', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L4965', 'registerAdr36InvalidClockTests', 'ADR 0036 Clock counterprobe: failed Cleanup-origin addition cannot be reused by outer timer arm', async () => {
     const actions = [...[100, 110, 120, 130, 140].map(value => raw(ns(value))),
       ...Array.from({ length: 127 }, () => raw(ns(Number.MAX_SAFE_INTEGER)))];
     const result = await run({ scenario: 'capture-cap-post-settlement-first', controllerClockActions: actions });
@@ -4971,7 +4980,7 @@ function registerAdr36InvalidClockTests({ test, assert, withAdapterCopy, runVirt
     assert.equal(result.owner.capLedger.cleanup.state, 'terminal-unknown');
     assert.equal(result.owner.terminalOutcome.observerGate, 'FAIL');
   });
-  test('ADR 0036 Clock causal mutant: UNSAFE_ABSOLUTE_DEADLINE_ARMED after rejected Cleanup origin', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L4974', 'registerAdr36InvalidClockTests', 'ADR 0036 Clock causal mutant: UNSAFE_ABSOLUTE_DEADLINE_ARMED after rejected Cleanup origin', async () => {
     const actions = [...[100, 110, 120, 130, 140].map(value => raw(ns(value))),
       ...Array.from({ length: 127 }, () => raw(ns(Number.MAX_SAFE_INTEGER)))];
     const oracle = result => {
@@ -5004,7 +5013,7 @@ function registerAdr36CapabilityThrowTests({ test, assert, withAdapterCopy, runV
     assert.equal(result.owner.runState, 'terminal');
     assert.equal(result.owner.cleanupLedger.terminal, true);
   };
-  test('ADR 0036 Capability counterprobe: ordinary Gateway throw preserves later valid cleanup bindings', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5007', 'registerAdr36CapabilityThrowTests', 'ADR 0036 Capability counterprobe: ordinary Gateway throw preserves later valid cleanup bindings', async () => {
     const result = await withAdapterCopy('virtual-runtime-conformance', null, async namespace =>
       runVirtualAdapterScenario(namespace, { entry: 'owner', sourcePlan: await createSourcePlan(), scenario: 'partial-profile-completed' }));
     terminal(result);
@@ -5032,7 +5041,7 @@ function registerAdr36CapabilityThrowTests({ test, assert, withAdapterCopy, runV
     assert.deepEqual(result.fixtureSnapshot.liveOrdinals.resources, []);
     assert.deepEqual(result.fixtureSnapshot.liveOrdinals.resourceOperations, []);
   });
-  test('ADR 0036 Capability ordinary Evaluate throw retains actual Foundation FAIL and cleanup binding', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5035', 'registerAdr36CapabilityThrowTests', 'ADR 0036 Capability ordinary Evaluate throw retains actual Foundation FAIL and cleanup binding', async () => {
     const result = await withAdapterCopy('virtual-runtime-conformance', null, async namespace =>
       runVirtualAdapterScenario(namespace, { entry: 'owner', sourcePlan: await createSourcePlan(), scenario: 'evaluate-write-throw', sourceSettlementOrder: 'post-settlement-first' }));
     terminal(result);
@@ -5094,12 +5103,12 @@ function registerAdr36UnavailableCleanupCapTests({ test, assert, withAdapterCopy
     assert.deepEqual(result.owner.sourceState.checkpoints.slice(1).map(check => ({ phase: check.phase, state: check.state })), [{ phase: 'post-settlement', state: 'unproven' }, { phase: 'post-cleanup', state: 'unproven' }]);
     return { result, oracleFailure };
   }
-  for (const kind of ['arm-throw', 'overflow']) test(`ADR 0036 Cleanup cap counterprobe: ${kind} refuses an unbounded later resource wait`, async () => {
+  for (const kind of ['arm-throw', 'overflow']) /* ADR0038:register:test */ g36CaseTest('L5097', 'registerAdr36UnavailableCleanupCapTests', `ADR 0036 Cleanup cap counterprobe: ${kind} refuses an unbounded later resource wait`, async () => {
     const { result, oracleFailure } = await probe(kind);
     assert.equal(oracleFailure, null);
     assert.equal(result.fixtureSnapshot.callCounts.scheduler.armTimer, kind === 'arm-throw' ? 3 : 2);
   });
-  for (const kind of ['arm-throw', 'overflow']) test(`ADR 0036 Cleanup cap causal mutant: resource wait after ${kind}`, async () => {
+  for (const kind of ['arm-throw', 'overflow']) /* ADR0038:register:test */ g36CaseTest('L5102', 'registerAdr36UnavailableCleanupCapTests', `ADR 0036 Cleanup cap causal mutant: resource wait after ${kind}`, async () => {
     const original = await probe(kind);
     assert.equal(original.oracleFailure, null);
     const changed = await probe(kind, {
@@ -5176,7 +5185,7 @@ function registerAdr36ReplayRecordMatrixTests({ test, assert, withAdapterCopy, f
     return result;
   };
   for (let index = 0; index < definitions.length; index += 1) {
-    for (const kind of ['mismatch', 'ambiguous']) test(`ADR 0036 Replay record operand ${String(index + 1).padStart(2, '0')}: ${kind} ${definitions[index][0]}`, async () => {
+    for (const kind of ['mismatch', 'ambiguous']) /* ADR0038:register:test */ g36CaseTest('L5179', 'registerAdr36ReplayRecordMatrixTests', `ADR 0036 Replay record operand ${String(index + 1).padStart(2, '0')}: ${kind} ${definitions[index][0]}`, async () => {
       await withAdapterCopy('derivation-conformance', null, async api => {
         finalize(api, pair(index, kind === 'mismatch' ? 'match' : 'not-observed'));
         const input = pair(index, kind);
@@ -5201,17 +5210,17 @@ function registerAdr36ReplayRecordMatrixTests({ test, assert, withAdapterCopy, f
       to: '    else adr36RecordAssert(true);',
     }],
   ];
-  for (const [kind, mutation] of mutations) test(`ADR 0036 Replay record causal mutant: ${mutation.name} across all 59 operands`, async () => {
+  for (const [kind, mutation] of mutations) /* ADR0038:register:test */ g36CaseTest('L5204', 'registerAdr36ReplayRecordMatrixTests', `ADR 0036 Replay record causal mutant: ${mutation.name} across all 59 operands`, async () => {
     const rejectsInvalid = (api, index) => assert.throws(() => api.finalizeBrowserSyncTransportRuntimeDiagnosticRecord(freeze(badPair(index, kind))), staticError);
     let originalChecks = 0, killedRows = 0;
     await withAdapterCopy('derivation-conformance', null, async api => {
-      for (let index = 0; index < definitions.length; index += 1) { rejectsInvalid(api, index); originalChecks += 1; }
+      for (let index = 0; index < definitions.length; index += 1) { rejectsInvalid(api, index); originalChecks += 1; /* ADR0038:sync */g36Variant('replay-control',definitions[index][0]);/* ADR0038:end */}
     });
     await withAdapterCopy('derivation-conformance', mutation, async api => {
       for (let index = 0; index < definitions.length; index += 1) {
         finalize(api, badPair(index, kind));
         assert.throws(() => rejectsInvalid(api, index), { name: 'AssertionError' });
-        killedRows += 1;
+        killedRows += 1;/* ADR0038:sync */g36Variant('replay-mutant',definitions[index][0]);/* ADR0038:end */
       }
     });
     assert.equal(originalChecks, 59);
@@ -5257,7 +5266,7 @@ function registerAdr36EffectPortProfileTests({ test, assert, withAdapterCopy, ru
       assert.equal(owner.trackerState, 'TERMINAL_NO_RECORD');
     }
   };
-  test('ADR 0036 Effect port: unchanged seven-intent path and six fulfillment classes remain accepted', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5260', 'registerAdr36EffectPortProfileTests', 'ADR 0036 Effect port: unchanged seven-intent path and six fulfillment classes remain accepted', async () => {
     const result = await run(null);
     terminal(result);
     assert.equal(result.owner.hardViolation, false);
@@ -5283,7 +5292,7 @@ function registerAdr36EffectPortProfileTests({ test, assert, withAdapterCopy, ru
     ['observation-dequeue', "intent.kind === 'observation-dequeue' && intent.payload.phase === 'setup'", 'post-o0-setup-cancel'],
     ['cleanup-step', "intent.kind === 'cleanup-step' && intent.payload.checkId === 'debugPipeClosed'", 'capture-cap'],
   ];
-  for (const [kind, condition, scenario] of payloadCases) test(`ADR 0036 Effect intent closed payload: ${kind}`, async () => {
+  for (const [kind, condition, scenario] of payloadCases) /* ADR0038:register:test */ g36CaseTest('L5286', 'registerAdr36EffectPortProfileTests', `ADR 0036 Effect intent closed payload: ${kind}`, async () => {
     const result = await run({ name: `INTENT_PAYLOAD_EXTRA_${kind.replaceAll('-', '_')}`, from: wrapper,
       to: `      return adapterExchange(owner, ${condition} ? adapterFreeze({ ...intent, payload: adapterFreeze({ ...intent.payload, extra: true }) }) : intent)` }, scenario);
     rejected(result);
@@ -5298,7 +5307,7 @@ function registerAdr36EffectPortProfileTests({ test, assert, withAdapterCopy, ru
     ['null-prototype', 'adapterFreeze(Object.assign(Object.create(null), intent))'],
     ['foreign-realm', "sourceVm.runInNewContext('Object.freeze({intentId:1,kind:\"capability-probe\",payload:Object.freeze({profile:\"adr-0033-foundation-effect-port-v1\"})})')"],
   ];
-  for (const [name, expression] of roots) test(`ADR 0036 Effect intent root rejects ${name}`, async () => {
+  for (const [name, expression] of roots) /* ADR0038:register:test */ g36CaseTest('L5301', 'registerAdr36EffectPortProfileTests', `ADR 0036 Effect intent root rejects ${name}`, async () => {
     const result = await run({ name: `INTENT_ROOT_${name.replaceAll('-', '_')}`, from: wrapper,
       to: `      return adapterExchange(owner, ${phaseCondition} ? ${expression} : intent)` }, 'setup-origin-rejected');
     rejected(result);
@@ -5307,7 +5316,7 @@ function registerAdr36EffectPortProfileTests({ test, assert, withAdapterCopy, ru
     assert.equal(result.fixtureSnapshot.callCounts.pipe.writeDebugPipe, 0);
   });
   for (const [name, expression] of [['zero', '0'], ['negative', '-1'], ['future', '2'], ['fractional', '1.5'], ['unsafe', 'Number.MAX_SAFE_INTEGER + 1'], ['NaN', 'NaN'], ['Infinity', 'Infinity'], ['string', "'1'"]]) {
-    test(`ADR 0036 Effect intent ID rejects ${name}`, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L5310', 'registerAdr36EffectPortProfileTests', `ADR 0036 Effect intent ID rejects ${name}`, async () => {
       const result = await run({ name: `INTENT_ID_${name}`, from: wrapper,
         to: `      return adapterExchange(owner, ${phaseCondition} ? adapterFreeze({ ...intent, intentId: ${expression} }) : intent)` }, 'setup-origin-rejected');
       rejected(result);
@@ -5325,7 +5334,7 @@ function registerAdr36EffectPortProfileTests({ test, assert, withAdapterCopy, ru
     ['protocol-command-send-result', "exchange.kind === 'protocol-command-send' && value.commandId === 1", 'post-o0-setup-cancel'],
     ['cleanup-step-result', "exchange.kind === 'cleanup-step' && value.checkId === 'debugPipeClosed'", 'capture-cap'],
     ['dequeue-direct-envelope', "exchange.kind === 'observation-dequeue' && value.kind === 'cap-fired' && value.capKind === 'capture'", 'capture-cap'],
-  ]) test(`ADR 0036 Effect productive fulfillment rejects ${name} extra field`, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L5328', 'registerAdr36EffectPortProfileTests', `ADR 0036 Effect productive fulfillment rejects ${name} extra field`, async () => {
     const result = await run({ name: `FULFILLMENT_EXTRA_${name.replaceAll('-', '_')}`, from: fulfillFrom,
       to: `      exchange.resolve = null\n      exchange.reject = null\n      resolve(${condition} ? adapterFreeze({ ...value, extra: true }) : value)` }, scenario);
     rejected(result);
@@ -5337,7 +5346,7 @@ function registerAdr36EffectPortProfileTests({ test, assert, withAdapterCopy, ru
     ['prototype-forgery', 'Object.create(adapterPromisePrototype)'],
     ['own-string-key', "Object.defineProperty(promise, 'invalidOwnKey', { value: true })"],
     ['own-symbol-key', "Object.defineProperty(promise, Symbol('invalid-own-key'), { value: true })"],
-  ]) test(`ADR 0036 Effect returned promise profile rejects ${name}`, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L5340', 'registerAdr36EffectPortProfileTests', `ADR 0036 Effect returned promise profile rejects ${name}`, async () => {
     const result = await run({ name: `EXCHANGE_PROMISE_${name.replaceAll('-', '_')}`, from: wrapper,
       to: `      const promise = adapterExchange(owner, intent)\n      return ${phaseCondition} ? ${expression} : promise` }, 'setup-origin-rejected');
     rejected(result);
@@ -5347,17 +5356,17 @@ function registerAdr36EffectPortProfileTests({ test, assert, withAdapterCopy, ru
     assert.equal(result.owner.finalizationCount, 0);
     assert.equal(result.fixtureSnapshot.callCounts.pipe.writeDebugPipe, 0);
   });
-  test('ADR 0036 Effect caller and seam promises are unreachable through the public zero-argument boundary', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5350', 'registerAdr36EffectPortProfileTests', 'ADR 0036 Effect caller and seam promises are unreachable through the public zero-argument boundary', async () => {
     await withAdapterCopy('virtual-runtime-conformance', null, async namespace => {
       let reflected = 0;
       const seam = {};
-      for (const key of ['effectPort', 'exchange', 'observationClosed', 'runBinding', 'clock', 'scheduler', 'pipe', 'launcher', 'resources', 'promise', 'then']) {
+      for (const key of ['effectPort', 'exchange', 'observationClosed', 'runBinding', 'clock', 'scheduler', 'pipe', 'launcher', 'resources', 'promise', 'then']) {/* ADR0038:sync */g36Variant('caller-seam',key);/* ADR0038:end */
         Object.defineProperty(seam, key, { enumerable: true, get() { reflected += 1; throw new Error('unreachable-public-seam'); } });
       }
       const callerPromise = Promise.resolve(undefined);
-      for (const input of [seam, callerPromise]) assert.throws(() => namespace.createBrowserSyncTransportRuntimeDiagnosticAdapter(input), {
+      for (const input of [seam, callerPromise]) /* ADR0038:sync */{g36Variant('caller-input',input===seam?'seam':'promise');/* ADR0038:end */assert.throws(() => namespace.createBrowserSyncTransportRuntimeDiagnosticAdapter(input), {
         name: 'TypeError', message: 'invalidBrowserSyncTransportRuntimeDiagnosticAdapterArguments',
-      });
+      });/* ADR0038:sync */}/* ADR0038:end */
       const fixture = createVirtualRuntimeFixture();
       namespace.installBrowserSyncTransportRuntimeDiagnosticVirtualCapabilities(fixture.runtimeCapabilities);
       const api = namespace.createBrowserSyncTransportRuntimeDiagnosticAdapter();
@@ -5370,7 +5379,7 @@ function registerAdr36EffectPortProfileTests({ test, assert, withAdapterCopy, ru
       assert.equal(Object.values(fixture.controller.snapshot().callCounts).every(group => Object.values(group).every(count => count === 0)), true);
     });
   });
-  test('ADR 0036 Effect intent ID rejects a repeated prior ID after the genuine probe', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5373', 'registerAdr36EffectPortProfileTests', 'ADR 0036 Effect intent ID rejects a repeated prior ID after the genuine probe', async () => {
     const result = await run({ name: 'INTENT_ID_REPEATED_AFTER_PROBE', from: wrapper,
       to: "      return adapterExchange(owner, intent.kind === 'controller-clock-sample' && intent.payload.reason === 'setup-origin' ? adapterFreeze({ ...intent, intentId: 1 }) : intent)" }, 'setup-origin-rejected');
     rejected(result);
@@ -5386,12 +5395,12 @@ function registerAdr36EffectPortProfileTests({ test, assert, withAdapterCopy, ru
     ['cancel-arm-id', "exchange.kind === 'cap-cancel' && value.capKind === 'cleanup'", 'armIntentId', 'value.armIntentId + 1', 'capture-cap'],
     ['send-command-id', "exchange.kind === 'protocol-command-send' && value.commandId === 1", 'commandId', 'value.commandId + 1', 'post-o0-setup-cancel'],
     ['cleanup-check-id', "exchange.kind === 'cleanup-step' && value.checkId === 'debugPipeClosed'", 'checkId', "'browserStopped'", 'capture-cap'],
-  ]) test(`ADR 0036 Effect productive fulfillment rejects mismatched ${name}`, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L5389', 'registerAdr36EffectPortProfileTests', `ADR 0036 Effect productive fulfillment rejects mismatched ${name}`, async () => {
     const result = await run({ name: `FULFILLMENT_WRONG_${name.replaceAll('-', '_')}`, from: fulfillFrom,
       to: `      exchange.resolve = null\n      exchange.reject = null\n      resolve(${condition} ? adapterFreeze({ ...value, ${field}: ${expression} }) : value)` }, scenario);
     rejected(result);
   });
-  test('ADR 0036 Effect port: valid no-target raw control retains the same strict contract', async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5394', 'registerAdr36EffectPortProfileTests', 'ADR 0036 Effect port: valid no-target raw control retains the same strict contract', async () => {
     const result = await run(null, 'post-o0-setup-cancel');
     terminal(result);
     assert.equal(result.owner.hardViolation, false);
@@ -5417,7 +5426,7 @@ function registerAdapterRuntimeBoundaryTests({ test, assert, withAdapterCopy, ru
   const run = async (options, mutation = null) => withAdapterCopy('virtual-runtime-conformance', mutation, async namespace =>
     runVirtualAdapterScenario(namespace, { sourcePlan: await createSourcePlan(), scenario: 'capture-cap', ...options }))
   for (const role of ['vite', 'gateway']) for (const variant of ['exact', 'split-every-byte', 'CRLF', 'duplicate', 'ANSI-wrapper', 'window-last-byte', 'window-incomplete']) {
-    test(`ADR 0036 Readiness: ${role}/${variant} uses only the exact raw stdout window`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L5420', 'registerAdapterRuntimeBoundaryTests', `ADR 0036 Readiness: ${role}/${variant} uses only the exact raw stdout window`, { concurrency: false }, async () => {
       let callbackCount = 0, boundaryError = null
       const accepted = ['exact', 'split-every-byte', 'window-last-byte'].includes(variant)
       const result = await run({
@@ -5458,7 +5467,7 @@ function registerAdapterRuntimeBoundaryTests({ test, assert, withAdapterCopy, ru
   }
   for (const [role, ordinal, checkId] of [['chrome', 3, 'browserStopped'], ['vite', 1, 'devServerStopped'], ['gateway', 2, 'gatewayStopped']]) {
     for (const event of ['child-exit', 'child-close']) {
-      test(`ADR 0036 Child lifecycle: ${role}/${event} leaves descendant cleanup unproven`, { concurrency: false }, async () => {
+      /* ADR0038:register:test */ g36CaseTest('L5461', 'registerAdapterRuntimeBoundaryTests', `ADR 0036 Child lifecycle: ${role}/${event} leaves descendant cleanup unproven`, { concurrency: false }, async () => {
         const result = await run({ rawBeforeCaptureCap: () => [{ kind: event, childOrdinal: ordinal, code: 0, signal: null }] })
         terminal(result)
         assert.equal(result.owner.childLedger[role].rootState, 'terminal')
@@ -5470,7 +5479,7 @@ function registerAdapterRuntimeBoundaryTests({ test, assert, withAdapterCopy, ru
     }
   }
   for (const capability of ['terminateChild', 'closeChild']) {
-    test(`ADR 0036 Child lifecycle: observed ${capability} failure stays failed`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L5473', 'registerAdapterRuntimeBoundaryTests', `ADR 0036 Child lifecycle: observed ${capability} failure stays failed`, { concurrency: false }, async () => {
       const result = await run({ rawBeforeCaptureCap: () => [{ kind: 'fail-next-capability-call', capability }] })
       terminal(result)
       assert.equal(result.owner.childLedger.chrome.stopFailed, true)
@@ -5480,7 +5489,7 @@ function registerAdapterRuntimeBoundaryTests({ test, assert, withAdapterCopy, ru
     })
   }
   for (const role of ['vite', 'gateway']) {
-    test(`ADR 0036 Readiness causal mutant: ${role} ANSI guard removal admits the identical wrapped line`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L5483', 'registerAdapterRuntimeBoundaryTests', `ADR 0036 Readiness causal mutant: ${role} ANSI guard removal admits the identical wrapped line`, { concurrency: false }, async () => {
       const options = { readinessActions(ordinals) {
         return ['vite', 'gateway'].map(candidate => ({ kind: 'child-stdout', childOrdinal: ordinals[`${candidate}Ordinal`],
           bytes: encode(candidate === role ? '\u001b[32m' + lines[candidate] + '\u001b[0m' : lines[candidate]) }))
@@ -5497,7 +5506,7 @@ function registerAdapterRuntimeBoundaryTests({ test, assert, withAdapterCopy, ru
     })
   }
   for (const [role, ordinal, checkId] of [['chrome', 3, 'browserStopped'], ['vite', 1, 'devServerStopped'], ['gateway', 2, 'gatewayStopped']]) {
-    test(`ADR 0036 Child lifecycle causal mutant: ${role} already-closed guard removal touches the retired handle`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L5500', 'registerAdapterRuntimeBoundaryTests', `ADR 0036 Child lifecycle causal mutant: ${role} already-closed guard removal touches the retired handle`, { concurrency: false }, async () => {
       const options = { rawBeforeCaptureCap: () => [{ kind: 'child-close', childOrdinal: ordinal, code: 0, signal: null }] }
       const baseline = await run(options)
       terminal(baseline)
@@ -5531,7 +5540,7 @@ function registerAdapterCommandProfileTests({ test, assert, withAdapterCopy, run
     vectors.push({ name: `command ID ${name}`, index: 0, alter: `{ commandId: ${value} }` })
   }
   for (const vector of vectors) {
-    test(`ADR 0036 Command profile: ${vector.name} stops before the corresponding raw write`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L5534', 'registerAdapterCommandProfileTests', `ADR 0036 Command profile: ${vector.name} stops before the corresponding raw write`, { concurrency: false }, async () => {
       const command = commands[vector.index]
       const mutation = {
         name: 'COMMAND_PROFILE_' + vector.name.toUpperCase().replace(/[^A-Z0-9]+/g, '_'),
@@ -5594,7 +5603,7 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
   let filesPromise = null, controlPromise = null
   const observedRawProofs = new WeakMap()
   const files = () => filesPromise ??= Promise.resolve().then(loadSourceFixtureFiles)
-  test('ADR 0036 R0: caller-provided Foundation digest is rejected by both public factory and run arity',{concurrency:false},async()=>{
+  /* ADR0038:register:test */ g36CaseTest('L5597', 'registerAdapterR0ReplayTests', 'ADR 0036 R0: caller-provided Foundation digest is rejected by both public factory and run arity',{concurrency:false},async()=>{
     await withAdapterCopy('virtual-runtime-conformance',null,async namespace=>{
       const fixture=createVirtualRuntimeFixture()
       const supplied=Object.freeze({foundationSha256:'d4cadf656bb50e2b062c9d0d66e3f895bc87649362ce995abfbdbe24a9f4e731'})
@@ -5621,7 +5630,7 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
     ['wrong exec argument', 'readProcessExecArguments', ['--experimental-vm-modules', '--inspect']],
     ['extra exec argument', 'readProcessExecArguments', ['--experimental-vm-modules', '--no-warnings', '--inspect']],
   ]
-  for (const [name, source, value] of badR0) test('ADR 0036 R0: reject ' + name + ' before source or runtime effects', { concurrency: false }, async () => {
+  for (const [name, source, value] of badR0) /* ADR0038:register:test */ g36CaseTest('L5624', 'registerAdapterR0ReplayTests', 'ADR 0036 R0: reject ' + name + ' before source or runtime effects', { concurrency: false }, async () => {
     await withAdapterCopy('virtual-runtime-conformance', null, async namespace => {
       const fixture = createVirtualRuntimeFixture()
       r0ReplaySeedFixture(fixture, new Map([[source, value]]))
@@ -5637,7 +5646,7 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
       assert.equal(owner.writerCallCount, 0)
     })
   })
-  test('ADR 0036 R0: public factory also rejects a doubled Node version prefix before source reads', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5640', 'registerAdapterR0ReplayTests', 'ADR 0036 R0: public factory also rejects a doubled Node version prefix before source reads', { concurrency: false }, async () => {
     await withAdapterCopy('virtual-runtime-conformance', null, async namespace => {
       const fixture = createVirtualRuntimeFixture()
       r0ReplaySeedFixture(fixture, new Map([['readProcessVersion', 'vv24.19.0']]))
@@ -5681,7 +5690,7 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
   const control = () => controlPromise ??= full().then(result => { completed(result); return result })
   const freshControl = () => full().then(result => { completed(result); return result })
   const observed = new Set([1,2,3,4,5,6,7,8,11,17,41,42,43,44,45,46,47,48,49,50,51,52,53,54,56,57,58,59])
-  function assertRows(rows, result) {
+/* ADR0038:sync */let g36ReplayRowRole='control';/* ADR0038:end */  function assertRows(rows, result) {
     const comparisons = result.owner.foundationProjection.replay.equivalence.comparisons
     assert.equal(comparisons.length, 59)
     assert.equal(Object.isFrozen(comparisons), true)
@@ -5694,11 +5703,11 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
       assert.equal(actual.observationState, known ? 'observed' : 'not-observed', 'operand ' + (index + 1))
       assert.equal(actual.replayValue, known ? expected.historical : null, 'operand ' + (index + 1))
       assert.equal(actual.result, known ? 'match' : 'unproven', 'operand ' + (index + 1))
-      assert.equal(Object.isFrozen(actual), true)
+      assert.equal(Object.isFrozen(actual), true)/* ADR0038:sync */;g36Variant('replay-normative-'+g36ReplayRowRole,index+1);/* ADR0038:end */
     }
     assert.equal(comparisons.filter(row => row.observationState === 'observed').length, 28)
   }
-  test('ADR 0036 Replay: all59 independently pinned normative rows have exact observed or unavailable sources', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5701', 'registerAdapterR0ReplayTests', 'ADR 0036 Replay: all59 independently pinned normative rows have exact observed or unavailable sources', { concurrency: false }, async () => {
     const result = await control()
     assertRows(r0ReplayNormativeRows(assert, await files()), result)
     const rawProof = observedRawProofs.get(result)
@@ -5710,7 +5719,7 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
     assert.equal(result.owner.foundationProjection.replay.repositoryState, null)
     assert.equal(result.owner.terminalOutcome.evidenceStatus, 'NOT_EVIDENCE')
   })
-  test('ADR 0036 Replay: public factory consumes the same closed59-operand boundary', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5713', 'registerAdapterR0ReplayTests', 'ADR 0036 Replay: public factory consumes the same closed59-operand boundary', { concurrency: false }, async () => {
     await control()
     const result = await full({ entry: 'factory' })
     assert.equal(result.owner, null)
@@ -5728,7 +5737,7 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
     assert.deepEqual([...value].map(character => character.charCodeAt(0)), [56,55,56,55])
     return value
   }
-  test('ADR 0036 Replay operand53: raw gateway8787 stays separate from the six-codeunit quoted comparison', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5731', 'registerAdapterR0ReplayTests', 'ADR 0036 Replay operand53: raw gateway8787 stays separate from the six-codeunit quoted comparison', { concurrency: false }, async () => {
     const result = await control(), raw = rawPort(result)
     const row = result.owner.foundationProjection.replay.equivalence.comparisons[52]
     assert.equal(row.fieldId, 'gateway.portEnvironmentValue')
@@ -5745,7 +5754,7 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
     ['double JSON wrapping', 'adapterStringify(adapterStringify(port))', JSON.stringify(JSON.stringify('8787'))],
     ['whitespace normalization temptation', "'\" ' + port + ' \"'", '" 8787 "'],
     ['changed digit', "'\"8788\"'", '"8788"'],
-  ]) test('ADR 0036 Replay operand53 causal specimen: ' + name, { concurrency: false }, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L5748', 'registerAdapterR0ReplayTests', 'ADR 0036 Replay operand53 causal specimen: ' + name, { concurrency: false }, async () => {
     const baseline = await freshControl()
     assert.equal(baseline.owner.foundationProjection.replay.equivalence.comparisons[52].result, 'match')
     const changed = await full({ mutation: { name: 'operand53-' + name.replaceAll(' ', '-'), from: row53Anchor, to: 'values.set(53, ' + expression + ')' } })
@@ -5762,7 +5771,7 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
     assert.equal(changed.owner.terminalOutcome.finding, 'inconclusive')
     assert.equal(changed.owner.terminalOutcome.evidenceStatus, 'NOT_EVIDENCE')
   })
-  for (const [name, expression] of [['numeric port', 'Number(port)'], ['null operand', 'null']]) test('ADR 0036 Replay operand53: ' + name + ' stops before Foundation invocation', { concurrency: false }, async () => {
+  for (const [name, expression] of [['numeric port', 'Number(port)'], ['null operand', 'null']]) /* ADR0038:register:test */ g36CaseTest('L5765', 'registerAdapterR0ReplayTests', 'ADR 0036 Replay operand53: ' + name + ' stops before Foundation invocation', { concurrency: false }, async () => {
     await freshControl()
     const changed = await full({ scenario: 'pre-foundation-rejection', mutation: { name: 'operand53-' + name.replaceAll(' ', '-'), from: row53Anchor, to: 'values.set(53, ' + expression + ')' } })
     rawPort(changed)
@@ -5787,7 +5796,7 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
     assert.equal(result.owner.writerCallCount, 0)
     return result
   }
-  for (const value of ['"8787"','""8787""',' 8787 ','8787\n',8787,'8788']) test('ADR 0036 Raw gateway environment: reject ' + JSON.stringify(value) + ' before gateway spawn', { concurrency: false }, async () => {
+  for (const value of ['"8787"','""8787""',' 8787 ','8787\n',8787,'8788']) /* ADR0038:register:test */ g36CaseTest('L5790', 'registerAdapterR0ReplayTests', 'ADR 0036 Raw gateway environment: reject ' + JSON.stringify(value) + ' before gateway spawn', { concurrency: false }, async () => {
     await control()
     await rejectedRawPort(value)
   })
@@ -5795,7 +5804,7 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
     ['trim-whitespace', ' 8787 ', 'port.trim()'],
     ['coerce-number', 8787, 'String(port)'],
     ['decode-quoted-raw', '"8787"', 'adapterParse(port)'],
-  ]) test('ADR 0036 Raw gateway environment causal mutant: forbidden ' + name + ' changes the same invalid raw specimen into an accepted launch', { concurrency: false }, async () => {
+  ]) /* ADR0038:register:test */ g36CaseTest('L5798', 'registerAdapterR0ReplayTests', 'ADR 0036 Raw gateway environment causal mutant: forbidden ' + name + ' changes the same invalid raw specimen into an accepted launch', { concurrency: false }, async () => {
     await freshControl()
     const rejected = await rejectedRawPort(value)
     const changed = await full({ mutation: { name: 'gateway-normalization-' + name, from: portAnchor, to: 'let port = ' + JSON.stringify(value) + '; port = ' + normalize } })
@@ -5805,7 +5814,7 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
     assert.equal(changed.fixtureSnapshot.callCounts.launcher.spawnChild, 3)
     assert.equal(changed.owner.foundationProjection.replay.equivalence.comparisons[52].replayValue, '"8787"')
   })
-  for (const [number, value] of [[9,'clean'],[13,'x64'],[18,'chrome'],[23,'visible'],[24,true],[25,'fresh-disposable'],[30,'inactive'],[32,'absent'],[37,'http://127.0.0.1:5173/'],[40,true],[55,'matches-frontend-origin']]) test('ADR 0036 Replay causal mutant: operand' + number + ' cannot gain an observation from static configuration', { concurrency: false }, async () => {
+  for (const [number, value] of [[9,'clean'],[13,'x64'],[18,'chrome'],[23,'visible'],[24,true],[25,'fresh-disposable'],[30,'inactive'],[32,'absent'],[37,'http://127.0.0.1:5173/'],[40,true],[55,'matches-frontend-origin']]) /* ADR0038:register:test */ g36CaseTest('L5808', 'registerAdapterR0ReplayTests', 'ADR 0036 Replay causal mutant: operand' + number + ' cannot gain an observation from static configuration', { concurrency: false }, async () => {
     const baseline = await freshControl()
     assert.equal(baseline.owner.foundationProjection.replay.equivalence.comparisons[number - 1].observationState, 'not-observed')
     const anchor = "values.set(11, 'windows')"
@@ -5815,8 +5824,8 @@ function registerAdapterR0ReplayTests({ test, assert, withAdapterCopy, runVirtua
     assert.equal(row.observationState, 'observed')
     assert.equal(row.replayValue, value)
     const rows = r0ReplayNormativeRows(assert, await files())
-    assertRows(rows, baseline)
-    assert.throws(() => assertRows(rows, changed), error => error?.name === 'AssertionError' && error.message.includes('operand ' + number))
+/* ADR0038:sync */g36ReplayRowRole='control';/* ADR0038:end */    assertRows(rows, baseline)
+/* ADR0038:sync */g36ReplayRowRole='mutant';/* ADR0038:end */    assert.throws(() => assertRows(rows, changed), error => error?.name === 'AssertionError' && error.message.includes('operand ' + number))
   })
   return { r0NegativeCases: badR0.length + 1, normativeReplayRows: 59, operand53StringSpecimens: 5, operand53TypeCases: 2, rawPortCases: 6, rawNormalizationCausalCases: 3 }
 }
@@ -5910,15 +5919,15 @@ function registerAdapterTerminalDisposalTests({ test, assert, withAdapterCopy, r
     assert.equal(result.owner.terminalOwnershipFacts.harnessResourceState, 'closed')
     return result
   }
-  test('ADR 0036 Terminal disposal: actual owner retains only primitive terminal evidence after public settlement', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5913', 'registerAdapterTerminalDisposalTests', 'ADR 0036 Terminal disposal: actual owner retains only primitive terminal evidence after public settlement', { concurrency: false }, async () => {
     await control()
   })
-  test('ADR 0036 Terminal disposal: public factory completes the same source and cleanup path with only a static rejection', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5916', 'registerAdapterTerminalDisposalTests', 'ADR 0036 Terminal disposal: public factory completes the same source and cleanup path with only a static rejection', { concurrency: false }, async () => {
     const result = await run('factory')
     assert.equal(result.owner, null)
     assert.deepEqual(Reflect.ownKeys(result.outcome.error), ['message'])
   })
-  test('ADR 0036 Terminal disposal causal mutant: source and record-reference disposal cannot be omitted after finalization', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5921', 'registerAdapterTerminalDisposalTests', 'ADR 0036 Terminal disposal causal mutant: source and record-reference disposal cannot be omitted after finalization', { concurrency: false }, async () => {
     await control()
     const changed = await run('owner', { name: 'OMIT_TERMINAL_SOURCE_AND_RECORD_REFERENCE_DISPOSAL',
       from: '    adapterDiscardTerminalSources(owner)\n', to: '    void owner.sourceState\n' })
@@ -5930,7 +5939,7 @@ function registerAdapterTerminalDisposalTests({ test, assert, withAdapterCopy, r
     assert.notEqual(changed.owner.foundationInstance, null)
     assert.throws(() => sourceDiscarded(changed.owner), { name: 'AssertionError' })
   })
-  test('ADR 0036 Terminal disposal causal mutant: retained cap intent IDs set final FAIL before later disposal can hide them', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5933', 'registerAdapterTerminalDisposalTests', 'ADR 0036 Terminal disposal causal mutant: retained cap intent IDs set final FAIL before later disposal can hide them', { concurrency: false }, async () => {
     await control()
     const changed = await run('owner', { name: 'OMIT_PRE_A_FINAL_PROTOCOL_ID_DISPOSAL',
       from: '    cap.armIntentId = null\n', to: '    void cap.armIntentId\n' })
@@ -5957,7 +5966,7 @@ function registerAdapterCreationMatrixTests({ test, assert, withAdapterCopy, run
     assert.equal(result.owner.waitingDequeueResolver, null)
   }
   for (const [kind, spawns] of [['create-temporary-root', 0], ['create-directory-exclusive', 2]]) {
-    test(`ADR 0036 Creation matrix: asynchronous ${kind} failure preserves uncertain creation without an invented handle`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L5960', 'registerAdapterCreationMatrixTests', `ADR 0036 Creation matrix: asynchronous ${kind} failure preserves uncertain creation without an invented handle`, { concurrency: false }, async () => {
       await withAdapterCopy('virtual-runtime-conformance', null, async namespace => {
         const result = await runVirtualAdapterScenario(namespace, {
           sourcePlan: await createSourcePlan(), scenario: 'capture-cap',
@@ -5989,7 +5998,7 @@ function registerAdapterCreationMatrixTests({ test, assert, withAdapterCopy, run
       })
     })
   }
-  test('ADR 0036 Creation matrix: first Vite spawn throw leaves profile create pending under the single cleanup cap', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L5992', 'registerAdapterCreationMatrixTests', 'ADR 0036 Creation matrix: first Vite spawn throw leaves profile create pending under the single cleanup cap', { concurrency: false }, async () => {
     await withAdapterCopy('virtual-runtime-conformance', null, async namespace => {
       const result = await runVirtualAdapterScenario(namespace, { sourcePlan: await createSourcePlan(), scenario: 'partial-vite' })
       terminal(result)
@@ -6112,7 +6121,7 @@ function registerAdr36DequeueLimitTests({ test, assert, withAdapterCopy, runVirt
     assert.equal(checkpointCount, 1);
     return { result, checkpointFailure, before };
   }
-  for (const entry of ['owner', 'factory']) test(`ADR 0036 Dequeue boundary: ${entry} accepts the 128th raw cap fulfillment`, async () => {
+  for (const entry of ['owner', 'factory']) /* ADR0038:register:test */ g36CaseTest('L6115', 'registerAdr36DequeueLimitTests', `ADR 0036 Dequeue boundary: ${entry} accepts the 128th raw cap fulfillment`, async () => {
     const { result, checkpointFailure } = await run(124, entry, null, pending128);
     assert.equal(checkpointFailure, null);
     if (result.owner !== null) {
@@ -6122,7 +6131,7 @@ function registerAdr36DequeueLimitTests({ test, assert, withAdapterCopy, runVirt
       assert.equal(result.owner.foundationProjection.timing.completion.captureWindowState, 'elapsed');
     }
   });
-  for (const queued of [0, 1]) test(`ADR 0036 Dequeue boundary causal mutant: real129 rejects before ${queued === 0 ? 'resolver installation' : 'taking an older parsed frame'}`, async () => {
+  for (const queued of [0, 1]) /* ADR0038:register:test */ g36CaseTest('L6125', 'registerAdr36DequeueLimitTests', `ADR 0036 Dequeue boundary causal mutant: real129 rejects before ${queued === 0 ? 'resolver installation' : 'taking an older parsed frame'}`, async () => {
     const oracle = (owner, snapshot) => rejected129(owner, snapshot, queued);
     const baseline = await run(125 + queued, 'owner', null, oracle);
     assert.equal(baseline.checkpointFailure, null);
@@ -6188,13 +6197,13 @@ function registerAdapterSourceActiveHandleTests({ test, assert, withAdapterCopy,
     } else assert.equal(result.owner, null)
     return result
   }
-  test('ADR 0036 Source live handles: actual owner retains exactly still-open source identities', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L6191', 'registerAdapterSourceActiveHandleTests', 'ADR 0036 Source live handles: actual owner retains exactly still-open source identities', { concurrency: false }, async () => {
     await run()
   })
-  test('ADR 0036 Source live handles: public factory preserves full raw source and checkpoint path', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L6194', 'registerAdapterSourceActiveHandleTests', 'ADR 0036 Source live handles: public factory preserves full raw source and checkpoint path', { concurrency: false }, async () => {
     await run(null, false, 'factory')
   })
-  test('ADR 0036 Source live handles causal mutant: a confirmed close must remove its membership', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L6197', 'registerAdapterSourceActiveHandleTests', 'ADR 0036 Source live handles causal mutant: a confirmed close must remove its membership', { concurrency: false }, async () => {
     await run()
     await run({ name: 'OMIT_SOURCE_LIVE_HANDLE_DELETE',
       from: '  owner.sourceState.activeResourceHandles.delete(entry.resourceHandle)',
@@ -6281,7 +6290,7 @@ function registerAdapterRemainingBoundaryCandidates({ test, assert, withAdapterC
 
   // Existing prestart already injects the third (Chrome) spawn failure after
   // profile identity validation. The new assertions prove its exact ownership.
-  for (const entry of ['owner', 'factory']) test(`ADR 0036 Creation matrix: ${entry} Chrome spawn throw owns only Vite and Gateway`, { concurrency: false }, async () => {
+  for (const entry of ['owner', 'factory']) /* ADR0038:register:test */ g36CaseTest('L6284', 'registerAdapterRemainingBoundaryCandidates', `ADR 0036 Creation matrix: ${entry} Chrome spawn throw owns only Vite and Gateway`, { concurrency: false }, async () => {
     const result = await run({ entry, scenario: 'prestart' })
     noProtocolStart(result)
     assert.equal(result.fixtureSnapshot.callCounts.launcher.spawnChild, 3)
@@ -6335,7 +6344,7 @@ function registerAdapterRemainingBoundaryCandidates({ test, assert, withAdapterC
       { target, field: 'volumeId', value: '900099' },
     ]),
   ]
-  for (const vector of identityVectors) test(`ADR 0036 Runtime identity: ${vector.target}/${vector.field} stops the next creation`, { concurrency: false }, async () => {
+  for (const vector of identityVectors) /* ADR0038:register:test */ g36CaseTest('L6338', 'registerAdapterRemainingBoundaryCandidates', `ADR 0036 Runtime identity: ${vector.target}/${vector.field} stops the next creation`, { concurrency: false }, async () => {
     await creationControl()
     let transformedCount = 0
     const rootFailure = vector.target.startsWith('root-')
@@ -6374,7 +6383,7 @@ function registerAdapterRemainingBoundaryCandidates({ test, assert, withAdapterC
   })
 
   for (const [role, ordinal, checkId] of [['chrome', 3, 'browserStopped'], ['vite', 1, 'devServerStopped'], ['gateway', 2, 'gatewayStopped']]) {
-    test(`ADR 0036 mandatory mutant: ${role} root exit is not process-tree success`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L6377', 'registerAdapterRemainingBoundaryCandidates', `ADR 0036 mandatory mutant: ${role} root exit is not process-tree success`, { concurrency: false }, async () => {
       const options = { rawBeforeCaptureCap: () => [{ kind: 'child-exit', childOrdinal: ordinal, code: 0, signal: null }] }
       const oracle = result => {
         terminal(result)
@@ -6399,7 +6408,7 @@ function registerAdapterRemainingBoundaryCandidates({ test, assert, withAdapterC
   // Actual early fulfillment, not merely an increment of an Ack counter. The
   // same partial raw write is supplied to both copies. The driver releases the
   // saved Setup timer only after the same fixed prefix in both runs.
-  test('ADR 0036 mandatory mutant: Ack before raw write cannot turn partial acceptance into a Foundation send', { concurrency: false }, async () => {
+  /* ADR0038:register:test */ g36CaseTest('L6402', 'registerAdapterRemainingBoundaryCandidates', 'ADR 0036 mandatory mutant: Ack before raw write cannot turn partial acceptance into a Foundation send', { concurrency: false }, async () => {
     const options = { scenario: 'rejection-quiescence', releaseFirstSetupCap: true }
     const oracle = result => {
       terminal(result)
@@ -6426,7 +6435,7 @@ function registerAdapterRemainingBoundaryCandidates({ test, assert, withAdapterC
   // and held-handle identity checks. The unchanged virtual grammar rejects the
   // unknown verb before a raw sink or host operation. This proves rejection of
   // a forbidden removal REQUEST, not execution or safety of native deletion.
-  for (const method of ['rm', 'rmdir', 'unlink']) test(`ADR 0036 mandatory mutant: checked path cannot authorize a ${method} resource request`, { concurrency: false }, async () => {
+  for (const method of ['rm', 'rmdir', 'unlink']) /* ADR0038:register:test */ g36CaseTest('L6429', 'registerAdapterRemainingBoundaryCandidates', `ADR 0036 mandatory mutant: checked path cannot authorize a ${method} resource request`, { concurrency: false }, async () => {
     const baseline = await creationControl()
     const oracle = result => {
       terminal(result)
@@ -6464,7 +6473,7 @@ function registerAdapterRemainingBoundaryCandidates({ test, assert, withAdapterC
     ['whitespace normalization drift', "intent.payload.params.expression.replace('const A', 'const\\tA')"],
     ['second literal string source', "'void 0'"],
   ]
-  for (const [name, expression] of expressionCases) test(`ADR 0036 Evaluation binding: ${name} rejects before raw Evaluate write`, { concurrency: false }, async () => {
+  for (const [name, expression] of expressionCases) /* ADR0038:register:test */ g36CaseTest('L6467', 'registerAdapterRemainingBoundaryCandidates', `ADR 0036 Evaluation binding: ${name} rejects before raw Evaluate write`, { concurrency: false }, async () => {
     await creationControl()
     const changed = await run({}, {
       name: 'EVALUATION_INPUT_' + name.toUpperCase().replace(/[^A-Z0-9]+/g, '_'),
@@ -6499,7 +6508,7 @@ function registerAdapterRemainingBoundaryCandidates({ test, assert, withAdapterC
   })()
   for (const [name, replacement] of [['same-length-byte', "wire.params.expression.replace('const A', 'const B')"],
     ['second-string-after-validation', "wire.params.expression.slice(0, -1) + ' '"]]) {
-    test(`ADR 0036 Evaluation causal mutant: ${name} cannot hide behind the constant expression hash`, { concurrency: false }, async () => {
+    /* ADR0038:register:test */ g36CaseTest('L6502', 'registerAdapterRemainingBoundaryCandidates', `ADR 0036 Evaluation causal mutant: ${name} cannot hide behind the constant expression hash`, { concurrency: false }, async () => {
       const baseline = await expressionWireControl()
       const oracle = result => {
         terminal(result)
@@ -6524,3 +6533,6 @@ function registerAdapterRemainingBoundaryCandidates({ test, assert, withAdapterC
 
 registerAdapterRemainingBoundaryCandidates({test,assert,withAdapterCopy,runVirtualAdapterScenario,
   createSourcePlan:async()=>createAdapterSourceFixturePlan(await loadSourceFixtureFiles())})
+// ADR0038-BEGIN
+export const adapterTestPlan = g36Registry.finish()
+// ADR0038-END

@@ -6,7 +6,328 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR-0036-Adapter committet; ADR 0038 angenommen, CI-Gruppierung nicht implementiert; Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR-0038-Reparatur vollständig lokal neu gebunden; Re-Review und Ubuntu-CI offen; Runtimegate FAIL
+
+### ADR-0038-Lokale Neubindung / 2026-10-03
+
+**Vollständige lokale Selbstprüfung erfolgreich; unabhängiger Re-Review und
+ tatsächliche Ubuntu-CI-Abnahme ausstehend.** Der Verifikationsauftrag begann
+auf `codex/docs/adr-0038-ci-isolation`, HEAD
+`031322fdac56bba245e120da528d448047a26662`, mit leerem Index und genau den
+zwölf vorhandenen uncommitteten Implementierungs-/Statusdateien. Es gab keine
+Code-, Workflow- oder ADR-Korrektur. Erst nach erfolgreicher Neubindung wurden
+ausschließlich die sechs bisherigen Statusdokumente nachgeführt.
+
+Die reparierten Bytes sind unter Windows `10.0.26300`, Node
+`24.19.0` vollständig lokal neu gebunden: **115/115**
+Infrastrukturtests, **2627/2627** im separaten `remaining`-Einstieg und
+**3637/3637** im einmaligen vollständigen npm-Referenzlauf. Danach bestehen
+alle sechs strikt nacheinander ausgeführten Gruppen mit `193/122/222/318/102/53`
+Tests. Die echte positive Aggregate-CLI bestätigt exakt dieselben 1010
+Fallidentitäten und 2322 Obligationen wie die neue Referenz; der feste Plan-SHA-256
+`1ec700dba82e0e93aa60c01968b717434fa22d4dd51e25d3cc4a0da576dc09a6` bleibt erhalten.
+Native Abschlüsse sind jeweils Exit 0/Signal `null`, ohne Fehlschläge,
+Cancellations, Skips oder Todos; Cleanup ist vollständig bestätigt.
+21 Gegenproben auf eigenen Artefaktkopien enden nativ mit Exit 1,
+einschließlich der trotz konsistent neu gebundener Loggröße und SHA-256
+verworfenen Kopie ohne TAP-Root-Plan. Produktions-Build: 46 Module, Exit 0;
+`bundle:n8n:check`: Exit 0, driftfrei.
+
+Dies ist neue Selbstprüfung, kein unabhängiger Review-PASS. Die Belege vom
+2026-09-28 bleiben historisch; der frühere unabhängige Implementierungsreview
+mit `FAIL` wird nicht umgedeutet oder auf die Reparaturbytes übertragen.
+Unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0`
+und `22.12.0` stehen aus. Lokale Zeiten und Adapterprozess-`maxRSS` belegen
+weder Runnergesamtverbrauch noch das unveränderte Zehn-Minuten-CI-Joblimit
+inklusive Setup und Artefaktübergabe. `overallGate: FAIL`,
+`causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und `runtimeRecord:null`
+bleiben unverändert. Die folgenden Reparatur- und Implementierungsabschnitte
+beschreiben ihre jeweiligen historischen Prüfstände.
+
+Die neue Referenz lief von `2026-10-03T17:53:36.191Z` bis
+`2026-10-03T18:42:53.408Z`, native Testaufrufdauer **2957.217 s**;
+die Hülle dauerte 2958.004 s.
+Die Gesamtzahl ist aus dem neuen Footer abgeleitet, keine Wiederverwendung
+der historischen 3620. Die 757 unveränderten Foundationtests und die
+Bestandsregressionen sind im Referenzlauf enthalten. Der zusätzliche
+`remaining`-Workflow-Einstieg dauerte 15.615 s; er ersetzt weder
+die Referenz noch Ubuntu-CI. Alle sechs Gruppen liefen danach in derselben
+Kontextbindung, jeweils in frischem Prozess und neuem Verzeichnis:
+
+| Gruppe | Tests | Obligationen | native Testaufrufdauer s | maxRSS KiB | Kopien erzeugt/entfernt |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `source` | 193 | 193 | 1141.081 | 2022776 | 234/234 |
+| `parser` | 122 | 125 | 1255.706 | 1241464 | 142/142 |
+| `record` | 222 | 481 | 5.072 | 432432 | 243/243 |
+| `boundary` | 318 | 1368 | 493.287 | 1209624 | 282/282 |
+| `lifecycle` | 102 | 102 | 537.866 | 1303556 | 117/117 |
+| `timing` | 53 | 53 | 272.474 | 984092 | 66/66 |
+| Summe | 1010 | 2322 | 3705.485 | nicht addiert | 1084/1084 |
+
+Die Referenz bestätigt 1084/1084 bereinigte Kopien,
+alle Läufe null Pending-Copies. Der Wert `process.resourceUsage().maxRSS`
+wurde im After-Hook des Adapter-Testprozesses in KiB gemessen; Referenz:
+3391352 KiB. Er schließt Runner, Eltern- und Kindprozesse aus,
+ist weder Heap noch Runnergesamt-RSS und garantiert kein späteres
+Lebenszeitmaximum. Runnergesamtspeicher wurde nicht gemessen.
+Die Gruppenhülle einschließlich Planung und Quell-/Ergebnisprüfung liegt
+zwischen 0.436 und 0.973 s;
+CI-Bereitstellung, Installation und Artefakttransfer sind nicht enthalten.
+Die Gruppen wurden auch oberhalb zehn Minuten vollständig auslaufen gelassen;
+eine Aussage zur Ubuntu-Laufzeiteignung oder zu einem Beschleunigungsfaktor
+wird daraus nicht abgeleitet. Das CI-Limit bleibt zehn Minuten.
+
+Die positive Aggregation vergleicht vollständige Fall-/Variantenidentitäten,
+nicht bloß Zähler. Die 20 dokumentierten Gegenproben wurden mit ausschließlich
+neuen Artefaktkopien wiederholt; die fehlende, konsistent neu gehashte
+TAP-Root-Plan-Kopie ist die 21. Gegenprobe. Alle CLI-Abschlüsse sind Exit 1,
+Signal `null`; ihre konkreten Ablehnungsgründe sind erhalten. Die maßgeblichen
+positiven Gruppen- und Referenzartefakte bleiben bytegleich.
+
+Ausgeführte Implementierungsbytes, vor und nach allen Läufen identisch:
+
+| Datei | Rohbytes | SHA-256 |
+| --- | ---: | --- |
+| `.github/workflows/ci.yml` | 3336 | `1007ae71d38bb42a55c8149cacc11809f2435b9cd3ce82075fb05c1495b17aad` |
+| `scripts/ci/adapterResults.js` | 14776 | `4022910b8e1539df46feb72aec68005d4fb9acf31343f00332795cfb0cade044` |
+| `scripts/ci/adapterTestPlan.js` | 17411 | `a35592b5caa60cff8ec22c18696b1a3a9c3ce0507f85c5a83498d29fb6d0bbb2` |
+| `scripts/ci/runAdapterGroups.js` | 19827 | `8f107c9959870e0f36c7da0165ce710ef6ee011298aee71ebf7e4978c6fedab4` |
+| `tests/browserSyncTransportRuntimeDiagnosticAdapter.test.js` | 481679 | `225108863e2a966b71ccaa1badccfe3449b1ad5df802770341a262105d17b701` |
+| `tests/ciTestGrouping.test.js` | 29089 | `b833131222bdbd4a54f04d19b7c296c9094dacfaa7e5e27b69d4706d4704075c` |
+
+Neue Belegwurzel ausschließlich außerhalb des Repositorys:
+`C:/Users/jslom/AppData/Local/Temp/goldendawn-adr0038-rebind-20261003-77ab4b03`.
+`baseline.json` bindet die zwölf Ausgangsdateien, 159 geschützte Dateien,
+165 Harnessquellen, rohe HEAD-Blobs, Index und Refs. Neuer Kontext:
+`adr0038-cf94cfc1-244f-4051-a52d-a22efaa43efc`, Versuch `1`.
+`reference/` und `groups/<gruppe>/` erhalten vollständige Rohlogs sowie
+Child-, Binding-, Ergebnis- und native Abschlussdaten. `captures/` enthält
+je Einstieg Start-/Endquellen, Konfiguration, rohe stdout/stderr-Ausgaben und
+nativen Abschluss. `actual-aggregate-negatives/` bewahrt alle mutierten Kopien;
+Vor-/Nachinventare bestätigen unveränderte positive Artefakte.
+`verification-summary.json` enthält Einzelzeiten, Speichermessumfang,
+Abschlüsse und Grenzen; `final-audit.json` bindet die finalen sechs
+Dokumentfassungen, relevante Links, Dateihygiene und unveränderte
+Implementierungs-/Schutzdateien, HEAD, Index und relevante Refs. Finale
+Dokumenthashes stehen im Abschlussaudit, nicht als Selbsthash in den Dokumenten.
+
+Vor dem ersten Testlauf scheiterte ein externer Auditwrapper am Entfernen des
+führenden Porcelain-Leerzeichens. Dieser reine Wrappervorversuch ist getrennt
+unter `goldendawn-adr0038-rebind-20261003-CD1wdy` erhalten; er hatte keinen
+Kontext und keine Testartefakte. Der korrigierte Wrapper begann mit neuer
+Belegwurzel und neuem Kontext. Ergebnisse werden nicht zwischen Versuchen
+gemischt. Browser-/Runtime-Diagnoselauf, Remote-CI und Git-Schreibaktionen
+unterblieben; Git-Schritte bleiben manuell bei Jan.
+
+### ADR-0038-P1-Reparatur / 2026-10-03
+
+Die uncommittete Reparatur ändert ausschließlich
+`scripts/ci/adapterTestPlan.js`, `scripts/ci/runAdapterGroups.js` und
+`tests/ciTestGrouping.test.js` sowie diese sechs Statusnachführungen. Der
+vollständige kanonische Plan wird vor Rückgabe oder Nutzung gegen den externen,
+nicht in den Plan einfließenden SHA-256
+`1ec700dba82e0e93aa60c01968b717434fa22d4dd51e25d3cc4a0da576dc09a6`
+geprüft. Zusätzlich gelten die festen Gruppenfallzahlen
+`source 193 / parser 122 / record 222 / boundary 318 / lifecycle 102 /
+timing 53`, insgesamt 1010 Fälle, 1312 Zusatzvarianten und 2322 Obligationen.
+Die kausalen Gegenproben verschieben am L728-Marker die Family zu
+`registerAdr36ClockContractTests` beziehungsweise die Site zu L729; beide
+lassen die rekonstruierte Baseline unverändert und werden dennoch verworfen.
+
+Die TAP-Auswertung verlangt für Gruppen genau einen ungerückten
+`TAP version 13`-Header, genau einen terminalen Root-Plan mit `N === # tests`
+und unmittelbar danach `tests`, `suites`, `pass`, `fail`, `cancelled`,
+`skipped`, `todo`, `duration_ms` in dieser Reihenfolge. Zähler sind sichere
+nichtnegative Ganzzahlen, die Dauer ist endlich und nichtnegativ. Der getrennte
+npm-Referenzmodus erlaubt den Banner und einen positiven Root-Plan kleiner als
+die Gesamtzahl verschachtelter Tests; historische Zahlen werden nicht gepinnt.
+
+Der gezielte Lauf
+`node --test --experimental-vm-modules --no-warnings --test-concurrency=1
+tests/ciTestGrouping.test.js` besteht mit **115/115**. Er umfasst vollständige
+LF-/CRLF-Positivlogs, ein verschachteltes Referenzlog, die verlangten
+Negativformen und den tatsächlichen Aggregate-CLI-Pfad: Sechs neu erzeugte,
+vollständig gebundene Gruppenartefakte aggregieren positiv; eine eigene Kopie,
+bei der nur der Root-Plan entfernt und Loggröße sowie SHA-256 in `result.json`
+und `native.json` konsistent nachgeführt wurden, endet nicht erfolgreich. Die
+Plan-CLI besteht mit dem festen Digest und allen Sollsummen; auch die
+historischen echten Source-/Referenzlogs werden vom neuen Gruppen-/Referenzmodus
+mit 193 beziehungsweise 3620 Tests akzeptiert.
+
+Der Standardlauf, sechs reale Gruppenläufe, die positive Referenzaggregation,
+Build und `bundle:n8n:check` wurden unter den Reparaturbytes nicht erneut
+ausgeführt. Die Rohbelege vom 2026-09-28 bleiben ausschließlich historische
+Evidenz; ein vollständiger neuer lokaler Erfolgsnachweis wird nicht behauptet.
+Unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0`
+und `22.12.0` stehen aus. Browser-/Diagnoselauf, Remote-CI und Git-Schritte
+unterblieben. `overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation
+und Testkopien als `NOT_EVIDENCE` sowie `runtimeRecord:null` bleiben unverändert.
+
+### ADR-0038-CI-Testgruppierung / 2026-09-28
+
+**Implementiert und lokal geprüft; unabhängiger Implementierungsreview und
+tatsächliche CI-Abnahme ausstehend.** ADR 0038 bleibt angenommen und bytegleich.
+Der gesonderte Auftrag autorisierte Implementierung, lokale Tests, Build und
+Bundlecheck; die frühere Beschränkung auf Dokumentation gilt für ihren damaligen
+Slice. Basis war der saubere Branch `codex/docs/adr-0038-ci-isolation`, HEAD
+`031322fdac56bba245e120da528d448047a26662`, mit leerem Index und gleichstehendem
+lokalem Remote-Tracking-Ref. Eine aktuelle Remoteprüfung erfolgte nicht.
+
+Geändert sind die Adaptertestdatei und `.github/workflows/ci.yml`; neu sind die
+drei Helfer `scripts/ci/adapterTestPlan.js`, `adapterResults.js`,
+`runAdapterGroups.js` und ausschließlich die Infrastrukturtests in
+`tests/ciTestGrouping.test.js`. Hinzu kommen kurze Statusnachführungen in
+AGENTS, Changelog, Architektur, Datenverträgen, Sicherheitsgrundlage und
+Entscheidungsindex. Produktiver Adapter, Foundation, Foundationtests, übrige
+Bestandstests, alle ADRs/Evidence-Records, Paket-/Lockdateien und Commithelper
+bleiben unverändert. Der neue Stand ist uncommittet.
+
+Der Ausgangszuschnitt aus sechs fachlich zusammenhängenden Gruppen erhält alle
+Registrierungs-/Kontrollfamilien ungeteilt: Source samt Checkpoints und Handles,
+Parser samt Dequeue, Recordableitung/-mutanten, Eingabe-/Effect-/Command-/Replay-
+Grenzen, Lebenszyklus sowie Clock-/Deadline-/Cap-Regeln. Er ist ein begründeter
+Startzuschnitt, keine auf Ubuntu gemessene Laufzeitoptimierung. Je Node-Version
+läuft jede Gruppe in einem eigenen Job/Runner/Checkout und frischen Prozess;
+innerhalb bleiben vollständige Testcallbacks und Kopielebenszyklen seriell.
+`derivation-conformance` und `virtual-runtime-conformance` behalten ihre
+jeweiligen vier Exports, Transformationen, Selector-Sperren, Byteprüfungen,
+byte-owned Foundationloads und `adapterEvidenceEligible:false`.
+
+Der Metadatenplan steht vor der Resultatauswertung fest und führt keine
+Adaptercallbacks, Testkopien oder produktiven Runtimepfade aus. Fall-IDs binden
+Familie, ursprüngliche Quellstelle und konkreten Vektor; gleichnamige
+Registrierungen sind ausdrücklich disambiguiert. Die mechanische Rückführung aller
+markierten Gruppierungszusätze rekonstruiert exakt die ursprünglichen 463641
+UTF-8-/LF-Bytes mit SHA-256
+`cf8cd3802e2ae2904f6743a5c3ad7535b1dcd2d11029a1dbb59b19d8e704f6c7`:
+1010 Fälle, 1000 verschiedene Anzeigenamen. Es bestehen 2322 gebundene
+Abschlussobligationen: 1010 erfolgreiche Originalcallbacks plus 1312 explizite
+Iterationsmarken; keine 2322 eigenständigen Tests. Die gesondert ausgewiesenen
+Schema-/Treiberiterationen bleiben mit allen ursprünglichen Assertions und
+Schedulingordnungen erhalten. Reporting fügt dort keine asynchronen Eingriffe
+ein. Metadatenfehler werden auch dann nachträglich abgelehnt, wenn ein kausaler
+Test eine Assertion abfängt; sie zählen nicht als Mutantenkill.
+
+Die geschlossene Auswahl registriert ausschließlich die gewählte Gruppe;
+unbekannte, leere oder widersprüchliche Angaben scheitern. Ohne Auswahl bleibt
+der vollständige Standardlauf erhalten. Die beiden CI-`verify`-Jobs führen die
+übrigen 2610 Tests einschließlich 98 neuer Infrastrukturtests seriell und den
+Build aus. Die zwölf Adapterjobs verwenden unverändert Ubuntu, Node `20.19.0`
+und `22.12.0`, zehn Minuten Joblimit, VM-Flags, `npm ci`, minimale Rechte und
+deaktivierte persistente Checkoutcredentials. Trigger bleiben PR gegen `main`
+und Push auf `main`. Der Aggregationsjob verlangt erfolgreiche Vorgänger und
+alle zwölf Ergebnisse desselben Laufs/Versuchs; ein Teil-Rerun mit alten
+Ergebnissen genügt nicht. Die ergänzten Actions-Versionen wurden gegen die
+Primärquellen geprüft: [upload-artifact v6.0.0](https://github.com/actions/upload-artifact/releases/tag/v6.0.0)
+und [download-artifact v7.0.0](https://github.com/actions/download-artifact/releases/tag/v7.0.0).
+
+Das geschlossene Ergebnisformat bindet tatsächlich gelesene Quellen und
+Konfiguration, den vollständigen Plan, Node, Gruppe, Lauf/Versuch, Fall-/
+Variantenmengen, Cleanup und Abschluss. Das lokale Quellenmanifest enthält
+165 Dateien und benennt die sechs uncommitteten Implementierungsdateien;
+HEAD allein wird nicht als Bytebindung verwendet. Die sechs erst nach den
+Läufen nachgeführten Statusdokumente werden vom Harness nicht gelesen und sind
+aus dieser Ausführungsbindung ausgeschlossen. Plan-SHA-256:
+`1ec700dba82e0e93aa60c01968b717434fa22d4dd51e25d3cc4a0da576dc09a6`.
+Erfolg benötigt zusätzlich den vom Elternprozess erst nach `close` geschriebenen
+nativen Abschluss, einen vollständigen erfolgreichen Footer und passende
+Rohlog-Hashes. Artefakte werden begrenzt als Daten gelesen: JSON höchstens
+8 MiB, Tiefe 32 und 100000 Knoten; Logs jeweils höchstens 64 MiB. Ungültiges
+UTF-8, doppelte JSON-Schlüssel, unerwartete Felder und ungeeignete Dateipfade
+werden abgelehnt; es erfolgt keine Codeauswertung aus Artefakten.
+
+Lokal ausgeführt unter Windows `10.0.26200`,
+`x64`, Node `24.19.0`: zuerst 98/98
+Infrastrukturtests, danach einmal der vollständige Standardpfad über das
+unveränderte npm-Testscript mit `--experimental-vm-modules --no-warnings
+--test-concurrency=1 --test-reporter=tap`. Dieser besteht mit **3620/3620**,
+exakt `3522 + 98 = 1010 + 2512 + 98`; Foundation 757/757 und sämtliche
+Bestandsregressionen sind darin enthalten und wurden nicht redundant wiederholt.
+Referenzzeit: `2026-09-28T20:34:03.905Z` bis
+`2026-09-28T21:13:17.501Z`, 2353.593 s.
+Anschließend liefen alle Gruppen strikt nacheinander in frischen Prozessen:
+
+| Gruppe | Fälle | Abschlussobligationen | Prozesslaufzeit s | maxRSS KiB | Kopien erzeugt/entfernt |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `source` | 193 | 193 | 618.098 | 2022508 | 234/234 |
+| `parser` | 122 | 125 | 654.462 | 1182736 | 142/142 |
+| `record` | 222 | 481 | 6.780 | 432436 | 243/243 |
+| `boundary` | 318 | 1368 | 591.680 | 1132664 | 282/282 |
+| `lifecycle` | 102 | 102 | 470.151 | 1150992 | 117/117 |
+| `timing` | 53 | 53 | 250.717 | 1116712 | 66/66 |
+| Summe | 1010 | 2322 | 2591.890 | nicht addiert | 1084/1084 |
+
+Alle Testläufe endeten nativ mit Exitcode 0 und Signal `null`, ohne
+Fehlschläge, Cancellations, Skips oder Todos. Der Referenzlauf bestätigt
+1084/1084 bereinigte Testkopien; auch alle Gruppen bestätigen jeweils null
+Pending-Copies und vollständigen Cleanup. Alle gebundenen Quellen blieben
+während sämtlicher Läufe unverändert. Die tatsächliche positive Aggregation
+vergleicht sämtliche Gruppenfälle und Varianten exakt mit der Referenz und
+besteht. Zusätzlich lehnt derselbe CLI-Pfad 20 manipulierte Kopien dieser echten
+Artefakte mit jeweils nativem Exitcode 1 ab: unter anderem fehlende/doppelte/
+unbekannte Gruppen, falsche Node-/Quell-/Plan-/Versuchsbindung, fehlende/doppelte
+Fälle, fremde Varianten, Skip, fehlender Cleanup oder nativer Abschluss,
+widersprüchlicher nativer Befehl, Extrafelder, abgeschnittenes JSON, verändertes
+Rohlog und ein trotz neu gebundener Loghashes fehlender Footer. Die 98 kleinen
+Infrastrukturtests decken die weiteren geschlossenen Fehler-/Variantenklassen
+sowie ein vollständiges positives Zweiversions-Ergebnis ab; dieses synthetische
+Ergebnis ist kein ausgeführter Ubuntu-Nachweis. Produktions-Build: exakt
+46 Module, Exit 0; schreibfreier `bundle:n8n:check`: Exit 0, driftfrei.
+
+`process.resourceUsage().maxRSS` wird im Adapter-After-Hook in KiB erfasst;
+[Node dokumentiert maxRSS](https://nodejs.org/download/release/v20.19.0/docs/api/process.html#processresourceusage).
+Die Referenz liefert 3565056 KiB (rund
+3.40 GiB) für den Adapter-Testprozess,
+die Gruppen 432436 bis 2022508 KiB.
+Das ist weder Heap noch Gesamt-RSS des Runners, schließt Eltern-/Kindprozesse
+aus und ist eine Abfrage am After-Hook, kein garantierter späterer
+Lebenszeitmaximalwert. Der lokal gemessene zusätzliche Hüllenaufwand für Planung,
+Quellprüfung und Ergebnisprüfung beträgt je Gruppe
+0.848 bis 1.265 s;
+CI-Installation, Runnerbereitstellung und Artefakttransfer sind darin nicht
+enthalten. Die lokalen Source-/Parserzeiten liegen über zehn Minuten; daraus
+wird keine Ubuntu-Laufzeiteignung abgeleitet und das CI-Limit wird nicht erhöht.
+
+Ausgeführte Implementierungsbytes (vor und nach den Läufen identisch):
+
+| Datei | Rohbytes | SHA-256 |
+| --- | ---: | --- |
+| `.github/workflows/ci.yml` | 3336 | `1007ae71d38bb42a55c8149cacc11809f2435b9cd3ce82075fb05c1495b17aad` |
+| `scripts/ci/adapterTestPlan.js` | 16053 | `199b255e792e9c68979459d8504f30762a53a3fe82605fde04edae1f9af07739` |
+| `scripts/ci/adapterResults.js` | 14776 | `4022910b8e1539df46feb72aec68005d4fb9acf31343f00332795cfb0cade044` |
+| `scripts/ci/runAdapterGroups.js` | 17374 | `e66ed33c22a870ac923a04f1bf867875df5fcf1a5117d009c61ee0085fc9b8ec` |
+| `tests/browserSyncTransportRuntimeDiagnosticAdapter.test.js` | 481679 | `225108863e2a966b71ccaa1badccfe3449b1ad5df802770341a262105d17b701` |
+| `tests/ciTestGrouping.test.js` | 19062 | `3ac44f779632534de864419a2e5a9597da0b05dced08bccdb0c900e825d6639e` |
+
+Die erhaltenen Rohbelege liegen ausschließlich unter
+`C:/Users/jslom/AppData/Local/Temp/goldendawn-adr0038-verification-KXPS0R`:
+`baseline.json` bindet Checkoutbytes, Commitblobs, Index und Refs;
+`reference/` und `groups/<gruppe>/` enthalten Bindung, Child-/Native-/Ergebnis-
+JSON und vollständige stdout/stderr-Logs. Die Capture-Verzeichnisse
+`infrastructure/`, `reference-runner/`, `group-<gruppe>/`,
+`aggregation-positive/`, `aggregation-negative-driver/`, `build/` und
+`bundlecheck/` enthalten je Start-/Endquellen, Konfiguration, Umgebung,
+Rohausgaben und native Abschlüsse. `actual-aggregate-negatives/` bewahrt alle
+20 Gegenproben einschließlich der manipulierten Artefaktkopien;
+`verification-summary.json` fasst die Messwerte zusammen.
+`final-audit.json` bindet den abschließenden Datei-/Link-/Git-Schutzabgleich.
+Diese Nachweisdateien bleiben ausdrücklich erhalten und gehören nicht in den
+Commit; temporäre Adapterkopien wurden nachweislich entfernt.
+
+Die abschließende statische Prüfung umfasst die exakte Änderungsallowlist,
+Diff/Whitespace, UTF-8 ohne BOM und LF, lokale Dokumentlinks sowie alle
+159 geschützten ursprünglichen Dateien. HEAD, Branch, Index und erfasste Refs
+bleiben unverändert. Die zwei bereits vorgesehenen CRLF-Checkoutfassungen der
+PowerShell-Githelfer werden getrennt von ihren LF-Commitblobs gebunden;
+ihre Checkoutbytes bleiben unverändert. Historische Reviewpassagen und
+Annahme-/Rohhashbindungen bleiben unverändert. Diese Arbeit einschließlich
+delegierter Teilprüfungen ist Selbstprüfung, kein unabhängiger Review-PASS.
+
+Unabhängiger Implementierungsreview und tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0` stehen aus. Die lokalen Windows-/Node-24-Ergebnisse belegen weder die Einhaltung des unveränderten Zehn-Minuten-Joblimits noch einen Beschleunigungsfaktor. Git-Schritte bleiben vollständig manuell bei Jan; kein PR und kein entfernter CI-Lauf wurden gestartet.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation und Testkopien als `NOT_EVIDENCE` sowie `runtimeRecord:null` bleiben unverändert. Authentisches Runtime-`A_obs` fehlt; Diagnose, Browserkomposition, Browser-E2E, Writer und Persistenz bleiben geschlossen. Windows-Prozessbaumownership, handlegebundene Pfadbereinigung und unabhängige Adapterausgabestille bleiben spätere Runtimeblocker.
+
+Die folgenden Annahme-, Review- und Statuspassagen beschreiben ihre damaligen Slices. Ihre Aussagen zur noch ausstehenden Gruppierung und zur Beschränkung auf statische Prüfungen gelten nicht für diesen gesondert beauftragten Implementierungsslice. Frühere Reviews und Rohhashbindungen werden nicht auf die neuen Bytes übertragen.
 
 ### ADR-0038-Dokumentreview und Annahme / 2026-09-28
 

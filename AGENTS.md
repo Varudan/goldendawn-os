@@ -19,7 +19,73 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – ADR-0036-Adapter implementiert und committet; ADR 0038 angenommen, CI-Gruppierung nicht implementiert; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+Aktueller Stand: `v0.3.0 – ADR-0038-P1-Reparatur vollständig lokal neu gebunden; unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+
+### ADR-0038-Lokale Neubindung / 2026-10-03
+
+Die vollständige lokale Selbstprüfung der reparierten ADR-0038-Bytes besteht:
+115/115 Infrastrukturtests, 2627/2627 im gesonderten `remaining`-Lauf und
+3637/3637 im einmaligen npm-Referenzlauf. Die sechs neuen, nacheinander
+abgeschlossenen Gruppen stimmen mit der neuen Referenz in allen 1010
+Fallidentitäten und 2322 Obligationen exakt überein; native Abschlüsse,
+TAP-Root-Pläne, feste Plan-/Quellbindungen und Cleanup sind bestätigt.
+21 eigene Artefaktgegenproben werden abgelehnt, einschließlich der
+konsistent neu gehashten Kopie ohne TAP-Root-Plan. Build: 46 Module, Exit 0;
+Bundlecheck: Exit 0, driftfrei.
+
+Die Nachweise vom 2026-09-28 und der frühere unabhängige Implementierungsreview
+mit `FAIL` bleiben historisch. Diese neue Selbstprüfung ersetzt weder den
+noch ausstehenden unabhängigen Re-Review noch die tatsächliche Ubuntu-CI-Abnahme
+auf Node `20.19.0` und `22.12.0`. Lokale Windows-/Node-Messungen belegen
+keinen Gesamtverbrauch des Runners und keine Einhaltung des unveränderten
+Zehn-Minuten-Joblimits. `overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`,
+`NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert. Die folgenden
+Abschnitte halten ihre jeweiligen historischen Prüfstände fest.
+[Neue Rohbelege und Messgrenzen](CHANGELOG.md#adr-0038-lokale-neubindung--2026-10-03).
+
+### ADR-0038-P1-Reparatur / 2026-10-03
+
+Die beiden P1-Befunde des unabhängigen Implementierungsreviews sind eng
+repariert. Discovery, Ausführung und Aggregation akzeptieren nur noch den
+extern fest gebundenen vollständigen Sollplan-SHA-256
+`1ec700dba82e0e93aa60c01968b717434fa22d4dd51e25d3cc4a0da576dc09a6`
+samt 1010 Fällen, Gruppenfallzahlen `193/122/222/318/102/53`, 1312
+Zusatzvarianten und 2322 Obligationen. Gruppenlogs benötigen jetzt genau einen
+TAP-13-Header, einen terminalen Root-Plan und den vollständigen geordneten
+Footer; die npm-Referenz bleibt ein getrennter Modus mit positivem, gegebenenfalls
+kleinerem Root-Plan.
+
+Die Infrastrukturtests bestehen mit 115/115. Darin bestehen die originale
+Planregistrierung, die beiden kausalen L728-Family-/Site-Gegenproben, vollständige
+LF-/CRLF- und verschachtelte Referenzlogs sowie eine echte positive
+Sechs-Gruppen-Aggregation. Deren eigene Artefaktkopie ohne Root-Plan wird trotz
+konsistent nachgezogener Loggröße und Log-SHA vom echten Aggregate-CLI verworfen.
+
+Standardlauf, sechs reale Gruppenläufe, positive Referenzaggregation, Build und
+Bundlecheck wurden für diese neuen Bytes nicht erneut ausgeführt. Die Nachweise
+vom 2026-09-28 bleiben historisch und werden nicht übertragen; die vollständige
+lokale Erfolgsevidenz ist daher noch unvollständig. Unabhängiger Re-Review und
+tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0` stehen aus. Es
+gab keinen Browser-/Diagnoselauf, Remote-CI- oder Git-Schritt. `overallGate:
+FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und `runtimeRecord:null`
+bleiben unverändert.
+
+### ADR-0038-CI-Testgruppierung / 2026-09-28
+
+Die angenommene ADR-0038-Gruppierung ist implementiert und lokal geprüft: sechs
+isolierte CI-Gruppen, weiterhin serielle Tests und vollständige Kopielebenszyklen
+innerhalb jeder Gruppe. Der Standardlauf besteht mit 3620/3620 Tests; alle sechs
+lokal nacheinander gestarteten Gruppen bestehen und stimmen in sämtlichen Fall-/
+Variantenidentitäten mit der 1010-Fall-Referenz überein. Die 98 neuen
+Infrastrukturtests, die tatsächliche positive Aggregation, 20 abgelehnte
+Artefaktgegenproben, Build mit 46 Modulen und driftfreier Bundlecheck sind belegt.
+[Nachweise und Rohbindungen](CHANGELOG.md#adr-0038-ci-testgruppierung--2026-09-28) trennen diese Selbstprüfung von früheren Reviews.
+
+Unabhängiger Implementierungsreview und tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0` stehen aus. Die lokalen Windows-/Node-24-Ergebnisse belegen weder die Einhaltung des unveränderten Zehn-Minuten-Joblimits noch einen Beschleunigungsfaktor. Git-Schritte bleiben vollständig manuell bei Jan; kein PR und kein entfernter CI-Lauf wurden gestartet.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation und Testkopien als `NOT_EVIDENCE` sowie `runtimeRecord:null` bleiben unverändert. Authentisches Runtime-`A_obs` fehlt; Diagnose, Browserkomposition, Browser-E2E, Writer und Persistenz bleiben geschlossen. Windows-Prozessbaumownership, handlegebundene Pfadbereinigung und unabhängige Adapterausgabestille bleiben spätere Runtimeblocker.
+
+Die folgenden Annahme-, Review- und Statuspassagen beschreiben ihre damaligen Slices. Ihre Aussagen zur noch ausstehenden Gruppierung und zur Beschränkung auf statische Prüfungen gelten nicht für diesen gesondert beauftragten Implementierungsslice. Frühere Reviews und Rohhashbindungen werden nicht auf die neuen Bytes übertragen.
 
 ### ADR 0038 angenommen / 2026-09-28
 

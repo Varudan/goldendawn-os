@@ -4,10 +4,76 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR-0036-Adapter implementiert und committet; ADR 0038 angenommen, CI-Gruppierung nicht implementiert; Foundationbaseline 757/757; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
+| Projektphase | `v0.3.0 – ADR-0038-P1-Reparatur vollständig lokal neu gebunden; unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | [ADR 0038](decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) ist durch Jan angenommen; Umsetzung und Nachweise der CI-Gruppierung bleiben separat zu beauftragen. ADRs 0032–0037 bleiben unverändert. Dokumentreview und Annahme: [Changelog](../CHANGELOG.md#adr-0038-dokumentreview-und-annahme--2026-09-28). |
-| Letzte Aktualisierung | 2026-09-28 |
+| Status | [ADR 0038](decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) bleibt angenommen; seine zwei P1-Implementierungsbefunde sind gezielt repariert. Die vollständige lokale Selbstprüfung ist erfolgreich; unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme stehen aus. [Neubindungsnachweise](../CHANGELOG.md#adr-0038-lokale-neubindung--2026-10-03). |
+| Letzte Aktualisierung | 2026-10-03 |
+
+## ADR-0038-Lokale Neubindung / 2026-10-03
+
+Die vollständige lokale Selbstprüfung der reparierten ADR-0038-Bytes besteht:
+115/115 Infrastrukturtests, 2627/2627 im gesonderten `remaining`-Lauf und
+3637/3637 im einmaligen npm-Referenzlauf. Die sechs neuen, nacheinander
+abgeschlossenen Gruppen stimmen mit der neuen Referenz in allen 1010
+Fallidentitäten und 2322 Obligationen exakt überein; native Abschlüsse,
+TAP-Root-Pläne, feste Plan-/Quellbindungen und Cleanup sind bestätigt.
+21 eigene Artefaktgegenproben werden abgelehnt, einschließlich der
+konsistent neu gehashten Kopie ohne TAP-Root-Plan. Build: 46 Module, Exit 0;
+Bundlecheck: Exit 0, driftfrei.
+
+Die Nachweise vom 2026-09-28 und der frühere unabhängige Implementierungsreview
+mit `FAIL` bleiben historisch. Diese neue Selbstprüfung ersetzt weder den
+noch ausstehenden unabhängigen Re-Review noch die tatsächliche Ubuntu-CI-Abnahme
+auf Node `20.19.0` und `22.12.0`. Lokale Windows-/Node-Messungen belegen
+keinen Gesamtverbrauch des Runners und keine Einhaltung des unveränderten
+Zehn-Minuten-Joblimits. `overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`,
+`NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert. Die folgenden
+Abschnitte halten ihre jeweiligen historischen Prüfstände fest.
+[Neue Rohbelege und Messgrenzen](../CHANGELOG.md#adr-0038-lokale-neubindung--2026-10-03).
+
+## ADR-0038-P1-Reparatur / 2026-10-03
+
+Die Aggregation vertraut weder einer aus den aktuellen Markern erneut
+abgeleiteten Sollidentität noch isolierten Footerzählern. Der vollständige Plan
+wird gegen einen extern festen Digest und feste Gruppen-/Gesamtsummen geprüft.
+Das gebundene Rohlog muss genau einen ungerückten TAP-13-Header, genau einen
+terminalen Root-Plan und den vollständigen geordneten Abschluss einschließlich
+`suites` und endlicher nichtnegativer `duration_ms` enthalten. Gruppen verlangen
+`Root-Plan === tests`; die verschachtelte npm-Referenz wird separat geprüft.
+
+Die gezielte Suite besteht mit 115/115 Tests. Im tatsächlichen Aggregate-CLI-
+Pfad besteht ein vollständig neu erzeugter Sechs-Gruppen-Satz, während seine
+eigene Kopie ohne Root-Plan auch nach konsistenter Aktualisierung von Loggröße
+und SHA-256 abgelehnt wird. Standardlauf, reale Gruppen, Referenzvergleich,
+Build und Bundlecheck wurden für diese Reparaturbytes nicht wiederholt; die
+alten Rohbelege werden nicht übertragen. Re-Review, Ubuntu-CI, Browser-/
+Diagnoselauf, Remote-CI und Git-Schritte stehen aus. `overallGate: FAIL`,
+`causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und `runtimeRecord:null`
+bleiben unverändert.
+
+## ADR-0038-CI-Testgruppierung / 2026-09-28
+
+Die implementierte CI-Gruppierung trennt Runner, Checkouts, Prozesse und mutable
+Testzustände zwischen Gruppen. Innerhalb einer Gruppe bleiben der vollständige
+Testcallback und jeder Kopielebenszyklus seriell. Beide bisherigen Vier-Export-
+Profile, Rohbyte-/Selectorprüfungen und `adapterEvidenceEligible:false` bleiben
+erhalten. Ausschließlich nachweislich eigene temporäre Testkopien werden entfernt;
+fehlender Cleanup oder fehlender nativer Erfolg verhindern ein Gruppen-PASS.
+
+Die geschlossene Auswahl registriert nur die gewählte Gruppe; Metadatenplanung
+führt keine Adaptercallbacks oder Kopien aus. Ergebnisdateien werden als Daten
+mit Größen-/Strukturgrenzen, striktem UTF-8, Duplicate-Key-Ablehnung und geprüfter
+Dateiauswahl gelesen. Die Aggregation bindet Lauf und Versuch und akzeptiert
+keine Mischung aus Teil-Reruns. Ein Kindprozessbericht allein genügt nicht:
+Elternprozessabschluss, Rohlog-Hashes, Footer und Cleanup müssen übereinstimmen.
+Die Testartefakte ersetzen keine spätere Runtime-Ownershipprüfung. [Nachweise und Rohbindungen](../CHANGELOG.md#adr-0038-ci-testgruppierung--2026-09-28) dokumentieren die Selbstprüfung;
+Rohbelege bleiben ausdrücklich außerhalb des Repositorys erhalten.
+
+Unabhängiger Implementierungsreview und tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0` stehen aus. Die lokalen Windows-/Node-24-Ergebnisse belegen weder die Einhaltung des unveränderten Zehn-Minuten-Joblimits noch einen Beschleunigungsfaktor. Git-Schritte bleiben vollständig manuell bei Jan; kein PR und kein entfernter CI-Lauf wurden gestartet.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation und Testkopien als `NOT_EVIDENCE` sowie `runtimeRecord:null` bleiben unverändert. Authentisches Runtime-`A_obs` fehlt; Diagnose, Browserkomposition, Browser-E2E, Writer und Persistenz bleiben geschlossen. Windows-Prozessbaumownership, handlegebundene Pfadbereinigung und unabhängige Adapterausgabestille bleiben spätere Runtimeblocker.
+
+Die folgenden Annahme-, Review- und Statuspassagen beschreiben ihre damaligen Slices. Ihre Aussagen zur noch ausstehenden Gruppierung und zur Beschränkung auf statische Prüfungen gelten nicht für diesen gesondert beauftragten Implementierungsslice. Frühere Reviews und Rohhashbindungen werden nicht auf die neuen Bytes übertragen.
 
 ## ADR 0038 angenommen / 2026-09-28
 

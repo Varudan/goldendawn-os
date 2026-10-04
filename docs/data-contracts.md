@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR-0036-Adapter implementiert und committet; ADR 0038 angenommen, CI-Gruppierung nicht implementiert; Foundationbaseline 757/757; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
+| Projektphase | `v0.3.0 – ADR-0038-P1-Reparatur vollständig lokal neu gebunden; unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,8 +21,78 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | [ADR 0038](decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) ist durch Jan angenommen; Umsetzung und Nachweise der CI-Gruppierung bleiben separat zu beauftragen. ADRs 0032–0037 bleiben unverändert. Dokumentreview und Annahme: [Changelog](../CHANGELOG.md#adr-0038-dokumentreview-und-annahme--2026-09-28). |
-| Letzte Aktualisierung | 2026-09-28 |
+| Status | [ADR 0038](decisions/0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) bleibt angenommen; seine zwei P1-Implementierungsbefunde sind gezielt repariert. Die vollständige lokale Selbstprüfung ist erfolgreich; unabhängiger Re-Review und tatsächliche Ubuntu-CI-Abnahme stehen aus. [Neubindungsnachweise](../CHANGELOG.md#adr-0038-lokale-neubindung--2026-10-03). |
+| Letzte Aktualisierung | 2026-10-03 |
+
+## ADR-0038-Lokale Neubindung / 2026-10-03
+
+Die vollständige lokale Selbstprüfung der reparierten ADR-0038-Bytes besteht:
+115/115 Infrastrukturtests, 2627/2627 im gesonderten `remaining`-Lauf und
+3637/3637 im einmaligen npm-Referenzlauf. Die sechs neuen, nacheinander
+abgeschlossenen Gruppen stimmen mit der neuen Referenz in allen 1010
+Fallidentitäten und 2322 Obligationen exakt überein; native Abschlüsse,
+TAP-Root-Pläne, feste Plan-/Quellbindungen und Cleanup sind bestätigt.
+21 eigene Artefaktgegenproben werden abgelehnt, einschließlich der
+konsistent neu gehashten Kopie ohne TAP-Root-Plan. Build: 46 Module, Exit 0;
+Bundlecheck: Exit 0, driftfrei.
+
+Die Nachweise vom 2026-09-28 und der frühere unabhängige Implementierungsreview
+mit `FAIL` bleiben historisch. Diese neue Selbstprüfung ersetzt weder den
+noch ausstehenden unabhängigen Re-Review noch die tatsächliche Ubuntu-CI-Abnahme
+auf Node `20.19.0` und `22.12.0`. Lokale Windows-/Node-Messungen belegen
+keinen Gesamtverbrauch des Runners und keine Einhaltung des unveränderten
+Zehn-Minuten-Joblimits. `overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`,
+`NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert. Die folgenden
+Abschnitte halten ihre jeweiligen historischen Prüfstände fest.
+[Neue Rohbelege und Messgrenzen](../CHANGELOG.md#adr-0038-lokale-neubindung--2026-10-03).
+
+## ADR-0038-P1-Reparatur / 2026-10-03
+
+Der Sollplanvertrag bleibt unverändert serialisiert, wird aber nun gegen den
+externen festen SHA-256
+`1ec700dba82e0e93aa60c01968b717434fa22d4dd51e25d3cc4a0da576dc09a6`
+und zusätzlich gegen `1010` Fälle, die Gruppenfallzahlen
+`193/122/222/318/102/53`, `1312` Zusatzvarianten und `2322` Obligationen
+geprüft. Damit können gleich große Änderungen an Family, Site,
+Variantenschlüssel, Gruppenzuordnung oder Variantenmenge nicht aus der
+rekonstruierten Quellbaseline abgeleitet und selbst bestätigt werden.
+
+Der bestehende sechs Felder umfassende `footer`-Datensatz bleibt erhalten. Vor
+seiner Projektion muss das Rohlog jetzt jedoch genau einen TAP-13-Header, einen
+terminalen Root-Plan und die geordnete vollständige Folge `tests`, `suites`,
+`pass`, `fail`, `cancelled`, `skipped`, `todo`, `duration_ms` besitzen. Die
+115/115 Infrastrukturtests schließen die beiden Markeränderungen und eine echte
+Aggregate-CLI-Gegenprobe mit nachgezogener Logbindung ein. Vollständiger
+Standard-/Gruppen-/Referenzlauf, Build und Bundlecheck wurden unter den neuen
+Bytes nicht wiederholt; frühere Rohbelege bleiben historisch. Re-Review und
+Ubuntu-CI stehen aus; Runtimeverträge und Gatewerte bleiben unverändert.
+
+## ADR-0038-CI-Testgruppierung / 2026-09-28
+
+Das getrennte Testartefaktformat `schemaVersion: 1` ist implementiert. Der
+metadatenreine Sollplan bindet die unveränderte 1010-Fall-Baseline mit 1000
+Anzeigenamen, eindeutigen Familie-/Quellstellen-/Vektoridentitäten und vollständiger
+Gruppenzuordnung. 2322 Abschlussobligationen bestehen aus 1010 Fallabschlüssen und
+1312 zusätzlichen Iterationsmarken; dies sind keine 2322 eigenständigen Tests.
+Übrige Schema-/Treiberiterationen bleiben durch die exakt rekonstruierbaren
+Originalbytes und ihre weiterhin ausgeführten Assertions gebunden.
+
+`result.json` enthält ausschließlich `schemaVersion`, `context`, `sources`,
+`planSha256`, `nodeVersion`, `group`, `cases`, `completion`, `footer`,
+`native`, `startedAt`, `endedAt`, `durationMs`, `memory` und `logs`.
+Die Aggregation vergleicht diese Daten zusätzlich mit `binding.json`,
+`child.json`, dem nach Prozessende geschriebenen `native.json` und beiden
+Rohlogs. Fehlende, doppelte, fremde oder versuchsfremde Resultate, nicht erfolgreiche
+Abschlüsse, Skips/Todos und fehlender Cleanup verhindern Erfolg. JSON ist auf
+8 MiB, Tiefe 32 und 100000 Knoten begrenzt; Rohlogs auf jeweils 64 MiB.
+Runtime- und Foundationschemas bleiben unverändert. [Nachweise und Rohbindungen](../CHANGELOG.md#adr-0038-ci-testgruppierung--2026-09-28)
+belegen die lokal ausgeführten positiven und negativen Prüfungen.
+
+Unabhängiger Implementierungsreview und tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0` stehen aus. Die lokalen Windows-/Node-24-Ergebnisse belegen weder die Einhaltung des unveränderten Zehn-Minuten-Joblimits noch einen Beschleunigungsfaktor. Git-Schritte bleiben vollständig manuell bei Jan; kein PR und kein entfernter CI-Lauf wurden gestartet.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation und Testkopien als `NOT_EVIDENCE` sowie `runtimeRecord:null` bleiben unverändert. Authentisches Runtime-`A_obs` fehlt; Diagnose, Browserkomposition, Browser-E2E, Writer und Persistenz bleiben geschlossen. Windows-Prozessbaumownership, handlegebundene Pfadbereinigung und unabhängige Adapterausgabestille bleiben spätere Runtimeblocker.
+
+Die folgenden Annahme-, Review- und Statuspassagen beschreiben ihre damaligen Slices. Ihre Aussagen zur noch ausstehenden Gruppierung und zur Beschränkung auf statische Prüfungen gelten nicht für diesen gesondert beauftragten Implementierungsslice. Frühere Reviews und Rohhashbindungen werden nicht auf die neuen Bytes übertragen.
 
 ## ADR 0038 angenommen / 2026-09-28
 

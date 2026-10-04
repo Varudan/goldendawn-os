@@ -41,7 +41,90 @@ jobs:
         run: npm ci
 
       - name: Run tests
-        run: npm test -- --experimental-vm-modules --no-warnings --test-concurrency=1
+        run: node scripts/ci/runAdapterGroups.js remaining
 
       - name: Build
         run: npm run build
+
+  adapter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version:
+          - '20.19.0'
+          - '22.12.0'
+        group:
+          - source
+          - parser
+          - record
+          - boundary
+          - lifecycle
+          - timing
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run isolated adapter group
+        env:
+          ADAPTER_GROUP: ${{ matrix.group }}
+          ADAPTER_OUTPUT: ${{ runner.temp }}/adr-0038-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.node-version }}-${{ matrix.group }}
+        run: node scripts/ci/runAdapterGroups.js group "$ADAPTER_GROUP" "$ADAPTER_OUTPUT"
+
+      - name: Upload adapter results
+        if: always()
+        uses: actions/upload-artifact@v6.0.0
+        with:
+          name: adapter-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.node-version }}-${{ matrix.group }}
+          path: ${{ runner.temp }}/adr-0038-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.node-version }}-${{ matrix.group }}
+          if-no-files-found: error
+          overwrite: false
+
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs:
+      - verify
+      - adapter
+    if: always()
+
+    steps:
+      - name: Require successful preceding jobs
+        env:
+          VERIFY_RESULT: ${{ needs.verify.result }}
+          ADAPTER_RESULT: ${{ needs.adapter.result }}
+        run: test "$VERIFY_RESULT" = success && test "$ADAPTER_RESULT" = success
+
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22.12.0'
+
+      - name: Download current attempt results
+        uses: actions/download-artifact@v7.0.0
+        with:
+          pattern: adapter-${{ github.run_id }}-${{ github.run_attempt }}-*
+          path: ${{ runner.temp }}/adr-0038-results
+          merge-multiple: false
+
+      - name: Verify complete adapter results for both Node.js versions
+        env:
+          ADAPTER_RESULTS: ${{ runner.temp }}/adr-0038-results
+        run: node scripts/ci/runAdapterGroups.js aggregate "$ADAPTER_RESULTS"

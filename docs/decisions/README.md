@@ -6,6 +6,65 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 
 ## Entscheidungsübersicht
 
+### ADR-0038-Lokale Neubindung / 2026-10-03
+
+ADR 0038 bleibt bytegleich und angenommen; es gibt keine neue Architekturentscheidung.
+Die vollständige lokale Selbstprüfung der reparierten ADR-0038-Bytes besteht:
+115/115 Infrastrukturtests, 2627/2627 im gesonderten `remaining`-Lauf und
+3637/3637 im einmaligen npm-Referenzlauf. Die sechs neuen, nacheinander
+abgeschlossenen Gruppen stimmen mit der neuen Referenz in allen 1010
+Fallidentitäten und 2322 Obligationen exakt überein; native Abschlüsse,
+TAP-Root-Pläne, feste Plan-/Quellbindungen und Cleanup sind bestätigt.
+21 eigene Artefaktgegenproben werden abgelehnt, einschließlich der
+konsistent neu gehashten Kopie ohne TAP-Root-Plan. Build: 46 Module, Exit 0;
+Bundlecheck: Exit 0, driftfrei.
+
+Die Nachweise vom 2026-09-28 und der frühere unabhängige Implementierungsreview
+mit `FAIL` bleiben historisch. Diese neue Selbstprüfung ersetzt weder den
+noch ausstehenden unabhängigen Re-Review noch die tatsächliche Ubuntu-CI-Abnahme
+auf Node `20.19.0` und `22.12.0`. Lokale Windows-/Node-Messungen belegen
+keinen Gesamtverbrauch des Runners und keine Einhaltung des unveränderten
+Zehn-Minuten-Joblimits. `overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`,
+`NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert. Die folgenden
+Abschnitte halten ihre jeweiligen historischen Prüfstände fest.
+[Neue Rohbelege und Messgrenzen](../../CHANGELOG.md#adr-0038-lokale-neubindung--2026-10-03).
+
+### ADR-0038-P1-Reparatur / 2026-10-03
+
+[ADR 0038](0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) bleibt
+bytegleich und `Angenommen – 2026-09-28`; die Reparatur ist keine neue
+Architekturentscheidung. Die zwei P1-Befunde sind in den drei erlaubten
+Infrastrukturdateien uncommittet repariert: ein externer fester Digest samt
+Gruppen-/Gesamtsummen bindet den vollständigen 1010-Fall-/2322-Obligationenplan,
+und die Aggregation verlangt nun den vollständigen terminalen TAP-13-Abschluss.
+
+115/115 Infrastrukturtests bestehen, einschließlich beider kausaler
+L728-Markerproben, gültiger Gruppen-/Referenzlogs, einer positiven echten
+Sechs-Gruppen-Aggregation und ihrer trotz nachgezogener Logbindung abgelehnten
+Kopie ohne Root-Plan. Standardlauf, sechs reale Gruppen, Referenzvergleich,
+Build und Bundlecheck wurden für die Reparaturbytes nicht wiederholt; die
+Nachweise vom 2026-09-28 bleiben historisch. Unabhängiger Re-Review und
+tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0` stehen aus.
+Git- und Remote-Schritte unterblieben. Runtimegrenzen sowie `overallGate: FAIL`,
+`causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und `runtimeRecord:null` bleiben
+unverändert. [Reparaturnachweise](../../CHANGELOG.md#adr-0038-p1-reparatur--2026-10-03).
+
+### ADR-0038-CI-Testgruppierung / 2026-09-28
+
+[ADR 0038](0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) bleibt
+`Angenommen – 2026-09-28`; die Entscheidung selbst ist bytegleich. Ihre isolierte
+CI-Gruppierung ist nun implementiert und lokal geprüft: 3620/3620 Standardtests,
+sechs serielle Gruppen mit exakt derselben 1010-Fall-/Variantenmenge, positive
+Aggregation und abgelehnte Gegenproben, Build sowie Bundlecheck.
+[Nachweise und Rohbindungen](../../CHANGELOG.md#adr-0038-ci-testgruppierung--2026-09-28) binden die Ergebnisse an die ausgeführten uncommitteten Bytes.
+Dies ist keine neue Architekturentscheidung und kein unabhängiger Review-PASS.
+
+Unabhängiger Implementierungsreview und tatsächliche Ubuntu-CI-Abnahme auf Node `20.19.0` und `22.12.0` stehen aus. Die lokalen Windows-/Node-24-Ergebnisse belegen weder die Einhaltung des unveränderten Zehn-Minuten-Joblimits noch einen Beschleunigungsfaktor. Git-Schritte bleiben vollständig manuell bei Jan; kein PR und kein entfernter CI-Lauf wurden gestartet.
+
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, Foundation und Testkopien als `NOT_EVIDENCE` sowie `runtimeRecord:null` bleiben unverändert. Authentisches Runtime-`A_obs` fehlt; Diagnose, Browserkomposition, Browser-E2E, Writer und Persistenz bleiben geschlossen. Windows-Prozessbaumownership, handlegebundene Pfadbereinigung und unabhängige Adapterausgabestille bleiben spätere Runtimeblocker.
+
+Die folgenden Annahme-, Review- und Statuspassagen beschreiben ihre damaligen Slices. Ihre Aussagen zur noch ausstehenden Gruppierung und zur Beschränkung auf statische Prüfungen gelten nicht für diesen gesondert beauftragten Implementierungsslice. Frühere Reviews und Rohhashbindungen werden nicht auf die neuen Bytes übertragen.
+
 ### ADR 0038 angenommen / 2026-09-28
 
 [ADR 0038](0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) ist durch
