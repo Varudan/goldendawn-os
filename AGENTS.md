@@ -3285,13 +3285,67 @@ Während einer Änderung:
 
 Nach einer Änderung:
 
-1. Führe mindestens `npm run build` aus.
-2. Führe vorhandene relevante Tests und statische Prüfungen aus.
+1. Führe nach den fertiggestellten Änderungen mindestens `npm run build`
+   vollständig aus.
+2. Führe die erforderlichen passenden Testsuiten und Regressionen vollständig
+   sowie die relevanten statischen Prüfungen aus.
 3. Prüfe `git diff` und `git status` auf unbeabsichtigte Änderungen.
 4. Berichte knapp über geänderte Dateien, Verhalten, Prüfungen und verbleibende
    Grenzen.
 5. Schlage bei Bedarf einen Branch-Namen, eine Commit-Nachricht und die
    passenden Git-Befehle vor, führe sie aber nicht selbst aus.
+
+### Manueller lokaler Commit-Prüfweg
+
+Ein nach den fertiggestellten Änderungen vollständig erfolgreich abgeschlossener
+Test- oder Buildlauf darf beim anschließenden unveränderten Commit für seinen
+gebundenen Umfang wiederverwendet werden. Der Commit allein verlangt keinen
+zusätzlichen vollständigen Testlauf oder erneuten Build. Die Buildpflicht und
+bestehenden Testpflichten bleiben bestehen; eine pauschale Dokumentations- oder
+Testausnahme, ein Schnellmodus und zusätzliche lokale Parallelität entstehen
+dadurch nicht.
+
+- Bestimme vor den Läufen den Prüfumfang und erfasse den tatsächlichen
+  Prüfarbeitsbaum samt Rohbytehashes der relevanten Quellen, Tests, Fixtures,
+  Harness- und Konfigurationsdateien, Auswahl, Befehlen, Flags, Abhängigkeiten
+  und relevanter Umgebung. Bewahre vollständige Originalbelege mit nativen
+  Abschlussdaten auf. Gleiche Zahlen, Anzeigenamen oder erst nachträglich
+  berechnete Hashes belegen keinen früheren Prüfstand; fehlende ursprüngliche
+  Angaben dürfen nicht rückwirkend ergänzt oder erfunden werden.
+- Bei betroffenen Änderungen oder fehlender belastbarer Bindung sind die
+  passenden Suites und Regressionen neu vollständig auszuführen. Unklare
+  Auswirkungen erweitern den Prüfumfang erforderlichenfalls bis zur
+  Gesamtsuite. Test, Build, Bundlecheck, Review und CI behalten ihren eigenen
+  Umfang; keiner dieser Nachweise ersetzt einen anderen.
+- Jan stellt den Feature-/Dokumentationsbranch bereit und führt alle
+  Git-Schreibaktionen selbst aus. Vor dem Commit müssen Branch, HEAD und
+  vollständiger Index dem festgehaltenen vorgesehenen Stand entsprechen:
+  keine laufenden Git-Vorgänge, Konflikte, unstaged oder untracked Dateien und
+  kein Teil-Staging mit zurückbleibenden Änderungen. Sachfremde Arbeiten werden
+  weder mitgestagt noch gelöscht. Nach dem Commit gleicht Jan dessen
+  tatsächlichen Inhalt und den sauberen Arbeitsbaum mit dem Vermerk ab.
+- Ordne Prüfarbeitsbaum, vollständigen Index und späteren Commitinhalt
+  nachvollziehbar zu. Tatsächliche Prüfbytes und Git-Blobs können sich durch
+  Zeilenenden unterscheiden; dokumentierte Normalisierung ersetzt keine
+  Rohbytebindung und darf keine inhaltlichen Abweichungen verdecken.
+- Beachte die breite Adapterbindung aus `scripts/ci/runAdapterGroups.js`,
+  einschließlich HEAD, Konfiguration und gebundener Dokumentdateien.
+  `docs/git-workflows.md` gehört dazu; seine Änderung verändert die Bindung.
+  Originalartefakte, Quellenbindungen und Aggregationsregeln bleiben
+  unverändert. Ein manueller Zuordnungsbeleg erzeugt keinen neu ausgeführten
+  Aggregations-PASS und ersetzt keine fehlende technische Bindung. Alte und
+  neue Gruppenresultate dürfen nicht gemischt werden.
+
+Der [manuelle Ablauf samt Prüfvermerk](docs/git-workflows.md#manueller-commit-mit-gebundenen-prüfnachweisen)
+beschreibt die Vergleiche vor und nach Jans Commit. Belege bleiben unverändert
+in einem neuen eindeutigen Unterordner von
+`C:\Users\jslom\Documents\Projekte\GoldenDawn-Pruefnachweise`, außerhalb
+beider Repositories; Verschlüsselung oder besondere Zugriffssicherung sind
+damit nicht nachgewiesen. Keine Secrets oder unnötigen persönlichen Daten ablegen.
+
+Der vorhandene Commithelfer startet weiterhin bei jedem zulässigen Aufruf
+Tests und Build, auch mit `-WhatIf`. Der neue manuelle Ablauf verwendet ihn
+deshalb vorerst nicht.
 
 ## Git-Konventionen
 
