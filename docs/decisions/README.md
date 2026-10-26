@@ -6,6 +6,57 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 
 ## Entscheidungsübersicht
 
+### ADR-0040-Diagnosehostvorschlag / 2026-10-07
+
+Jan hat ausschließlich die dokumentarische Ausarbeitung der
+[bedingten Diagnosehostvariante](0040-native-windows-diagnostic-resource-helper.md#bedingte-variante-für-einen-eigenen-diagnosehost)
+bestätigt. Ein eigener Node-Host mit einkompilierter Schließbrücke würde nur
+den Diagnoseadapter betreffen. Gemeinsame CRT-Ownership, vollständiger
+Producerabschluss und ein separater Bau-, Ressourcen- und Pflegevertrag
+sind offene Voraussetzungen. Der Host ist weder angenommen noch gebaut.
+
+Der zuletzt von Jan übermittelte unabhängige Dokumentreview endete mit
+`PASS / COMPLETE` für die im ADR gebundenen 24504 beziehungsweise 43095
+Voränderungsbytes. Dieses PASS gilt weder für den Hostentwurf noch für die
+neuen vollständigen Dokumentfassungen. Die gesonderte synthetische Probe
+endete insgesamt mit `FAIL`: direkte Pipes sind begrenzt bestätigt, beide
+Adapterversiegelungen gescheitert, Helferversiegelung und Starterbestätigung
+nicht erreicht. Die anschließenden Quellenbefunde sind keine neue native
+Ausführungsevidenz.
+
+Der Vorschlag grenzt Ownership, Schließfolge, EOF-Orakel, drei spätere
+Fixturebetriebsarten und Abbruchkriterien ab. Unabhängiger Dokumentreview,
+ein separat entschiedener Bau-/Probeauftrag und weitere native Abnahmen
+stehen aus. Alte Ergebnisse werden auf keine neue Runtime übertragen.
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, fehlendes authentisches
+`A_obs`, `NOT_EVIDENCE` und `runtimeRecord:null` bleiben bestehen.
+Die folgenden datierten Abschnitte bewahren ihre historischen Prüfstände.
+
+### ADR-0040-Helfervorschlag / 2026-10-05
+
+[ADR 0040](0040-native-windows-diagnostic-resource-helper.md) hält die
+Arbeitsfassung für einen separaten nativen Windows-Helfer fest. Jan hat die
+Helferrichtung und die begrenzte Ordnerhoheit zur Ausarbeitung im Vorschlag
+bestätigt; der ADR bleibt `Vorgeschlagen`. Direkte CDP-Pipebindung, sichere
+Ausgabeversiegelung, native Bereinigungsprimitive, vollständige Owner- und
+Quellenbindungen sowie das Windows-/Toolchainprofil müssen noch belegt werden.
+Der von Jan übermittelte unabhängige Dokumentreview und erste Re-Review
+schlossen jeweils mit technischem `FAIL` bei `COMPLETE`. Im ersten
+Re-Review ist P1 zur Ownerverlustabsicherung für die gebundene Fassung auf
+Dokumentebene geschlossen; P2 blieb wegen des fehlenden vertragskonformen
+Dequeue-/Clockwegs für private Zwischenfakten offen. Die neue Arbeitsfassung
+schlägt stattdessen einen nativen Sammelvorgang mit genau einer terminalen
+Cleanupfact-Meldung und privat daran gebundener Ergebnisauswertung am
+gemeinsamen Sample vor. Foundation und Implementierung bleiben unverändert.
+Ein erneuter unabhängiger Re-Review, dessen PASS und die formale Annahme
+stehen aus. Beide historischen Reviewbindungen sind im ADR erhalten.
+
+Der Vorschlag erteilt keine Umsetzungs-, Diagnose- oder Runtimefreigabe.
+Eine Machbarkeitsprobe benötigt einen gesonderten Auftrag. `overallGate:
+FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, `NOT_EVIDENCE` und `runtimeRecord:null`
+bleiben unverändert.
+Die folgenden datierten Abschnitte bewahren ihre historischen Prüfstände.
+
 ### ADR-0039-Annahme und Workflowlimit / 2026-10-04
 
 Jan hat [ADR 0039](0039-bounded-adapter-ci-job-timeout.md) nach dem
