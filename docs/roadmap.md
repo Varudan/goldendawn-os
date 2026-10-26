@@ -4,11 +4,48 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – netzwerkfreier ADR-0036-Adapter und Tests implementiert und selbst geprüft; unabhängiger Implementierungsreview ausstehend; Foundationbaseline 757/757; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
+| Projektphase | `v0.3.0 – ADR 0041 angenommen; isolierter Same-Origin-syncTest nicht umgesetzt; ADR 0040 vorgeschlagen; Ubuntu-CI ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
 | Zielrelease | `v1.0.0 – Portfolio Release` |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | ADR 0035, ADR 0036 und ADR 0037 bleiben unverändert angenommen. Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei. Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit. Reale Diagnose, Writer und Persistenz bleiben geschlossen. |
-| Letzte Aktualisierung | 2026-09-27 |
+| Historischer Adapterstand (2026-09-27) | ADR 0035, ADR 0036 und ADR 0037 bleiben unverändert angenommen. Der ausdrücklich beauftragte netzwerkfreie Adapter-/Testslice ist implementiert und frisch selbst geprüft: 1010/1010 Adaptertests, 757/757 Foundationtests, 1767/1767 gemeinsam und 3522/3522 in der seriellen Gesamtsuite. Die Bestandsregressionen bestehen mit 423/423, 466/466 und 735/735; Build: exakt 46 Module; Bundlecheck: Exit 0, driftfrei. Als Nächstes folgt ausschließlich ein separat zu beauftragender unabhängiger Implementierungsreview mit `gpt-daybreak-blue-latest`, Reasoning `xhigh`; danach entscheidet Jan über den manuellen Commit. Reale Diagnose, Writer und Persistenz bleiben geschlossen. |
+| Status | [ADR 0041](decisions/0041-isolated-local-same-origin-sync-test.md) ist seit Jans ausdrücklicher Annahme am 2026-10-26 entschieden, funktional aber nicht umgesetzt. Die begrenzte Freigabeausnahme ist keine Umsetzungs- oder Prüferlaubnis. Unabhängiger Dokumentreview der neuen Repositoryfassungen ausstehend; alter Diagnose- und Evidenzstatus unverändert. |
+| Letzte Aktualisierung | 2026-10-26 |
+
+## ADR-0041-Annahme des isolierten Same-Origin-syncTest / 2026-10-26
+
+Jan hat das vollständige Paket
+`SO-syncTest-Korrekturentwurf-2026-10-26-v2` am 26.10.2026 (Europe/Berlin)
+ausdrücklich angenommen; [ADR 0041](decisions/0041-isolated-local-same-origin-sync-test.md)
+dokumentiert den noch nicht umgesetzten isolierten providerfreien Produktumfang.
+Der Code bleibt beim bisherigen Transport-/Gatewaystand.
+
+Nur für diesen Same-Origin-syncTest unter Windows gilt die
+[begrenzte Ausnahme](decisions/0041-isolated-local-same-origin-sync-test.md#82-angenommene-begrenzte-ausnahme)
+zu ADR 0029, der bisherigen Entwicklungsreihenfolge und ADR 0036: isolierte
+Produktkomposition und gesondert erlaubte Produktprüfung benötigen weder das
+alte Chrome-Gesamt-PASS noch abgeschlossene alte Ursachenklärung. Anstelle
+der vorgelagerten Diagnoseanforderungen gilt für diesen Umfang der angenommene
+engere Browserbetriebs-, Ressourcen- und Abnahmevertrag. Alte ADRs und der
+Diagnosepfad bleiben mit ihren offenen Nachweisen erhalten.
+
+Der nächste Schritt ist der unabhängige Dokumentreview der neuen
+Repositoryfassungen. Danach bleiben getrennt zu beauftragen: Umsetzung und
+passende Tests, gegebenenfalls notwendige Fähigkeitsprüfungen, kontrollierte
+lokale Wireprüfungen und reale isolierte Produktprüfung. Vor der Prüferlaubnis
+müssen Verfahren, Fähigkeiten, Quellen-/Assetbytes, Versionen, Konfiguration,
+Fall-/Aufbau-/Ressourcenplan, Uhr und Wartebudgets gebunden sein. Tatsächliche
+Instanzkennungen entstehen beim erlaubten Versuch; Produkt- und Abschlussbefunde
+werden anschließend abgenommen. Anwendungskomposition ist erst danach eine
+mögliche eigene Entscheidung; produktive Nutzung bleibt separat.
+
+Der synthetische Browserdienst und erforderliche Beobachtungsfähigkeiten sind
+für diesen Weg nicht als vorhanden oder praktisch bestätigt nachgewiesen.
+Der v2-Re-Review PASS / COMPLETE / annahmereif gilt nicht für diese neuen
+Dokumentbytes. ADR 0040 bleibt vorgeschlagen; `overallGate: FAIL`,
+`causeStatus: CAUSE_NOT_PROVEN`, fehlendes authentisches `A_obs`,
+`NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert. Ältere
+Prüfstände, Schrittfolgen und Rohbindungen werden nachfolgend historisch
+bewahrt; die Ausnahme ist auf ADR 0041 begrenzt.
 
 ## ADR-0036-Adapterfortsetzung / 2026-09-27
 
@@ -2806,6 +2843,15 @@ aktuellen Anforderungen mehr.
   Implementierungsslice.
 
 ### Verbindliche Slice-Reihenfolge innerhalb von v0.3.0
+
+Für den isolierten lokalen providerfreien Same-Origin-syncTest gilt seit
+2026-10-26 ausschließlich die begrenzte Ausnahme aus
+[ADR 0041, Abschnitt 8.2](decisions/0041-isolated-local-same-origin-sync-test.md#82-angenommene-begrenzte-ausnahme).
+Sie ersetzt für diesen Produktumfang die vorgelagerte alte Diagnose-/Runtime-
+Reihenfolge durch den angenommenen engeren Vertrag. Umsetzung und jede
+Prüfebene benötigen weiterhin ihren eigenen Auftrag. Die folgende alte
+Diagnosereihenfolge und deren offene Nachweise bleiben für den Diagnosepfad
+erhalten; Anwendungskomposition und produktive Nutzung sind nicht freigegeben.
 
 1. ✅ **ADR 0023 – lokaler SyncAgent, optionale Provider:** neue Zieltopologie,
    Vertrauenszonen, Providerrolle und Reihenfolge entschieden; ADR 0002 und ADR

@@ -6,7 +6,63 @@ Zusicherung einer strikt semantischen Versionierung. Ein Eintrag allein
 behauptet weder einen veröffentlichten Git-Tag noch ein veröffentlichtes
 Release.
 
-## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0039 angenommen und Adapter-CI-Joblimit angepasst; Ubuntu-CI offen; Runtimegate FAIL
+## Unveröffentlicht – v0.3.0 in Arbeit – ADR 0041 angenommen; Same-Origin-syncTest nicht umgesetzt; Ubuntu-CI offen; Runtimegate FAIL
+
+### ADR-0041-Annahme des isolierten Same-Origin-syncTest / 2026-10-26
+
+Jan hat am 26.10.2026 (Europe/Berlin) ausdrücklich erklärt: „Die v2(line536)
+ist hiermit ausdrücklich angenommen.“ Der neue
+[ADR 0041](docs/decisions/0041-isolated-local-same-origin-sync-test.md)
+übernimmt das vollständige entscheidungsrelevante Paket
+`SO-syncTest-Korrekturentwurf-2026-10-26-v2` mit Status
+`Angenommen – 2026-10-26`. Serving-/Assetvertrag, Transportprofil,
+Browserbetrieb, Ressourcenabschluss, Startsperre, Zeitregeln, Produktabnahme
+und begrenzte Freigabeordnung sind entschieden; ihre Umsetzung fehlt.
+
+Die Annahme ist an den Originalcontainer mit 117419 Bytes und den Bereich
+[49772, 117419), 67647 Bytes, Containerzeilen 536–1264, gebunden. Die drei
+ursprünglichen Größen-/SHA-256-Bindungen von Container, Teilbereich und
+Re-Review wurden ohne Normalisierung bestätigt und stehen vollständig im
+[Provenienzabschnitt](docs/decisions/0041-isolated-local-same-origin-sync-test.md#10-quellenbindung-und-reviewprovenienz).
+Das vorgelagerte alte Dokument ist keine zweite Normfassung. Der unabhängige
+Re-Review gilt mit PASS / COMPLETE / annahmereif nur für die gebundene v2;
+F1–F5 sind geschlossen. R1 ersetzt ausschließlich redaktionell den Satz
+„Kein Origin-Header ist zulässig.“ durch „Der Origin-Header darf fehlen.“
+Neue ADR-/Statusbytes sind weder rohbytegleich noch durch dieses PASS geprüft.
+Historische Selbstprüf- und Reviewberichte bleiben getrennte Herkunft.
+
+Die Ausnahme gegenüber ADR 0029, der bisherigen Entwicklungsreihenfolge und
+ADR 0036 gilt ausschließlich für den isolierten lokalen providerfreien
+Same-Origin-syncTest unter Windows: isolierte Produktkomposition und gesondert
+erlaubte Prüfung setzen weder das alte Chrome-Gesamt-PASS noch abgeschlossene
+alte Ursachenklärung voraus. Für diesen Umfang gilt der engere angenommene
+Browserbetriebs-, Ressourcen- und Abnahmevertrag. Es entsteht keine Umsetzungs-
+oder Prüferlaubnis. Prüferlaubnis, Instanzbindung und Ergebnisabnahme bleiben
+getrennt; Anwendungskomposition folgt gegebenenfalls als eigene Entscheidung.
+
+AGENTS, Entscheidungsindex, Roadmap, Architektur und Sicherheitsdokumentation
+führen diesen aktuellen Stand nach. Auch die Datenverträge werden gezielt
+nachgeführt, weil die angenommene elfgliedrige Fetchsequenz, das basic-
+Responseprofil und der Assetvertrag vom weiterhin implementierten bisherigen
+Transport-/Gatewaystand unterschieden werden müssen. Fachlicher v1-Vertrag,
+Produktionscode, Tests, Workflow und alte ADR-Hauptteile bleiben unverändert.
+Die bereits vorhandenen Ergänzungen im Entscheidungsindex bleiben erhalten;
+ADR 0040 bleibt bytegleich vorgeschlagen und unversioniert.
+
+Dieser reine Dokumentationsslice sieht statische Diff-, Vertrags-, Link-,
+UTF-8-/LF- und Schutzprüfungen sowie genau einen Build nach den fertigen
+Dokumentänderungen vor. Tatsächliche Ergebnisse, neue Rohbindungen und native
+Buildbelege werden im gesonderten Prüfvermerk geführt; dieser Eintrag nimmt
+kein Prüfergebnis vorweg. Testsuiten, Bundlechecks und Runtimeproben gehören
+nicht zum Umfang. Die Selbstprüfung ersetzt keinen unabhängigen Dokumentreview.
+Alte Ergebnisartefakte und Aggregationsbindungen werden nicht nachgezogen.
+
+Browserdienst, Kontroll- und Abschlussfähigkeiten sowie praktische Budgeteignung
+bleiben unbelegt. `overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`,
+fehlendes authentisches `A_obs`, `NOT_EVIDENCE` und `runtimeRecord:null`
+bleiben unverändert. SAC bleibt aktiviert. Nächster Schritt ist der unabhängige
+Dokumentreview der neuen Repositoryfassungen; Git-Schreibaktionen bleiben bei Jan.
+Die folgenden datierten Einträge bewahren ihre bisherigen Prüfstände und Rohhashes.
 
 ### ADR-0039-Annahme und Workflowlimit / 2026-10-04
 

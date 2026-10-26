@@ -4,7 +4,7 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0039 angenommen; Adapter-CI-Joblimit 30 Minuten; Ubuntu-CI ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
+| Projektphase | `v0.3.0 – ADR 0041 angenommen; isolierter Same-Origin-syncTest nicht umgesetzt; ADR 0040 vorgeschlagen; Ubuntu-CI ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
 | Vertragsversion | `1.0` |
 | PromptVault-Speicherschema | `2` |
 | LearningHub-Schema | `2` |
@@ -21,8 +21,54 @@
 | LichtwaldLog-Persistenznamespace | `v1` |
 | LichtwaldLog-Snapshotlimit | 500.000 UTF-16-Codeeinheiten |
 | Agenten-Scope | SyncAgent, DataAgent und TestAgent |
-| Status | [ADR 0039](decisions/0039-bounded-adapter-ci-job-timeout.md) ist nach unabhängigem Dokumentreview ausdrücklich angenommen; der Workflow begrenzt nur `adapter` auf 30 Minuten, `verify` und `aggregate` weiter auf zehn. Der frühere ADR-0038-Implementierungsreview und die lokalen Artefakte gelten nicht für die neuen Workflowbytes. Ubuntu-CI steht aus. [Aktueller Stand](../CHANGELOG.md#adr-0039-annahme-und-workflowlimit--2026-10-04). |
-| Letzte Aktualisierung | 2026-10-04 |
+| CI-Stand (ADR 0039) | [ADR 0039](decisions/0039-bounded-adapter-ci-job-timeout.md) ist nach unabhängigem Dokumentreview ausdrücklich angenommen; der Workflow begrenzt nur `adapter` auf 30 Minuten, `verify` und `aggregate` weiter auf zehn. Der frühere ADR-0038-Implementierungsreview und die lokalen Artefakte gelten nicht für die neuen Workflowbytes. Ubuntu-CI steht aus. [Aktueller Stand](../CHANGELOG.md#adr-0039-annahme-und-workflowlimit--2026-10-04). |
+| Status | [ADR 0041](decisions/0041-isolated-local-same-origin-sync-test.md) ist seit Jans ausdrücklicher Annahme am 2026-10-26 entschieden, funktional aber nicht umgesetzt. Die begrenzte Freigabeausnahme ist keine Umsetzungs- oder Prüferlaubnis. Unabhängiger Dokumentreview der neuen Repositoryfassungen ausstehend; alter Diagnose- und Evidenzstatus unverändert. |
+| Letzte Aktualisierung | 2026-10-26 |
+
+## ADR-0041-Annahme des isolierten Same-Origin-syncTest / 2026-10-26
+
+[ADR 0041](decisions/0041-isolated-local-same-origin-sync-test.md) dokumentiert
+Jans Annahme des vollständigen v2-Pakets am 2026-10-26 (Europe/Berlin). Die
+gezielte Nachführung ist erforderlich, weil das angenommene Serving- und
+Transportprofil vom implementierten Bestand abweicht. Die Umsetzung fehlt;
+der vorhandene BrowserSyncTransport bleibt zehnfeldrig mit cors-Profil, das
+Gateway ohne statischen Servingzweig. Der fachliche v1-Request mit seinen
+sechs Feldern sowie Validierung, Projektion, Korrelation und SyncResponse
+bleiben unverändert.
+
+Die [normative Fetchsequenz](decisions/0041-isolated-local-same-origin-sync-test.md#33-geschlossene-fetchargumente-und-normative-own-key-sequenz)
+lautet exakt: `method, mode, credentials, cache, redirect, referrerPolicy,
+referrer, keepalive, headers, body, signal`. Die neuen Bindungen sind
+`mode: "same-origin"`, `referrerPolicy: "same-origin"`, `referrer: ""`
+an Position 7 und ausschließlich `type === "basic"`. Eigene aufzählbare
+Dateneigenschaften, Nullprototyp, Freeze, feste Werte und diese Reihenfolge
+bleiben geschlossen; bloße Gleichheit der Schlüsselmenge genügt nicht.
+Headerrecord, einmalig erzeugter Body und internes Signal folgen dem ADR.
+Die 5.000-ms-Transportdeadline und Responsegrenze von 16.384 Bytes bleiben;
+Produkterfolg verlangt zusätzlich zum Service-Result
+`syncResponse.success === true`.
+
+Der [Assetvertrag](decisions/0041-isolated-local-same-origin-sync-test.md#31-serving-origin-api-und-geschlossener-assetvertrag)
+bindet eine geschlossene HTML-/JavaScript-/CSS-Liste, exakte Pfade und Host,
+GET/HEAD, leeren Requestbody sowie höchstens 65.536 Bytes je Assetresponse.
+HEAD liefert keine Bodybytes und die Content-Length der GET-Repräsentation.
+Asset-Origin darf fehlen; bei Vorhandensein ist genau die feste Origin
+zulässig. Die API benötigt sie weiterhin genau einmal. Der Assetcap ist
+vom APIrequestcap und Transportresponsecap getrennt; gemeinsame HTTPgrenzen
+werden nicht gelockert. R1 präzisiert nur die bereits festgelegte erlaubte
+Abwesenheit der Asset-Origin.
+
+[Abschnitt 8](decisions/0041-isolated-local-same-origin-sync-test.md#8-status-und-getrennte-freigabezeitpunkte)
+begrenzt die Ausnahme zu ADR 0029, Entwicklungsreihenfolge und ADR 0036 und
+trennt Prüferlaubnis, Instanzbindung und Ergebnisabnahme. Die Annahme erlaubt
+keine Umsetzung oder Prüfung. Browserdienst und erforderliche Fähigkeiten
+sind für diesen Weg noch nicht nachgewiesen; Anwendungskomposition bleibt
+separat. Der v2-Review wird nicht auf neue Repositorybytes übertragen.
+ADR 0040 bleibt vorgeschlagen; `overallGate: FAIL`,
+`causeStatus: CAUSE_NOT_PROVEN`, fehlendes authentisches `A_obs`,
+`NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert. Die folgenden
+historischen Prüfstände und Bestandsverträge werden nicht auf die neue
+Entscheidung als Umsetzungsevidenz übertragen.
 
 ## ADR-0038-Lokale Neubindung / 2026-10-03
 
@@ -3395,6 +3441,10 @@ seiteneffektfreie gewöhnliche Werte arbeitet der Service deterministisch und
 ohne Inputmutation.
 
 ## Aktuell implementierter isolierter Browser SyncTransport
+
+Der folgende Abschnitt beschreibt den bisherigen implementierten Bestand. Das
+angenommene, noch nicht umgesetzte Same-Origin-Delta steht in
+[ADR 0041](decisions/0041-isolated-local-same-origin-sync-test.md).
 
 `src/transports/browserSyncTransport.js` exportiert ausschließlich
 `createBrowserSyncTransport`. Eine bestandene Factory liefert eine frische
