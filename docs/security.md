@@ -4,10 +4,56 @@
 
 | Feld | Wert |
 | --- | --- |
-| Projektphase | `v0.3.0 – ADR 0039 angenommen; Adapter-CI-Joblimit 30 Minuten; Ubuntu-CI ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
+| Projektphase | `v0.3.0 – ADR 0041 angenommen; isolierter Same-Origin-syncTest nicht umgesetzt; ADR 0040 vorgeschlagen; Ubuntu-CI ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN` |
 | Geltungsbereich | Version 1 und Portfolio-Demo |
-| Status | [ADR 0039](decisions/0039-bounded-adapter-ci-job-timeout.md) ist nach unabhängigem Dokumentreview ausdrücklich angenommen; der Workflow begrenzt nur `adapter` auf 30 Minuten, `verify` und `aggregate` weiter auf zehn. Der frühere ADR-0038-Implementierungsreview und die lokalen Artefakte gelten nicht für die neuen Workflowbytes. Ubuntu-CI steht aus. [Aktueller Stand](../CHANGELOG.md#adr-0039-annahme-und-workflowlimit--2026-10-04). |
-| Letzte Aktualisierung | 2026-10-04 |
+| CI-Stand (ADR 0039) | [ADR 0039](decisions/0039-bounded-adapter-ci-job-timeout.md) ist nach unabhängigem Dokumentreview ausdrücklich angenommen; der Workflow begrenzt nur `adapter` auf 30 Minuten, `verify` und `aggregate` weiter auf zehn. Der frühere ADR-0038-Implementierungsreview und die lokalen Artefakte gelten nicht für die neuen Workflowbytes. Ubuntu-CI steht aus. [Aktueller Stand](../CHANGELOG.md#adr-0039-annahme-und-workflowlimit--2026-10-04). |
+| Status | [ADR 0041](decisions/0041-isolated-local-same-origin-sync-test.md) ist seit Jans ausdrücklicher Annahme am 2026-10-26 entschieden, funktional aber nicht umgesetzt. Die begrenzte Freigabeausnahme ist keine Umsetzungs- oder Prüferlaubnis. Unabhängiger Dokumentreview der neuen Repositoryfassungen ausstehend; alter Diagnose- und Evidenzstatus unverändert. |
+| Letzte Aktualisierung | 2026-10-26 |
+
+## ADR-0041-Annahme des isolierten Same-Origin-syncTest / 2026-10-26
+
+Jan hat am 2026-10-26 (Europe/Berlin) das vollständige v2-Paket angenommen;
+[ADR 0041](decisions/0041-isolated-local-same-origin-sync-test.md) bindet die
+Sicherheits-, Browserbetriebs-, Ressourcen- und Abnahmeregeln des isolierten
+providerfreien Same-Origin-syncTest. Die Umsetzung fehlt; der Code bleibt
+beim bisherigen Transport-/Gatewaystand. SAC bleibt aktiviert.
+
+Die [begrenzte Ausnahme](decisions/0041-isolated-local-same-origin-sync-test.md#82-angenommene-begrenzte-ausnahme)
+gegenüber ADR 0029, der bisherigen Entwicklungsreihenfolge und ADR 0036
+ersetzt ausschließlich für diesen Produktumfang die vorgelagerten alten
+Diagnoseanforderungen durch den engeren angenommenen Vertrag. Altes
+Chrome-Gesamt-PASS und abgeschlossene alte Ursachenklärung sind dafür keine
+Vorbedingungen mehr. Vollständige Windows-Prozessbaumownership, adversarial
+abgesicherte Pfadbereinigung, authentisches A_obs und unabhängige
+Ausgabeversiegelung gelten dadurch weder als erfüllt noch als behoben.
+Private Fachmodule, Provider, Anwendungskomposition und produktive Nutzung
+gehören nicht zur Ausnahme; bestehende Diagnoseverträge bleiben erhalten.
+
+Ein geliehener synthetischer Browserdienst muss vor der Prüferlaubnis gebunden
+sein; ein eigener frischer Nichtdefault-Kontext, bestätigtes Disposal,
+Rückprüfung und Targetzuordnung sind erforderlich. Für diesen Betriebsweg
+sind Dienstbereitstellung und notwendige Fähigkeiten noch nicht belegt.
+Kontextende bestätigt keine globale Restefreiheit. Eigene Prozesse, Listener,
+Sockets, Fixtures, Kontrollobjekte und gegebenenfalls Hilfsdateien behalten
+getrennte Abschlusskriterien; fremde Bestände werden nicht berührt.
+
+Jeder bestätigungspflichtige Aufbauschritt benötigt ein positives endliches
+Wartebudget. Fehlende vollständige Bestätigung setzt t₀ am festen Warteende;
+späte Verarbeitung startet keine neue Frist. Die Abschlussgrenzen +10, +30,
++50, +85 und +90 Sekunden verlangen vollständige Bestätigung streng vor der
+jeweiligen Grenze; ihre praktische Eignung ist nicht nachgewiesen. Ressourcen-
+FAIL oder Ressourcen-UNPROVEN sperrt weitere automatische Produktläufe, auch
+nach Dienstwechsel. Aufhebung verlangt geklärte Restlage, behandelten Fehler
+und Jans ausdrückliche Bestätigung; späterer Cleanup heilt keinen früheren Lauf.
+
+Die Annahme erteilt keine Umsetzungs- oder Prüferlaubnis. Netzwerkfreie Tests,
+lokale Wireprüfungen, nötige Fähigkeitsprüfungen und reale Produktprüfung
+bleiben getrennt zu beauftragen. Der v2-Re-Review PASS / COMPLETE / annahmereif
+gilt ausschließlich für die gebundene Quelle; die neuen Repositoryfassungen
+benötigen einen unabhängigen Dokumentreview. ADR 0040 bleibt vorgeschlagen;
+`overallGate: FAIL`, `causeStatus: CAUSE_NOT_PROVEN`, fehlendes authentisches
+`A_obs`, `NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert.
+Die folgenden datierten Abschnitte behalten ihren historischen Bezug.
 
 ## ADR-0038-Lokale Neubindung / 2026-10-03
 
@@ -776,6 +822,10 @@ Mehrfache Signale oder fehlschlagende Cleanup-Versuche führen weder zu einer
 zweiten Meldung noch zu einer unbehandelten Exception.
 
 #### Aktuell implementierte isolierte BrowserSyncTransport-Sicherheitsgrenze
+
+Der folgende Abschnitt beschreibt den bisherigen implementierten Bestand. Das
+angenommene, noch nicht umgesetzte Same-Origin-Delta steht in
+[ADR 0041](decisions/0041-isolated-local-same-origin-sync-test.md).
 
 `src/transports/browserSyncTransport.js` implementiert die von ADR 0027
 korrigierte Zone-A-Grenze mit ausschließlich dem Export

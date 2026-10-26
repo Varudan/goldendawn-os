@@ -19,7 +19,45 @@ gleichwertige Ziele.
 
 ## Aktuelle Projektphase
 
-Aktueller Stand: `v0.3.0 – ADR 0039 angenommen; Adapter-CI-Joblimit auf 30 Minuten gesetzt; tatsächliche Ubuntu-CI ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+Aktueller Stand: `v0.3.0 – ADR 0041 angenommen; isolierter Same-Origin-syncTest nicht umgesetzt; ADR 0040 vorgeschlagen; Ubuntu-CI ausstehend; Foundationbaseline 757/757 unverändert; overallGate FAIL; causeStatus CAUSE_NOT_PROVEN`
+
+### ADR-0041-Annahme des isolierten Same-Origin-syncTest / 2026-10-26
+
+Jan hat am 2026-10-26 (Europe/Berlin) das vollständige Paket
+`SO-syncTest-Korrekturentwurf-2026-10-26-v2` ausdrücklich angenommen.
+[ADR 0041](docs/decisions/0041-isolated-local-same-origin-sync-test.md)
+dokumentiert diese Entscheidung einschließlich Serving-/Assetvertrag,
+Transportprofil, Browserbetrieb, Ressourcenabschluss, Startsperre, Zeitregeln,
+Produktabnahme und begrenzter Freigabeordnung. Die funktionale Umsetzung fehlt;
+der Code verwendet weiterhin den bisherigen Transport-/Gatewaystand.
+
+Ausschließlich für den isolierten lokalen providerfreien Same-Origin-syncTest
+unter Windows entfällt das alte Chrome-Gesamt-PASS samt abgeschlossener alter
+Ursachenklärung als Voraussetzung der isolierten Produktkomposition und ihrer
+gesondert erlaubten Prüfung. Die vorgelagerten Diagnoseanforderungen aus
+ADR 0029, der bisherigen Entwicklungsreihenfolge und ADR 0036 werden nur für
+diesen Produktumfang durch den engeren angenommenen Browserbetriebs-,
+Ressourcen- und Abnahmevertrag ersetzt. Die genaue Wirkung steht in
+[ADR 0041, Abschnitt 8](docs/decisions/0041-isolated-local-same-origin-sync-test.md#8-status-und-getrennte-freigabezeitpunkte).
+
+Die Annahme erlaubt keine Umsetzung oder Prüfung. Umsetzung, passende Tests,
+erforderliche Fähigkeitsprüfungen und reale Produktprüfung bleiben gesondert
+zu beauftragen; Anwendungskomposition ist erst ein möglicher eigener
+Entscheidungsslice nach isolierter Ergebnisabnahme. Der geliehene synthetische
+Browserdienst und notwendige Beobachtungsfähigkeiten sind für diesen Weg
+weder als vorhanden noch praktisch bestätigt nachgewiesen. Ressourcen-FAIL
+oder Ressourcen-UNPROVEN sperrt weitere automatische Produktläufe bis zur
+gesonderten Klärung und Jans ausdrücklicher Aufhebung nach ADR 0041, Abschnitt 6.4.
+
+Der Re-Review lautet PASS / COMPLETE / annahmereif ausschließlich für die
+gebundene v2; F1–F5 sind geschlossen. R1 ist redaktionell klargestellt.
+Quellenbindung und Reviewgrenzen stehen im ADR; das PASS gilt nicht für diese
+neuen Repositoryfassungen. Nächster Schritt ist deren unabhängiger Dokumentreview.
+ADR 0040 bleibt vorgeschlagen; `overallGate: FAIL`,
+`causeStatus: CAUSE_NOT_PROVEN`, fehlendes authentisches `A_obs`,
+`NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert. SAC bleibt aktiviert.
+Die folgenden datierten Stände und ihre Nachweise bleiben historisch erhalten;
+ältere umfassende Reihenfolgesperren gelten mit dieser eng begrenzten Ausnahme.
 
 ### ADR-0039-Annahme und Workflowlimit / 2026-10-04
 
@@ -1270,6 +1308,15 @@ Nicht Bestandteil des veröffentlichten `v0.2.0` waren:
 
 ## Verbindliche Entwicklungsreihenfolge
 
+Für den isolierten lokalen providerfreien Same-Origin-syncTest gilt seit
+2026-10-26 ausschließlich die begrenzte Ausnahme aus
+[ADR 0041, Abschnitt 8.2](docs/decisions/0041-isolated-local-same-origin-sync-test.md#82-angenommene-begrenzte-ausnahme).
+Sie ersetzt für diesen Produktumfang die vorgelagerte alte Diagnose-/Runtime-
+Reihenfolge durch den angenommenen engeren Vertrag. Umsetzung und jede
+Prüfebene benötigen weiterhin ihren eigenen Auftrag. Die folgende alte
+Diagnosereihenfolge und deren offene Nachweise bleiben für den Diagnosepfad
+erhalten; Anwendungskomposition und produktive Nutzung sind nicht freigegeben.
+
 Korrekturreview und Jans unveränderter Korrekturcommit sind abgeschlossen;
 der ADR-0036-Load-/Hashabgleich ist dokumentiert. Vor der unten beschriebenen
 Adapterfortsetzung stehen ausschließlich der separat beauftragte unabhängige
@@ -1440,6 +1487,11 @@ ausdrücklich verlangt und die dafür notwendige Architekturentscheidung nicht
 dokumentiert wurde.
 
 ## Aktueller Scope für v0.3.0
+
+Der zusätzliche angenommene, noch nicht umgesetzte Produktumfang ist in
+[ADR 0041](docs/decisions/0041-isolated-local-same-origin-sync-test.md) begrenzt.
+Die nachfolgenden Bestandsverträge beschreiben weiterhin den bisherigen Code;
+das neue Serving- und Transportprofil ist kein Implementierungsnachweis.
 
 Die implementierte `SyncContract Foundation` bleibt der reine
 transportneutrale Contract-Kern für Version `1.0`, die Aktion `syncTest` und den

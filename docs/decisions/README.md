@@ -6,6 +6,31 @@ Konsequenzen und Bedingungen für eine spätere Neubewertung.
 
 ## Entscheidungsübersicht
 
+### ADR-0041-Annahme des isolierten Same-Origin-syncTest / 2026-10-26
+
+[ADR 0041](0041-isolated-local-same-origin-sync-test.md) dokumentiert Jans
+bereits erfolgte ausdrückliche Annahme des vollständigen Pakets
+`SO-syncTest-Korrekturentwurf-2026-10-26-v2` am 26.10.2026 (Europe/Berlin).
+Serving-/Assetvertrag, elfgliedriges Fetchprofil, geliehener synthetischer
+Browserdienst mit eigenem Nichtdefault-Kontext, Ressourcenabschluss,
+Startsperre, Zeitregeln und Produktabnahme sind entschieden; die Umsetzung fehlt.
+
+Die [begrenzte Ausnahme](0041-isolated-local-same-origin-sync-test.md#82-angenommene-begrenzte-ausnahme)
+zu ADR 0029, der bisherigen Entwicklungsreihenfolge und ADR 0036 gilt nur für
+diesen isolierten providerfreien Produktumfang. Sie erlaubt keine Umsetzung
+oder Prüfung und ersetzt keinen älteren ADR pauschal. Anwendungskomposition,
+produktive Nutzung und der alte Diagnosepfad behalten ihre getrennten Grenzen.
+
+Der gebundene v2-Re-Review lautet PASS / COMPLETE / annahmereif, F1–F5 sind
+geschlossen; R1 ist redaktionell präzisiert. Das PASS gilt nicht für den neuen
+ADR oder die nachgeführten Repositorydateien. Ihre unabhängige Dokumentprüfung
+steht aus. Browserdienst und erforderliche Beobachtungsfähigkeiten sind für
+diesen Weg nicht als vorhanden oder praktisch bestätigt nachgewiesen.
+ADR 0040 bleibt vorgeschlagen; `overallGate: FAIL`,
+`causeStatus: CAUSE_NOT_PROVEN`, fehlendes authentisches `A_obs`,
+`NOT_EVIDENCE` und `runtimeRecord:null` bleiben unverändert.
+Die folgenden datierten Abschnitte behalten ihren historischen Bezug.
+
 ### ADR-0040-Diagnosehostvorschlag / 2026-10-07
 
 Jan hat ausschließlich die dokumentarische Ausarbeitung der
@@ -249,6 +274,7 @@ Load-/Hashabgleich für diese Korrektur.
 | [0037](0037-browser-sync-transport-diagnostic-foundation-observation-close-notification.md) | BrowserSyncTransport Diagnostic Foundation Observation-Close Notification | Angenommen |
 | [0038](0038-isolated-ci-test-grouping-for-diagnostic-adapter.md) | Isolierte CI-Testgruppierung der ADR-0036-Adaptersuite | Angenommen – 2026-09-28 |
 | [0039](0039-bounded-adapter-ci-job-timeout.md) | Begrenzte Anhebung des Adapter-CI-Joblimits | Angenommen – 2026-10-04, ausdrücklich durch Jan |
+| [0041](0041-isolated-local-same-origin-sync-test.md) | Isolierter lokaler Same-Origin-syncTest mit eigenem Browserbetriebs-, Ressourcen- und Abnahmevertrag | Angenommen – 2026-10-26, ausdrücklich durch Jan; nicht umgesetzt |
 
 Der unabhängige Astra-Review hat die R1–R4-Dokumentkorrektur von ADR 0036
 im eng begrenzten Dokumentationsscope mit PASS abgeschlossen. Er gilt nur für
