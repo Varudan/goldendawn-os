@@ -240,34 +240,154 @@ test('production and test factories do not read options or effect ports', () => 
   assert.deepEqual(h.counts(), { fs: 0, uuid: 0, spawn: 0, socket: 0, clock: 0, timer: 0, cancel: 0, adds: 0, removes: 0, childChecks: 0 })
 })
 
-test('actual fresh module import and production factory are inert for native effects', async () => {
+let importProbeSequence = 0, importLoaderRegistered = false
+async function observeNativeImport(specifier) {
   const { default: filesystem } = await import('node:fs')
   const { default: processes } = await import('node:child_process')
-  const { syncBuiltinESMExports } = await import('node:module')
-  const saved = [], calls = []
-  let loaderReads = 0
-  function trap(target, key) {
-    const original = target[key]
-    saved.push(() => { target[key] = original })
-    target[key] = (...args) => {
-      // Loading this source is Node's effect, not module evaluation. Only the
-      // loader's own read call is exempt; evaluated host reads still fail.
-      if (key === 'openSync' && new Error().stack.includes('node:internal/modules/esm/load:')) {
-        loaderReads++
-        return original(...args)
-      }
-      calls.push(key); throw new Error(`Forbidden import effect: ${key}`)
-    }
+  const { register, syncBuiltinESMExports } = await import('node:module')
+  if (!importLoaderRegistered) {
+    // Async customization hooks load in Node's separate loader thread. Delegate
+    // unchanged bytes to the real file loader; evaluation stays in this guarded
+    // thread. No main-thread filesystem call gets a loader exception. The hook
+    // lives only in this test-file process (register has no cross-version undo).
+    const loader = 'export async function load(url, context, nextLoad) { return nextLoad(url, context) }'
+    register(`data:text/javascript,${encodeURIComponent(loader)}`, import.meta.url)
+    importLoaderRegistered = true
+  }
+  const saved = [], calls = [], evaluations = []
+  let loaded, host, error, phase = 'import'
+  function trap(target, key, replacement) {
+    const descriptor = Object.getOwnPropertyDescriptor(target, key)
+    saved.push({ target, key, descriptor })
+    Object.defineProperty(target, key, { configurable: true, writable: true,
+      enumerable: descriptor?.enumerable ?? true,
+      value: replacement ?? function () {
+        calls.push(key)
+        throw new Error(`Forbidden import effect: ${key}`)
+      } })
   }
   try {
-    for (const key of ['openSync', 'writeSync', 'mkdirSync', 'fsyncSync']) trap(filesystem, key)
+    const originalJoin = win32.join
+    // These two initializers belong to the unchanged host's module body, not
+    // its factory. Observe them only while import is pending. Unlike a different
+    // export identity alone, this rejects even a previously cached query URL.
+    trap(win32, 'join', function (...args) {
+      if (phase === 'import' && args[0] === ROOT) evaluations.push(args.slice())
+      return Reflect.apply(originalJoin, win32, args)
+    })
+    for (const key of ['openSync', 'readFileSync', 'writeSync', 'mkdirSync', 'fsyncSync']) trap(filesystem, key)
     trap(processes, 'spawn'); trap(globalThis, 'WebSocket'); trap(globalThis, 'setTimeout')
     syncBuiltinESMExports()
-    const fresh = await import('../scripts/browser/nodeCdpOperatorHost.js?inert-import')
-    fresh.createNodeCdpOperatorHost(CONFIG)
-  } finally { for (const restore of saved.reverse()) restore(); syncBuiltinESMExports() }
-  assert.deepEqual(calls, [])
-  assert.ok(loaderReads > 0, 'the actual source file was loaded under observation')
+    loaded = await import(specifier)
+    phase = 'factory'
+    host = loaded.createNodeCdpOperatorHost(CONFIG)
+  } catch (caught) { error = caught }
+  finally {
+    for (const { target, key, descriptor } of saved.toReversed()) {
+      if (descriptor) Object.defineProperty(target, key, descriptor)
+      else Reflect.deleteProperty(target, key)
+    }
+    syncBuiltinESMExports()
+  }
+  // Neither swallowed hook errors nor failed imports can satisfy these checks.
+  for (const { target, key, descriptor } of saved) {
+    assert.deepEqual(Object.getOwnPropertyDescriptor(target, key), descriptor, `restored ${key}`)
+  }
+  return { loaded, host, error, calls, evaluations }
+}
+
+function assertFreshNativeImport(observation, cached) {
+  assert.equal(observation.error, undefined, 'import and factory must complete without loader/fixture errors')
+  assert.deepEqual(observation.evaluations, [[ROOT, 'reservation.json'], [ROOT, 'synthetic-profile']],
+    'fresh module evaluation required')
+  assert.notEqual(observation.loaded, cached, 'fresh module namespace required')
+  // A function declaration is instantiated anew by module evaluation. Reading
+  // bytes alone cannot produce this witness; a cached namespace fails it.
+  assert.notEqual(observation.loaded.createNodeCdpOperatorHost, cached.createNodeCdpOperatorHost,
+    'fresh production factory identity required')
+  assert.equal(observation.host.inspect().phase, 'NEW')
+  assert.deepEqual(observation.calls, [], 'no native import or factory effects')
+}
+
+test('actual fresh module import and production factory are inert for native effects', async () => {
+  const cached = await import('../scripts/browser/nodeCdpOperatorHost.js')
+  const source = new globalThis.URL('../scripts/browser/nodeCdpOperatorHost.js', import.meta.url)
+  source.searchParams.set('inert-import', String(++importProbeSequence))
+  assertFreshNativeImport(await observeNativeImport(source.href), cached)
+})
+
+test('import observation rejects a reused cache import at the freshness witness', async () => {
+  const canonical = await import('../scripts/browser/nodeCdpOperatorHost.js')
+  const source = new globalThis.URL('../scripts/browser/nodeCdpOperatorHost.js', import.meta.url)
+  source.searchParams.set('inert-import', String(++importProbeSequence))
+  const cached = await import(source.href)
+  const observation = await observeNativeImport(source.href)
+  assert.equal(observation.error, undefined)
+  assert.equal(observation.loaded, cached)
+  assert.equal(observation.loaded.createNodeCdpOperatorHost, cached.createNodeCdpOperatorHost)
+  assert.notEqual(observation.loaded, canonical, 'a distinct namespace alone is insufficient')
+  assert.deepEqual(observation.evaluations, [])
+  assert.deepEqual(observation.calls, [])
+  assert.throws(() => assertFreshNativeImport(observation, canonical),
+    { code: 'ERR_ASSERTION', message: /fresh module evaluation required/ })
+})
+
+const importEffects = {
+  // Read the very same file the loader needs: no path-based exception may leak.
+  openSync: 'fs.openSync(new URL(import.meta.url), "r")',
+  readFileSync: 'fs.readFileSync(new URL(import.meta.url))',
+  writeSync: 'fs.writeSync(-1, "synthetic")',
+  mkdirSync: 'fs.mkdirSync(null)',
+  fsyncSync: 'fs.fsyncSync(-1)',
+  // Invalid arguments also prevent real effects if a guard regresses.
+  spawn: 'spawn()',
+  WebSocket: 'new WebSocket("synthetic:forbidden")',
+  setTimeout: 'setTimeout(null, 0)',
+}
+for (const [effect, expression] of Object.entries(importEffects)) {
+  test(`import observation rejects swallowed ${effect} in evaluation and factory`, async (t) => {
+    const { pathToFileURL } = await import('node:url')
+    const cached = await import('../scripts/browser/nodeCdpOperatorHost.js')
+    const directory = mkdtempSync(join(tmpdir(), 'goldendawn-import-guard-'))
+    try {
+      for (const phase of ['evaluation', 'factory']) {
+        const attempt = `try { ${expression} } catch { /* deliberately swallowed */ }`
+        const source = `import * as fs from 'node:fs'\nimport { spawn } from 'node:child_process'\n` +
+          `import { win32 } from 'node:path'\n` +
+          `win32.join(${JSON.stringify(ROOT)}, 'reservation.json')\n` +
+          `win32.join(${JSON.stringify(ROOT)}, 'synthetic-profile')\n` +
+          `${phase === 'evaluation' ? attempt : ''}\nexport const evaluated = true\n` +
+          `export function createNodeCdpOperatorHost() {\n${phase === 'factory' ? attempt : ''}\n` +
+          `return { inspect: () => ({ phase: 'NEW' }) }\n}\n`
+        const file = join(directory, `${effect}-${phase}.mjs`)
+        realFs.writeFileSync(file, source, { flag: 'wx' })
+        // The complete tiny fixture and its raw hash are recorded before import.
+        t.diagnostic(JSON.stringify({ effect, phase, file, source, bytes: Buffer.byteLength(source),
+          sha256: createHash('sha256').update(source).digest('hex') }))
+        const observation = await observeNativeImport(pathToFileURL(file).href)
+        assert.equal(observation.error, undefined, 'not a loader, syntax or fixture rejection')
+        assert.equal(observation.loaded.evaluated, true)
+        assert.equal(observation.host.inspect().phase, 'NEW')
+        assert.deepEqual(observation.calls, [effect], 'the intended guard must actually fire exactly once')
+        assert.throws(() => assertFreshNativeImport(observation, cached),
+          { code: 'ERR_ASSERTION', message: /no native import or factory effects/ })
+      }
+    } finally { rmSync(directory, { recursive: true, force: true }) }
+  })
+}
+
+test('import observation restores an absent WebSocket property even after import failure', async () => {
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'WebSocket')
+  try {
+    Reflect.deleteProperty(globalThis, 'WebSocket')
+    const observation = await observeNativeImport('data:text/javascript,throw new Error("synthetic import failure")')
+    assert.equal(observation.error?.message, 'synthetic import failure')
+    assert.deepEqual(observation.calls, [])
+    assert.equal(Object.hasOwn(globalThis, 'WebSocket'), false)
+  } finally {
+    if (descriptor) Object.defineProperty(globalThis, 'WebSocket', descriptor)
+    else Reflect.deleteProperty(globalThis, 'WebSocket')
+  }
 })
 
 test('missing history never grants initial clearance; malformed and asynchronous statements are refused', () => {
