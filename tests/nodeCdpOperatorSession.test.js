@@ -4,7 +4,7 @@ import assert from 'node:assert/strict'
 import * as realFs from 'node:fs'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join, win32 } from 'node:path'
+import { join, posix, win32 } from 'node:path'
 import { createHash } from 'node:crypto'
 import { EventEmitter } from 'node:events'
 import { runInNewContext } from 'node:vm'
@@ -22,6 +22,47 @@ const VERSION = { protocolVersion: '1.3', product: 'Chrome/synthetic', revision:
   userAgent: 'synthetic-agent', jsVersion: 'synthetic-js' }
 const URL = 'ws://127.0.0.1:9222/devtools/browser/synthetic-browser'
 const ioError = (code = 'EIO') => Object.assign(new Error('synthetic IO error'), { code })
+
+function temporaryEvidencePath(directory, name) {
+  const relative = win32.relative(SESSION_EVIDENCE_ROOT, name), segments = relative.split('\\')
+  assert.ok(!win32.isAbsolute(relative) && !segments.includes('..'), 'evidence stays inside its own temporary directory')
+  return join(directory, ...segments)
+}
+
+for (const [site, index] of [['exclusive-files', 0], ['publication-files', 1]]) {
+  for (const [platform, paths, directory] of [
+    ['POSIX', posix, '/tmp/goldendawn-path-fixture'],
+    ['Windows', win32, 'C:\\Temp\\goldendawn-path-fixture'],
+  ]) {
+    for (const entry of [
+      { level: 'root', suffix: '', posix: '/tmp/goldendawn-path-fixture', windows: 'C:\\Temp\\goldendawn-path-fixture' },
+      { level: 'session', suffix: '\\node-cdp-session-synthetic-1',
+        posix: '/tmp/goldendawn-path-fixture/node-cdp-session-synthetic-1',
+        windows: 'C:\\Temp\\goldendawn-path-fixture\\node-cdp-session-synthetic-1' },
+      { level: 'file', suffix: '\\node-cdp-session-synthetic-1\\001-binding.json',
+        posix: '/tmp/goldendawn-path-fixture/node-cdp-session-synthetic-1/001-binding.json',
+        windows: 'C:\\Temp\\goldendawn-path-fixture\\node-cdp-session-synthetic-1\\001-binding.json' },
+    ]) {
+      test(`temporary evidence path ${site} ${platform} ${entry.level}`, () => {
+        // Evaluate the two actual filesystem-overlay map expressions, with only
+        // the native join substituted. No real POSIX filesystem is claimed.
+        const source = realFs.readFileSync(new globalThis.URL(import.meta.url), 'utf8')
+        const mappings = [...source.matchAll(/^ {2,4}const map = (.+)$/gm)]
+        assert.equal(mappings.length, 2, 'both actual filesystem-overlay mappings are covered')
+        const map = runInNewContext(`(${mappings[index][1]})`, {
+          directory, join: paths.join, win32, SESSION_EVIDENCE_ROOT,
+          temporaryEvidencePath: runInNewContext(`(${temporaryEvidencePath.toString()})`, {
+            join: paths.join, win32, SESSION_EVIDENCE_ROOT, assert,
+          }),
+        })
+        const actual = map(SESSION_EVIDENCE_ROOT + entry.suffix)
+        assert.equal(actual, platform === 'POSIX' ? entry.posix : entry.windows,
+          `${site} must preserve the independently specified ${platform} ${entry.level} hierarchy`)
+        if (platform === 'POSIX') assert.equal(actual.includes('\\'), false, 'no embedded Windows separator')
+      })
+    }
+  }
+}
 
 function fixture(settings = {}) {
   const files = settings.files ?? new Map([[EXE, Buffer.from(EXE_BYTES)]])
@@ -491,7 +532,7 @@ test('real own temporary evidence files are exclusive, hashed, flushed and close
   const directory = mkdtempSync(join(tmpdir(), 'goldendawn-session-files-'))
   try {
     const h = sessionFixture(), mem = h.ports.fs, nativeFds = new Set()
-    const map = (name) => join(directory, win32.relative(SESSION_EVIDENCE_ROOT, name))
+    const map = (name) => temporaryEvidencePath(directory, name)
     const isEvidence = (name) => typeof name === 'string' && name.startsWith(SESSION_EVIDENCE_ROOT)
     const overlay = { ...mem,
       lstatSync: name => isEvidence(name) ? realFs.lstatSync(map(name)) : mem.lstatSync(name),
@@ -1317,7 +1358,7 @@ for (const method of ['openSync', 'writeSync', 'fsyncSync', 'fstatSync', 'readSy
 
 function physicalPublicationFiles(h, directory) {
   const mem = h.sessionPorts.fs, nativeFds = new Map(), steps = []
-  const map = name => join(directory, win32.relative(SESSION_EVIDENCE_ROOT, name))
+  const map = name => temporaryEvidencePath(directory, name)
   const isEvidence = name => typeof name === 'string' && name.startsWith(SESSION_EVIDENCE_ROOT)
   const overlay = { ...mem,
     lstatSync: name => isEvidence(name) ? realFs.lstatSync(map(name)) : mem.lstatSync(name),
