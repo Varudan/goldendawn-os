@@ -527,13 +527,26 @@ function createHost(options, suppliedPorts) {
 
   function inspect() {
     if (phase === 'READY') serviceCurrent()
+    // Observation survives end(); it grants no lease and exposes no live reference.
+    let associated = false
+    try {
+      associated = !!service?.spawned && !service.lost && service.child === service.reference &&
+        service.child.pid === service.pid && service.child.spawnfile === configuration.chromeExecutable &&
+        service.child.exitCode === null && service.child.signalCode === null && service.child.killed === false &&
+        !service.processExited && !service.processClosed
+    } catch { /* Missing or contradictory observation is never confirmation. */ }
+    const processObservation = frozen({ status: associated ? 'CONFIRMED' : 'UNPROVEN',
+      pid: service?.pid ?? null, executable: service?.reference ? configuration.chromeExecutable : null,
+      referenceObservedAtMonotonic: service?.startedAt ?? null,
+      sessionId: session?.id ?? null, sessionGeneration: session?.generation ?? null,
+      serviceId: service?.id ?? null, serviceGeneration: service?.generation ?? null })
     return frozen({ phase, blocked, ended, reserved, directory: NODE_CDP_OPERATOR_DIRECTORY,
       sessionId: session?.id ?? null, sessionGeneration: session?.generation ?? null,
       serviceId: service?.id ?? null, serviceGeneration: service?.generation ?? null,
       serviceLost: service?.lost ?? false, processExited: service?.processExited ?? false,
       processClosed: service?.processClosed ?? false, outputClosed: service?.outputClosed ?? false,
       processRegistrations: service?.monitorState ?? 'notAttempted',
-      resources: serviceResources(),
+      resources: serviceResources(), processObservation,
       binding: service?.binding ?? null, preparation: preparationReport, activeRun: activeRun ?? null })
   }
 

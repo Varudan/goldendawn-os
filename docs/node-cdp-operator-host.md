@@ -236,6 +236,27 @@ Fehlercodes. Browserprozess und synthetisches Profil bleiben gesondert gehaltene
 Dienstressourcen. Der anschließende Kontrolllauf startet keinen Browser,
 erzeugt kein Profil und beendet den Dienst nicht.
 
+## Lesende Prozessprojektion für die Operatorsitzung
+
+`inspect().processObservation` ergänzt ausschließlich eine eingefrorene
+Projektion: `status`, bestätigte `pid` (sonst `null`), gebundener `executable`,
+`referenceObservedAtMonotonic` und die vier Sitzungs-/Dienstidentitäten.
+Der monotone Wert bezeichnet die bisherige Beobachtung der übernommenen
+Prozessreferenz, **keine Betriebssystem-Prozessstartzeit**. Die Projektion
+enthält keine ChildProcess-, Stream-, Token- oder andere veränderbare Referenz.
+
+`CONFIRMED` verlangt die gehaltene Referenz, bestätigten Spawn, passende PID
+und Programmauswahl, unverlorene Zuordnung und fehlende Exit-/Close-/Killbefunde.
+Vor Spawn, bei Widerspruch oder Prozessende bleibt die Zuordnung `UNPROVEN`.
+Die früher bestätigte PID bleibt für die Restlage sichtbar. `end()` widerruft
+die Sitzung, lässt aber die Beobachtung derselben Dienstgeneration bestehen.
+Dies schafft weder eine neue Startberechtigung noch einen atomaren OS-Beweis.
+Es gibt keine neue Start-, Kill-, Close-, Reset- oder Entsperrmethode.
+
+Die [Operatorsitzung](node-cdp-operator-session.md) nutzt diese Projektion vor
+und nach ihrer begrenzten Fensterabfrage. Frühere Host-Reviews gelten nicht
+für diese neuen Bytes; die Änderung benötigt einen gezielten unabhängigen Review.
+
 ## Testkomposition und Prüfnachweise
 
 `createNodeCdpOperatorHostForTest(options, ports)` ist eine ausdrücklich
