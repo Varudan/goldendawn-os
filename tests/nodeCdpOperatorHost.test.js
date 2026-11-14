@@ -218,6 +218,44 @@ function fixture(settings = {}) {
   return h
 }
 
+test('process observation is a frozen minimum before spawn, during service and after end', async () => {
+  const h = fixture()
+  const empty = h.host.inspect().processObservation
+  assert.equal(empty.status, 'UNPROVEN'); assert.equal(empty.pid, null)
+  assert.equal(empty.referenceObservedAtMonotonic, null)
+  assert.equal(h.reserve(), true)
+  const pending = h.host.prepareService()
+  assert.equal(h.host.inspect().processObservation.pid, null)
+  h.flush(); await pending
+  const state = h.host.inspect(), observation = state.processObservation
+  assert.ok(Object.isFrozen(observation)); assert.equal(observation.status, 'CONFIRMED')
+  assert.equal(observation.pid, 321); assert.equal(observation.executable, EXE)
+  assert.equal(observation.referenceObservedAtMonotonic, 0)
+  assert.deepEqual(Object.keys(observation), ['status', 'pid', 'executable', 'referenceObservedAtMonotonic',
+    'sessionId', 'sessionGeneration', 'serviceId', 'serviceGeneration'])
+  for (const key of ['sessionId', 'sessionGeneration', 'serviceId', 'serviceGeneration']) assert.equal(observation[key], state[key])
+  assert.equal(h.host.end(), true)
+  assert.deepEqual(h.host.inspect().processObservation, observation)
+  assert.equal(h.host.inspect().blocked, true)
+  h.child.exitCode = 0; h.child.emit('exit')
+  const ended = h.host.inspect().processObservation
+  assert.equal(ended.status, 'UNPROVEN'); assert.equal(ended.pid, 321)
+  assert.equal(ended.serviceGeneration, observation.serviceGeneration)
+  assert.equal(observation.status, 'CONFIRMED', 'old observation never mutates')
+})
+
+for (const field of ['pid', 'spawnfile', 'exitCode', 'signalCode', 'killed']) {
+  test(`process observation refuses changed ${field} and never recovers lost identity`, async () => {
+    const h = fixture(); await h.ready()
+    const old = h.child[field]
+    h.child[field] = field === 'killed' ? true : 'changed'
+    assert.equal(h.host.inspect().processObservation.status, 'UNPROVEN')
+    h.child[field] = old
+    assert.equal(h.host.inspect().processObservation.status, 'UNPROVEN')
+    assert.equal(h.host.inspect().serviceLost, true)
+  })
+}
+
 async function deniedWithoutEffects(h) {
   const before = h.counts()
   assert.equal(h.host.reserve(CLARIFIED), false)
